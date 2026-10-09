@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Existing release tag to build and publish (e.g. 1.15.0)"
+        description: "Existing version tag merged into main (e.g. 1.15.0)"
         required: true
         type: string
 
@@ -45,6 +45,14 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: refs/tags/${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Verify release source
+        run: |
+          git merge-base --is-ancestor HEAD refs/remotes/origin/main || {
+            echo "::error::The release tag must point to a commit merged into main."
+            exit 1
+          }
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -102,6 +110,7 @@ jobs:
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: ${{ env.RELEASE_TAG }}
+          target_commitish: main
           body: Bump Version
           prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
           fail_on_unmatched_files: true
