@@ -4,7 +4,7 @@ This Cargo workspace builds **Android only** for the app. Host builds below are 
 
 - `core/` (`ehviewer_core`): parser/DTOs, image slices and WebP codec FFI, SHA-1, natural sort, GIF bytes, descriptor I/O and safe libarchive sessions. No JNI, `ndk`, `android_logger`, Bitmap or HardwareBuffer dependency.
 - Root package (`ehviewer_rust`): static library containing the existing JNI exports. `src/ffi/` translates Java types/errors and owns direct-buffer registrations and Android locks. Feature names `jvm`, `android`, `android-26` are retained.
-- `../cpp/CMakeLists.txt`: pinned libarchive/liblzma/Nettle/WebP and Corrosion builds, then links `libehviewer.so`. The generated empty assembly unit is only a CMake/AGP link anchor; no app C algorithm or C JNI wrapper remains.
+- `../third-party/CMakeLists.txt`: pinned libarchive/liblzma/Nettle/WebP and Corrosion builds, then links `libehviewer.so`. The generated empty assembly unit is only a CMake/AGP link anchor; no app C algorithm or C JNI wrapper remains.
 
 `ArchiveSession::open` is unsafe only at the file-mapping boundary: the file must remain unmodified/untruncated until the session **and returned mapped page buffers** are gone. Closing/unlinking the caller's descriptor/file is safe. Core sessions are independent; the unchanged Kotlin JNI API still exposes one active session. Concurrent reads retain their own `Arc`. Native libarchive readers move exclusively through a mutex-protected pool; `Reader: Send` is justified against libarchive's thread-safety contract and does not imply `Sync`.
 
@@ -26,4 +26,4 @@ done
 cargo rustc --locked --release --features jvm --lib --crate-type cdylib
 ```
 
-See `docs/modernization/p5-p7/` from the repository root for API equivalence, executed tests, limitations and reversible changes. Native directory relocation and Kotlin module restructuring remain outside P5–P7.
+See `docs/modernization/p5-p7/` from the repository root for API equivalence, executed tests, limitations and reversible changes. Native relocation was completed in P8; Kotlin restructuring is documented separately.

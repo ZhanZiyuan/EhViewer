@@ -31,11 +31,11 @@ jobs:
         run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: app/src/main/rust
-          shared-key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'app/src/main/rust/Cargo.lock') }}
+          workspaces: native/rust
+          shared-key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'native/rust/Cargo.lock') }}
           save-if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
       - name: Rust format, Core/JNI tests and Android Clippy
-        working-directory: app/src/main/rust
+        working-directory: native/rust
         run: |
           cargo fmt --all -- --check
           cargo test --locked -p ehviewer_core -- --skip test_parse_info --skip test_parse_profile --skip test_parse_gallery_detail

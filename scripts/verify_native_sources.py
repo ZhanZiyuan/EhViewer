@@ -13,7 +13,7 @@ for configuration in ['Debug', 'RelWithDebInfo']:
         # Historical tools/default* snapshots are not build inputs. Choose the latest actual build.
         database = max(databases, key=lambda p: p.stat().st_mtime_ns)
         sources = [Path(row['file']).resolve() for row in json.loads(database.read_text())]
-        app_sources = [str(p) for p in sources if (root/'app/src/main/cpp') in p.parents]
+        app_sources = [str(p) for p in sources if ((root/'app/src/main/cpp') in p.parents or ((root/'native') in p.parents and p.suffix in {'.c', '.cc', '.cpp', '.cxx'}))]
         if app_sources:
             raise RuntimeError('App C/C++ still compiled: '+str(app_sources))
         if not any(p.name == 'rust-link-anchor.S' for p in sources):

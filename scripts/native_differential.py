@@ -52,7 +52,7 @@ def main():
             old.original_rewrite(buffer, len(gif))
             expected.append(list(buffer.raw[:len(gif)]))
         request = json.dumps({'names': names, 'signed': signed, 'gifs': [list(g) for g in gifs]})
-        proc = subprocess.run(['cargo', 'run', '--locked', '--quiet', '--manifest-path', str(repo/'app/src/main/rust/Cargo.toml'), '-p', 'ehviewer_core', '--example', 'native_probe'], input=request, text=True, stdout=subprocess.PIPE, check=True, env=os.environ)
+        proc = subprocess.run(['cargo', 'run', '--locked', '--quiet', '--manifest-path', str(repo/'native/rust/Cargo.toml'), '-p', 'ehviewer_core', '--example', 'native_probe'], input=request, text=True, stdout=subprocess.PIPE, check=True, env=os.environ)
         actual = json.loads(proc.stdout)
         assert actual['signs'] == signs, 'natural sort differs'
         assert actual['gifs'] == expected, 'GIF rewrite differs'

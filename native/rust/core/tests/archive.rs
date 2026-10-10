@@ -8,7 +8,7 @@ use std::{
 };
 fn fixture(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../../../docs/modernization/baseline/fixtures")
+        .join("../../../docs/modernization/baseline/fixtures")
         .join(name)
 }
 fn open(name: &str, sort: bool) -> ArchiveSession {
@@ -151,7 +151,7 @@ fn zip_writer_preserves_fds_and_offsets() {
 
 fn extra(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../../../docs/modernization/p5-p7/fixtures")
+        .join("../../../docs/modernization/p5-p7/fixtures")
         .join(name)
 }
 #[test]
