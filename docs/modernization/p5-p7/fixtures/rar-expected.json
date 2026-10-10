@@ -1,0 +1,104 @@
+{
+  "stored.rar": {
+    "count": 1,
+    "encrypted": false,
+    "pages": [
+      {
+        "size": 29,
+        "extension": "jpg",
+        "sha256": "fef9ad8cf601b43f76c6320075f62267c6e5c0a526d750a70b80c919a4a0aad8",
+        "sha1": "253aafde5dec9a54ed554bc7f95e6f291c60cbb0"
+      }
+    ]
+  },
+  "compressed.rar": {
+    "count": 1,
+    "encrypted": false,
+    "pages": [
+      {
+        "size": 1200,
+        "extension": "png",
+        "sha256": "588870a2dade35c2650fbb7898c9a9c7f21fce7c281198604e8d0c9737f2c375",
+        "sha1": "59853fb475d79b5a744cf4223cc20e3db29d1305"
+      }
+    ]
+  },
+  "solid.rar": {
+    "count": 7,
+    "encrypted": false,
+    "pages": [
+      {
+        "size": 1200,
+        "extension": "png",
+        "sha256": "588870a2dade35c2650fbb7898c9a9c7f21fce7c281198604e8d0c9737f2c375",
+        "sha1": "59853fb475d79b5a744cf4223cc20e3db29d1305"
+      },
+      {
+        "size": 4096,
+        "extension": "png",
+        "sha256": "7d89f86f9f69d744ffff3fc043e15bf89fc3ffc134ffcbb31d164a99bb8b67b0",
+        "sha1": "e6d444eac448f176cb9f8a1db5674df32f24e163"
+      },
+      {
+        "size": 4096,
+        "extension": "png",
+        "sha256": "f81e6fceeeab366306b23466bf6bb3aac2875e0906dc20a8652be0696ceb15a2",
+        "sha1": "4fe8ce24816b42ff99293a2fe102df959cd16b79"
+      },
+      {
+        "size": 4096,
+        "extension": "png",
+        "sha256": "5e621f2b6ce8fed758c3df8221f994eda55d1e432c7cc4349c34a30ec2e1c43d",
+        "sha1": "79249e6a3316216a2acd891178fb7477c2519e6a"
+      },
+      {
+        "size": 4096,
+        "extension": "png",
+        "sha256": "2627f40180217252956edb9a426e8d3e344adaf89019d3bccbe04f6c3416dcdd",
+        "sha1": "155be6207481dacbd89aa4f39902ead1df4d9e33"
+      },
+      {
+        "size": 4096,
+        "extension": "png",
+        "sha256": "b0622b648b174abd9c5f3965155bbcc82c642f997ab8949add0a8632bf94e636",
+        "sha1": "187663dde2ba600ebb165b40b5022b97c6a6e806"
+      },
+      {
+        "size": 4096,
+        "extension": "png",
+        "sha256": "0b79ce23670b7c2e5a0d4b62f0de7b0c745522be9ed6a9ec70da6991c2f010f2",
+        "sha1": "7e70cb01b9ea068352dc6d2c945de49696e9731d"
+      }
+    ]
+  },
+  "multiple_files.rar": {
+    "count": 4,
+    "encrypted": false,
+    "pages": [
+      {
+        "size": 4096,
+        "extension": "png",
+        "sha256": "7d89f86f9f69d744ffff3fc043e15bf89fc3ffc134ffcbb31d164a99bb8b67b0",
+        "sha1": "e6d444eac448f176cb9f8a1db5674df32f24e163"
+      },
+      {
+        "size": 4096,
+        "extension": "png",
+        "sha256": "f81e6fceeeab366306b23466bf6bb3aac2875e0906dc20a8652be0696ceb15a2",
+        "sha1": "4fe8ce24816b42ff99293a2fe102df959cd16b79"
+      },
+      {
+        "size": 4096,
+        "extension": "png",
+        "sha256": "5e621f2b6ce8fed758c3df8221f994eda55d1e432c7cc4349c34a30ec2e1c43d",
+        "sha1": "79249e6a3316216a2acd891178fb7477c2519e6a"
+      },
+      {
+        "size": 4096,
+        "extension": "png",
+        "sha256": "2627f40180217252956edb9a426e8d3e344adaf89019d3bccbe04f6c3416dcdd",
+        "sha1": "155be6207481dacbd89aa4f39902ead1df4d9e33"
+      }
+    ]
+  }
+}

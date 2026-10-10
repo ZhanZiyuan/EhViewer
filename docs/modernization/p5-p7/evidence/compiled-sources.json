@@ -1,0 +1,44 @@
+[
+  {
+    "configuration": "Debug",
+    "abi": "arm64-v8a",
+    "database": "app/.cxx/Debug/1i5i5y2o/arm64-v8a/compile_commands.json",
+    "compiled_sources": 375,
+    "app_c_sources": []
+  },
+  {
+    "configuration": "Debug",
+    "abi": "armeabi-v7a",
+    "database": "app/.cxx/Debug/1i5i5y2o/armeabi-v7a/compile_commands.json",
+    "compiled_sources": 375,
+    "app_c_sources": []
+  },
+  {
+    "configuration": "Debug",
+    "abi": "x86_64",
+    "database": "app/.cxx/Debug/1i5i5y2o/x86_64/compile_commands.json",
+    "compiled_sources": 375,
+    "app_c_sources": []
+  },
+  {
+    "configuration": "RelWithDebInfo",
+    "abi": "arm64-v8a",
+    "database": "app/.cxx/RelWithDebInfo/56n3v2n2/arm64-v8a/compile_commands.json",
+    "compiled_sources": 375,
+    "app_c_sources": []
+  },
+  {
+    "configuration": "RelWithDebInfo",
+    "abi": "armeabi-v7a",
+    "database": "app/.cxx/RelWithDebInfo/56n3v2n2/armeabi-v7a/compile_commands.json",
+    "compiled_sources": 375,
+    "app_c_sources": []
+  },
+  {
+    "configuration": "RelWithDebInfo",
+    "abi": "x86_64",
+    "database": "app/.cxx/RelWithDebInfo/56n3v2n2/x86_64/compile_commands.json",
+    "compiled_sources": 375,
+    "app_c_sources": []
+  }
+]

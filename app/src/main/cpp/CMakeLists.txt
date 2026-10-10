@@ -145,13 +145,19 @@ corrosion_import_crate(
         MANIFEST_PATH ../rust/Cargo.toml
         LOCKED
         FEATURES android-26
-        FLAGS $<$<NOT:$<CONFIG:Debug>>:-Z build-std -Z build-std-features=>
+        FLAGS $<$<NOT:$<CONFIG:Debug>>:-Z build-std -Z build-std-features=panic-unwind>
 )
-corrosion_add_target_rustflags(ehviewer_rust $<$<NOT:$<CONFIG:Debug>>:-Z unstable-options -C panic=immediate-abort -Z location-detail=none -Z fmt-debug=none>)
-corrosion_link_libraries(ehviewer_rust android jnigraphics log webp webpdemux)
+corrosion_add_target_rustflags(ehviewer_rust $<$<NOT:$<CONFIG:Debug>>:-Z unstable-options -Z location-detail=none -Z fmt-debug=none>)
+corrosion_link_libraries(ehviewer_rust android jnigraphics log webp webpdemux archive_static)
 
 # Build and link our app's native lib
-add_library(${PROJECT_NAME} SHARED archive.c gifutils.c hash.c natsort/strnatcmp.c)
+# Rust owns the JNI surface. CMake remains the coordinator for third-party C libraries.
+# An empty generated assembly unit gives CMake/AGP a shared-library build target without
+# any app-maintained C implementation or a second JNI wrapper.
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/rust-link-anchor.S "")
+enable_language(ASM)
+add_library(${PROJECT_NAME} SHARED ${CMAKE_CURRENT_BINARY_DIR}/rust-link-anchor.S)
+set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE C)
 target_link_libraries(
         ${PROJECT_NAME} archive_static ehviewer_rust
         -Wl,-u,JNI_OnLoad -Wl,--undefined-glob,Java_*

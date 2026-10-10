@@ -1,0 +1,14 @@
+{
+  "arm64-v8a": {
+    "target": "aarch64-linux-android26",
+    "unsigned_char": true
+  },
+  "armeabi-v7a": {
+    "target": "armv7a-linux-androideabi26",
+    "unsigned_char": true
+  },
+  "x86_64": {
+    "target": "x86_64-linux-android26",
+    "unsigned_char": false
+  }
+}
