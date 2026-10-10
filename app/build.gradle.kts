@@ -12,7 +12,7 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
-val releaseVersion = "1.15.5"
+val releaseVersion = "1.15.6"
 
 val supportedAbis = arrayOf("arm64-v8a", "x86_64", "armeabi-v7a")
 val releaseAbi = providers.gradleProperty("releaseAbi").orNull
@@ -81,7 +81,7 @@ android {
     defaultConfig {
         applicationId = "moe.tarsin.ehviewer"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        versionCode = 180069
+        versionCode = 180070
         versionName = if (snapshot) {
             "$releaseVersion-SNAPSHOT"
         } else {

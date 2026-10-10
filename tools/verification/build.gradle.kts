@@ -26,6 +26,12 @@ tasks.withType<JavaExec>().configureEach {
     workingDir(rootDir.resolve("../.."))
 }
 
+tasks.withType<Test>().configureEach {
+    inputs.file(rootDir.resolve("../../.github/workflows/releases.yml"))
+        .withPropertyName("releaseWorkflow")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 spotless {
     kotlin {
         target("src/**/*.kt")
