@@ -23,14 +23,7 @@ import com.hippo.ehviewer.Settings.archivePasswds
 import com.hippo.ehviewer.client.EhUtils
 import com.hippo.ehviewer.image.ImageSource
 import com.hippo.ehviewer.image.byteBufferSource
-import com.hippo.ehviewer.jni.closeArchive
-import com.hippo.ehviewer.jni.extractToByteBuffer
-import com.hippo.ehviewer.jni.extractToFd
-import com.hippo.ehviewer.jni.getExtension
-import com.hippo.ehviewer.jni.needPassword
-import com.hippo.ehviewer.jni.openArchive
-import com.hippo.ehviewer.jni.providePassword
-import com.hippo.ehviewer.jni.releaseByteBuffer
+import com.hippo.ehviewer.reader.data.NativeArchiveReader
 import com.hippo.ehviewer.util.FileUtils
 import com.hippo.ehviewer.util.displayName
 import kotlinx.coroutines.coroutineScope
@@ -50,16 +43,12 @@ suspend inline fun <T> useArchivePageLoader(
 ) = autoCloseScope {
     coroutineScope {
         val pfd = install(file.openFileDescriptor("r"))
-        val size = install(
-            { openArchive(pfd.fd, pfd.statSize, info == null || file.name.endsWith(".zip")) },
-            { _, _ -> closeArchive() },
-        )
-        check(size > 0) { "Archive have no content!" }
-        if (needPassword() && archivePasswds.none(::providePassword)) {
-            archivePasswds += passwdProvider(::providePassword)
+        val reader = install(NativeArchiveReader.open(pfd.fd, pfd.statSize, info == null || file.name.endsWith(".zip")))
+        if (reader.needsPassword && archivePasswds.none(reader::providePassword)) {
+            archivePasswds += passwdProvider(reader::providePassword)
         }
         val loader = install(
-            object : PageLoader(this, info, startPage, size, hasAds) {
+            object : PageLoader(this, info, startPage, reader.pageCount, hasAds) {
                 override val title by lazy {
                     if (info != null) {
                         EhUtils.getSuitableTitle(info)
@@ -68,11 +57,11 @@ suspend inline fun <T> useArchivePageLoader(
                     }
                 }
 
-                override fun getImageExtension(index: Int) = getExtension(index)
+                override fun getImageExtension(index: Int) = reader.extension(index)
 
                 override fun save(index: Int, file: Path) = runCatching {
                     file.openFileDescriptor("w").use {
-                        extractToFd(index, it.fd)
+                        reader.copyTo(index, it.fd)
                     }
                 }.getOrElse {
                     logcat(it)
@@ -80,10 +69,8 @@ suspend inline fun <T> useArchivePageLoader(
                 }
 
                 override fun openSource(index: Int): ImageSource {
-                    val buffer = extractToByteBuffer(index)
-                    checkNotNull(buffer) { "Extract archive content $index failed!" }
-                    check(buffer.isDirect)
-                    return byteBufferSource(buffer) { releaseByteBuffer(buffer) }
+                    val page = reader.read(index)
+                    return byteBufferSource(page.buffer) { page.close() }
                 }
 
                 override fun prefetchPages(pages: List<Int>, bounds: IntRange) = Unit

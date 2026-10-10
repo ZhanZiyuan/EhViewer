@@ -61,5 +61,5 @@ test_apk=$(find device-inputs -name app-debug-androidTest.apk -print -quit)
 adb -s emulator-5554 install -r "$app"
 adb -s emulator-5554 install -r "$test_apk"
 adb -s emulator-5554 shell am instrument -w -r moe.tarsin.ehviewer.debug.test/androidx.test.runner.AndroidJUnitRunner | tee device-reports/instrumentation.txt
-grep -Eq '^OK \([1-9][0-9]* tests?\)' device-reports/instrumentation.txt
+grep -Eq '^OK \(19 tests\)' device-reports/instrumentation.txt
 ! grep -Eq 'FAILURES!!!|INSTRUMENTATION_FAILED|Process crashed' device-reports/instrumentation.txt

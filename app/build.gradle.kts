@@ -157,9 +157,11 @@ baselineProfile {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.test.runner)
 
+    implementation(projects.core.common)
     implementation(projects.core.data)
     implementation(projects.core.i18n)
     implementation(projects.core.ui)

@@ -38,12 +38,6 @@ class MultiplatformLibraryConventionPlugin : Plugin<Project> {
                 }
             }
 
-            // jvm("desktop") {
-            //     compilerOptions {
-            //         jvmDefault = JvmDefaultMode.NO_COMPATIBILITY
-            //     }
-            // }
-
             configure<KotlinMultiplatformAndroidLibraryTarget> {
                 namespace = "com.ehviewer${path.replace(':', '.')}"
 

@@ -174,11 +174,7 @@ object EhUtils {
         Settings.needSignIn.value = true
     }
 
-    fun getSuitableTitle(gi: GalleryInfo): String = if (Settings.showJpnTitle.value) {
-        if (gi.titleJpn.isNullOrEmpty()) gi.title else gi.titleJpn
-    } else {
-        if (gi.title.isNullOrEmpty()) gi.titleJpn else gi.title
-    }.orEmpty()
+    fun getSuitableTitle(gi: GalleryInfo): String = com.ehviewer.core.domain.selectGalleryTitle(gi.title, gi.titleJpn, Settings.showJpnTitle.value)
 
     fun extractTitle(fullTitle: String?): String? {
         var title: String = fullTitle ?: return null

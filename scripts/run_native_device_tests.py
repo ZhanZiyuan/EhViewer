@@ -13,7 +13,7 @@ def main():
     ap.add_argument('--serial', required=True)
     ap.add_argument('--output', type=Path, required=True)
     ap.add_argument('--sdk', type=Path, default=Path(os.environ.get('ANDROID_HOME', '')))
-    ap.add_argument('--tests', type=int, default=16)
+    ap.add_argument('--tests', type=int, default=19)
     opts = ap.parse_args()
     root = Path(__file__).resolve().parent.parent
     opts.output.mkdir(parents=True, exist_ok=True)
