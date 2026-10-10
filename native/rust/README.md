@@ -17,7 +17,7 @@ Defaults: archive <=8 GiB (also `isize::MAX`), image <=256 MiB, declared regular
 ```sh
 # Host development libraries: libarchive + libwebp; macOS may require LIBRARY_PATH.
 cargo fmt --all -- --check
-cargo test --locked -p ehviewer_core -- --skip test_parse_info --skip test_parse_profile --skip test_parse_gallery_detail
+cargo test --locked -p ehviewer_core
 cargo test --locked --features jvm --lib
 for target in aarch64-linux-android thumbv7neon-linux-androideabi x86_64-linux-android; do
   cargo clippy --locked --workspace --all-features --target "$target" -- -D warnings
@@ -26,4 +26,4 @@ done
 cargo rustc --locked --release --features jvm --lib --crate-type cdylib
 ```
 
-See `docs/modernization/p5-p7/` from the repository root for API equivalence, executed tests, limitations and reversible changes. Native relocation was completed in P8; Kotlin restructuring is documented separately.
+Archive regression fixtures and their licenses are in `../test-fixtures/`. Reproducible Kotlin verification tools are documented in `../../tools/verification/README.md`. Migration logs and temporary C comparison drivers are retained locally outside the repository.

@@ -31,7 +31,8 @@ jobs:
             echo "::error::A version tag such as v1.15.2 is required."
             exit 1
           fi
-          case "${RELEASE_TAG,,}" in
+          release_tag_lower=$(printf '%s' "$RELEASE_TAG" | tr '[:upper:]' '[:lower:]')
+          case "$release_tag_lower" in
             *snapshot*|*default*|*marshmallow*)
               echo "::error::Snapshot and flavor tags are forbidden."
               exit 1
@@ -69,11 +70,11 @@ jobs:
         run: ./gradlew :app:assembleRelease -Prelease --console=plain --no-daemon
       - name: Verify packaging regression tests
         run: |
-          python3 -m unittest discover -s scripts -p 'test_*.py' -v
-          python3 scripts/test_release_inputs.py --sdk "$ANDROID_HOME"
+          ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+          tools/verification/build/install/verification/bin/verification release-input-tests --sdk "$ANDROID_HOME"
       - name: Prepare exactly four APK attachments
         run: >-
-          python3 scripts/prepare_release.py --tag "$RELEASE_TAG"
+          tools/verification/build/install/verification/bin/verification prepare-release --tag "$RELEASE_TAG"
           --sdk "$ANDROID_HOME" --output release-dry-run/apks
           --private-dir "$RUNNER_TEMP/private-release" --retention-days 180
       - name: Upload APK dry-run payload only

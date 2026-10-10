@@ -38,7 +38,7 @@ jobs:
         working-directory: native/rust
         run: |
           cargo fmt --all -- --check
-          cargo test --locked -p ehviewer_core -- --skip test_parse_info --skip test_parse_profile --skip test_parse_gallery_detail
+          cargo test --locked -p ehviewer_core
           cargo test --locked --features jvm --lib
           for target in aarch64-linux-android thumbv7neon-linux-androideabi x86_64-linux-android; do
             cargo clippy --locked --workspace --target "$target" --all-features -- -D warnings
@@ -47,8 +47,10 @@ jobs:
         with:
           validate-wrappers: true
           cache-read-only: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
-      - name: Verify APK checker
-        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+      - name: Build and test Kotlin verification tools
+        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - name: Verify Kotlin boundaries and language policy
+        run: tools/verification/build/install/verification/bin/verification architecture
       - name: Check, test, lint and build
         run: >-
           ./gradlew :build-logic:convention:check spotlessCheck
@@ -63,11 +65,11 @@ jobs:
           mkdir -p reports
           test -s app/build/outputs/mapping/release/mapping.txt
           test -s app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip
-          python3 scripts/verify_native_sources.py > reports/native-sources.json
-          python3 scripts/verify_native_diagnostics.py --sdk "$ANDROID_HOME" > reports/native-diagnostics.json
-          python3 scripts/verify_bytecode.py > reports/android-bytecode.json
-          python3 scripts/verify_apks.py app/build/outputs/apk/release --sdk "$ANDROID_HOME" > reports/release-apks.json
-          python3 scripts/verify_apks.py app/build/outputs/apk/debug --sdk "$ANDROID_HOME" --debug --application-id moe.tarsin.ehviewer.debug > reports/debug-apks.json
+          tools/verification/build/install/verification/bin/verification native-sources > reports/native-sources.json
+          tools/verification/build/install/verification/bin/verification diagnostics --sdk "$ANDROID_HOME" > reports/native-diagnostics.json
+          tools/verification/build/install/verification/bin/verification bytecode > reports/android-bytecode.json
+          tools/verification/build/install/verification/bin/verification apks app/build/outputs/apk/release --sdk "$ANDROID_HOME" > reports/release-apks.json
+          tools/verification/build/install/verification/bin/verification apks app/build/outputs/apk/debug --sdk "$ANDROID_HOME" --debug --application-id moe.tarsin.ehviewer.debug > reports/debug-apks.json
       - name: Upload ARM64
         uses: actions/upload-artifact@v7
         with:
@@ -143,13 +145,19 @@ jobs:
         with:
           name: instrumentation-inputs
           path: device-inputs
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build Kotlin device runner
+        run: ./gradlew -p tools/verification installDist --console=plain --no-daemon
       - name: Enable KVM
         run: sudo chmod 666 /dev/kvm
       - name: Run packaged Android JNI and platform tests
         env:
           TEST_IMAGE: ${{ matrix.image }}
           TEST_LABEL: ${{ matrix.label }}
-        run: bash scripts/run_emulator_tests.sh
+        run: tools/verification/build/install/verification/bin/verification emulator
       - name: Device reports
         if: always()
         uses: actions/upload-artifact@v7
