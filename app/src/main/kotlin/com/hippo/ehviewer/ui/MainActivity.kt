@@ -95,8 +95,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -219,7 +219,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         setMD3Content {
-            val configuration = LocalConfiguration.current
             val navDrawerState = rememberDrawerState(DrawerValue.Closed)
             val sideSheetState = rememberDrawerState2(DrawerValue.Closed)
             val snackbarState = remember { SnackbarHostState() }
@@ -380,6 +379,7 @@ class MainActivity : AppCompatActivity() {
             var snackbarFabPadding by remember { mutableStateOf(0.dp) }
             val drawerEnabled = drawerHandle.isNotEmpty()
             val density = LocalDensity.current
+            val windowWidth = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
             val adaptiveInfo = currentWindowAdaptiveInfoV2()
             val needSignIn by Settings.needSignIn.collectAsState()
             val launchPage by Settings.launchPage.collectAsState()
@@ -410,7 +410,7 @@ class MainActivity : AppCompatActivity() {
                         drawerContent = {
                             ModalDrawerSheet(
                                 drawerState = navDrawerState,
-                                modifier = Modifier.widthIn(max = (configuration.screenWidthDp - 56).dp)
+                                modifier = Modifier.widthIn(max = (windowWidth - 56.dp).coerceAtLeast(0.dp))
                                     .onSizeChanged { minOffset = -it.width.toFloat() },
                                 windowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Start),
                             ) {

@@ -1,0 +1,672 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :build-logic:convention:spotlessApply :build-logic:convention:check spotlessCheck :app:testDebugUnitTest :core:common:testAndroidHostTest :core:data:testAndroidHostTest :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest :app:lintRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleRelease :benchmark:assembleNonMinifiedRelease
+Type-safe project accessors is an incubating feature.
+> Task :build-logic:convention:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:convention:compileKotlin UP-TO-DATE
+> Task :build-logic:convention:compileJava NO-SOURCE
+> Task :build-logic:convention:pluginDescriptors UP-TO-DATE
+> Task :build-logic:convention:processResources UP-TO-DATE
+> Task :build-logic:convention:classes UP-TO-DATE
+> Task :build-logic:convention:jar UP-TO-DATE
+> Task :build-logic:convention:processTestResources NO-SOURCE
+> Task :build-logic:convention:compileTestKotlin NO-SOURCE
+> Task :app:spotlessKotlinGradle UP-TO-DATE
+> Task :core:data:spotlessKotlinGradle UP-TO-DATE
+> Task :core:data:spotlessKotlin UP-TO-DATE
+> Task :core:common:spotlessKotlin UP-TO-DATE
+> Task :core:common:spotlessKotlinGradle UP-TO-DATE
+> Task :app:spotlessKotlin UP-TO-DATE
+> Task :app:spotlessKotlinCheck UP-TO-DATE
+> Task :core:common:spotlessKotlinGradleCheck UP-TO-DATE
+> Task :app:spotlessKotlinGradleCheck UP-TO-DATE
+> Task :core:data:spotlessKotlinGradleCheck UP-TO-DATE
+> Task :core:data:spotlessKotlinCheck UP-TO-DATE
+> Task :core:common:spotlessKotlinCheck UP-TO-DATE
+> Task :app:spotlessCheck UP-TO-DATE
+> Task :core:data:spotlessCheck UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :core:common:spotlessCheck UP-TO-DATE
+> Task :core:i18n:spotlessKotlinGradle UP-TO-DATE
+> Task :core:i18n:spotlessKotlinGradleCheck UP-TO-DATE
+> Task :core:i18n:spotlessKotlin UP-TO-DATE
+> Task :core:i18n:spotlessKotlinCheck UP-TO-DATE
+> Task :core:i18n:spotlessCheck UP-TO-DATE
+> Task :core:common:androidPreBuild UP-TO-DATE
+> Task :core:common:preAndroidMainBuild UP-TO-DATE
+> Task :core:ui:spotlessKotlin UP-TO-DATE
+> Task :core:ui:spotlessKotlinGradle UP-TO-DATE
+> Task :core:ui:spotlessKotlinGradleCheck UP-TO-DATE
+> Task :core:data:androidPreBuild UP-TO-DATE
+> Task :core:data:preAndroidMainBuild UP-TO-DATE
+> Task :core:ui:spotlessKotlinCheck UP-TO-DATE
+> Task :build-logic:convention:pluginUnderTestMetadata
+> Task :core:ui:spotlessCheck UP-TO-DATE
+> Task :core:i18n:androidPreBuild UP-TO-DATE
+> Task :core:i18n:preAndroidMainBuild UP-TO-DATE
+> Task :core:common:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :core:ui:androidPreBuild UP-TO-DATE
+> Task :core:ui:preAndroidMainBuild UP-TO-DATE
+> Task :core:common:kmpPartiallyResolvedDependenciesChecker
+> Task :core:common:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:i18n:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :core:data:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :core:data:kmpPartiallyResolvedDependenciesChecker
+> Task :core:data:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:i18n:kmpPartiallyResolvedDependenciesChecker
+> Task :app:prepareLibraryDefinitionsDebug UP-TO-DATE
+> Task :core:i18n:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:ui:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :core:i18n:generateMRcommonTest UP-TO-DATE
+> Task :build-logic:convention:compileTestJava NO-SOURCE
+> Task :build-logic:convention:testClasses UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :build-logic:convention:test NO-SOURCE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:extractDebugSupportedLocales UP-TO-DATE
+> Task :core:ui:kmpPartiallyResolvedDependenciesChecker
+> Task :core:i18n:generateMRjvmTest UP-TO-DATE
+> Task :core:ui:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:i18n:generateMRandroidHostTest UP-TO-DATE
+> Task :core:ui:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :core:ui:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :core:ui:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :app:generateDebugLocaleConfig UP-TO-DATE
+> Task :core:ui:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :core:ui:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :core:ui:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :core:ui:convertXmlValueResourcesForJvmMain NO-SOURCE
+> Task :core:ui:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :core:ui:generateResourceAccessorsForCommonMain SKIPPED
+> Task :core:ui:generateComposeResClass SKIPPED
+> Task :core:ui:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :core:ui:copyNonXmlValueResourcesForJvmMain NO-SOURCE
+> Task :core:i18n:generateMRcommonMain UP-TO-DATE
+> Task :core:ui:prepareComposeResourcesTaskForJvmMain NO-SOURCE
+> Task :core:ui:generateResourceAccessorsForJvmMain SKIPPED
+> Task :core:ui:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :core:i18n:generateMRjvmMain UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :core:common:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :core:data:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :core:ui:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :core:i18n:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :core:common:processAndroidMainManifest UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests
+> Task :core:i18n:generateMRandroidMain UP-TO-DATE
+> Task :core:i18n:processAndroidMainManifest UP-TO-DATE
+> Task :core:data:processAndroidMainManifest UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :core:i18n:mapAndroidMainSourceSetPaths UP-TO-DATE
+> Task :core:ui:processAndroidMainManifest UP-TO-DATE
+> Task :core:common:androidJar UP-TO-DATE
+> Task :core:common:preAndroidHostTestBuild UP-TO-DATE
+> Task :core:common:processAndroidHostTestJavaRes NO-SOURCE
+> Task :core:data:androidJar UP-TO-DATE
+> Task :core:data:preAndroidHostTestBuild UP-TO-DATE
+> Task :core:i18n:packageAndroidMainResources UP-TO-DATE
+> Task :core:i18n:parseAndroidMainLocalResources UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest FROM-CACHE
+> Task :core:i18n:generateAndroidMainRFile UP-TO-DATE
+> Task :core:data:processAndroidHostTestJavaRes NO-SOURCE
+> Task :core:i18n:compileAndroidMainLibraryResources UP-TO-DATE
+> Task :core:i18n:androidJar UP-TO-DATE
+> Task :core:i18n:preAndroidHostTestBuild UP-TO-DATE
+> Task :core:i18n:processAndroidHostTestJavaRes NO-SOURCE
+> Task :core:ui:androidJar UP-TO-DATE
+> Task :core:i18n:compileAndroidMain UP-TO-DATE
+> Task :core:ui:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :core:i18n:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :core:i18n:processAndroidMainJavaRes UP-TO-DATE
+> Task :core:i18n:compileAndroidHostTest NO-SOURCE
+> Task :core:ui:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :core:ui:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :core:ui:generateResourceAccessorsForAndroidHostTest SKIPPED
+> Task :core:ui:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :core:ui:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :core:ui:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :core:ui:generateResourceAccessorsForCommonTest SKIPPED
+> Task :core:ui:convertXmlValueResourcesForJvmTest NO-SOURCE
+> Task :core:ui:copyNonXmlValueResourcesForJvmTest NO-SOURCE
+> Task :core:ui:prepareComposeResourcesTaskForJvmTest NO-SOURCE
+> Task :core:ui:generateResourceAccessorsForJvmTest SKIPPED
+> Task :core:ui:preAndroidHostTestBuild UP-TO-DATE
+> Task :core:ui:processAndroidHostTestJavaRes NO-SOURCE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:generateReleaseBuildConfig
+> Task :core:common:compileAndroidMain UP-TO-DATE
+> Task :core:common:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :core:data:kspAndroidMain UP-TO-DATE
+> Task :core:data:compileAndroidMain UP-TO-DATE
+> Task :core:data:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :core:data:kspAndroidHostTest SKIPPED
+> Task :core:data:copyRoomSchemas NO-SOURCE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :core:common:processAndroidMainJavaRes UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :core:data:processAndroidMainJavaRes UP-TO-DATE
+> Task :core:common:compileAndroidHostTest NO-SOURCE
+> Task :core:data:compileAndroidHostTest NO-SOURCE
+> Task :core:i18n:bundleAndroidMainClassesToRuntimeJar
+> Task :core:i18n:testAndroidHostTest NO-SOURCE
+> Task :app:generateReleaseResources
+> Task :core:common:bundleAndroidMainClassesToRuntimeJar
+> Task :core:common:testAndroidHostTest NO-SOURCE
+> Task :app:javaPreCompileRelease FROM-CACHE
+> Task :app:extractProguardFiles
+> Task :core:data:bundleAndroidMainClassesToRuntimeJar
+> Task :core:common:extractProguardFiles
+> Task :core:data:testAndroidHostTest NO-SOURCE
+> Task :core:common:prepareLintJarForPublish
+> Task :core:data:createFullJarAndroidMain
+> Task :core:common:createFullJarAndroidMain
+> Task :core:data:prepareLintJarForPublish
+> Task :core:data:extractProguardFiles
+> Task :core:i18n:createFullJarAndroidMain
+> Task :core:i18n:extractProguardFiles
+> Task :core:i18n:prepareLintJarForPublish
+> Task :core:ui:compileAndroidMain UP-TO-DATE
+> Task :core:ui:extractProguardFiles
+> Task :core:ui:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :core:ui:bundleAndroidMainClassesToRuntimeJar
+> Task :core:ui:processAndroidMainJavaRes UP-TO-DATE
+> Task :core:ui:compileAndroidHostTest NO-SOURCE
+> Task :core:ui:testAndroidHostTest NO-SOURCE
+> Task :app:processReleaseNavigationResources
+> Task :core:ui:createFullJarAndroidMain
+> Task :core:ui:prepareLintJarForPublish
+> Task :core:data:checkAndroidMainAarMetadata
+> Task :core:data:extractAndroidMainAnnotations
+> Task :core:data:mergeAndroidMainJavaResource
+> Task :core:data:syncAndroidMainLibJars
+> Task :app:processDebugMainManifest
+> Task :build-logic:convention:spotlessKotlinGradle
+> Task :core:data:bundleAndroidMainLocalLintAar
+> Task :build-logic:convention:spotlessKotlinGradleApply
+> Task :build-logic:convention:spotlessKotlinGradleCheck
+> Task :core:i18n:checkAndroidMainAarMetadata
+> Task :build-logic:convention:validatePlugins
+> Task :core:i18n:mergeAndroidMainJavaResource
+> Task :core:i18n:extractAndroidMainAnnotations
+> Task :core:ui:extractAndroidMainAnnotations
+> Task :app:processDebugManifest
+> Task :core:i18n:syncAndroidMainLibJars
+> Task :core:ui:mergeAndroidMainJavaResource
+> Task :app:processDebugManifestForPackage
+> Task :core:ui:checkAndroidMainAarMetadata
+> Task :core:i18n:bundleAndroidMainLocalLintAar
+> Task :core:common:checkAndroidMainAarMetadata
+> Task :core:common:extractAndroidMainAnnotations
+> Task :core:common:mergeAndroidMainJavaResource
+> Task :core:common:syncAndroidMainLibJars
+> Task :core:common:bundleAndroidMainLocalLintAar
+> Task :core:common:writeAndroidMainLintModelMetadata
+> Task :core:data:writeAndroidMainLintModelMetadata
+> Task :core:ui:syncAndroidMainLibJars
+> Task :core:ui:bundleAndroidMainLocalLintAar
+> Task :core:i18n:writeAndroidMainLintModelMetadata
+> Task :core:ui:writeAndroidMainLintModelMetadata
+> Task :core:common:generateAndroidHostTestLintModel
+> Task :build-logic:convention:spotlessKotlin
+> Task :core:data:generateAndroidHostTestLintModel
+> Task :build-logic:convention:spotlessKotlinApply
+> Task :build-logic:convention:spotlessApply
+> Task :build-logic:convention:spotlessKotlinCheck UP-TO-DATE
+> Task :build-logic:convention:spotlessCheck
+> Task :build-logic:convention:check
+> Task :core:i18n:generateAndroidMainLintModel
+> Task :core:common:generateAndroidMainLintModel
+> Task :core:i18n:generateAndroidHostTestLintModel
+> Task :core:data:generateAndroidMainLintModel
+> Task :app:prepareLibraryDefinitionsRelease
+> Task :app:extractReleaseSupportedLocales
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:generateReleaseLocaleConfig FROM-CACHE
+> Task :app:packageReleaseResources
+> Task :app:parseReleaseLocalResources
+> Task :core:ui:generateAndroidMainLintModel
+> Task :app:extractDeepLinksRelease
+> Task :app:generateReleaseRFile
+> Task :core:ui:generateAndroidHostTestLintModel
+> Task :app:processDebugResources
+> Task :app:processReleaseMainManifest
+> Task :core:common:lintAnalyzeAndroidHostTest
+> Task :core:i18n:lintAnalyzeAndroidHostTest
+> Task :core:data:lintAnalyzeAndroidHostTest
+> Task :core:common:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :core:common:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :core:data:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :core:common:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :core:data:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :core:i18n:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :core:data:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :core:i18n:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :core:i18n:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :core:i18n:generateAndroidMainAssets UP-TO-DATE
+> Task :core:ui:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :core:i18n:mergeAndroidMainAssets UP-TO-DATE
+> Task :core:ui:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :core:ui:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :app:generateDebugGlobalSynthetics UP-TO-DATE
+> Task :app:l8DexDesugarLibDebug UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :core:data:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :core:i18n:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :core:ui:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :core:common:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:mergeDebugAndroidTestManifest UP-TO-DATE
+> Task :app:processDebugAndroidTestManifest UP-TO-DATE
+> Task :app:generateDebugAndroidTestBuildConfig
+> Task :app:generateDebugAndroidTestResources UP-TO-DATE
+> Task :app:packageDebugAndroidTestResources UP-TO-DATE
+> Task :app:processDebugAndroidTestNavigationResources UP-TO-DATE
+> Task :app:parseDebugAndroidTestLocalResources UP-TO-DATE
+> Task :app:generateDebugAndroidTestRFile UP-TO-DATE
+> Task :app:javaPreCompileDebugAndroidTest UP-TO-DATE
+> Task :app:generateDebugAndroidTestAssets UP-TO-DATE
+> Task :app:mergeDebugAndroidTestAssets UP-TO-DATE
+> Task :app:compressDebugAndroidTestAssets UP-TO-DATE
+> Task :app:generateDebugAndroidTestGlobalSynthetics UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:checkDebugAndroidTestDuplicateClasses UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:desugarDebugAndroidTestFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebugAndroidTest UP-TO-DATE
+> Task :app:mergeExtDexDebugAndroidTest UP-TO-DATE
+> Task :app:mapDebugAndroidTestSourceSetPaths UP-TO-DATE
+> Task :app:compileDebugAndroidTestNavigationResources UP-TO-DATE
+> Task :app:checkDebugAndroidTestAarMetadata UP-TO-DATE
+> Task :app:mergeDebugAndroidTestJniLibFolders UP-TO-DATE
+> Task :app:validateSigningDebugAndroidTest UP-TO-DATE
+> Task :app:writeDebugAndroidTestSigningConfigVersions UP-TO-DATE
+> Task :app:preNonMinifiedReleaseBuild UP-TO-DATE
+> Task :app:mergeDebugAndroidTestResources UP-TO-DATE
+> Task :core:ui:lintAnalyzeAndroidHostTest
+> Task :app:processDebugAndroidTestResources UP-TO-DATE
+> Task :app:configureCMakeDebug[arm64-v8a]
+> Task :app:configureCMakeDebug[x86_64]
+> Task :app:configureCMakeDebug[armeabi-v7a]
+
+> Task :app:buildCMakeDebug[arm64-v8a]
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.34s
+
+> Task :app:configureCMakeRelWithDebInfo[x86_64]
+
+> Task :app:buildCMakeDebug[x86_64]
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.35s
+
+> Task :app:configureCMakeRelWithDebInfo[arm64-v8a]
+
+> Task :app:buildCMakeDebug[armeabi-v7a]
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.32s
+
+> Task :app:configureCMakeRelWithDebInfo[armeabi-v7a]
+
+> Task :app:buildCMakeRelWithDebInfo[x86_64]
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Finished `release` profile [optimized] target(s) in 0.49s
+
+> Task :app:kspDebugKotlin
+
+> Task :app:buildCMakeRelWithDebInfo[arm64-v8a]
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Blocking waiting for file lock on package cache
+C/C++:     Finished `release` profile [optimized] target(s) in 0.34s
+
+> Task :app:kspReleaseKotlin
+
+> Task :app:buildCMakeRelWithDebInfo[armeabi-v7a]
+C/C++:     Finished `release` profile [optimized] target(s) in 0.32s
+
+> Task :app:mergeReleaseJniLibFolders
+> Task :core:common:prepareAndroidMainArtProfile
+> Task :core:data:prepareAndroidMainArtProfile
+> Task :core:i18n:prepareAndroidMainArtProfile
+> Task :core:ui:prepareAndroidMainArtProfile
+> Task :core:data:mergeAndroidMainGeneratedProguardFiles
+> Task :core:data:exportAndroidMainConsumerProguardFiles
+> Task :core:i18n:mergeAndroidMainGeneratedProguardFiles
+> Task :core:i18n:exportAndroidMainConsumerProguardFiles
+> Task :core:ui:mergeAndroidMainGeneratedProguardFiles
+> Task :core:ui:exportAndroidMainConsumerProguardFiles
+> Task :core:common:mergeAndroidMainGeneratedProguardFiles
+> Task :core:common:exportAndroidMainConsumerProguardFiles
+> Task :app:mergeReleaseArtProfile
+> Task :app:checkReleaseDuplicateClasses
+
+> Task :app:buildCMakeRelWithDebInfo[armeabi-v7a]
+C/C++: ninja: Entering directory `/Users/zhanziyuan/Documents/GitHub/EhViewer/app/.cxx/RelWithDebInfo/56n3v2n2/armeabi-v7a'
+C/C++: checking if we should use a .note.GNU-stack section... /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/objdump: error: 'conftest.o': The file was not recognized as a valid object file
+C/C++: rm: conftest.exe.dSYM: is a directory
+C/C++: no
+C/C++: checking if .align assembly directive is logarithmic... rm: conftest,ff8.dSYM: is a directory
+C/C++: rm: conftest.exe.dSYM: is a directory
+C/C++: yes
+C/C++: checking if Intel CET is enabled... no
+C/C++: checking for m4... /usr/bin/m4
+C/C++: checking for makeinfo... not-found
+C/C++: checking for library containing clock_gettime... none required
+C/C++: configure: creating ./config.status
+C/C++: config.status: creating config.make
+C/C++: config.status: creating config.m4
+C/C++: config.status: creating Makefile
+C/C++: config.status: creating version.h
+C/C++: config.status: creating tools/Makefile
+C/C++: config.status: creating testsuite/Makefile
+C/C++: config.status: creating examples/Makefile
+C/C++: config.status: creating nettle.pc
+C/C++: config.status: creating hogweed.pc
+C/C++: config.status: creating libnettle.map
+C/C++: config.status: creating libhogweed.map
+C/C++: config.status: creating config.h
+C/C++: config.status: config.h is unchanged
+C/C++: config.status: linking arm/fat/aes-encrypt-internal.asm to aes-encrypt-internal.asm
+C/C++: config.status: linking arm/fat/aes-decrypt-internal.asm to aes-decrypt-internal.asm
+C/C++: config.status: linking arm/memxor.asm to memxor.asm
+C/C++: config.status: linking arm/memxor3.asm to memxor3.asm
+C/C++: config.status: linking arm/machine.m4 to machine.m4
+C/C++: config.status: linking arm/fat/aes-encrypt-internal-2.asm to aes-encrypt-internal-2.asm
+C/C++: config.status: linking arm/fat/aes-decrypt-internal-2.asm to aes-decrypt-internal-2.asm
+C/C++: config.status: linking arm/fat/chacha-3core.asm to chacha-3core.asm
+C/C++: config.status: linking arm/fat/salsa20-2core.asm to salsa20-2core.asm
+C/C++: config.status: linking arm/fat/sha1-compress-2.asm to sha1-compress-2.asm
+C/C++: config.status: linking arm/fat/sha256-compress-n-2.asm to sha256-compress-n-2.asm
+C/C++: config.status: linking arm/fat/sha3-permute-2.asm to sha3-permute-2.asm
+C/C++: config.status: linking arm/fat/sha512-compress-2.asm to sha512-compress-2.asm
+C/C++: config.status: linking arm/fat/umac-nh-n-2.asm to umac-nh-n-2.asm
+C/C++: config.status: linking arm/fat/umac-nh-2.asm to umac-nh-2.asm
+C/C++: configure: summary of build options:
+C/C++:   Version:           nettle 4.0
+C/C++:   Host type:         armv7-none-linux-androideabi26
+C/C++:   ABI:               standard
+C/C++:   Assembly files:    arm/fat arm
+C/C++:   Install prefix:    /usr/local
+C/C++:   Library directory: ${exec_prefix}/lib
+
+> Task :app:checkReleaseAarMetadata
+> Task :app:compileReleaseNavigationResources FROM-CACHE
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:extractDebugNativeDebugMetadata UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata UP-TO-DATE
+> Task :app:mergeDebugAndroidTestNativeLibs NO-SOURCE
+> Task :app:stripDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:processReleaseManifest
+> Task :app:processReleaseManifestForPackage
+> Task :app:mergeReleaseStartupProfile
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseAssets
+> Task :app:compressReleaseAssets
+
+> Task :app:buildCMakeRelWithDebInfo[arm64-v8a]
+C/C++: ninja: Entering directory `/Users/zhanziyuan/Documents/GitHub/EhViewer/app/.cxx/RelWithDebInfo/56n3v2n2/arm64-v8a'
+C/C++: checking if we should use a .note.GNU-stack section... /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/objdump: error: 'conftest.o': The file was not recognized as a valid object file
+C/C++: rm: conftest.exe.dSYM: is a directory
+C/C++: no
+C/C++: checking if .align assembly directive is logarithmic... rm: conftest,ff8.dSYM: is a directory
+C/C++: rm: conftest.exe.dSYM: is a directory
+C/C++: yes
+C/C++: checking if Intel CET is enabled... no
+C/C++: checking for m4... /usr/bin/m4
+C/C++: checking for makeinfo... not-found
+C/C++: checking for library containing clock_gettime... none required
+C/C++: configure: creating ./config.status
+C/C++: config.status: creating config.make
+C/C++: config.status: creating config.m4
+C/C++: config.status: creating Makefile
+C/C++: config.status: creating version.h
+C/C++: config.status: creating tools/Makefile
+C/C++: config.status: creating testsuite/Makefile
+C/C++: config.status: creating examples/Makefile
+C/C++: config.status: creating nettle.pc
+C/C++: config.status: creating hogweed.pc
+C/C++: config.status: creating libnettle.map
+C/C++: config.status: creating libhogweed.map
+C/C++: config.status: creating config.h
+C/C++: config.status: config.h is unchanged
+C/C++: config.status: linking arm64/chacha-core-internal.asm to chacha-core-internal.asm
+C/C++: config.status: linking arm64/machine.m4 to machine.m4
+C/C++: config.status: linking arm64/fat/aes128-encrypt-2.asm to aes128-encrypt-2.asm
+C/C++: config.status: linking arm64/fat/aes128-decrypt-2.asm to aes128-decrypt-2.asm
+C/C++: config.status: linking arm64/fat/aes192-encrypt-2.asm to aes192-encrypt-2.asm
+C/C++: config.status: linking arm64/fat/aes192-decrypt-2.asm to aes192-decrypt-2.asm
+C/C++: config.status: linking arm64/fat/aes256-encrypt-2.asm to aes256-encrypt-2.asm
+C/C++: config.status: linking arm64/fat/aes256-decrypt-2.asm to aes256-decrypt-2.asm
+C/C++: config.status: linking arm64/chacha-2core.asm to chacha-2core.asm
+C/C++: config.status: linking arm64/chacha-4core.asm to chacha-4core.asm
+C/C++: config.status: linking arm64/fat/ghash-set-key-2.asm to ghash-set-key-2.asm
+C/C++: config.status: linking arm64/fat/ghash-update-2.asm to ghash-update-2.asm
+C/C++: config.status: linking arm64/fat/sha1-compress-2.asm to sha1-compress-2.asm
+C/C++: config.status: linking arm64/fat/sha256-compress-n-2.asm to sha256-compress-n-2.asm
+C/C++: configure: summary of build options:
+C/C++:   Version:           nettle 4.0
+C/C++:   Host type:         aarch64-none-linux-android26
+C/C++:   ABI:               64
+C/C++:   Assembly files:    arm64/fat arm64
+C/C++:   Install prefix:    /usr/local
+C/C++:   Library directory: ${exec_prefix}/lib
+
+> Task :app:extractReleaseVersionControlInfo
+> Task :app:validateSigningRelease
+> Task :app:writeReleaseAppMetadata
+> Task :app:writeReleaseSigningConfigVersions
+> Task :benchmark:preBuild UP-TO-DATE
+> Task :benchmark:preNonMinifiedReleaseBuild UP-TO-DATE
+> Task :benchmark:checkTestedAppObfuscationNonMinifiedRelease
+> Task :benchmark:generateNonMinifiedReleaseResources FROM-CACHE
+> Task :benchmark:packageNonMinifiedReleaseResources
+
+> Task :app:buildCMakeRelWithDebInfo[x86_64]
+C/C++: ninja: Entering directory `/Users/zhanziyuan/Documents/GitHub/EhViewer/app/.cxx/RelWithDebInfo/56n3v2n2/x86_64'
+C/C++: checking if we should use a .note.GNU-stack section... /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/objdump: error: 'conftest.o': The file was not recognized as a valid object file
+C/C++: rm: conftest.exe.dSYM: is a directory
+C/C++: no
+C/C++: checking if .align assembly directive is logarithmic... rm: conftest,ff8.dSYM: is a directory
+C/C++: rm: conftest.exe.dSYM: is a directory
+C/C++: no
+C/C++: checking if Intel CET is enabled... no
+C/C++: checking for m4... /usr/bin/m4
+C/C++: checking for makeinfo... not-found
+C/C++: checking for library containing clock_gettime... none required
+C/C++: configure: creating ./config.status
+C/C++: config.status: creating config.make
+C/C++: config.status: creating config.m4
+C/C++: config.status: creating Makefile
+C/C++: config.status: creating version.h
+C/C++: config.status: creating tools/Makefile
+C/C++: config.status: creating testsuite/Makefile
+C/C++: config.status: creating examples/Makefile
+C/C++: config.status: creating nettle.pc
+C/C++: config.status: creating hogweed.pc
+C/C++: config.status: creating libnettle.map
+C/C++: config.status: creating libhogweed.map
+C/C++: config.status: creating config.h
+C/C++: config.status: config.h is unchanged
+C/C++: config.status: linking x86_64/aes-encrypt-internal.asm to aes-encrypt-internal.asm
+C/C++: config.status: linking x86_64/aes-decrypt-internal.asm to aes-decrypt-internal.asm
+C/C++: config.status: linking x86_64/camellia-crypt-internal.asm to camellia-crypt-internal.asm
+C/C++: config.status: linking x86_64/fat/memxor.asm to memxor.asm
+C/C++: config.status: linking x86_64/memxor3.asm to memxor3.asm
+C/C++: config.status: linking x86_64/fat/ghash-update.asm to ghash-update.asm
+C/C++: config.status: linking x86_64/poly1305-internal.asm to poly1305-internal.asm
+C/C++: config.status: linking x86_64/chacha-core-internal.asm to chacha-core-internal.asm
+C/C++: config.status: linking x86_64/salsa20-core-internal.asm to salsa20-core-internal.asm
+C/C++: config.status: linking x86_64/serpent-encrypt.asm to serpent-encrypt.asm
+C/C++: config.status: linking x86_64/serpent-decrypt.asm to serpent-decrypt.asm
+C/C++: config.status: linking x86_64/fat/sha1-compress.asm to sha1-compress.asm
+C/C++: config.status: linking x86_64/fat/sha256-compress-n.asm to sha256-compress-n.asm
+C/C++: config.status: linking x86_64/sha512-compress.asm to sha512-compress.asm
+C/C++: config.status: linking x86_64/sha3-permute.asm to sha3-permute.asm
+C/C++: config.status: linking x86_64/umac-nh.asm to umac-nh.asm
+C/C++: config.status: linking x86_64/umac-nh-n.asm to umac-nh-n.asm
+C/C++: config.status: linking x86_64/machine.m4 to machine.m4
+C/C++: config.status: linking x86_64/fat/cpuid.asm to cpuid.asm
+C/C++: config.status: linking x86_64/fat/memxor-2.asm to memxor-2.asm
+C/C++: config.status: linking x86_64/fat/aes128-encrypt-2.asm to aes128-encrypt-2.asm
+C/C++: config.status: linking x86_64/fat/aes128-decrypt-2.asm to aes128-decrypt-2.asm
+C/C++: config.status: linking x86_64/fat/aes192-encrypt-2.asm to aes192-encrypt-2.asm
+C/C++: config.status: linking x86_64/fat/aes192-decrypt-2.asm to aes192-decrypt-2.asm
+C/C++: config.status: linking x86_64/fat/aes256-encrypt-2.asm to aes256-encrypt-2.asm
+C/C++: config.status: linking x86_64/fat/aes256-decrypt-2.asm to aes256-decrypt-2.asm
+C/C++: config.status: linking x86_64/fat/cbc-aes128-encrypt-2.asm to cbc-aes128-encrypt-2.asm
+C/C++: config.status: linking x86_64/fat/cbc-aes192-encrypt-2.asm to cbc-aes192-encrypt-2.asm
+C/C++: config.status: linking x86_64/fat/cbc-aes256-encrypt-2.asm to cbc-aes256-encrypt-2.asm
+C/C++: config.status: linking x86_64/poly1305-blocks.asm to poly1305-blocks.asm
+C/C++: config.status: linking x86_64/fat/ghash-set-key-2.asm to ghash-set-key-2.asm
+C/C++: config.status: linking x86_64/fat/ghash-update-2.asm to ghash-update-2.asm
+C/C++: config.status: linking x86_64/salsa20-2core.asm to salsa20-2core.asm
+C/C++: config.status: linking x86_64/fat/sha1-compress-2.asm to sha1-compress-2.asm
+C/C++: config.status: linking x86_64/fat/sha256-compress-n-2.asm to sha256-compress-n-2.asm
+C/C++: configure: summary of build options:
+C/C++:   Version:           nettle 4.0
+C/C++:   Host type:         x86_64-none-linux-android26
+C/C++:   ABI:               64
+C/C++:   Assembly files:    x86_64/fat x86_64
+C/C++:   Install prefix:    /usr/local
+C/C++:   Library directory: ${exec_prefix}/lib
+
+> Task :benchmark:processNonMinifiedReleaseNavigationResources
+> Task :benchmark:parseNonMinifiedReleaseLocalResources FROM-CACHE
+> Task :benchmark:generateNonMinifiedReleaseRFile
+> Task :app:expandReleaseL8ArtProfileWildcards
+> Task :benchmark:javaPreCompileNonMinifiedRelease FROM-CACHE
+> Task :benchmark:generateNonMinifiedReleaseAssets UP-TO-DATE
+> Task :benchmark:mergeNonMinifiedReleaseAssets
+> Task :app:mergeReleaseResources
+> Task :benchmark:compressNonMinifiedReleaseAssets
+> Task :benchmark:generateNonMinifiedReleaseGlobalSynthetics FROM-CACHE
+> Task :core:common:lintAnalyzeAndroidMain
+> Task :core:i18n:lintAnalyzeAndroidMain
+> Task :benchmark:checkNonMinifiedReleaseDuplicateClasses
+> Task :benchmark:desugarNonMinifiedReleaseFileDependencies
+> Task :app:processReleaseResources
+> Task :benchmark:mergeLibDexNonMinifiedRelease FROM-CACHE
+> Task :benchmark:checkNonMinifiedReleaseAarMetadata
+> Task :benchmark:mapNonMinifiedReleaseSourceSetPaths
+> Task :benchmark:compileNonMinifiedReleaseNavigationResources FROM-CACHE
+> Task :benchmark:compileNonMinifiedReleaseKotlin
+> Task :benchmark:compileNonMinifiedReleaseJavaWithJavac NO-SOURCE
+> Task :benchmark:processNonMinifiedReleaseJavaRes
+> Task :benchmark:mergeNonMinifiedReleaseResources
+> Task :benchmark:mergeNonMinifiedReleaseManifest
+> Task :benchmark:processNonMinifiedReleaseManifest
+> Task :benchmark:mergeNonMinifiedReleaseJavaResource
+> Task :benchmark:mergeNonMinifiedReleaseJniLibFolders
+> Task :benchmark:mergeNonMinifiedReleaseNativeLibs
+> Task :benchmark:processNonMinifiedReleaseResources
+> Task :benchmark:stripNonMinifiedReleaseDebugSymbols
+> Task :benchmark:validateSigningNonMinifiedRelease
+> Task :benchmark:writeNonMinifiedReleaseSigningConfigVersions
+> Task :benchmark:dexBuilderNonMinifiedRelease
+> Task :benchmark:mergeProjectDexNonMinifiedRelease
+> Task :app:compileDebugKotlin
+> Task :app:compileReleaseKotlin
+> Task :app:mergeReleaseNativeLibs
+> Task :app:stripReleaseDebugSymbols
+> Task :app:extractReleaseNativeDebugMetadata
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
+> Task :app:mergeReleaseNativeDebugMetadata
+> Task :app:compileDebugJavaWithJavac
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:kspDebugUnitTestKotlin NO-SOURCE
+> Task :app:compileDebugUnitTestKotlin NO-SOURCE
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes NO-SOURCE
+> Task :app:testDebugUnitTest NO-SOURCE
+> Task :app:dexBuilderDebug
+> Task :app:kspDebugAndroidTestKotlin
+> Task :app:mergeProjectDexDebug
+> Task :app:compileDebugAndroidTestKotlin
+> Task :app:processDebugAndroidTestJavaRes UP-TO-DATE
+> Task :app:mergeDebugAndroidTestJavaResource UP-TO-DATE
+> Task :app:compileDebugAndroidTestJavaWithJavac
+> Task :app:dexBuilderDebugAndroidTest
+> Task :app:mergeProjectDexDebugAndroidTest
+> Task :app:packageDebugAndroidTest
+> Task :app:assembleDebugAndroidTest
+> Task :app:createDebugAndroidTestApkListingFileRedirect UP-TO-DATE
+> Task :app:packageDebug
+> Task :app:assembleDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :benchmark:mergeExtDexNonMinifiedRelease
+> Task :benchmark:packageNonMinifiedRelease
+> Task :benchmark:assembleNonMinifiedRelease
+> Task :benchmark:createNonMinifiedReleaseApkListingFileRedirect
+> Task :core:data:lintAnalyzeAndroidMain
+> Task :core:ui:lintAnalyzeAndroidMain
+
+> Task :app:compileReleaseKotlin
+w: file:///Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/kotlin/com/hippo/ehviewer/spider/ComicInfo.kt:40:19 'constructor(serializersModule: SerializersModule = ..., configure: XmlConfig.CompatBuilder.() -> Unit = ...): XML' is deprecated. Update to the named factory functions.
+w: file:///Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/kotlin/com/hippo/ehviewer/ui/screen/DownloadsScreen.kt:336:17 'fun ListItem(headlineContent: ComposableFunction0<Unit>, modifier: Modifier = ..., overlineContent: ComposableFunction0<Unit>? = ..., supportingContent: ComposableFunction0<Unit>? = ..., leadingContent: ComposableFunction0<Unit>? = ..., trailingContent: ComposableFunction0<Unit>? = ..., colors: ListItemColors = ..., tonalElevation: Dp = ..., shadowElevation: Dp = ...): Unit' is deprecated. Use the overload where `headlineContent` is now a trailing `content` lambda.
+w: file:///Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/kotlin/com/hippo/ehviewer/ui/screen/DownloadsScreen.kt:349:17 'fun ListItem(headlineContent: ComposableFunction0<Unit>, modifier: Modifier = ..., overlineContent: ComposableFunction0<Unit>? = ..., supportingContent: ComposableFunction0<Unit>? = ..., leadingContent: ComposableFunction0<Unit>? = ..., trailingContent: ComposableFunction0<Unit>? = ..., colors: ListItemColors = ..., tonalElevation: Dp = ..., shadowElevation: Dp = ...): Unit' is deprecated. Use the overload where `headlineContent` is now a trailing `content` lambda.
+w: file:///Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/kotlin/com/hippo/ehviewer/ui/screen/DownloadsScreen.kt:403:25 'fun ListItem(headlineContent: ComposableFunction0<Unit>, modifier: Modifier = ..., overlineContent: ComposableFunction0<Unit>? = ..., supportingContent: ComposableFunction0<Unit>? = ..., leadingContent: ComposableFunction0<Unit>? = ..., trailingContent: ComposableFunction0<Unit>? = ..., colors: ListItemColors = ..., tonalElevation: Dp = ..., shadowElevation: Dp = ...): Unit' is deprecated. Use the overload where `headlineContent` is now a trailing `content` lambda.
+w: file:///Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/kotlin/com/hippo/ehviewer/ui/screen/GalleryListScreen.kt:367:33 'fun ListItem(headlineContent: ComposableFunction0<Unit>, modifier: Modifier = ..., overlineContent: ComposableFunction0<Unit>? = ..., supportingContent: ComposableFunction0<Unit>? = ..., leadingContent: ComposableFunction0<Unit>? = ..., trailingContent: ComposableFunction0<Unit>? = ..., colors: ListItemColors = ..., tonalElevation: Dp = ..., shadowElevation: Dp = ...): Unit' is deprecated. Use the overload where `headlineContent` is now a trailing `content` lambda.
+w: file:///Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/kotlin/com/hippo/ehviewer/ui/screen/SearchBarScreen.kt:233:9 'fun SearchBar(inputField: ComposableFunction0<Unit>, expanded: Boolean, onExpandedChange: (Boolean) -> Unit, modifier: Modifier = ..., shape: Shape = ..., colors: SearchBarColors = ..., tonalElevation: Dp = ..., shadowElevation: Dp = ..., windowInsets: WindowInsets = ..., content: ComposableFunction1<ColumnScope, Unit>): Unit' is deprecated. Use SearchBar with SearchBarState, and ExpandedFullScreenSearchBar or ExpandedDockedSearchBar to display results.
+w: file:///Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/kotlin/com/hippo/ehviewer/ui/screen/SearchBarScreen.kt:237:17 'fun InputField(state: TextFieldState, onSearch: (String) -> Unit, expanded: Boolean, onExpandedChange: (Boolean) -> Unit, modifier: Modifier = ..., enabled: Boolean = ..., readOnly: Boolean = ..., textStyle: TextStyle = ..., placeholder: ComposableFunction0<Unit>? = ..., leadingIcon: ComposableFunction0<Unit>? = ..., trailingIcon: ComposableFunction0<Unit>? = ..., prefix: ComposableFunction0<Unit>? = ..., suffix: ComposableFunction0<Unit>? = ..., inputTransformation: InputTransformation? = ..., outputTransformation: OutputTransformation? = ..., scrollState: ScrollState = ..., shape: Shape = ..., colors: TextFieldColors = ..., interactionSource: MutableInteractionSource? = ...): Unit' is deprecated. Use SearchBarDefaults.InputField with SearchBarState.
+
+> Task :app:processReleaseJavaRes
+> Task :app:compileReleaseJavaWithJavac
+> Task :app:mergeReleaseGeneratedProguardFiles
+> Task :app:generateReleaseLintReportModel
+> Task :app:mergeReleaseJavaResource
+> Task :app:expandReleaseArtProfileWildcards
+> Task :app:produceReleaseComposeMapping
+> Task :app:reportReleaseComposeMappingErrors
+> Task :app:lintAnalyzeRelease
+> Task :app:minifyReleaseWithR8
+> Task :app:convertShrunkResourcesToBinaryRelease
+> Task :app:optimizeReleaseResources
+> Task :app:mergeReleaseComposeMapping
+> Task :app:l8DexDesugarLibRelease
+> Task :app:compileReleaseArtProfile
+> Task :app:packageRelease
+> Task :app:assembleRelease
+> Task :app:createReleaseApkListingFileRedirect
+
+> Task :app:lintReportRelease
+Wrote HTML report to file:///Users/zhanziyuan/Documents/GitHub/EhViewer/app/build/reports/lint-results-release.html
+Wrote SARIF report to file:///Users/zhanziyuan/Documents/GitHub/EhViewer/app/build/reports/lint-results-release.sarif
+
+> Task :app:lintRelease
+
+[Incubating] Problems report is available at: file:///Users/zhanziyuan/Documents/GitHub/EhViewer/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 3m 55s
+340 actionable tasks: 194 executed, 10 from cache, 136 up-to-date
+Configuration cache entry stored.

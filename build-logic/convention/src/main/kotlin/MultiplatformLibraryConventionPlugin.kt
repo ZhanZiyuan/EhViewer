@@ -12,6 +12,7 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
 @OptIn(ExperimentalKotlinGradlePluginApi::class)
@@ -53,6 +54,7 @@ class MultiplatformLibraryConventionPlugin : Plugin<Project> {
                 enableCoreLibraryDesugaring = true
 
                 compilerOptions {
+                    jvmTarget = JvmTarget.fromTarget(libs.versions.android.jvm.get())
                     jvmDefault = JvmDefaultMode.NO_COMPATIBILITY
                 }
             }

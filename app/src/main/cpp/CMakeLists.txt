@@ -32,8 +32,7 @@ option(XZ_TOOL_XZDEC OFF)
 FetchContent_Declare(
         liblzma
         GIT_REPOSITORY https://github.com/tukaani-project/xz.git
-        GIT_TAG v5.8.3
-        GIT_SHALLOW 1
+        GIT_TAG 4b73f2ec19a99ef465282fbce633e8deb33691b3 # v5.8.3
 )
 
 FetchContent_MakeAvailable(liblzma)
@@ -57,8 +56,7 @@ set(CONFIGURE_COMMAND ${WSL} ./.bootstrap && ${WSL} ./configure --disable-public
 ExternalProject_Add(
         nettle
         GIT_REPOSITORY https://gitlab.com/gnutls/nettle.git
-        GIT_TAG nettle_4.0_release_20260205
-        GIT_SHALLOW 1
+        GIT_TAG bf13ee9e5024014cfa6d2fc097923afe087e63ba # nettle_4.0_release_20260205
         GIT_CONFIG core.autocrlf=input
         CONFIGURE_COMMAND ${CONFIGURE_COMMAND}
         BUILD_COMMAND ${WSL} make -j4 libnettle.a
@@ -103,8 +101,7 @@ set(LIBARCHIVE_PATCH
 FetchContent_Declare(
         libarchive
         GIT_REPOSITORY https://github.com/libarchive/libarchive.git
-        GIT_TAG v3.8.7
-        GIT_SHALLOW 1
+        GIT_TAG ded82291ab41d5e355831b96b0e1ff49e24d8939 # v3.8.7
         PATCH_COMMAND git apply --check -R ${LIBARCHIVE_PATCH} || git apply ${LIBARCHIVE_PATCH}
 )
 
@@ -115,8 +112,7 @@ include_directories(${libarchive_SOURCE_DIR}/libarchive)
 FetchContent_Declare(
         libwebp
         GIT_REPOSITORY https://github.com/webmproject/libwebp.git
-        GIT_TAG v1.6.0
-        GIT_SHALLOW 1
+        GIT_TAG 4fa21912338357f89e4fd51cf2368325b59e9bd9 # v1.6.0
 )
 
 option(WEBP_BUILD_ANIM_UTILS OFF)
@@ -141,15 +137,14 @@ unset(Rust_TOOLCHAIN CACHE)
 FetchContent_Declare(
         Corrosion
         GIT_REPOSITORY https://github.com/FooIbar/corrosion.git
-        GIT_TAG v0.6.1
-        GIT_SHALLOW 1
+        GIT_TAG 3725e651bf2a849b43df99df57ac77643770388a # v0.6.1
 )
 
 FetchContent_MakeAvailable(Corrosion)
 corrosion_import_crate(
         MANIFEST_PATH ../rust/Cargo.toml
         LOCKED
-        FEATURES $<IF:$<VERSION_GREATER_EQUAL:${ANDROID_NATIVE_API_LEVEL},26>,android-26,android>
+        FEATURES android-26
         FLAGS $<$<NOT:$<CONFIG:Debug>>:-Z build-std -Z build-std-features=>
 )
 corrosion_add_target_rustflags(ehviewer_rust $<$<NOT:$<CONFIG:Debug>>:-Z unstable-options -C panic=immediate-abort -Z location-detail=none -Z fmt-debug=none>)

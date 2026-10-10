@@ -1,0 +1,2 @@
+app/src/main/kotlin/eu/kanade/tachiyomi/util/view/WindowExtensions.kt:8:        setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+app/src/main/kotlin/eu/kanade/tachiyomi/util/view/WindowExtensions.kt:10:        clearFlags(WindowManager.LayoutParams.FLAG_SECURE)

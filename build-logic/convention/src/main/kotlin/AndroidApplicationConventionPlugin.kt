@@ -5,12 +5,14 @@ import com.ehviewer.configureKotlinCompose
 import com.ehviewer.configureLint
 import com.ehviewer.configureSpotless
 import com.ehviewer.libs
+import org.gradle.api.JavaVersion
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.assign
 import org.gradle.kotlin.dsl.configure
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidExtension
 
 @Suppress("unused")
@@ -24,12 +26,17 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
             val javaVersion = libs.versions.java.get().toInt()
             jvmToolchain(javaVersion)
             compilerOptions {
+                jvmTarget = JvmTarget.fromTarget(libs.versions.android.jvm.get())
                 configureKotlin(includeKotlinX = true)
                 configureKotlinCompose()
                 jvmDefault = JvmDefaultMode.NO_COMPATIBILITY
             }
         }
         configure<ApplicationExtension> {
+            compileOptions {
+                sourceCompatibility = JavaVersion.toVersion(libs.versions.android.jvm.get())
+                targetCompatibility = JavaVersion.toVersion(libs.versions.android.jvm.get())
+            }
             lint(Lint::configureLint)
         }
         configureSpotless()

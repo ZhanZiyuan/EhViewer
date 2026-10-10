@@ -1,0 +1,16 @@
+{
+  "results": 47,
+  "levels": {
+    "warning": 47
+  },
+  "rules": {
+    "MissingOnRenderProcessGone": 2,
+    "AndroidGradlePluginVersion": 7,
+    "GradleDependency": 10,
+    "NewerVersionAvailable": 23,
+    "Typos": 1,
+    "ChromeOsAbiSupport": 1,
+    "UnusedResources": 1,
+    "IconXmlAndPng": 2
+  }
+}

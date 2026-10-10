@@ -1,0 +1,53 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: :build-logic:convention:check spotlessCheck
+Type-safe project accessors is an incubating feature.
+> Task :build-logic:convention:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:convention:compileKotlin UP-TO-DATE
+> Task :build-logic:convention:compileJava NO-SOURCE
+> Task :build-logic:convention:pluginDescriptors UP-TO-DATE
+> Task :build-logic:convention:processResources UP-TO-DATE
+> Task :build-logic:convention:classes UP-TO-DATE
+> Task :build-logic:convention:jar UP-TO-DATE
+> Task :build-logic:convention:processTestResources NO-SOURCE
+> Task :build-logic:convention:compileTestKotlin NO-SOURCE
+> Task :build-logic:convention:pluginUnderTestMetadata
+> Task :core:i18n:spotlessKotlin
+> Task :core:i18n:spotlessKotlinCheck
+> Task :core:i18n:spotlessKotlinGradle
+> Task :core:common:spotlessKotlinGradle
+> Task :core:data:spotlessKotlinGradle
+> Task :core:data:spotlessKotlinGradleCheck
+> Task :core:common:spotlessKotlinGradleCheck
+> Task :core:i18n:spotlessKotlinGradleCheck
+> Task :core:i18n:spotlessCheck
+> Task :build-logic:convention:compileTestJava NO-SOURCE
+> Task :build-logic:convention:testClasses UP-TO-DATE
+> Task :build-logic:convention:test NO-SOURCE
+> Task :core:ui:spotlessKotlinGradle
+> Task :core:ui:spotlessKotlinGradleCheck
+> Task :build-logic:convention:spotlessKotlinGradle
+> Task :build-logic:convention:spotlessKotlinGradleCheck
+> Task :app:spotlessKotlinGradle
+> Task :app:spotlessKotlinGradleCheck
+> Task :build-logic:convention:spotlessKotlin
+> Task :build-logic:convention:spotlessKotlinCheck
+> Task :build-logic:convention:spotlessCheck
+> Task :core:common:spotlessKotlin
+> Task :core:common:spotlessKotlinCheck
+> Task :core:common:spotlessCheck
+> Task :core:data:spotlessKotlin
+> Task :core:data:spotlessKotlinCheck
+> Task :core:data:spotlessCheck
+> Task :core:ui:spotlessKotlin
+> Task :core:ui:spotlessKotlinCheck
+> Task :core:ui:spotlessCheck
+> Task :app:spotlessKotlin
+> Task :app:spotlessKotlinCheck
+> Task :app:spotlessCheck
+> Task :build-logic:convention:validatePlugins
+> Task :build-logic:convention:check
+
+BUILD SUCCESSFUL in 23s
+30 actionable tasks: 26 executed, 4 up-to-date
+Configuration cache entry stored.

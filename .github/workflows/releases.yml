@@ -1,5 +1,8 @@
 name: Releases
 
+permissions:
+  contents: read
+
 on:
   push:
     tags:
@@ -18,8 +21,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    timeout-minutes: 60
     env:
       RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
     steps:
@@ -33,7 +35,7 @@ jobs:
           git check-ref-format "refs/tags/$RELEASE_TAG"
 
       - name: Free disk space
-        run: rm -rf $AGENT_TOOLSDIRECTORY
+        run: rm -rf "$AGENT_TOOLSDIRECTORY"
 
       - name: Enable KVM group perms
         run: |
@@ -46,6 +48,7 @@ jobs:
         with:
           ref: refs/tags/${{ env.RELEASE_TAG }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Verify release source
         run: |
@@ -60,24 +63,23 @@ jobs:
           distribution: temurin
           java-version-file: .java-version
 
+      - name: Native host prerequisites
+        run: sudo apt-get update && sudo apt-get install -y autoconf automake pkg-config
+
       - name: Install Rust Toolchain
-        run: rustup target add thumbv7neon-linux-androideabi
+        run: rustup show active-toolchain
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: "./app/src/main/rust"
-
-      - name: CMake Cache
-        uses: actions/cache/restore@v5
-        with:
-          path: app/.cxx
-          key: cmake-
+          save-if: "false"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
           cache-encryption-key: ${{ secrets.GradleEncryptionKey }}
+          validate-wrappers: true
           cache-read-only: true
 
       - name: Generate Baseline Profile
@@ -89,22 +91,42 @@ jobs:
         run: ./gradlew assembleRelease
           -Prelease
 
+      - name: Verify APK identity, signatures, JNI, ABI and 16KB alignment
+        run: python3 scripts/verify_apks.py app/build/outputs/apk/release --sdk "$ANDROID_HOME"
+
       - name: Rename Apks
         run: |
-          mv app/build/outputs/apk/default/release/app-default-universal-release.apk "EhViewer-${RELEASE_TAG}-default-universal.apk"
-          mv app/build/outputs/apk/default/release/app-default-arm64-v8a-release.apk "EhViewer-${RELEASE_TAG}-default-arm64-v8a.apk"
-          mv app/build/outputs/apk/default/release/app-default-x86_64-release.apk "EhViewer-${RELEASE_TAG}-default-x86_64.apk"
-          mv app/build/outputs/apk/default/release/app-default-armeabi-v7a-release.apk "EhViewer-${RELEASE_TAG}-default-armeabi-v7a.apk"
-          mv app/build/outputs/mapping/defaultRelease/mapping.txt "EhViewer-${RELEASE_TAG}-default-mapping.txt"
-          mv app/build/outputs/native-debug-symbols/defaultRelease/native-debug-symbols.zip "EhViewer-${RELEASE_TAG}-default-native-debug-symbols.zip"
+          mv app/build/outputs/apk/release/app-universal-release.apk "EhViewer-${RELEASE_TAG}-universal.apk"
+          mv app/build/outputs/apk/release/app-arm64-v8a-release.apk "EhViewer-${RELEASE_TAG}-arm64-v8a.apk"
+          mv app/build/outputs/apk/release/app-x86_64-release.apk "EhViewer-${RELEASE_TAG}-x86_64.apk"
+          mv app/build/outputs/apk/release/app-armeabi-v7a-release.apk "EhViewer-${RELEASE_TAG}-armeabi-v7a.apk"
+          mv app/build/outputs/mapping/release/mapping.txt "EhViewer-${RELEASE_TAG}-mapping.txt"
+          mv app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip "EhViewer-${RELEASE_TAG}-native-debug-symbols.zip"
 
-          mv app/build/outputs/apk/marshmallow/release/app-marshmallow-universal-release.apk "EhViewer-${RELEASE_TAG}-marshmallow-universal.apk"
-          mv app/build/outputs/apk/marshmallow/release/app-marshmallow-arm64-v8a-release.apk "EhViewer-${RELEASE_TAG}-marshmallow-arm64-v8a.apk"
-          mv app/build/outputs/apk/marshmallow/release/app-marshmallow-x86_64-release.apk "EhViewer-${RELEASE_TAG}-marshmallow-x86_64.apk"
-          mv app/build/outputs/apk/marshmallow/release/app-marshmallow-armeabi-v7a-release.apk "EhViewer-${RELEASE_TAG}-marshmallow-armeabi-v7a.apk"
-          mv app/build/outputs/mapping/marshmallowRelease/mapping.txt "EhViewer-${RELEASE_TAG}-marshmallow-mapping.txt"
-          mv app/build/outputs/native-debug-symbols/marshmallowRelease/native-debug-symbols.zip "EhViewer-${RELEASE_TAG}-marshmallow-native-debug-symbols.zip"
+      - name: Release payload
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-payload
+          path: |
+            EhViewer-${{ env.RELEASE_TAG }}-universal.apk
+            EhViewer-${{ env.RELEASE_TAG }}-arm64-v8a.apk
+            EhViewer-${{ env.RELEASE_TAG }}-x86_64.apk
+            EhViewer-${{ env.RELEASE_TAG }}-armeabi-v7a.apk
+            EhViewer-${{ env.RELEASE_TAG }}-mapping.txt
+            EhViewer-${{ env.RELEASE_TAG }}-native-debug-symbols.zip
+          if-no-files-found: error
 
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-payload
       - name: Releases
         uses: softprops/action-gh-release@v3
         with:
@@ -115,16 +137,9 @@ jobs:
           prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
           fail_on_unmatched_files: true
           files: |
-            EhViewer-${{ env.RELEASE_TAG }}-default-universal.apk
-            EhViewer-${{ env.RELEASE_TAG }}-default-arm64-v8a.apk
-            EhViewer-${{ env.RELEASE_TAG }}-default-x86_64.apk
-            EhViewer-${{ env.RELEASE_TAG }}-default-armeabi-v7a.apk
-            EhViewer-${{ env.RELEASE_TAG }}-default-mapping.txt
-            EhViewer-${{ env.RELEASE_TAG }}-default-native-debug-symbols.zip
-
-            EhViewer-${{ env.RELEASE_TAG }}-marshmallow-universal.apk
-            EhViewer-${{ env.RELEASE_TAG }}-marshmallow-arm64-v8a.apk
-            EhViewer-${{ env.RELEASE_TAG }}-marshmallow-x86_64.apk
-            EhViewer-${{ env.RELEASE_TAG }}-marshmallow-armeabi-v7a.apk
-            EhViewer-${{ env.RELEASE_TAG }}-marshmallow-mapping.txt
-            EhViewer-${{ env.RELEASE_TAG }}-marshmallow-native-debug-symbols.zip
+            EhViewer-${{ env.RELEASE_TAG }}-universal.apk
+            EhViewer-${{ env.RELEASE_TAG }}-arm64-v8a.apk
+            EhViewer-${{ env.RELEASE_TAG }}-x86_64.apk
+            EhViewer-${{ env.RELEASE_TAG }}-armeabi-v7a.apk
+            EhViewer-${{ env.RELEASE_TAG }}-mapping.txt
+            EhViewer-${{ env.RELEASE_TAG }}-native-debug-symbols.zip

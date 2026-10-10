@@ -18,7 +18,7 @@
 
 <resources>
 
-    <bool name="large_heap">true</bool>
+    <bool name="large_heap">false</bool>
     <bool name="tag_translatable">false</bool>
 
 </resources>

@@ -5,7 +5,6 @@ import androidx.collection.mutableIntObjectMapOf
 import arrow.fx.coroutines.ExitCase
 import arrow.fx.coroutines.bracketCase
 import com.ehviewer.core.model.GalleryInfo
-import com.ehviewer.core.util.isAtLeastO
 import com.ehviewer.core.util.withNonCancellableContext
 import com.hippo.ehviewer.EhDB
 import com.hippo.ehviewer.Settings
@@ -44,11 +43,7 @@ abstract class PageLoader(val scope: CoroutineScope, val info: GalleryInfo?, sta
     private val semaphore = Semaphore(4)
 
     private val cache = SieveCache<Int, Image>(
-        maxSize = if (isAtLeastO) {
-            (OSUtils.totalMemory / 8).toInt().coerceIn(MIN_CACHE_SIZE, MAX_CACHE_SIZE)
-        } else {
-            (OSUtils.appMaxMemory / 3 * 2).toInt()
-        },
+        maxSize = (OSUtils.totalMemory / 8).toInt().coerceIn(MIN_CACHE_SIZE, MAX_CACHE_SIZE),
         sizeOf = { _, v -> v.allocationSize.toInt() },
         onEntryRemoved = { k, o, n, _ -> if (o.unpin()) n ?: notifyPageWait(k) },
     )

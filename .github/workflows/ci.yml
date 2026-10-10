@@ -2,187 +2,164 @@ name: CI
 
 on:
   push:
-    branches:
-      - '*'
+    branches: ['**']
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  check:
+  android:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version-file: .java-version
-
-      - name: Install Rust Toolchain
-        run: rustup target add thumbv7neon-linux-androideabi
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
+      - name: Native host prerequisites
+        run: sudo apt-get update && sudo apt-get install -y autoconf automake pkg-config
+      - name: Rust targets
+        run: rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "./app/src/main/rust"
-          shared-key: ${{ runner.os }}
-
-      - name: Rustfmt Check
-        working-directory: ./app/src/main/rust
-        run: cargo fmt --all -- --check
-
-      - name: Clippy Check
-        working-directory: ./app/src/main/rust
-        run: cargo clippy --target aarch64-linux-android --all-features -- -D warnings
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+          workspaces: app/src/main/rust
+          shared-key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'app/src/main/rust/Cargo.lock') }}
+          save-if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+      - name: Rust format, offline parser tests and Android Clippy
+        working-directory: app/src/main/rust
+        run: |
+          cargo fmt --all -- --check
+          cargo test --locked --lib -- --skip test_parse_info --skip test_parse_profile --skip test_parse_gallery_detail
+          for target in aarch64-linux-android thumbv7neon-linux-androideabi x86_64-linux-android; do
+            cargo clippy --locked --target "$target" --all-features -- -D warnings
+          done
+      - uses: gradle/actions/setup-gradle@v6
         with:
-          cache-read-only: true
-
-      - name: Check build-logic
-        run: ./gradlew :build-logic:convention:check
-
-      - name: Spotless Check
-        run: ./gradlew spotlessCheck
-
-      - name: Lint Check
-        run: ./gradlew lintMarshmallowRelease
-
-  default:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version-file: .java-version
-
-      - name: Install Rust Toolchain
-        run: rustup target add thumbv7neon-linux-androideabi
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: "./app/src/main/rust"
-          shared-key: ${{ runner.os }}
-          save-if: "false"
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-encryption-key: ${{ secrets.GradleEncryptionKey }}
-
-      - name: CMake Cache
-        uses: actions/cache@v5
-        with:
-          path: app/.cxx
-          key: cmake-default-${{ hashFiles('rust-toolchain.toml', 'settings.gradle.kts', 'app/src/main/cpp/CMakeLists.txt', 'app/src/main/rust/Cargo.lock') }}
-          restore-keys: cmake-default-
-
-      - name: Build
-        run: ./gradlew assembleDefaultRelease
-
+          validate-wrappers: true
+          cache-read-only: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
+      - name: Verify APK checker
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+      - name: Check, test, lint and build
+        run: >-
+          ./gradlew :build-logic:convention:check spotlessCheck
+          :app:testDebugUnitTest
+          :core:common:testAndroidHostTest :core:data:testAndroidHostTest
+          :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest
+          :app:lintRelease :app:assembleDebug :app:assembleDebugAndroidTest
+          :app:assembleRelease :benchmark:assembleNonMinifiedRelease
+          --console=plain --no-daemon
+      - name: Verify APK identity, signatures, JNI, ABI and 16KB alignment
+        run: |
+          mkdir -p reports
+          test -s app/build/outputs/mapping/release/mapping.txt
+          test -s app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip
+          python3 scripts/verify_bytecode.py > reports/android-bytecode.json
+          python3 scripts/verify_apks.py app/build/outputs/apk/release --sdk "$ANDROID_HOME" > reports/release-apks.json
+          python3 scripts/verify_apks.py app/build/outputs/apk/debug --sdk "$ANDROID_HOME" --debug --application-id moe.tarsin.ehviewer.debug > reports/debug-apks.json
       - name: Upload ARM64
         uses: actions/upload-artifact@v7
         with:
-          name: default-arm64-v8a-${{ github.sha }}
-          path: app/build/outputs/apk/default/release/app-default-arm64-v8a-release.apk
-
-      - name: Upload x86_64
-        uses: actions/upload-artifact@v7
-        with:
-          name: default-x86_64-${{ github.sha }}
-          path: app/build/outputs/apk/default/release/app-default-x86_64-release.apk
-
+          name: arm64-v8a-${{ github.sha }}
+          path: app/build/outputs/apk/release/app-arm64-v8a-release.apk
+          if-no-files-found: error
       - name: Upload ARM32
         uses: actions/upload-artifact@v7
         with:
-          name: default-armeabi-v7a-${{ github.sha }}
-          path: app/build/outputs/apk/default/release/app-default-armeabi-v7a-release.apk
-
-      - name: Upload mapping
+          name: armeabi-v7a-${{ github.sha }}
+          path: app/build/outputs/apk/release/app-armeabi-v7a-release.apk
+          if-no-files-found: error
+      - name: Upload x86_64
+        uses: actions/upload-artifact@v7
+        with:
+          name: x86_64-${{ github.sha }}
+          path: app/build/outputs/apk/release/app-x86_64-release.apk
+          if-no-files-found: error
+      - name: Upload universal
+        uses: actions/upload-artifact@v7
+        with:
+          name: universal-${{ github.sha }}
+          path: app/build/outputs/apk/release/app-universal-release.apk
+          if-no-files-found: error
+      - name: Build diagnostics
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-diagnostics-${{ github.sha }}
+          path: |
+            app/build/outputs/mapping/release/mapping.txt
+            app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Instrumentation inputs
+        uses: actions/upload-artifact@v7
+        with:
+          name: instrumentation-inputs
+          path: |
+            app/build/outputs/apk/debug/app-universal-debug.apk
+            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
+      - name: Verification reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: default-mapping-${{ github.sha }}
-          path: app/build/outputs/mapping/defaultRelease/*.txt
+          name: verification-reports
+          path: |
+            reports/
+            app/build/reports/
+            core/*/build/reports/
+          retention-days: 14
 
-      - name: Upload native debug symbols
-        uses: actions/upload-artifact@v7
-        with:
-          name: default-native-debug-symbols-${{ github.sha }}
-          path: app/build/outputs/native-debug-symbols/defaultRelease/native-debug-symbols.zip
-
-  marshmallow:
+  device:
+    needs: android
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: api26
+            image: system-images;android-26;google_apis;x86_64
+          - label: api29
+            image: system-images;android-29;google_apis;x86_64
+          - label: api33
+            image: system-images;android-33;google_apis;x86_64
+          - label: api35
+            image: system-images;android-35;google_apis;x86_64
+          - label: api35-16k
+            image: system-images;android-35;google_apis_ps16k;x86_64
+          - label: api37-canary-16k
+            image: system-images;android-canary-20261007;google_apis_ps16k;x86_64
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version-file: .java-version
-
-      - name: Install Rust Toolchain
-        run: rustup target add thumbv7neon-linux-androideabi
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
+      - uses: actions/download-artifact@v8
         with:
-          workspaces: "./app/src/main/rust"
-          shared-key: ${{ runner.os }}
-          save-if: "false"
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-encryption-key: ${{ secrets.GradleEncryptionKey }}
-
-      - name: CMake Cache
-        uses: actions/cache@v5
-        with:
-          path: app/.cxx
-          key: cmake-marshmallow-${{ hashFiles('rust-toolchain.toml', 'settings.gradle.kts', 'app/src/main/cpp/CMakeLists.txt', 'app/src/main/rust/Cargo.lock') }}
-          restore-keys: cmake-marshmallow-
-
-      - name: Build
-        run: ./gradlew assembleMarshmallowRelease
-
-      - name: Upload ARM64
-        uses: actions/upload-artifact@v7
-        with:
-          name: marshmallow-arm64-v8a-${{ github.sha }}
-          path: app/build/outputs/apk/marshmallow/release/app-marshmallow-arm64-v8a-release.apk
-
-      - name: Upload x86_64
-        uses: actions/upload-artifact@v7
-        with:
-          name: marshmallow-x86_64-${{ github.sha }}
-          path: app/build/outputs/apk/marshmallow/release/app-marshmallow-x86_64-release.apk
-
-      - name: Upload ARM32
-        uses: actions/upload-artifact@v7
-        with:
-          name: marshmallow-armeabi-v7a-${{ github.sha }}
-          path: app/build/outputs/apk/marshmallow/release/app-marshmallow-armeabi-v7a-release.apk
-
-      - name: Upload mapping
+          name: instrumentation-inputs
+          path: device-inputs
+      - name: Enable KVM
+        run: sudo chmod 666 /dev/kvm
+      - name: Run packaged Android JNI and platform tests
+        env:
+          TEST_IMAGE: ${{ matrix.image }}
+          TEST_LABEL: ${{ matrix.label }}
+        run: bash scripts/run_emulator_tests.sh
+      - name: Device reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: marshmallow-mapping-${{ github.sha }}
-          path: app/build/outputs/mapping/marshmallowRelease/*.txt
-
-      - name: Upload native debug symbols
-        uses: actions/upload-artifact@v7
-        with:
-          name: marshmallow-native-debug-symbols-${{ github.sha }}
-          path: app/build/outputs/native-debug-symbols/marshmallowRelease/native-debug-symbols.zip
+          name: device-${{ matrix.label }}
+          path: device-reports/
+          retention-days: 14

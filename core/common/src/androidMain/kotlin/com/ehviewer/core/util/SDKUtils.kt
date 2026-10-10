@@ -4,12 +4,6 @@ import android.os.Build
 import android.os.ext.SdkExtensions
 import androidx.annotation.ChecksSdkIntAtLeast
 
-@ChecksSdkIntAtLeast(Build.VERSION_CODES.N)
-val isAtLeastN = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
-
-@ChecksSdkIntAtLeast(Build.VERSION_CODES.O)
-val isAtLeastO = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-
 @ChecksSdkIntAtLeast(Build.VERSION_CODES.O_MR1)
 val isAtLeastOMR1 = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1
 

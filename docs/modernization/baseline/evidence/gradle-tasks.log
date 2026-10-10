@@ -1,0 +1,1968 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Calculating task graph as no cached configuration is available for tasks: tasks --all
+Type-safe project accessors is an incubating feature.
+> Task :build-logic:convention:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:convention:pluginDescriptors
+> Task :build-logic:convention:processResources
+> Task :build-logic:convention:compileKotlin
+> Task :build-logic:convention:compileJava NO-SOURCE
+> Task :build-logic:convention:classes
+> Task :build-logic:convention:jar
+
+> Configure project :app
+Checking the license for package NDK (Side by side) 29.0.14206865 in /Users/zhanziyuan/Library/Android/sdk/licenses
+License for package NDK (Side by side) 29.0.14206865 accepted.
+Preparing "Install NDK (Side by side) 29.0.14206865 v.29.0.14206865".
+"Install NDK (Side by side) 29.0.14206865 v.29.0.14206865" ready.
+Installing NDK (Side by side) 29.0.14206865 in /Users/zhanziyuan/Library/Android/sdk/ndk/29.0.14206865
+"Install NDK (Side by side) 29.0.14206865 v.29.0.14206865" complete.
+"Install NDK (Side by side) 29.0.14206865 v.29.0.14206865" finished.
+
+> Task :tasks
+
+------------------------------------------------------------
+Tasks runnable from root project 'EhViewer'
+------------------------------------------------------------
+
+Android tasks
+-------------
+app:signingReport - Displays the signing info for the base and test modules
+benchmark:signingReport - Displays the signing info for the base and test modules
+
+Baseline Profile tasks
+----------------------
+benchmark:collectDefaultNonMinifiedReleaseBaselineProfile - Collects a baseline profile previously generated through integration tests.
+benchmark:collectMarshmallowNonMinifiedReleaseBaselineProfile - Collects a baseline profile previously generated through integration tests.
+app:generateBaselineProfile - Generates a baseline profile for the specified variants or dimensions.
+
+Build tasks
+-----------
+core:common:allMetadataJar - Assembles a jar archive containing the metadata for all Kotlin source sets.
+core:data:allMetadataJar - Assembles a jar archive containing the metadata for all Kotlin source sets.
+core:i18n:allMetadataJar - Assembles a jar archive containing the metadata for all Kotlin source sets.
+core:ui:allMetadataJar - Assembles a jar archive containing the metadata for all Kotlin source sets.
+core:common:androidSourcesJar - Assembles a jar archive containing the sources of target 'android'.
+core:data:androidSourcesJar - Assembles a jar archive containing the sources of target 'android'.
+core:i18n:androidSourcesJar - Assembles a jar archive containing the sources of target 'android'.
+core:ui:androidSourcesJar - Assembles a jar archive containing the sources of target 'android'.
+app:assemble - Assemble main outputs for all the variants.
+benchmark:assemble - Assemble main outputs for all the variants.
+core:common:assemble - Assembles the outputs of this project.
+core:data:assemble - Assembles the outputs of this project.
+core:i18n:assemble - Assembles the outputs of this project.
+core:ui:assemble - Assembles the outputs of this project.
+app:assembleAndroidTest - Assembles all the Test applications.
+benchmark:assembleAndroidTest - Assembles all the Test applications.
+core:common:assembleAndroidTest - Assembles all the Test applications.
+core:data:assembleAndroidTest - Assembles all the Test applications.
+core:i18n:assembleAndroidTest - Assembles all the Test applications.
+core:ui:assembleAndroidTest - Assembles all the Test applications.
+app:assembleBenchmarkRelease - Assembles main outputs for all BenchmarkRelease variants.
+benchmark:assembleBenchmarkRelease - Assembles main outputs for all BenchmarkRelease variants.
+app:assembleDebug - Assembles main outputs for all Debug variants.
+app:assembleDefault - Assembles main outputs for all Default variants.
+benchmark:assembleDefault - Assembles main outputs for all Default variants.
+app:assembleMarshmallow - Assembles main outputs for all Marshmallow variants.
+benchmark:assembleMarshmallow - Assembles main outputs for all Marshmallow variants.
+app:assembleNonMinifiedRelease - Assembles main outputs for all NonMinifiedRelease variants.
+benchmark:assembleNonMinifiedRelease - Assembles main outputs for all NonMinifiedRelease variants.
+app:assembleRelease - Assembles main outputs for all Release variants.
+app:assembleUnitTest - Assembles all the unit test applications.
+benchmark:assembleUnitTest - Assembles all the unit test applications.
+core:common:assembleUnitTest - Assembles all the unit test applications.
+core:data:assembleUnitTest - Assembles all the unit test applications.
+core:i18n:assembleUnitTest - Assembles all the unit test applications.
+core:ui:assembleUnitTest - Assembles all the unit test applications.
+app:build - Assembles and tests this project.
+benchmark:build - Assembles and tests this project.
+core:common:build - Assembles and tests this project.
+core:data:build - Assembles and tests this project.
+core:i18n:build - Assembles and tests this project.
+core:ui:build - Assembles and tests this project.
+app:buildDependents - Assembles and tests this project and all projects that depend on it.
+benchmark:buildDependents - Assembles and tests this project and all projects that depend on it.
+core:common:buildDependents - Assembles and tests this project and all projects that depend on it.
+core:data:buildDependents - Assembles and tests this project and all projects that depend on it.
+core:i18n:buildDependents - Assembles and tests this project and all projects that depend on it.
+core:ui:buildDependents - Assembles and tests this project and all projects that depend on it.
+core:common:buildKotlinToolingMetadata - Build metadata json file containing information about the used Kotlin tooling
+core:data:buildKotlinToolingMetadata - Build metadata json file containing information about the used Kotlin tooling
+core:i18n:buildKotlinToolingMetadata - Build metadata json file containing information about the used Kotlin tooling
+core:ui:buildKotlinToolingMetadata - Build metadata json file containing information about the used Kotlin tooling
+app:buildNeeded - Assembles and tests this project and all projects it depends on.
+benchmark:buildNeeded - Assembles and tests this project and all projects it depends on.
+core:common:buildNeeded - Assembles and tests this project and all projects it depends on.
+core:data:buildNeeded - Assembles and tests this project and all projects it depends on.
+core:i18n:buildNeeded - Assembles and tests this project and all projects it depends on.
+core:ui:buildNeeded - Assembles and tests this project and all projects it depends on.
+app:bundle - Assemble bundles for all the variants.
+app:bundleBenchmarkRelease - Assembles bundles for all BenchmarkRelease variants.
+app:bundleDebug - Assembles bundles for all Debug variants.
+app:bundleDefault - Assembles bundles for all Default variants.
+app:bundleMarshmallow - Assembles bundles for all Marshmallow variants.
+app:bundleNonMinifiedRelease - Assembles bundles for all NonMinifiedRelease variants.
+app:bundleRelease - Assembles bundles for all Release variants.
+app:clean - Deletes the build directory.
+benchmark:clean - Deletes the build directory.
+core:common:clean - Deletes the build directory.
+core:data:clean - Deletes the build directory.
+core:i18n:clean - Deletes the build directory.
+core:ui:clean - Deletes the build directory.
+core:common:cleanAllTests - Deletes all the test results.
+core:data:cleanAllTests - Deletes all the test results.
+core:i18n:cleanAllTests - Deletes all the test results.
+core:ui:cleanAllTests - Deletes all the test results.
+core:common:compileAndroidHostTestSources
+core:data:compileAndroidHostTestSources
+core:i18n:compileAndroidHostTestSources
+core:ui:compileAndroidHostTestSources
+app:compileDefaultBenchmarkReleaseSources
+benchmark:compileDefaultBenchmarkReleaseSources
+app:compileDefaultDebugAndroidTestSources
+app:compileDefaultDebugSources
+app:compileDefaultDebugUnitTestSources
+app:compileDefaultNonMinifiedReleaseSources
+benchmark:compileDefaultNonMinifiedReleaseSources
+app:compileDefaultReleaseSources
+app:compileMarshmallowBenchmarkReleaseSources
+benchmark:compileMarshmallowBenchmarkReleaseSources
+app:compileMarshmallowDebugAndroidTestSources
+app:compileMarshmallowDebugSources
+app:compileMarshmallowDebugUnitTestSources
+app:compileMarshmallowNonMinifiedReleaseSources
+benchmark:compileMarshmallowNonMinifiedReleaseSources
+app:compileMarshmallowReleaseSources
+app:exportLibraryDefinitions - Exports dependency meta data from the current module.
+app:exportLibraryDefinitionsDefaultBenchmarkRelease - Exports dependency meta data from the current module. Filtered by variant: 'defaultBenchmarkRelease'.
+app:exportLibraryDefinitionsDefaultDebug - Exports dependency meta data from the current module. Filtered by variant: 'defaultDebug'.
+app:exportLibraryDefinitionsDefaultNonMinifiedRelease - Exports dependency meta data from the current module. Filtered by variant: 'defaultNonMinifiedRelease'.
+app:exportLibraryDefinitionsDefaultRelease - Exports dependency meta data from the current module. Filtered by variant: 'defaultRelease'.
+app:exportLibraryDefinitionsMarshmallowBenchmarkRelease - Exports dependency meta data from the current module. Filtered by variant: 'marshmallowBenchmarkRelease'.
+app:exportLibraryDefinitionsMarshmallowDebug - Exports dependency meta data from the current module. Filtered by variant: 'marshmallowDebug'.
+app:exportLibraryDefinitionsMarshmallowNonMinifiedRelease - Exports dependency meta data from the current module. Filtered by variant: 'marshmallowNonMinifiedRelease'.
+app:exportLibraryDefinitionsMarshmallowRelease - Exports dependency meta data from the current module. Filtered by variant: 'marshmallowRelease'.
+core:common:extractAndroidMainAnnotations - Extracts Android annotations for the androidMain variant into the archive file
+core:data:extractAndroidMainAnnotations - Extracts Android annotations for the androidMain variant into the archive file
+core:i18n:extractAndroidMainAnnotations - Extracts Android annotations for the androidMain variant into the archive file
+core:ui:extractAndroidMainAnnotations - Extracts Android annotations for the androidMain variant into the archive file
+core:common:metadataMainClasses - Assembles outputs for compilation 'main' of target 'metadata'
+core:data:metadataMainClasses - Assembles outputs for compilation 'main' of target 'metadata'
+core:i18n:metadataMainClasses - Assembles outputs for compilation 'main' of target 'metadata'
+core:ui:metadataMainClasses - Assembles outputs for compilation 'main' of target 'metadata'
+core:common:metadataSourcesJar - Assembles a jar archive containing the sources of target 'metadata'.
+core:data:metadataSourcesJar - Assembles a jar archive containing the sources of target 'metadata'.
+core:i18n:metadataSourcesJar - Assembles a jar archive containing the sources of target 'metadata'.
+core:ui:metadataSourcesJar - Assembles a jar archive containing the sources of target 'metadata'.
+core:common:sourcesJar - Assembles a jar archive containing the sources of target 'kotlin'.
+core:data:sourcesJar - Assembles a jar archive containing the sources of target 'kotlin'.
+core:i18n:sourcesJar - Assembles a jar archive containing the sources of target 'kotlin'.
+core:ui:sourcesJar - Assembles a jar archive containing the sources of target 'kotlin'.
+
+Build Setup tasks
+-----------------
+init - Initializes a new Gradle build.
+app:spotlessInstallGitPrePushHook - Installs Spotless Git pre-push hook.
+core:common:spotlessInstallGitPrePushHook - Installs Spotless Git pre-push hook.
+core:data:spotlessInstallGitPrePushHook - Installs Spotless Git pre-push hook.
+core:i18n:spotlessInstallGitPrePushHook - Installs Spotless Git pre-push hook.
+core:ui:spotlessInstallGitPrePushHook - Installs Spotless Git pre-push hook.
+updateDaemonJvm - Generates or updates the Gradle Daemon JVM criteria.
+wrapper - Generates Gradle wrapper files.
+
+Compose tasks
+-------------
+core:ui:composeCompatibilityBrowserDistribution - This task combines both js and wasm distributions into one so that wasm application fallback to js target if modern wasm feature are not supported
+
+Compose compiler report tasks
+-----------------------------
+core:ui:androidAndroidMainComposeCompilerHtmlReport - Generate Compose Compiler Metrics and Report for 'android' target 'androidMain' variant in multiplatform project
+app:defaultBenchmarkReleaseComposeCompilerHtmlReport - Generate Compose Compiler Metrics and Report for 'defaultBenchmarkRelease' variant in Android project
+app:defaultDebugComposeCompilerHtmlReport - Generate Compose Compiler Metrics and Report for 'defaultDebug' variant in Android project
+app:defaultNonMinifiedReleaseComposeCompilerHtmlReport - Generate Compose Compiler Metrics and Report for 'defaultNonMinifiedRelease' variant in Android project
+app:defaultReleaseComposeCompilerHtmlReport - Generate Compose Compiler Metrics and Report for 'defaultRelease' variant in Android project
+app:marshmallowBenchmarkReleaseComposeCompilerHtmlReport - Generate Compose Compiler Metrics and Report for 'marshmallowBenchmarkRelease' variant in Android project
+app:marshmallowDebugComposeCompilerHtmlReport - Generate Compose Compiler Metrics and Report for 'marshmallowDebug' variant in Android project
+app:marshmallowNonMinifiedReleaseComposeCompilerHtmlReport - Generate Compose Compiler Metrics and Report for 'marshmallowNonMinifiedRelease' variant in Android project
+app:marshmallowReleaseComposeCompilerHtmlReport - Generate Compose Compiler Metrics and Report for 'marshmallowRelease' variant in Android project
+
+Help tasks
+----------
+artifactTransforms - Displays the Artifact Transforms that can be executed in root project 'EhViewer'.
+app:artifactTransforms - Displays the Artifact Transforms that can be executed in project ':app'.
+benchmark:artifactTransforms - Displays the Artifact Transforms that can be executed in project ':benchmark'.
+core:artifactTransforms - Displays the Artifact Transforms that can be executed in project ':core'.
+core:common:artifactTransforms - Displays the Artifact Transforms that can be executed in project ':core:common'.
+core:data:artifactTransforms - Displays the Artifact Transforms that can be executed in project ':core:data'.
+core:i18n:artifactTransforms - Displays the Artifact Transforms that can be executed in project ':core:i18n'.
+core:ui:artifactTransforms - Displays the Artifact Transforms that can be executed in project ':core:ui'.
+buildEnvironment - Displays all buildscript dependencies declared in root project 'EhViewer'.
+app:buildEnvironment - Displays all buildscript dependencies declared in project ':app'.
+benchmark:buildEnvironment - Displays all buildscript dependencies declared in project ':benchmark'.
+core:buildEnvironment - Displays all buildscript dependencies declared in project ':core'.
+core:common:buildEnvironment - Displays all buildscript dependencies declared in project ':core:common'.
+core:data:buildEnvironment - Displays all buildscript dependencies declared in project ':core:data'.
+core:i18n:buildEnvironment - Displays all buildscript dependencies declared in project ':core:i18n'.
+core:ui:buildEnvironment - Displays all buildscript dependencies declared in project ':core:ui'.
+dependencies - Displays all dependencies declared in root project 'EhViewer'.
+app:dependencies - Displays all dependencies declared in project ':app'.
+benchmark:dependencies - Displays all dependencies declared in project ':benchmark'.
+core:dependencies - Displays all dependencies declared in project ':core'.
+core:common:dependencies - Displays all dependencies declared in project ':core:common'.
+core:data:dependencies - Displays all dependencies declared in project ':core:data'.
+core:i18n:dependencies - Displays all dependencies declared in project ':core:i18n'.
+core:ui:dependencies - Displays all dependencies declared in project ':core:ui'.
+dependencyInsight - Displays the insight into a specific dependency in root project 'EhViewer'.
+app:dependencyInsight - Displays the insight into a specific dependency in project ':app'.
+benchmark:dependencyInsight - Displays the insight into a specific dependency in project ':benchmark'.
+core:dependencyInsight - Displays the insight into a specific dependency in project ':core'.
+core:common:dependencyInsight - Displays the insight into a specific dependency in project ':core:common'.
+core:data:dependencyInsight - Displays the insight into a specific dependency in project ':core:data'.
+core:i18n:dependencyInsight - Displays the insight into a specific dependency in project ':core:i18n'.
+core:ui:dependencyInsight - Displays the insight into a specific dependency in project ':core:ui'.
+app:exportComplianceLibrariesDefaultBenchmarkRelease - Writes all libraries with their source and their license in CSV format to the configured directory
+app:exportComplianceLibrariesDefaultDebug - Writes all libraries with their source and their license in CSV format to the configured directory
+app:exportComplianceLibrariesDefaultNonMinifiedRelease - Writes all libraries with their source and their license in CSV format to the configured directory
+app:exportComplianceLibrariesDefaultRelease - Writes all libraries with their source and their license in CSV format to the configured directory
+app:exportComplianceLibrariesMarshmallowBenchmarkRelease - Writes all libraries with their source and their license in CSV format to the configured directory
+app:exportComplianceLibrariesMarshmallowDebug - Writes all libraries with their source and their license in CSV format to the configured directory
+app:exportComplianceLibrariesMarshmallowNonMinifiedRelease - Writes all libraries with their source and their license in CSV format to the configured directory
+app:exportComplianceLibrariesMarshmallowRelease - Writes all libraries with their source and their license in CSV format to the configured directory
+app:exportFunding - Exports the funding options for all used dependencies to the config folder
+app:exportLibraries - Writes all libraries and their licenses in CSV format to the CLI.
+app:exportLibrariesDefaultBenchmarkRelease - Writes all libraries and their licenses in CSV format to the CLI. Filtered by variant: 'defaultBenchmarkRelease'.
+app:exportLibrariesDefaultDebug - Writes all libraries and their licenses in CSV format to the CLI. Filtered by variant: 'defaultDebug'.
+app:exportLibrariesDefaultNonMinifiedRelease - Writes all libraries and their licenses in CSV format to the CLI. Filtered by variant: 'defaultNonMinifiedRelease'.
+app:exportLibrariesDefaultRelease - Writes all libraries and their licenses in CSV format to the CLI. Filtered by variant: 'defaultRelease'.
+app:exportLibrariesMarshmallowBenchmarkRelease - Writes all libraries and their licenses in CSV format to the CLI. Filtered by variant: 'marshmallowBenchmarkRelease'.
+app:exportLibrariesMarshmallowDebug - Writes all libraries and their licenses in CSV format to the CLI. Filtered by variant: 'marshmallowDebug'.
+app:exportLibrariesMarshmallowNonMinifiedRelease - Writes all libraries and their licenses in CSV format to the CLI. Filtered by variant: 'marshmallowNonMinifiedRelease'.
+app:exportLibrariesMarshmallowRelease - Writes all libraries and their licenses in CSV format to the CLI. Filtered by variant: 'marshmallowRelease'.
+app:findLibraries - Prints all retrieved variants and its libraries to the CLI.
+app:fundLibraries - Outputs the funding options for used dependencies
+help - Displays a help message.
+app:help - Displays a help message.
+benchmark:help - Displays a help message.
+core:help - Displays a help message.
+core:common:help - Displays a help message.
+core:data:help - Displays a help message.
+core:i18n:help - Displays a help message.
+core:ui:help - Displays a help message.
+javaToolchains - Displays the detected java toolchains.
+app:javaToolchains - Displays the detected java toolchains.
+benchmark:javaToolchains - Displays the detected java toolchains.
+core:javaToolchains - Displays the detected java toolchains.
+core:common:javaToolchains - Displays the detected java toolchains.
+core:data:javaToolchains - Displays the detected java toolchains.
+core:i18n:javaToolchains - Displays the detected java toolchains.
+core:ui:javaToolchains - Displays the detected java toolchains.
+kotlinDslAccessorsReport - Prints the Kotlin code for accessing the currently available project extensions.
+app:kotlinDslAccessorsReport - Prints the Kotlin code for accessing the currently available project extensions.
+benchmark:kotlinDslAccessorsReport - Prints the Kotlin code for accessing the currently available project extensions.
+core:common:kotlinDslAccessorsReport - Prints the Kotlin code for accessing the currently available project extensions.
+core:data:kotlinDslAccessorsReport - Prints the Kotlin code for accessing the currently available project extensions.
+core:i18n:kotlinDslAccessorsReport - Prints the Kotlin code for accessing the currently available project extensions.
+core:ui:kotlinDslAccessorsReport - Prints the Kotlin code for accessing the currently available project extensions.
+outgoingVariants - Displays the outgoing variants of root project 'EhViewer'.
+app:outgoingVariants - Displays the outgoing variants of project ':app'.
+benchmark:outgoingVariants - Displays the outgoing variants of project ':benchmark'.
+core:outgoingVariants - Displays the outgoing variants of project ':core'.
+core:common:outgoingVariants - Displays the outgoing variants of project ':core:common'.
+core:data:outgoingVariants - Displays the outgoing variants of project ':core:data'.
+core:i18n:outgoingVariants - Displays the outgoing variants of project ':core:i18n'.
+core:ui:outgoingVariants - Displays the outgoing variants of project ':core:ui'.
+projects - Displays the sub-projects of root project 'EhViewer'.
+app:projects - Displays the sub-projects of project ':app'.
+benchmark:projects - Displays the sub-projects of project ':benchmark'.
+core:projects - Displays the sub-projects of project ':core'.
+core:common:projects - Displays the sub-projects of project ':core:common'.
+core:data:projects - Displays the sub-projects of project ':core:data'.
+core:i18n:projects - Displays the sub-projects of project ':core:i18n'.
+core:ui:projects - Displays the sub-projects of project ':core:ui'.
+properties - Displays the properties of root project 'EhViewer'.
+app:properties - Displays the properties of project ':app'.
+benchmark:properties - Displays the properties of project ':benchmark'.
+core:properties - Displays the properties of project ':core'.
+core:common:properties - Displays the properties of project ':core:common'.
+core:data:properties - Displays the properties of project ':core:data'.
+core:i18n:properties - Displays the properties of project ':core:i18n'.
+core:ui:properties - Displays the properties of project ':core:ui'.
+resolvableConfigurations - Displays the configurations that can be resolved in root project 'EhViewer'.
+app:resolvableConfigurations - Displays the configurations that can be resolved in project ':app'.
+benchmark:resolvableConfigurations - Displays the configurations that can be resolved in project ':benchmark'.
+core:resolvableConfigurations - Displays the configurations that can be resolved in project ':core'.
+core:common:resolvableConfigurations - Displays the configurations that can be resolved in project ':core:common'.
+core:data:resolvableConfigurations - Displays the configurations that can be resolved in project ':core:data'.
+core:i18n:resolvableConfigurations - Displays the configurations that can be resolved in project ':core:i18n'.
+core:ui:resolvableConfigurations - Displays the configurations that can be resolved in project ':core:ui'.
+tasks - Displays the tasks runnable from root project 'EhViewer' (some of the displayed tasks may belong to subprojects).
+app:tasks - Displays the tasks runnable from project ':app'.
+benchmark:tasks - Displays the tasks runnable from project ':benchmark'.
+core:tasks - Displays the tasks runnable from project ':core' (some of the displayed tasks may belong to subprojects).
+core:common:tasks - Displays the tasks runnable from project ':core:common'.
+core:data:tasks - Displays the tasks runnable from project ':core:data'.
+core:i18n:tasks - Displays the tasks runnable from project ':core:i18n'.
+core:ui:tasks - Displays the tasks runnable from project ':core:ui'.
+
+Ide tasks
+---------
+core:common:resolveIdeDependencies - Debugging/Diagnosing task that will resolve dependencies for the IDE
+core:data:resolveIdeDependencies - Debugging/Diagnosing task that will resolve dependencies for the IDE
+core:i18n:resolveIdeDependencies - Debugging/Diagnosing task that will resolve dependencies for the IDE
+core:ui:resolveIdeDependencies - Debugging/Diagnosing task that will resolve dependencies for the IDE
+
+Install tasks
+-------------
+core:common:androidUninstallAll - Uninstall all applications.
+core:data:androidUninstallAll - Uninstall all applications.
+core:i18n:androidUninstallAll - Uninstall all applications.
+core:ui:androidUninstallAll - Uninstall all applications.
+app:installDefaultBenchmarkRelease - Installs the BenchmarkRelease build for flavor Default.
+benchmark:installDefaultBenchmarkRelease - Installs the BenchmarkRelease build for flavor Default.
+app:installDefaultDebug - Installs the Debug build for flavor Default.
+app:installDefaultDebugAndroidTest - Installs the android (on device) tests for the DefaultDebug build.
+app:installDefaultNonMinifiedRelease - Installs the NonMinifiedRelease build for flavor Default.
+benchmark:installDefaultNonMinifiedRelease - Installs the NonMinifiedRelease build for flavor Default.
+app:installDefaultRelease - Installs the Release build for flavor Default.
+app:installMarshmallowBenchmarkRelease - Installs the BenchmarkRelease build for flavor Marshmallow.
+benchmark:installMarshmallowBenchmarkRelease - Installs the BenchmarkRelease build for flavor Marshmallow.
+app:installMarshmallowDebug - Installs the Debug build for flavor Marshmallow.
+app:installMarshmallowDebugAndroidTest - Installs the android (on device) tests for the MarshmallowDebug build.
+app:installMarshmallowNonMinifiedRelease - Installs the NonMinifiedRelease build for flavor Marshmallow.
+benchmark:installMarshmallowNonMinifiedRelease - Installs the NonMinifiedRelease build for flavor Marshmallow.
+app:installMarshmallowRelease - Installs the Release build for flavor Marshmallow.
+app:uninstallAll - Uninstall all applications.
+benchmark:uninstallAll - Uninstall all applications.
+app:uninstallDefaultBenchmarkRelease - Uninstalls the BenchmarkRelease build for flavor Default.
+benchmark:uninstallDefaultBenchmarkRelease - Uninstalls the BenchmarkRelease build for flavor Default.
+app:uninstallDefaultDebug - Uninstalls the Debug build for flavor Default.
+app:uninstallDefaultDebugAndroidTest - Uninstalls the android (on device) tests for the DefaultDebug build.
+app:uninstallDefaultNonMinifiedRelease - Uninstalls the NonMinifiedRelease build for flavor Default.
+benchmark:uninstallDefaultNonMinifiedRelease - Uninstalls the NonMinifiedRelease build for flavor Default.
+app:uninstallDefaultRelease - Uninstalls the Release build for flavor Default.
+app:uninstallMarshmallowBenchmarkRelease - Uninstalls the BenchmarkRelease build for flavor Marshmallow.
+benchmark:uninstallMarshmallowBenchmarkRelease - Uninstalls the BenchmarkRelease build for flavor Marshmallow.
+app:uninstallMarshmallowDebug - Uninstalls the Debug build for flavor Marshmallow.
+app:uninstallMarshmallowDebugAndroidTest - Uninstalls the android (on device) tests for the MarshmallowDebug build.
+app:uninstallMarshmallowNonMinifiedRelease - Uninstalls the NonMinifiedRelease build for flavor Marshmallow.
+benchmark:uninstallMarshmallowNonMinifiedRelease - Uninstalls the NonMinifiedRelease build for flavor Marshmallow.
+app:uninstallMarshmallowRelease - Uninstalls the Release build for flavor Marshmallow.
+
+Moko-resources tasks
+--------------------
+core:i18n:generateMR
+core:i18n:generateMRandroidHostTest
+core:i18n:generateMRandroidMain
+core:i18n:generateMRcommonMain
+core:i18n:generateMRcommonTest
+core:i18n:generateMRjvmMain
+core:i18n:generateMRjvmTest
+
+Verification tasks
+------------------
+benchmark:allDevicesCheck - Runs all device checks on all managed devices defined in the TestOptions dsl.
+benchmark:allDevicesDefaultBenchmarkReleaseAndroidTest - Runs the tests for defaultBenchmarkRelease on all managed devices in the dsl.
+benchmark:allDevicesDefaultNonMinifiedReleaseAndroidTest - Runs the tests for defaultNonMinifiedRelease on all managed devices in the dsl.
+benchmark:allDevicesMarshmallowBenchmarkReleaseAndroidTest - Runs the tests for marshmallowBenchmarkRelease on all managed devices in the dsl.
+benchmark:allDevicesMarshmallowNonMinifiedReleaseAndroidTest - Runs the tests for marshmallowNonMinifiedRelease on all managed devices in the dsl.
+core:common:allTests - Runs the tests for all targets and create aggregated report
+core:data:allTests - Runs the tests for all targets and create aggregated report
+core:i18n:allTests - Runs the tests for all targets and create aggregated report
+core:ui:allTests - Runs the tests for all targets and create aggregated report
+core:common:androidConnectedCheck - Runs all device checks on currently connected devices.
+core:data:androidConnectedCheck - Runs all device checks on currently connected devices.
+core:i18n:androidConnectedCheck - Runs all device checks on currently connected devices.
+core:ui:androidConnectedCheck - Runs all device checks on currently connected devices.
+core:common:androidDeviceCheck - Runs all device checks using Device Providers and Test Servers.
+core:data:androidDeviceCheck - Runs all device checks using Device Providers and Test Servers.
+core:i18n:androidDeviceCheck - Runs all device checks using Device Providers and Test Servers.
+core:ui:androidDeviceCheck - Runs all device checks using Device Providers and Test Servers.
+app:check - Runs all checks.
+benchmark:check - Runs all checks.
+core:common:check - Runs all checks.
+core:data:check - Runs all checks.
+core:i18n:check - Runs all checks.
+core:ui:check - Runs all checks.
+app:checkJetifier - Checks whether Jetifier is needed for the current project
+benchmark:checkJetifier - Checks whether Jetifier is needed for the current project
+core:common:checkKotlinGradlePluginConfigurationErrors - Checks that Kotlin Gradle Plugin hasn't reported project configuration errors, failing otherwise. This task always runs before compileKotlin* or similar tasks.
+core:data:checkKotlinGradlePluginConfigurationErrors - Checks that Kotlin Gradle Plugin hasn't reported project configuration errors, failing otherwise. This task always runs before compileKotlin* or similar tasks.
+core:i18n:checkKotlinGradlePluginConfigurationErrors - Checks that Kotlin Gradle Plugin hasn't reported project configuration errors, failing otherwise. This task always runs before compileKotlin* or similar tasks.
+core:ui:checkKotlinGradlePluginConfigurationErrors - Checks that Kotlin Gradle Plugin hasn't reported project configuration errors, failing otherwise. This task always runs before compileKotlin* or similar tasks.
+app:connectedAndroidTest - Installs and runs instrumentation tests for all flavors on connected devices.
+benchmark:connectedAndroidTest - Installs and runs instrumentation tests for all flavors on connected devices.
+app:connectedCheck - Runs all device checks on currently connected devices.
+benchmark:connectedCheck - Runs all device checks on currently connected devices.
+benchmark:connectedDefaultBenchmarkReleaseAndroidTest - Installs and runs the tests for defaultBenchmarkRelease on connected devices.
+app:connectedDefaultDebugAndroidTest - Installs and runs the tests for defaultDebug on connected devices.
+benchmark:connectedDefaultNonMinifiedReleaseAndroidTest - Installs and runs the tests for defaultNonMinifiedRelease on connected devices.
+benchmark:connectedMarshmallowBenchmarkReleaseAndroidTest - Installs and runs the tests for marshmallowBenchmarkRelease on connected devices.
+app:connectedMarshmallowDebugAndroidTest - Installs and runs the tests for marshmallowDebug on connected devices.
+benchmark:connectedMarshmallowNonMinifiedReleaseAndroidTest - Installs and runs the tests for marshmallowNonMinifiedRelease on connected devices.
+app:deviceAndroidTest - Installs and runs instrumentation tests using all Device Providers.
+benchmark:deviceAndroidTest - Installs and runs instrumentation tests using all Device Providers.
+app:deviceCheck - Runs all device checks using Device Providers and Test Servers.
+benchmark:deviceCheck - Runs all device checks using Device Providers and Test Servers.
+app:lint - Runs lint on the default variant.
+core:common:lint - Runs lint for project `common`
+core:data:lint - Runs lint for project `data`
+core:i18n:lint - Runs lint for project `i18n`
+core:ui:lint - Runs lint for project `ui`
+core:common:lintAndroidMain - Print text output from the corresponding lint report task
+core:data:lintAndroidMain - Print text output from the corresponding lint report task
+core:i18n:lintAndroidMain - Print text output from the corresponding lint report task
+core:ui:lintAndroidMain - Print text output from the corresponding lint report task
+app:lintDefaultBenchmarkRelease - Print text output from the corresponding lint report task
+app:lintDefaultDebug - Print text output from the corresponding lint report task
+app:lintDefaultNonMinifiedRelease - Print text output from the corresponding lint report task
+app:lintDefaultRelease - Print text output from the corresponding lint report task
+app:lintFix - Runs lint on the default variant and applies any safe suggestions to the source code.
+core:common:lintFix - Generates the lint report for project `common` and applies any safe suggestions to the source code.
+core:data:lintFix - Generates the lint report for project `data` and applies any safe suggestions to the source code.
+core:i18n:lintFix - Generates the lint report for project `i18n` and applies any safe suggestions to the source code.
+core:ui:lintFix - Generates the lint report for project `ui` and applies any safe suggestions to the source code.
+core:common:lintJvm - Print text output from the corresponding lint report task
+core:data:lintJvm - Print text output from the corresponding lint report task
+core:i18n:lintJvm - Print text output from the corresponding lint report task
+core:ui:lintJvm - Print text output from the corresponding lint report task
+app:lintMarshmallowBenchmarkRelease - Print text output from the corresponding lint report task
+app:lintMarshmallowDebug - Print text output from the corresponding lint report task
+app:lintMarshmallowNonMinifiedRelease - Print text output from the corresponding lint report task
+app:lintMarshmallowRelease - Print text output from the corresponding lint report task
+core:common:lintVital - Generates the lint report for just the fatal issues for project `common`
+core:data:lintVital - Generates the lint report for just the fatal issues for project `data`
+core:i18n:lintVital - Generates the lint report for just the fatal issues for project `i18n`
+core:ui:lintVital - Generates the lint report for just the fatal issues for project `ui`
+core:common:lintVitalJvm - Print text output from the corresponding lint report task
+core:data:lintVitalJvm - Print text output from the corresponding lint report task
+core:i18n:lintVitalJvm - Print text output from the corresponding lint report task
+core:ui:lintVitalJvm - Print text output from the corresponding lint report task
+benchmark:pixel6Api35Check - Runs all device checks on the managed device pixel6Api35.
+benchmark:pixel6Api35DefaultBenchmarkReleaseAndroidTest - Installs and runs the test for defaultBenchmarkRelease  on the managed device pixel6Api35
+benchmark:pixel6Api35DefaultNonMinifiedReleaseAndroidTest - Installs and runs the test for defaultNonMinifiedRelease  on the managed device pixel6Api35
+benchmark:pixel6Api35MarshmallowBenchmarkReleaseAndroidTest - Installs and runs the test for marshmallowBenchmarkRelease  on the managed device pixel6Api35
+benchmark:pixel6Api35MarshmallowNonMinifiedReleaseAndroidTest - Installs and runs the test for marshmallowNonMinifiedRelease  on the managed device pixel6Api35
+app:spotlessApply - Applies code formatting steps to sourcecode in-place.
+core:common:spotlessApply - Applies code formatting steps to sourcecode in-place.
+core:data:spotlessApply - Applies code formatting steps to sourcecode in-place.
+core:i18n:spotlessApply - Applies code formatting steps to sourcecode in-place.
+core:ui:spotlessApply - Applies code formatting steps to sourcecode in-place.
+app:spotlessCheck - Checks that sourcecode satisfies formatting steps.
+core:common:spotlessCheck - Checks that sourcecode satisfies formatting steps.
+core:data:spotlessCheck - Checks that sourcecode satisfies formatting steps.
+core:i18n:spotlessCheck - Checks that sourcecode satisfies formatting steps.
+core:ui:spotlessCheck - Checks that sourcecode satisfies formatting steps.
+app:spotlessDiagnose
+core:common:spotlessDiagnose
+core:data:spotlessDiagnose
+core:i18n:spotlessDiagnose
+core:ui:spotlessDiagnose
+app:spotlessKotlin
+core:common:spotlessKotlin
+core:data:spotlessKotlin
+core:i18n:spotlessKotlin
+core:ui:spotlessKotlin
+app:spotlessKotlinApply
+core:common:spotlessKotlinApply
+core:data:spotlessKotlinApply
+core:i18n:spotlessKotlinApply
+core:ui:spotlessKotlinApply
+app:spotlessKotlinCheck
+core:common:spotlessKotlinCheck
+core:data:spotlessKotlinCheck
+core:i18n:spotlessKotlinCheck
+core:ui:spotlessKotlinCheck
+app:spotlessKotlinDiagnose
+core:common:spotlessKotlinDiagnose
+core:data:spotlessKotlinDiagnose
+core:i18n:spotlessKotlinDiagnose
+core:ui:spotlessKotlinDiagnose
+app:spotlessKotlinGradle
+core:common:spotlessKotlinGradle
+core:data:spotlessKotlinGradle
+core:i18n:spotlessKotlinGradle
+core:ui:spotlessKotlinGradle
+app:spotlessKotlinGradleApply
+core:common:spotlessKotlinGradleApply
+core:data:spotlessKotlinGradleApply
+core:i18n:spotlessKotlinGradleApply
+core:ui:spotlessKotlinGradleApply
+app:spotlessKotlinGradleCheck
+core:common:spotlessKotlinGradleCheck
+core:data:spotlessKotlinGradleCheck
+core:i18n:spotlessKotlinGradleCheck
+core:ui:spotlessKotlinGradleCheck
+app:spotlessKotlinGradleDiagnose
+core:common:spotlessKotlinGradleDiagnose
+core:data:spotlessKotlinGradleDiagnose
+core:i18n:spotlessKotlinGradleDiagnose
+core:ui:spotlessKotlinGradleDiagnose
+app:test - Run unit tests for all variants.
+benchmark:test - Run unit tests for all variants.
+core:common:testAndroid - Run unit tests for all variants.
+core:data:testAndroid - Run unit tests for all variants.
+core:i18n:testAndroid - Run unit tests for all variants.
+core:ui:testAndroid - Run unit tests for all variants.
+core:common:testAndroidHostTest - Run unit tests for the androidMain build.
+core:data:testAndroidHostTest - Run unit tests for the androidMain build.
+core:i18n:testAndroidHostTest - Run unit tests for the androidMain build.
+core:ui:testAndroidHostTest - Run unit tests for the androidMain build.
+app:testDefaultDebugUnitTest - Run unit tests for the defaultDebug build.
+app:testMarshmallowDebugUnitTest - Run unit tests for the marshmallowDebug build.
+app:updateLintBaseline - Updates the lint baseline using the default variant.
+core:common:updateLintBaseline - Updates the lint baseline for project `common`.
+core:data:updateLintBaseline - Updates the lint baseline for project `data`.
+core:i18n:updateLintBaseline - Updates the lint baseline for project `i18n`.
+core:ui:updateLintBaseline - Updates the lint baseline for project `ui`.
+core:common:writeJvmLintModelMetadata
+core:data:writeJvmLintModelMetadata
+core:i18n:writeJvmLintModelMetadata
+core:ui:writeJvmLintModelMetadata
+
+Other tasks
+-----------
+app:analyzeDefaultBenchmarkReleaseDependencies
+benchmark:analyzeDefaultBenchmarkReleaseDependencies
+app:analyzeDefaultBenchmarkReleaseR8Config
+app:analyzeDefaultDebugAndroidTestDependencies
+app:analyzeDefaultDebugDependencies
+app:analyzeDefaultDebugUnitTestDependencies
+app:analyzeDefaultNonMinifiedReleaseDependencies
+benchmark:analyzeDefaultNonMinifiedReleaseDependencies
+app:analyzeDefaultReleaseDependencies
+app:analyzeDefaultReleaseR8Config
+app:analyzeMarshmallowBenchmarkReleaseDependencies
+benchmark:analyzeMarshmallowBenchmarkReleaseDependencies
+app:analyzeMarshmallowBenchmarkReleaseR8Config
+app:analyzeMarshmallowDebugAndroidTestDependencies
+app:analyzeMarshmallowDebugDependencies
+app:analyzeMarshmallowDebugUnitTestDependencies
+app:analyzeMarshmallowNonMinifiedReleaseDependencies
+benchmark:analyzeMarshmallowNonMinifiedReleaseDependencies
+app:analyzeMarshmallowReleaseDependencies
+app:analyzeMarshmallowReleaseR8Config
+core:common:androidCompileLintChecks
+core:data:androidCompileLintChecks
+core:i18n:androidCompileLintChecks
+core:ui:androidCompileLintChecks
+core:common:androidJar
+core:data:androidJar
+core:i18n:androidJar
+core:ui:androidJar
+core:common:androidPreBuild
+core:data:androidPreBuild
+core:i18n:androidPreBuild
+core:ui:androidPreBuild
+core:common:assembleAndroidHostTest - Assembles main Android output for variant <androidHostTest>
+core:data:assembleAndroidHostTest - Assembles main Android output for variant <androidHostTest>
+core:i18n:assembleAndroidHostTest - Assembles main Android output for variant <androidHostTest>
+core:ui:assembleAndroidHostTest - Assembles main Android output for variant <androidHostTest>
+core:common:assembleAndroidMain - Assembles main Android output for variant <androidMain>
+core:data:assembleAndroidMain - Assembles main Android output for variant <androidMain>
+core:i18n:assembleAndroidMain - Assembles main Android output for variant <androidMain>
+core:ui:assembleAndroidMain - Assembles main Android output for variant <androidMain>
+app:assembleDefaultBenchmarkRelease - Assembles main output for variant defaultBenchmarkRelease
+benchmark:assembleDefaultBenchmarkRelease - Assembles main output for variant defaultBenchmarkRelease
+app:assembleDefaultDebug - Assembles main output for variant defaultDebug
+app:assembleDefaultDebugAndroidTest - Assembles main output for variant defaultDebugAndroidTest
+app:assembleDefaultDebugUnitTest - Assembles main output for variant defaultDebugUnitTest
+app:assembleDefaultNonMinifiedRelease - Assembles main output for variant defaultNonMinifiedRelease
+benchmark:assembleDefaultNonMinifiedRelease - Assembles main output for variant defaultNonMinifiedRelease
+app:assembleDefaultRelease - Assembles main output for variant defaultRelease
+app:assembleMarshmallowBenchmarkRelease - Assembles main output for variant marshmallowBenchmarkRelease
+benchmark:assembleMarshmallowBenchmarkRelease - Assembles main output for variant marshmallowBenchmarkRelease
+app:assembleMarshmallowDebug - Assembles main output for variant marshmallowDebug
+app:assembleMarshmallowDebugAndroidTest - Assembles main output for variant marshmallowDebugAndroidTest
+app:assembleMarshmallowDebugUnitTest - Assembles main output for variant marshmallowDebugUnitTest
+app:assembleMarshmallowNonMinifiedRelease - Assembles main output for variant marshmallowNonMinifiedRelease
+benchmark:assembleMarshmallowNonMinifiedRelease - Assembles main output for variant marshmallowNonMinifiedRelease
+app:assembleMarshmallowRelease - Assembles main output for variant marshmallowRelease
+app:buildCMakeDebug
+app:buildCMakeDebug[arm64-v8a]
+app:buildCMakeDebug[arm64-v8a]-2
+app:buildCMakeDebug[x86_64]
+app:buildCMakeDebug[x86_64]-2
+app:buildCMakeRelWithDebInfo
+app:buildCMakeRelWithDebInfo[arm64-v8a]
+app:buildCMakeRelWithDebInfo[arm64-v8a]-2
+app:buildCMakeRelWithDebInfo[x86_64]
+app:buildCMakeRelWithDebInfo[x86_64]-2
+app:buildDefaultBenchmarkReleasePreBundle
+app:buildDefaultDebugPreBundle
+app:buildDefaultNonMinifiedReleasePreBundle
+app:buildDefaultReleasePreBundle
+app:buildMarshmallowBenchmarkReleasePreBundle
+app:buildMarshmallowDebugPreBundle
+app:buildMarshmallowNonMinifiedReleasePreBundle
+app:buildMarshmallowReleasePreBundle
+core:common:bundleAndroidMainAar
+core:data:bundleAndroidMainAar
+core:i18n:bundleAndroidMainAar
+core:ui:bundleAndroidMainAar
+core:common:bundleAndroidMainClassesToCompileJar
+core:data:bundleAndroidMainClassesToCompileJar
+core:i18n:bundleAndroidMainClassesToCompileJar
+core:ui:bundleAndroidMainClassesToCompileJar
+core:common:bundleAndroidMainClassesToRuntimeJar
+core:data:bundleAndroidMainClassesToRuntimeJar
+core:i18n:bundleAndroidMainClassesToRuntimeJar
+core:ui:bundleAndroidMainClassesToRuntimeJar
+core:common:bundleAndroidMainLocalLintAar
+core:data:bundleAndroidMainLocalLintAar
+core:i18n:bundleAndroidMainLocalLintAar
+core:ui:bundleAndroidMainLocalLintAar
+app:bundleDefaultBenchmarkRelease - Assembles bundle for variant defaultBenchmarkRelease
+app:bundleDefaultBenchmarkReleaseClassesToCompileJar
+benchmark:bundleDefaultBenchmarkReleaseClassesToCompileJar
+app:bundleDefaultBenchmarkReleaseClassesToRuntimeJar
+benchmark:bundleDefaultBenchmarkReleaseClassesToRuntimeJar
+app:bundleDefaultBenchmarkReleaseResources
+app:bundleDefaultDebug - Assembles bundle for variant defaultDebug
+app:bundleDefaultDebugClassesToCompileJar
+app:bundleDefaultDebugClassesToRuntimeJar
+app:bundleDefaultDebugResources
+app:bundleDefaultNonMinifiedRelease - Assembles bundle for variant defaultNonMinifiedRelease
+app:bundleDefaultNonMinifiedReleaseClassesToCompileJar
+benchmark:bundleDefaultNonMinifiedReleaseClassesToCompileJar
+app:bundleDefaultNonMinifiedReleaseClassesToRuntimeJar
+benchmark:bundleDefaultNonMinifiedReleaseClassesToRuntimeJar
+app:bundleDefaultNonMinifiedReleaseResources
+app:bundleDefaultRelease - Assembles bundle for variant defaultRelease
+app:bundleDefaultReleaseClassesToCompileJar
+app:bundleDefaultReleaseClassesToRuntimeJar
+app:bundleDefaultReleaseResources
+core:common:bundleLibRuntimeToDirAndroidMain
+core:data:bundleLibRuntimeToDirAndroidMain
+core:i18n:bundleLibRuntimeToDirAndroidMain
+core:ui:bundleLibRuntimeToDirAndroidMain
+app:bundleMarshmallowBenchmarkRelease - Assembles bundle for variant marshmallowBenchmarkRelease
+app:bundleMarshmallowBenchmarkReleaseClassesToCompileJar
+benchmark:bundleMarshmallowBenchmarkReleaseClassesToCompileJar
+app:bundleMarshmallowBenchmarkReleaseClassesToRuntimeJar
+benchmark:bundleMarshmallowBenchmarkReleaseClassesToRuntimeJar
+app:bundleMarshmallowBenchmarkReleaseResources
+app:bundleMarshmallowDebug - Assembles bundle for variant marshmallowDebug
+app:bundleMarshmallowDebugClassesToCompileJar
+app:bundleMarshmallowDebugClassesToRuntimeJar
+app:bundleMarshmallowDebugResources
+app:bundleMarshmallowNonMinifiedRelease - Assembles bundle for variant marshmallowNonMinifiedRelease
+app:bundleMarshmallowNonMinifiedReleaseClassesToCompileJar
+benchmark:bundleMarshmallowNonMinifiedReleaseClassesToCompileJar
+app:bundleMarshmallowNonMinifiedReleaseClassesToRuntimeJar
+benchmark:bundleMarshmallowNonMinifiedReleaseClassesToRuntimeJar
+app:bundleMarshmallowNonMinifiedReleaseResources
+app:bundleMarshmallowRelease - Assembles bundle for variant marshmallowRelease
+app:bundleMarshmallowReleaseClassesToCompileJar
+app:bundleMarshmallowReleaseClassesToRuntimeJar
+app:bundleMarshmallowReleaseResources
+core:common:checkAndroidMainAarMetadata
+core:data:checkAndroidMainAarMetadata
+core:i18n:checkAndroidMainAarMetadata
+core:ui:checkAndroidMainAarMetadata
+app:checkDefaultBenchmarkReleaseAarMetadata
+benchmark:checkDefaultBenchmarkReleaseAarMetadata
+app:checkDefaultBenchmarkReleaseDuplicateClasses
+benchmark:checkDefaultBenchmarkReleaseDuplicateClasses
+app:checkDefaultBenchmarkReleaseManifest
+benchmark:checkDefaultBenchmarkReleaseManifest
+app:checkDefaultDebugAarMetadata
+app:checkDefaultDebugAndroidTestAarMetadata
+app:checkDefaultDebugAndroidTestDuplicateClasses
+app:checkDefaultDebugDuplicateClasses
+app:checkDefaultDebugManifest
+app:checkDefaultNonMinifiedReleaseAarMetadata
+benchmark:checkDefaultNonMinifiedReleaseAarMetadata
+app:checkDefaultNonMinifiedReleaseDuplicateClasses
+benchmark:checkDefaultNonMinifiedReleaseDuplicateClasses
+app:checkDefaultNonMinifiedReleaseManifest
+benchmark:checkDefaultNonMinifiedReleaseManifest
+app:checkDefaultReleaseAarMetadata
+app:checkDefaultReleaseDuplicateClasses
+app:checkDefaultReleaseManifest
+app:checkMarshmallowBenchmarkReleaseAarMetadata
+benchmark:checkMarshmallowBenchmarkReleaseAarMetadata
+app:checkMarshmallowBenchmarkReleaseDuplicateClasses
+benchmark:checkMarshmallowBenchmarkReleaseDuplicateClasses
+app:checkMarshmallowBenchmarkReleaseManifest
+benchmark:checkMarshmallowBenchmarkReleaseManifest
+app:checkMarshmallowDebugAarMetadata
+app:checkMarshmallowDebugAndroidTestAarMetadata
+app:checkMarshmallowDebugAndroidTestDuplicateClasses
+app:checkMarshmallowDebugDuplicateClasses
+app:checkMarshmallowDebugManifest
+app:checkMarshmallowNonMinifiedReleaseAarMetadata
+benchmark:checkMarshmallowNonMinifiedReleaseAarMetadata
+app:checkMarshmallowNonMinifiedReleaseDuplicateClasses
+benchmark:checkMarshmallowNonMinifiedReleaseDuplicateClasses
+app:checkMarshmallowNonMinifiedReleaseManifest
+benchmark:checkMarshmallowNonMinifiedReleaseManifest
+app:checkMarshmallowReleaseAarMetadata
+app:checkMarshmallowReleaseDuplicateClasses
+app:checkMarshmallowReleaseManifest
+benchmark:checkTestedAppObfuscationDefaultBenchmarkRelease
+benchmark:checkTestedAppObfuscationDefaultNonMinifiedRelease
+benchmark:checkTestedAppObfuscationMarshmallowBenchmarkRelease
+benchmark:checkTestedAppObfuscationMarshmallowNonMinifiedRelease
+benchmark:cleanManagedDevices
+app:collectDefaultBenchmarkReleaseDependencies
+app:collectDefaultNonMinifiedReleaseDependencies
+app:collectDefaultReleaseDependencies
+app:collectMarshmallowBenchmarkReleaseDependencies
+app:collectMarshmallowNonMinifiedReleaseDependencies
+app:collectMarshmallowReleaseDependencies
+core:common:compileAndroidHostTest - Compiles the compilation 'hostTest' in target 'android'.
+core:data:compileAndroidHostTest - Compiles the compilation 'hostTest' in target 'android'.
+core:i18n:compileAndroidHostTest - Compiles the compilation 'hostTest' in target 'android'.
+core:ui:compileAndroidHostTest - Compiles the compilation 'hostTest' in target 'android'.
+core:common:compileAndroidMain - Compiles the compilation 'main' in target 'android'.
+core:data:compileAndroidMain - Compiles the compilation 'main' in target 'android'.
+core:i18n:compileAndroidMain - Compiles the compilation 'main' in target 'android'.
+core:ui:compileAndroidMain - Compiles the compilation 'main' in target 'android'.
+core:i18n:compileAndroidMainLibraryResources
+app:compileDefaultBenchmarkReleaseArtProfile
+app:compileDefaultBenchmarkReleaseJavaWithJavac
+benchmark:compileDefaultBenchmarkReleaseJavaWithJavac
+app:compileDefaultBenchmarkReleaseKotlin
+benchmark:compileDefaultBenchmarkReleaseKotlin
+app:compileDefaultBenchmarkReleaseNavigationResources
+benchmark:compileDefaultBenchmarkReleaseNavigationResources
+app:compileDefaultDebugAndroidTestJavaWithJavac
+app:compileDefaultDebugAndroidTestKotlin
+app:compileDefaultDebugAndroidTestNavigationResources
+app:compileDefaultDebugArtProfile
+app:compileDefaultDebugJavaWithJavac
+app:compileDefaultDebugKotlin
+app:compileDefaultDebugNavigationResources
+app:compileDefaultDebugUnitTestJavaWithJavac
+app:compileDefaultDebugUnitTestKotlin
+app:compileDefaultNonMinifiedReleaseArtProfile
+app:compileDefaultNonMinifiedReleaseJavaWithJavac
+benchmark:compileDefaultNonMinifiedReleaseJavaWithJavac
+app:compileDefaultNonMinifiedReleaseKotlin
+benchmark:compileDefaultNonMinifiedReleaseKotlin
+app:compileDefaultNonMinifiedReleaseNavigationResources
+benchmark:compileDefaultNonMinifiedReleaseNavigationResources
+app:compileDefaultReleaseArtProfile
+app:compileDefaultReleaseJavaWithJavac
+app:compileDefaultReleaseKotlin
+app:compileDefaultReleaseNavigationResources
+core:common:compileKotlinMetadata - Compiles the kotlin sources in compilation 'main' in target 'metadata' to Metadata.
+core:data:compileKotlinMetadata - Compiles the kotlin sources in compilation 'main' in target 'metadata' to Metadata.
+core:i18n:compileKotlinMetadata - Compiles the kotlin sources in compilation 'main' in target 'metadata' to Metadata.
+core:ui:compileKotlinMetadata - Compiles the kotlin sources in compilation 'main' in target 'metadata' to Metadata.
+app:compileLint
+benchmark:compileLint
+core:common:compileLint
+core:data:compileLint
+core:i18n:compileLint
+core:ui:compileLint
+app:compileLintChecks
+benchmark:compileLintChecks
+app:compileMarshmallowBenchmarkReleaseArtProfile
+app:compileMarshmallowBenchmarkReleaseJavaWithJavac
+benchmark:compileMarshmallowBenchmarkReleaseJavaWithJavac
+app:compileMarshmallowBenchmarkReleaseKotlin
+benchmark:compileMarshmallowBenchmarkReleaseKotlin
+app:compileMarshmallowBenchmarkReleaseNavigationResources
+benchmark:compileMarshmallowBenchmarkReleaseNavigationResources
+app:compileMarshmallowDebugAndroidTestJavaWithJavac
+app:compileMarshmallowDebugAndroidTestKotlin
+app:compileMarshmallowDebugAndroidTestNavigationResources
+app:compileMarshmallowDebugArtProfile
+app:compileMarshmallowDebugJavaWithJavac
+app:compileMarshmallowDebugKotlin
+app:compileMarshmallowDebugNavigationResources
+app:compileMarshmallowDebugUnitTestJavaWithJavac
+app:compileMarshmallowDebugUnitTestKotlin
+app:compileMarshmallowNonMinifiedReleaseArtProfile
+app:compileMarshmallowNonMinifiedReleaseJavaWithJavac
+benchmark:compileMarshmallowNonMinifiedReleaseJavaWithJavac
+app:compileMarshmallowNonMinifiedReleaseKotlin
+benchmark:compileMarshmallowNonMinifiedReleaseKotlin
+app:compileMarshmallowNonMinifiedReleaseNavigationResources
+benchmark:compileMarshmallowNonMinifiedReleaseNavigationResources
+app:compileMarshmallowReleaseArtProfile
+app:compileMarshmallowReleaseJavaWithJavac
+app:compileMarshmallowReleaseKotlin
+app:compileMarshmallowReleaseNavigationResources
+app:compressDefaultBenchmarkReleaseAssets
+benchmark:compressDefaultBenchmarkReleaseAssets
+app:compressDefaultDebugAndroidTestAssets
+app:compressDefaultDebugAssets
+app:compressDefaultNonMinifiedReleaseAssets
+benchmark:compressDefaultNonMinifiedReleaseAssets
+app:compressDefaultReleaseAssets
+app:compressMarshmallowBenchmarkReleaseAssets
+benchmark:compressMarshmallowBenchmarkReleaseAssets
+app:compressMarshmallowDebugAndroidTestAssets
+app:compressMarshmallowDebugAssets
+app:compressMarshmallowNonMinifiedReleaseAssets
+benchmark:compressMarshmallowNonMinifiedReleaseAssets
+app:compressMarshmallowReleaseAssets
+core:common:computeLocalPackageDependencyInputFiles
+core:data:computeLocalPackageDependencyInputFiles
+core:i18n:computeLocalPackageDependencyInputFiles
+core:ui:computeLocalPackageDependencyInputFiles
+app:configureCMakeDebug
+app:configureCMakeDebug[arm64-v8a]
+app:configureCMakeDebug[arm64-v8a]-2
+app:configureCMakeDebug[x86_64]
+app:configureCMakeDebug[x86_64]-2
+app:configureCMakeRelWithDebInfo
+app:configureCMakeRelWithDebInfo[arm64-v8a]
+app:configureCMakeRelWithDebInfo[arm64-v8a]-2
+app:configureCMakeRelWithDebInfo[x86_64]
+app:configureCMakeRelWithDebInfo[x86_64]-2
+app:configureDefaultBenchmarkReleaseDependencies
+app:configureDefaultNonMinifiedReleaseDependencies
+app:configureDefaultReleaseDependencies
+app:configureMarshmallowBenchmarkReleaseDependencies
+app:configureMarshmallowNonMinifiedReleaseDependencies
+app:configureMarshmallowReleaseDependencies
+app:consumeConfigAttr
+benchmark:consumeConfigAttr
+core:common:consumeConfigAttr
+core:data:consumeConfigAttr
+core:i18n:consumeConfigAttr
+core:ui:consumeConfigAttr
+app:convertLinkedResourcesToBinaryDefaultBenchmarkRelease
+app:convertLinkedResourcesToBinaryDefaultRelease
+app:convertLinkedResourcesToBinaryMarshmallowBenchmarkRelease
+app:convertLinkedResourcesToBinaryMarshmallowRelease
+app:convertShrunkResourcesToBinaryDefaultBenchmarkRelease
+app:convertShrunkResourcesToBinaryDefaultRelease
+app:convertShrunkResourcesToBinaryMarshmallowBenchmarkRelease
+app:convertShrunkResourcesToBinaryMarshmallowRelease
+core:ui:convertXmlValueResourcesForAndroidHostTest
+core:ui:convertXmlValueResourcesForAndroidMain
+core:ui:convertXmlValueResourcesForCommonMain
+core:ui:convertXmlValueResourcesForCommonTest
+core:ui:convertXmlValueResourcesForJvmMain
+core:ui:convertXmlValueResourcesForJvmTest
+core:ui:copyAndroidMainComposeResourcesToAndroidAssets
+core:common:copyAndroidMainJniLibsProjectOnly
+core:data:copyAndroidMainJniLibsProjectOnly
+core:i18n:copyAndroidMainJniLibsProjectOnly
+core:ui:copyAndroidMainJniLibsProjectOnly
+app:copyBaselineProfileIntoSrc
+core:ui:copyNonXmlValueResourcesForAndroidHostTest
+core:ui:copyNonXmlValueResourcesForAndroidMain
+core:ui:copyNonXmlValueResourcesForCommonMain
+core:ui:copyNonXmlValueResourcesForCommonTest
+core:ui:copyNonXmlValueResourcesForJvmMain
+core:ui:copyNonXmlValueResourcesForJvmTest
+core:data:copyRoomSchemas
+app:createDefaultBenchmarkReleaseApkListingFileRedirect
+benchmark:createDefaultBenchmarkReleaseApkListingFileRedirect
+app:createDefaultBenchmarkReleaseApksFromBundleListingFileRedirect
+app:createDefaultBenchmarkReleaseBundleListingFileRedirect
+app:createDefaultBenchmarkReleaseCompatibleScreenManifests
+app:createDefaultDebugAndroidTestApkListingFileRedirect
+app:createDefaultDebugApkListingFileRedirect
+app:createDefaultDebugApksFromBundleListingFileRedirect
+app:createDefaultDebugBundleListingFileRedirect
+app:createDefaultDebugCompatibleScreenManifests
+app:createDefaultNonMinifiedReleaseApkListingFileRedirect
+benchmark:createDefaultNonMinifiedReleaseApkListingFileRedirect
+app:createDefaultNonMinifiedReleaseApksFromBundleListingFileRedirect
+app:createDefaultNonMinifiedReleaseBundleListingFileRedirect
+app:createDefaultNonMinifiedReleaseCompatibleScreenManifests
+app:createDefaultReleaseApkListingFileRedirect
+app:createDefaultReleaseApksFromBundleListingFileRedirect
+app:createDefaultReleaseBundleListingFileRedirect
+app:createDefaultReleaseCompatibleScreenManifests
+core:common:createFullJarAndroidMain
+core:data:createFullJarAndroidMain
+core:i18n:createFullJarAndroidMain
+core:ui:createFullJarAndroidMain
+app:createMarshmallowBenchmarkReleaseApkListingFileRedirect
+benchmark:createMarshmallowBenchmarkReleaseApkListingFileRedirect
+app:createMarshmallowBenchmarkReleaseApksFromBundleListingFileRedirect
+app:createMarshmallowBenchmarkReleaseBundleListingFileRedirect
+app:createMarshmallowBenchmarkReleaseCompatibleScreenManifests
+app:createMarshmallowDebugAndroidTestApkListingFileRedirect
+app:createMarshmallowDebugApkListingFileRedirect
+app:createMarshmallowDebugApksFromBundleListingFileRedirect
+app:createMarshmallowDebugBundleListingFileRedirect
+app:createMarshmallowDebugCompatibleScreenManifests
+app:createMarshmallowNonMinifiedReleaseApkListingFileRedirect
+benchmark:createMarshmallowNonMinifiedReleaseApkListingFileRedirect
+app:createMarshmallowNonMinifiedReleaseApksFromBundleListingFileRedirect
+app:createMarshmallowNonMinifiedReleaseBundleListingFileRedirect
+app:createMarshmallowNonMinifiedReleaseCompatibleScreenManifests
+app:createMarshmallowReleaseApkListingFileRedirect
+app:createMarshmallowReleaseApksFromBundleListingFileRedirect
+app:createMarshmallowReleaseBundleListingFileRedirect
+app:createMarshmallowReleaseCompatibleScreenManifests
+app:createMockableJar
+benchmark:createMockableJar
+benchmark:desugarDefaultBenchmarkReleaseFileDependencies
+app:desugarDefaultDebugAndroidTestFileDependencies
+app:desugarDefaultDebugFileDependencies
+app:desugarDefaultNonMinifiedReleaseFileDependencies
+benchmark:desugarDefaultNonMinifiedReleaseFileDependencies
+benchmark:desugarMarshmallowBenchmarkReleaseFileDependencies
+app:desugarMarshmallowDebugAndroidTestFileDependencies
+app:desugarMarshmallowDebugFileDependencies
+app:desugarMarshmallowNonMinifiedReleaseFileDependencies
+benchmark:desugarMarshmallowNonMinifiedReleaseFileDependencies
+benchmark:dexBuilderDefaultBenchmarkRelease
+app:dexBuilderDefaultDebug
+app:dexBuilderDefaultDebugAndroidTest
+app:dexBuilderDefaultNonMinifiedRelease
+benchmark:dexBuilderDefaultNonMinifiedRelease
+benchmark:dexBuilderMarshmallowBenchmarkRelease
+app:dexBuilderMarshmallowDebug
+app:dexBuilderMarshmallowDebugAndroidTest
+app:dexBuilderMarshmallowNonMinifiedRelease
+benchmark:dexBuilderMarshmallowNonMinifiedRelease
+app:expandDefaultBenchmarkReleaseArtProfileWildcards
+app:expandDefaultBenchmarkReleaseL8ArtProfileWildcards
+app:expandDefaultNonMinifiedReleaseL8ArtProfileWildcards
+app:expandDefaultReleaseArtProfileWildcards
+app:expandDefaultReleaseL8ArtProfileWildcards
+app:expandMarshmallowBenchmarkReleaseArtProfileWildcards
+app:expandMarshmallowBenchmarkReleaseL8ArtProfileWildcards
+app:expandMarshmallowNonMinifiedReleaseL8ArtProfileWildcards
+app:expandMarshmallowReleaseArtProfileWildcards
+app:expandMarshmallowReleaseL8ArtProfileWildcards
+core:common:exportAndroidMainConsumerProguardFiles
+core:data:exportAndroidMainConsumerProguardFiles
+core:i18n:exportAndroidMainConsumerProguardFiles
+core:ui:exportAndroidMainConsumerProguardFiles
+core:common:exportCommonSourceSetsMetadataLocationsForMetadataApiElements
+core:data:exportCommonSourceSetsMetadataLocationsForMetadataApiElements
+core:i18n:exportCommonSourceSetsMetadataLocationsForMetadataApiElements
+core:ui:exportCommonSourceSetsMetadataLocationsForMetadataApiElements
+core:common:exportRootPublicationCoordinatesForMetadataApiElements
+core:data:exportRootPublicationCoordinatesForMetadataApiElements
+core:i18n:exportRootPublicationCoordinatesForMetadataApiElements
+core:ui:exportRootPublicationCoordinatesForMetadataApiElements
+core:common:exportTargetPublicationCoordinatesForAndroidApiElements
+core:data:exportTargetPublicationCoordinatesForAndroidApiElements
+core:i18n:exportTargetPublicationCoordinatesForAndroidApiElements
+core:ui:exportTargetPublicationCoordinatesForAndroidApiElements
+core:common:exportTargetPublicationCoordinatesForAndroidRuntimeElements
+core:data:exportTargetPublicationCoordinatesForAndroidRuntimeElements
+core:i18n:exportTargetPublicationCoordinatesForAndroidRuntimeElements
+core:ui:exportTargetPublicationCoordinatesForAndroidRuntimeElements
+app:externalNativeBuildCleanDefaultBenchmarkRelease
+app:externalNativeBuildCleanDefaultDebug
+app:externalNativeBuildCleanDefaultNonMinifiedRelease
+app:externalNativeBuildCleanDefaultRelease
+app:externalNativeBuildCleanMarshmallowBenchmarkRelease
+app:externalNativeBuildCleanMarshmallowDebug
+app:externalNativeBuildCleanMarshmallowNonMinifiedRelease
+app:externalNativeBuildCleanMarshmallowRelease
+app:externalNativeBuildDefaultBenchmarkRelease
+app:externalNativeBuildDefaultDebug
+app:externalNativeBuildDefaultNonMinifiedRelease
+app:externalNativeBuildDefaultRelease
+app:externalNativeBuildMarshmallowBenchmarkRelease
+app:externalNativeBuildMarshmallowDebug
+app:externalNativeBuildMarshmallowNonMinifiedRelease
+app:externalNativeBuildMarshmallowRelease
+app:extractApksForDefaultBenchmarkRelease
+app:extractApksForDefaultDebug
+app:extractApksForDefaultNonMinifiedRelease
+app:extractApksForDefaultRelease
+app:extractApksForMarshmallowBenchmarkRelease
+app:extractApksForMarshmallowDebug
+app:extractApksForMarshmallowNonMinifiedRelease
+app:extractApksForMarshmallowRelease
+app:extractApksFromBundleForDefaultBenchmarkRelease
+app:extractApksFromBundleForDefaultDebug
+app:extractApksFromBundleForDefaultNonMinifiedRelease
+app:extractApksFromBundleForDefaultRelease
+app:extractApksFromBundleForMarshmallowBenchmarkRelease
+app:extractApksFromBundleForMarshmallowDebug
+app:extractApksFromBundleForMarshmallowNonMinifiedRelease
+app:extractApksFromBundleForMarshmallowRelease
+app:extractDeepLinksDefaultBenchmarkRelease
+benchmark:extractDeepLinksDefaultBenchmarkRelease
+app:extractDeepLinksDefaultDebug
+app:extractDeepLinksDefaultNonMinifiedRelease
+benchmark:extractDeepLinksDefaultNonMinifiedRelease
+app:extractDeepLinksDefaultRelease
+app:extractDeepLinksMarshmallowBenchmarkRelease
+benchmark:extractDeepLinksMarshmallowBenchmarkRelease
+app:extractDeepLinksMarshmallowDebug
+app:extractDeepLinksMarshmallowNonMinifiedRelease
+benchmark:extractDeepLinksMarshmallowNonMinifiedRelease
+app:extractDeepLinksMarshmallowRelease
+app:extractDefaultBenchmarkReleaseNativeDebugMetadata
+benchmark:extractDefaultBenchmarkReleaseNativeDebugMetadata
+app:extractDefaultBenchmarkReleaseNativeSymbolTables
+benchmark:extractDefaultBenchmarkReleaseNativeSymbolTables
+app:extractDefaultBenchmarkReleaseSupportedLocales
+app:extractDefaultBenchmarkReleaseVersionControlInfo
+app:extractDefaultDebugNativeDebugMetadata
+app:extractDefaultDebugNativeSymbolTables
+app:extractDefaultDebugSupportedLocales
+app:extractDefaultNonMinifiedReleaseNativeDebugMetadata
+benchmark:extractDefaultNonMinifiedReleaseNativeDebugMetadata
+app:extractDefaultNonMinifiedReleaseNativeSymbolTables
+benchmark:extractDefaultNonMinifiedReleaseNativeSymbolTables
+app:extractDefaultNonMinifiedReleaseSupportedLocales
+app:extractDefaultNonMinifiedReleaseVersionControlInfo
+app:extractDefaultReleaseNativeDebugMetadata
+app:extractDefaultReleaseNativeSymbolTables
+app:extractDefaultReleaseSupportedLocales
+app:extractDefaultReleaseVersionControlInfo
+app:extractMarshmallowBenchmarkReleaseNativeDebugMetadata
+benchmark:extractMarshmallowBenchmarkReleaseNativeDebugMetadata
+app:extractMarshmallowBenchmarkReleaseNativeSymbolTables
+benchmark:extractMarshmallowBenchmarkReleaseNativeSymbolTables
+app:extractMarshmallowBenchmarkReleaseSupportedLocales
+app:extractMarshmallowBenchmarkReleaseVersionControlInfo
+app:extractMarshmallowDebugNativeDebugMetadata
+app:extractMarshmallowDebugNativeSymbolTables
+app:extractMarshmallowDebugSupportedLocales
+app:extractMarshmallowNonMinifiedReleaseNativeDebugMetadata
+benchmark:extractMarshmallowNonMinifiedReleaseNativeDebugMetadata
+app:extractMarshmallowNonMinifiedReleaseNativeSymbolTables
+benchmark:extractMarshmallowNonMinifiedReleaseNativeSymbolTables
+app:extractMarshmallowNonMinifiedReleaseSupportedLocales
+app:extractMarshmallowNonMinifiedReleaseVersionControlInfo
+app:extractMarshmallowReleaseNativeDebugMetadata
+app:extractMarshmallowReleaseNativeSymbolTables
+app:extractMarshmallowReleaseSupportedLocales
+app:extractMarshmallowReleaseVersionControlInfo
+app:extractProguardFiles
+benchmark:extractProguardFiles
+core:common:extractProguardFiles
+core:data:extractProguardFiles
+core:i18n:extractProguardFiles
+core:ui:extractProguardFiles
+core:common:fetchSyntheticImportProjectPackages
+core:data:fetchSyntheticImportProjectPackages
+core:i18n:fetchSyntheticImportProjectPackages
+core:ui:fetchSyntheticImportProjectPackages
+core:ui:generateActualResourceCollectorsForAndroidMain
+core:common:generateAndroidHostTestAssets
+core:data:generateAndroidHostTestAssets
+core:i18n:generateAndroidHostTestAssets
+core:ui:generateAndroidHostTestAssets
+core:common:generateAndroidHostTestLintModel
+core:data:generateAndroidHostTestLintModel
+core:i18n:generateAndroidHostTestLintModel
+core:ui:generateAndroidHostTestLintModel
+core:common:generateAndroidHostTestResources
+core:data:generateAndroidHostTestResources
+core:i18n:generateAndroidHostTestResources
+core:ui:generateAndroidHostTestResources
+core:common:generateAndroidHostTestSources
+core:data:generateAndroidHostTestSources
+core:i18n:generateAndroidHostTestSources
+core:ui:generateAndroidHostTestSources
+core:i18n:generateAndroidHostTestStubRFile
+core:i18n:generateAndroidMainAssets
+core:common:generateAndroidMainEmptyResourceFiles
+core:data:generateAndroidMainEmptyResourceFiles
+core:i18n:generateAndroidMainEmptyResourceFiles
+core:ui:generateAndroidMainEmptyResourceFiles
+core:i18n:generateAndroidMainExternalPublicTxt
+core:common:generateAndroidMainLintModel
+core:data:generateAndroidMainLintModel
+core:i18n:generateAndroidMainLintModel
+core:ui:generateAndroidMainLintModel
+core:common:generateAndroidMainLintReportModel
+core:data:generateAndroidMainLintReportModel
+core:i18n:generateAndroidMainLintReportModel
+core:ui:generateAndroidMainLintReportModel
+core:common:generateAndroidMainLintVitalModel
+core:data:generateAndroidMainLintVitalModel
+core:i18n:generateAndroidMainLintVitalModel
+core:ui:generateAndroidMainLintVitalModel
+core:i18n:generateAndroidMainRFile
+core:ui:generateComposeResClass
+app:generateDefaultBenchmarkReleaseAssets
+benchmark:generateDefaultBenchmarkReleaseAssets
+app:generateDefaultBenchmarkReleaseBuildConfig
+app:generateDefaultBenchmarkReleaseFeatureMetadata
+app:generateDefaultBenchmarkReleaseFeatureTransitiveDeps
+benchmark:generateDefaultBenchmarkReleaseFeatureTransitiveDeps
+benchmark:generateDefaultBenchmarkReleaseGlobalSynthetics
+app:generateDefaultBenchmarkReleaseLintModel
+app:generateDefaultBenchmarkReleaseLintReportModel
+app:generateDefaultBenchmarkReleaseLocaleConfig
+app:generateDefaultBenchmarkReleaseManifestClass
+app:generateDefaultBenchmarkReleaseResources
+benchmark:generateDefaultBenchmarkReleaseResources
+app:generateDefaultBenchmarkReleaseRFile
+benchmark:generateDefaultBenchmarkReleaseRFile
+app:generateDefaultBenchmarkReleaseSources
+benchmark:generateDefaultBenchmarkReleaseSources
+app:generateDefaultDebugAndroidTestAssets
+app:generateDefaultDebugAndroidTestBuildConfig
+app:generateDefaultDebugAndroidTestGlobalSynthetics
+app:generateDefaultDebugAndroidTestLintModel
+app:generateDefaultDebugAndroidTestResources
+app:generateDefaultDebugAndroidTestRFile
+app:generateDefaultDebugAndroidTestSources
+app:generateDefaultDebugAssets
+app:generateDefaultDebugBuildConfig
+app:generateDefaultDebugFeatureMetadata
+app:generateDefaultDebugFeatureTransitiveDeps
+app:generateDefaultDebugGlobalSynthetics
+app:generateDefaultDebugLintModel
+app:generateDefaultDebugLintReportModel
+app:generateDefaultDebugLocaleConfig
+app:generateDefaultDebugManifestClass
+app:generateDefaultDebugResources
+app:generateDefaultDebugRFile
+app:generateDefaultDebugSources
+app:generateDefaultDebugUnitTestAssets
+app:generateDefaultDebugUnitTestLintModel
+app:generateDefaultDebugUnitTestResources
+app:generateDefaultDebugUnitTestSources
+app:generateDefaultNonMinifiedReleaseAssets
+benchmark:generateDefaultNonMinifiedReleaseAssets
+app:generateDefaultNonMinifiedReleaseBuildConfig
+app:generateDefaultNonMinifiedReleaseFeatureMetadata
+app:generateDefaultNonMinifiedReleaseFeatureTransitiveDeps
+benchmark:generateDefaultNonMinifiedReleaseFeatureTransitiveDeps
+benchmark:generateDefaultNonMinifiedReleaseGlobalSynthetics
+app:generateDefaultNonMinifiedReleaseLintModel
+app:generateDefaultNonMinifiedReleaseLintReportModel
+app:generateDefaultNonMinifiedReleaseLocaleConfig
+app:generateDefaultNonMinifiedReleaseManifestClass
+app:generateDefaultNonMinifiedReleaseResources
+benchmark:generateDefaultNonMinifiedReleaseResources
+app:generateDefaultNonMinifiedReleaseRFile
+benchmark:generateDefaultNonMinifiedReleaseRFile
+app:generateDefaultNonMinifiedReleaseSources
+benchmark:generateDefaultNonMinifiedReleaseSources
+app:generateDefaultReleaseAssets
+app:generateDefaultReleaseBuildConfig
+app:generateDefaultReleaseFeatureMetadata
+app:generateDefaultReleaseFeatureTransitiveDeps
+app:generateDefaultReleaseLintModel
+app:generateDefaultReleaseLintReportModel
+app:generateDefaultReleaseLocaleConfig
+app:generateDefaultReleaseManifestClass
+app:generateDefaultReleaseResources
+app:generateDefaultReleaseRFile
+app:generateDefaultReleaseSources
+core:ui:generateExpectResourceCollectorsForCommonMain
+app:generateJsonModelDefaultBenchmarkRelease
+app:generateJsonModelDefaultDebug
+app:generateJsonModelDefaultNonMinifiedRelease
+app:generateJsonModelDefaultRelease
+app:generateJsonModelMarshmallowBenchmarkRelease
+app:generateJsonModelMarshmallowDebug
+app:generateJsonModelMarshmallowNonMinifiedRelease
+app:generateJsonModelMarshmallowRelease
+app:generateMarshmallowBenchmarkReleaseAssets
+benchmark:generateMarshmallowBenchmarkReleaseAssets
+app:generateMarshmallowBenchmarkReleaseBuildConfig
+app:generateMarshmallowBenchmarkReleaseFeatureMetadata
+app:generateMarshmallowBenchmarkReleaseFeatureTransitiveDeps
+benchmark:generateMarshmallowBenchmarkReleaseFeatureTransitiveDeps
+benchmark:generateMarshmallowBenchmarkReleaseGlobalSynthetics
+app:generateMarshmallowBenchmarkReleaseLintModel
+app:generateMarshmallowBenchmarkReleaseLintReportModel
+app:generateMarshmallowBenchmarkReleaseLocaleConfig
+app:generateMarshmallowBenchmarkReleaseManifestClass
+app:generateMarshmallowBenchmarkReleaseResources
+benchmark:generateMarshmallowBenchmarkReleaseResources
+app:generateMarshmallowBenchmarkReleaseRFile
+benchmark:generateMarshmallowBenchmarkReleaseRFile
+app:generateMarshmallowBenchmarkReleaseSources
+benchmark:generateMarshmallowBenchmarkReleaseSources
+app:generateMarshmallowDebugAndroidTestAssets
+app:generateMarshmallowDebugAndroidTestBuildConfig
+app:generateMarshmallowDebugAndroidTestGlobalSynthetics
+app:generateMarshmallowDebugAndroidTestLintModel
+app:generateMarshmallowDebugAndroidTestResources
+app:generateMarshmallowDebugAndroidTestRFile
+app:generateMarshmallowDebugAndroidTestSources
+app:generateMarshmallowDebugAssets
+app:generateMarshmallowDebugBuildConfig
+app:generateMarshmallowDebugFeatureMetadata
+app:generateMarshmallowDebugFeatureTransitiveDeps
+app:generateMarshmallowDebugGlobalSynthetics
+app:generateMarshmallowDebugLintModel
+app:generateMarshmallowDebugLintReportModel
+app:generateMarshmallowDebugLocaleConfig
+app:generateMarshmallowDebugManifestClass
+app:generateMarshmallowDebugResources
+app:generateMarshmallowDebugRFile
+app:generateMarshmallowDebugSources
+app:generateMarshmallowDebugUnitTestAssets
+app:generateMarshmallowDebugUnitTestLintModel
+app:generateMarshmallowDebugUnitTestResources
+app:generateMarshmallowDebugUnitTestSources
+app:generateMarshmallowNonMinifiedReleaseAssets
+benchmark:generateMarshmallowNonMinifiedReleaseAssets
+app:generateMarshmallowNonMinifiedReleaseBuildConfig
+app:generateMarshmallowNonMinifiedReleaseFeatureMetadata
+app:generateMarshmallowNonMinifiedReleaseFeatureTransitiveDeps
+benchmark:generateMarshmallowNonMinifiedReleaseFeatureTransitiveDeps
+benchmark:generateMarshmallowNonMinifiedReleaseGlobalSynthetics
+app:generateMarshmallowNonMinifiedReleaseLintModel
+app:generateMarshmallowNonMinifiedReleaseLintReportModel
+app:generateMarshmallowNonMinifiedReleaseLocaleConfig
+app:generateMarshmallowNonMinifiedReleaseManifestClass
+app:generateMarshmallowNonMinifiedReleaseResources
+benchmark:generateMarshmallowNonMinifiedReleaseResources
+app:generateMarshmallowNonMinifiedReleaseRFile
+benchmark:generateMarshmallowNonMinifiedReleaseRFile
+app:generateMarshmallowNonMinifiedReleaseSources
+benchmark:generateMarshmallowNonMinifiedReleaseSources
+app:generateMarshmallowReleaseAssets
+app:generateMarshmallowReleaseBuildConfig
+app:generateMarshmallowReleaseFeatureMetadata
+app:generateMarshmallowReleaseFeatureTransitiveDeps
+app:generateMarshmallowReleaseLintModel
+app:generateMarshmallowReleaseLintReportModel
+app:generateMarshmallowReleaseLocaleConfig
+app:generateMarshmallowReleaseManifestClass
+app:generateMarshmallowReleaseResources
+app:generateMarshmallowReleaseRFile
+app:generateMarshmallowReleaseSources
+core:common:generateProjectStructureMetadata - Generates serialized project structure metadata of the current project (for tooling)
+core:data:generateProjectStructureMetadata - Generates serialized project structure metadata of the current project (for tooling)
+core:i18n:generateProjectStructureMetadata - Generates serialized project structure metadata of the current project (for tooling)
+core:ui:generateProjectStructureMetadata - Generates serialized project structure metadata of the current project (for tooling)
+core:ui:generateResourceAccessorsForAndroidHostTest
+core:ui:generateResourceAccessorsForAndroidMain
+core:ui:generateResourceAccessorsForCommonMain
+core:ui:generateResourceAccessorsForCommonTest
+core:ui:generateResourceAccessorsForJvmMain
+core:ui:generateResourceAccessorsForJvmTest
+core:common:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump
+core:data:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump
+core:i18n:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump
+core:ui:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump
+core:common:generateSyntheticLinkageSwiftPMImportProjectForEmbedAndSignLinkage
+core:data:generateSyntheticLinkageSwiftPMImportProjectForEmbedAndSignLinkage
+core:i18n:generateSyntheticLinkageSwiftPMImportProjectForEmbedAndSignLinkage
+core:ui:generateSyntheticLinkageSwiftPMImportProjectForEmbedAndSignLinkage
+core:common:generateSyntheticLinkageSwiftPMImportProjectForLinkageForCli
+core:data:generateSyntheticLinkageSwiftPMImportProjectForLinkageForCli
+core:i18n:generateSyntheticLinkageSwiftPMImportProjectForLinkageForCli
+core:ui:generateSyntheticLinkageSwiftPMImportProjectForLinkageForCli
+core:common:integrateEmbedAndSign
+core:data:integrateEmbedAndSign
+core:i18n:integrateEmbedAndSign
+core:ui:integrateEmbedAndSign
+core:common:integrateLinkagePackage
+core:data:integrateLinkagePackage
+core:i18n:integrateLinkagePackage
+core:ui:integrateLinkagePackage
+app:javaPreCompileDefaultBenchmarkRelease
+benchmark:javaPreCompileDefaultBenchmarkRelease
+app:javaPreCompileDefaultDebug
+app:javaPreCompileDefaultDebugAndroidTest
+app:javaPreCompileDefaultDebugUnitTest
+app:javaPreCompileDefaultNonMinifiedRelease
+benchmark:javaPreCompileDefaultNonMinifiedRelease
+app:javaPreCompileDefaultRelease
+app:javaPreCompileMarshmallowBenchmarkRelease
+benchmark:javaPreCompileMarshmallowBenchmarkRelease
+app:javaPreCompileMarshmallowDebug
+app:javaPreCompileMarshmallowDebugAndroidTest
+app:javaPreCompileMarshmallowDebugUnitTest
+app:javaPreCompileMarshmallowNonMinifiedRelease
+benchmark:javaPreCompileMarshmallowNonMinifiedRelease
+app:javaPreCompileMarshmallowRelease
+core:common:kmpPartiallyResolvedDependenciesChecker
+core:data:kmpPartiallyResolvedDependenciesChecker
+core:i18n:kmpPartiallyResolvedDependenciesChecker
+core:ui:kmpPartiallyResolvedDependenciesChecker
+core:data:kspAndroidHostTest
+core:data:kspAndroidMain
+app:kspDefaultBenchmarkReleaseKotlin
+app:kspDefaultDebugAndroidTestKotlin
+app:kspDefaultDebugKotlin
+app:kspDefaultDebugUnitTestKotlin
+app:kspDefaultNonMinifiedReleaseKotlin
+app:kspDefaultReleaseKotlin
+app:kspMarshmallowBenchmarkReleaseKotlin
+app:kspMarshmallowDebugAndroidTestKotlin
+app:kspMarshmallowDebugKotlin
+app:kspMarshmallowDebugUnitTestKotlin
+app:kspMarshmallowNonMinifiedReleaseKotlin
+app:kspMarshmallowReleaseKotlin
+app:l8DexDesugarLibDefaultBenchmarkRelease
+app:l8DexDesugarLibDefaultDebug
+app:l8DexDesugarLibDefaultNonMinifiedRelease
+app:l8DexDesugarLibDefaultRelease
+app:l8DexDesugarLibMarshmallowBenchmarkRelease
+app:l8DexDesugarLibMarshmallowDebug
+app:l8DexDesugarLibMarshmallowNonMinifiedRelease
+app:l8DexDesugarLibMarshmallowRelease
+core:common:lintAnalyzeAndroidHostTest - Run lint analysis on the androidHostTest component
+core:data:lintAnalyzeAndroidHostTest - Run lint analysis on the androidHostTest component
+core:i18n:lintAnalyzeAndroidHostTest - Run lint analysis on the androidHostTest component
+core:ui:lintAnalyzeAndroidHostTest - Run lint analysis on the androidHostTest component
+core:common:lintAnalyzeAndroidMain - Run lint analysis on the androidMain component
+core:data:lintAnalyzeAndroidMain - Run lint analysis on the androidMain component
+core:i18n:lintAnalyzeAndroidMain - Run lint analysis on the androidMain component
+core:ui:lintAnalyzeAndroidMain - Run lint analysis on the androidMain component
+app:lintAnalyzeDefaultBenchmarkRelease - Run lint analysis on the defaultBenchmarkRelease component
+app:lintAnalyzeDefaultDebug - Run lint analysis on the defaultDebug component
+app:lintAnalyzeDefaultDebugAndroidTest - Run lint analysis on the defaultDebugAndroidTest component
+app:lintAnalyzeDefaultDebugUnitTest - Run lint analysis on the defaultDebugUnitTest component
+app:lintAnalyzeDefaultNonMinifiedRelease - Run lint analysis on the defaultNonMinifiedRelease component
+app:lintAnalyzeDefaultRelease - Run lint analysis on the defaultRelease component
+app:lintAnalyzeMarshmallowBenchmarkRelease - Run lint analysis on the marshmallowBenchmarkRelease component
+app:lintAnalyzeMarshmallowDebug - Run lint analysis on the marshmallowDebug component
+app:lintAnalyzeMarshmallowDebugAndroidTest - Run lint analysis on the marshmallowDebugAndroidTest component
+app:lintAnalyzeMarshmallowDebugUnitTest - Run lint analysis on the marshmallowDebugUnitTest component
+app:lintAnalyzeMarshmallowNonMinifiedRelease - Run lint analysis on the marshmallowNonMinifiedRelease component
+app:lintAnalyzeMarshmallowRelease - Run lint analysis on the marshmallowRelease component
+core:common:lintFixAndroidMain - Fix lint on the androidMain variant
+core:data:lintFixAndroidMain - Fix lint on the androidMain variant
+core:i18n:lintFixAndroidMain - Fix lint on the androidMain variant
+core:ui:lintFixAndroidMain - Fix lint on the androidMain variant
+app:lintFixDefaultBenchmarkRelease - Fix lint on the defaultBenchmarkRelease variant
+app:lintFixDefaultDebug - Fix lint on the defaultDebug variant
+app:lintFixDefaultNonMinifiedRelease - Fix lint on the defaultNonMinifiedRelease variant
+app:lintFixDefaultRelease - Fix lint on the defaultRelease variant
+core:common:lintFixJvm - Generates the JVM lint report for project `common` and applies any safe suggestions to the source code.
+core:data:lintFixJvm - Generates the JVM lint report for project `data` and applies any safe suggestions to the source code.
+core:i18n:lintFixJvm - Generates the JVM lint report for project `i18n` and applies any safe suggestions to the source code.
+core:ui:lintFixJvm - Generates the JVM lint report for project `ui` and applies any safe suggestions to the source code.
+app:lintFixMarshmallowBenchmarkRelease - Fix lint on the marshmallowBenchmarkRelease variant
+app:lintFixMarshmallowDebug - Fix lint on the marshmallowDebug variant
+app:lintFixMarshmallowNonMinifiedRelease - Fix lint on the marshmallowNonMinifiedRelease variant
+app:lintFixMarshmallowRelease - Fix lint on the marshmallowRelease variant
+core:common:lintReportAndroidMain - Run lint on the androidMain variant
+core:data:lintReportAndroidMain - Run lint on the androidMain variant
+core:i18n:lintReportAndroidMain - Run lint on the androidMain variant
+core:ui:lintReportAndroidMain - Run lint on the androidMain variant
+app:lintReportDefaultBenchmarkRelease - Run lint on the defaultBenchmarkRelease variant
+app:lintReportDefaultDebug - Run lint on the defaultDebug variant
+app:lintReportDefaultNonMinifiedRelease - Run lint on the defaultNonMinifiedRelease variant
+app:lintReportDefaultRelease - Run lint on the defaultRelease variant
+core:common:lintReportJvm - Generates the JVM lint report for project `common`
+core:data:lintReportJvm - Generates the JVM lint report for project `data`
+core:i18n:lintReportJvm - Generates the JVM lint report for project `i18n`
+core:ui:lintReportJvm - Generates the JVM lint report for project `ui`
+app:lintReportMarshmallowBenchmarkRelease - Run lint on the marshmallowBenchmarkRelease variant
+app:lintReportMarshmallowDebug - Run lint on the marshmallowDebug variant
+app:lintReportMarshmallowNonMinifiedRelease - Run lint on the marshmallowNonMinifiedRelease variant
+app:lintReportMarshmallowRelease - Run lint on the marshmallowRelease variant
+core:common:lintVitalAnalyzeAndroidMain - Run lint analysis with only the fatal issues enabled on the androidMain variant
+core:data:lintVitalAnalyzeAndroidMain - Run lint analysis with only the fatal issues enabled on the androidMain variant
+core:i18n:lintVitalAnalyzeAndroidMain - Run lint analysis with only the fatal issues enabled on the androidMain variant
+core:ui:lintVitalAnalyzeAndroidMain - Run lint analysis with only the fatal issues enabled on the androidMain variant
+core:common:lintVitalReportJvm - Generates the JVM lint report for just the fatal issues for project `common`
+core:data:lintVitalReportJvm - Generates the JVM lint report for just the fatal issues for project `data`
+core:i18n:lintVitalReportJvm - Generates the JVM lint report for just the fatal issues for project `i18n`
+core:ui:lintVitalReportJvm - Generates the JVM lint report for just the fatal issues for project `ui`
+app:makeApkFromBundleForDefaultBenchmarkRelease
+app:makeApkFromBundleForDefaultDebug
+app:makeApkFromBundleForDefaultNonMinifiedRelease
+app:makeApkFromBundleForDefaultRelease
+app:makeApkFromBundleForMarshmallowBenchmarkRelease
+app:makeApkFromBundleForMarshmallowDebug
+app:makeApkFromBundleForMarshmallowNonMinifiedRelease
+app:makeApkFromBundleForMarshmallowRelease
+core:i18n:mapAndroidMainSourceSetPaths
+app:mapDefaultBenchmarkReleaseSourceSetPaths
+benchmark:mapDefaultBenchmarkReleaseSourceSetPaths
+app:mapDefaultDebugAndroidTestSourceSetPaths
+app:mapDefaultDebugSourceSetPaths
+app:mapDefaultNonMinifiedReleaseSourceSetPaths
+benchmark:mapDefaultNonMinifiedReleaseSourceSetPaths
+app:mapDefaultReleaseSourceSetPaths
+app:mapMarshmallowBenchmarkReleaseSourceSetPaths
+benchmark:mapMarshmallowBenchmarkReleaseSourceSetPaths
+app:mapMarshmallowDebugAndroidTestSourceSetPaths
+app:mapMarshmallowDebugSourceSetPaths
+app:mapMarshmallowNonMinifiedReleaseSourceSetPaths
+benchmark:mapMarshmallowNonMinifiedReleaseSourceSetPaths
+app:mapMarshmallowReleaseSourceSetPaths
+core:i18n:mergeAndroidMainAssets
+core:common:mergeAndroidMainConsumerProguardFiles
+core:data:mergeAndroidMainConsumerProguardFiles
+core:i18n:mergeAndroidMainConsumerProguardFiles
+core:ui:mergeAndroidMainConsumerProguardFiles
+core:common:mergeAndroidMainGeneratedProguardFiles
+core:data:mergeAndroidMainGeneratedProguardFiles
+core:i18n:mergeAndroidMainGeneratedProguardFiles
+core:ui:mergeAndroidMainGeneratedProguardFiles
+core:common:mergeAndroidMainJavaResource
+core:data:mergeAndroidMainJavaResource
+core:i18n:mergeAndroidMainJavaResource
+core:ui:mergeAndroidMainJavaResource
+core:common:mergeAndroidMainJniLibFolders
+core:data:mergeAndroidMainJniLibFolders
+core:i18n:mergeAndroidMainJniLibFolders
+core:ui:mergeAndroidMainJniLibFolders
+core:common:mergeAndroidMainNativeLibs
+core:data:mergeAndroidMainNativeLibs
+core:i18n:mergeAndroidMainNativeLibs
+core:ui:mergeAndroidMainNativeLibs
+app:mergeBaselineProfile
+app:mergeDefaultBenchmarkReleaseArtProfile
+app:mergeDefaultBenchmarkReleaseAssets
+benchmark:mergeDefaultBenchmarkReleaseAssets
+app:mergeDefaultBenchmarkReleaseComposeMapping
+app:mergeDefaultBenchmarkReleaseGeneratedProguardFiles
+benchmark:mergeDefaultBenchmarkReleaseGeneratedProguardFiles
+app:mergeDefaultBenchmarkReleaseJavaResource
+benchmark:mergeDefaultBenchmarkReleaseJavaResource
+app:mergeDefaultBenchmarkReleaseJniLibFolders
+benchmark:mergeDefaultBenchmarkReleaseJniLibFolders
+benchmark:mergeDefaultBenchmarkReleaseManifest
+app:mergeDefaultBenchmarkReleaseNativeDebugMetadata
+app:mergeDefaultBenchmarkReleaseNativeLibs
+benchmark:mergeDefaultBenchmarkReleaseNativeLibs
+app:mergeDefaultBenchmarkReleaseResources
+benchmark:mergeDefaultBenchmarkReleaseResources
+app:mergeDefaultBenchmarkReleaseStartupProfile
+benchmark:mergeDefaultBenchmarkReleaseTestResultProtos
+app:mergeDefaultDebugAndroidTestAssets
+app:mergeDefaultDebugAndroidTestGeneratedProguardFiles
+app:mergeDefaultDebugAndroidTestJavaResource
+app:mergeDefaultDebugAndroidTestJniLibFolders
+app:mergeDefaultDebugAndroidTestManifest
+app:mergeDefaultDebugAndroidTestNativeLibs
+app:mergeDefaultDebugAndroidTestResources
+app:mergeDefaultDebugArtProfile
+app:mergeDefaultDebugAssets
+app:mergeDefaultDebugGeneratedProguardFiles
+app:mergeDefaultDebugJavaResource
+app:mergeDefaultDebugJniLibFolders
+app:mergeDefaultDebugNativeDebugMetadata
+app:mergeDefaultDebugNativeLibs
+app:mergeDefaultDebugResources
+app:mergeDefaultDebugStartupProfile
+app:mergeDefaultNonMinifiedReleaseArtProfile
+app:mergeDefaultNonMinifiedReleaseAssets
+benchmark:mergeDefaultNonMinifiedReleaseAssets
+app:mergeDefaultNonMinifiedReleaseGeneratedProguardFiles
+benchmark:mergeDefaultNonMinifiedReleaseGeneratedProguardFiles
+app:mergeDefaultNonMinifiedReleaseGlobalSynthetics
+app:mergeDefaultNonMinifiedReleaseJavaResource
+benchmark:mergeDefaultNonMinifiedReleaseJavaResource
+app:mergeDefaultNonMinifiedReleaseJniLibFolders
+benchmark:mergeDefaultNonMinifiedReleaseJniLibFolders
+benchmark:mergeDefaultNonMinifiedReleaseManifest
+app:mergeDefaultNonMinifiedReleaseNativeDebugMetadata
+app:mergeDefaultNonMinifiedReleaseNativeLibs
+benchmark:mergeDefaultNonMinifiedReleaseNativeLibs
+app:mergeDefaultNonMinifiedReleaseResources
+benchmark:mergeDefaultNonMinifiedReleaseResources
+app:mergeDefaultNonMinifiedReleaseStartupProfile
+benchmark:mergeDefaultNonMinifiedReleaseTestResultProtos
+app:mergeDefaultReleaseArtProfile
+app:mergeDefaultReleaseAssets
+app:mergeDefaultReleaseComposeMapping
+app:mergeDefaultReleaseGeneratedProguardFiles
+app:mergeDefaultReleaseJavaResource
+app:mergeDefaultReleaseJniLibFolders
+app:mergeDefaultReleaseNativeDebugMetadata
+app:mergeDefaultReleaseNativeLibs
+app:mergeDefaultReleaseResources
+app:mergeDefaultReleaseStartupProfile
+app:mergeDexDefaultNonMinifiedRelease
+app:mergeDexMarshmallowNonMinifiedRelease
+benchmark:mergeExtDexDefaultBenchmarkRelease
+app:mergeExtDexDefaultDebug
+app:mergeExtDexDefaultDebugAndroidTest
+app:mergeExtDexDefaultNonMinifiedRelease
+benchmark:mergeExtDexDefaultNonMinifiedRelease
+benchmark:mergeExtDexMarshmallowBenchmarkRelease
+app:mergeExtDexMarshmallowDebug
+app:mergeExtDexMarshmallowDebugAndroidTest
+app:mergeExtDexMarshmallowNonMinifiedRelease
+benchmark:mergeExtDexMarshmallowNonMinifiedRelease
+benchmark:mergeLibDexDefaultBenchmarkRelease
+app:mergeLibDexDefaultDebug
+app:mergeLibDexDefaultDebugAndroidTest
+benchmark:mergeLibDexDefaultNonMinifiedRelease
+benchmark:mergeLibDexMarshmallowBenchmarkRelease
+app:mergeLibDexMarshmallowDebug
+app:mergeLibDexMarshmallowDebugAndroidTest
+benchmark:mergeLibDexMarshmallowNonMinifiedRelease
+app:mergeMarshmallowBenchmarkReleaseArtProfile
+app:mergeMarshmallowBenchmarkReleaseAssets
+benchmark:mergeMarshmallowBenchmarkReleaseAssets
+app:mergeMarshmallowBenchmarkReleaseComposeMapping
+app:mergeMarshmallowBenchmarkReleaseGeneratedProguardFiles
+benchmark:mergeMarshmallowBenchmarkReleaseGeneratedProguardFiles
+app:mergeMarshmallowBenchmarkReleaseJavaResource
+benchmark:mergeMarshmallowBenchmarkReleaseJavaResource
+app:mergeMarshmallowBenchmarkReleaseJniLibFolders
+benchmark:mergeMarshmallowBenchmarkReleaseJniLibFolders
+benchmark:mergeMarshmallowBenchmarkReleaseManifest
+app:mergeMarshmallowBenchmarkReleaseNativeDebugMetadata
+app:mergeMarshmallowBenchmarkReleaseNativeLibs
+benchmark:mergeMarshmallowBenchmarkReleaseNativeLibs
+app:mergeMarshmallowBenchmarkReleaseResources
+benchmark:mergeMarshmallowBenchmarkReleaseResources
+app:mergeMarshmallowBenchmarkReleaseStartupProfile
+benchmark:mergeMarshmallowBenchmarkReleaseTestResultProtos
+app:mergeMarshmallowDebugAndroidTestAssets
+app:mergeMarshmallowDebugAndroidTestGeneratedProguardFiles
+app:mergeMarshmallowDebugAndroidTestJavaResource
+app:mergeMarshmallowDebugAndroidTestJniLibFolders
+app:mergeMarshmallowDebugAndroidTestManifest
+app:mergeMarshmallowDebugAndroidTestNativeLibs
+app:mergeMarshmallowDebugAndroidTestResources
+app:mergeMarshmallowDebugArtProfile
+app:mergeMarshmallowDebugAssets
+app:mergeMarshmallowDebugGeneratedProguardFiles
+app:mergeMarshmallowDebugJavaResource
+app:mergeMarshmallowDebugJniLibFolders
+app:mergeMarshmallowDebugNativeDebugMetadata
+app:mergeMarshmallowDebugNativeLibs
+app:mergeMarshmallowDebugResources
+app:mergeMarshmallowDebugStartupProfile
+app:mergeMarshmallowNonMinifiedReleaseArtProfile
+app:mergeMarshmallowNonMinifiedReleaseAssets
+benchmark:mergeMarshmallowNonMinifiedReleaseAssets
+app:mergeMarshmallowNonMinifiedReleaseGeneratedProguardFiles
+benchmark:mergeMarshmallowNonMinifiedReleaseGeneratedProguardFiles
+app:mergeMarshmallowNonMinifiedReleaseGlobalSynthetics
+app:mergeMarshmallowNonMinifiedReleaseJavaResource
+benchmark:mergeMarshmallowNonMinifiedReleaseJavaResource
+app:mergeMarshmallowNonMinifiedReleaseJniLibFolders
+benchmark:mergeMarshmallowNonMinifiedReleaseJniLibFolders
+benchmark:mergeMarshmallowNonMinifiedReleaseManifest
+app:mergeMarshmallowNonMinifiedReleaseNativeDebugMetadata
+app:mergeMarshmallowNonMinifiedReleaseNativeLibs
+benchmark:mergeMarshmallowNonMinifiedReleaseNativeLibs
+app:mergeMarshmallowNonMinifiedReleaseResources
+benchmark:mergeMarshmallowNonMinifiedReleaseResources
+app:mergeMarshmallowNonMinifiedReleaseStartupProfile
+benchmark:mergeMarshmallowNonMinifiedReleaseTestResultProtos
+app:mergeMarshmallowReleaseArtProfile
+app:mergeMarshmallowReleaseAssets
+app:mergeMarshmallowReleaseComposeMapping
+app:mergeMarshmallowReleaseGeneratedProguardFiles
+app:mergeMarshmallowReleaseJavaResource
+app:mergeMarshmallowReleaseJniLibFolders
+app:mergeMarshmallowReleaseNativeDebugMetadata
+app:mergeMarshmallowReleaseNativeLibs
+app:mergeMarshmallowReleaseResources
+app:mergeMarshmallowReleaseStartupProfile
+benchmark:mergeProjectDexDefaultBenchmarkRelease
+app:mergeProjectDexDefaultDebug
+app:mergeProjectDexDefaultDebugAndroidTest
+benchmark:mergeProjectDexDefaultNonMinifiedRelease
+benchmark:mergeProjectDexMarshmallowBenchmarkRelease
+app:mergeProjectDexMarshmallowDebug
+app:mergeProjectDexMarshmallowDebugAndroidTest
+benchmark:mergeProjectDexMarshmallowNonMinifiedRelease
+core:common:metadataProcessResources - Processes file collection.
+core:data:metadataProcessResources - Processes file collection.
+core:i18n:metadataProcessResources - Processes file collection.
+core:ui:metadataProcessResources - Processes file collection.
+app:minifyDefaultBenchmarkReleaseWithR8
+app:minifyDefaultReleaseWithR8
+app:minifyMarshmallowBenchmarkReleaseWithR8
+app:minifyMarshmallowReleaseWithR8
+app:optimizeDefaultBenchmarkReleaseResources
+app:optimizeDefaultNonMinifiedReleaseResources
+app:optimizeDefaultReleaseResources
+app:optimizeMarshmallowBenchmarkReleaseResources
+app:optimizeMarshmallowNonMinifiedReleaseResources
+app:optimizeMarshmallowReleaseResources
+core:i18n:packageAndroidMainResources
+app:packageDefaultBenchmarkRelease
+benchmark:packageDefaultBenchmarkRelease
+app:packageDefaultBenchmarkReleaseBundle
+app:packageDefaultBenchmarkReleaseResources
+benchmark:packageDefaultBenchmarkReleaseResources
+app:packageDefaultBenchmarkReleaseUniversalApk
+app:packageDefaultDebug
+app:packageDefaultDebugAndroidTest
+app:packageDefaultDebugAndroidTestResources
+app:packageDefaultDebugBundle
+app:packageDefaultDebugResources
+app:packageDefaultDebugUniversalApk
+app:packageDefaultNonMinifiedRelease
+benchmark:packageDefaultNonMinifiedRelease
+app:packageDefaultNonMinifiedReleaseBundle
+app:packageDefaultNonMinifiedReleaseResources
+benchmark:packageDefaultNonMinifiedReleaseResources
+app:packageDefaultNonMinifiedReleaseUniversalApk
+app:packageDefaultRelease
+app:packageDefaultReleaseBundle
+app:packageDefaultReleaseResources
+app:packageDefaultReleaseUniversalApk
+app:packageMarshmallowBenchmarkRelease
+benchmark:packageMarshmallowBenchmarkRelease
+app:packageMarshmallowBenchmarkReleaseBundle
+app:packageMarshmallowBenchmarkReleaseResources
+benchmark:packageMarshmallowBenchmarkReleaseResources
+app:packageMarshmallowBenchmarkReleaseUniversalApk
+app:packageMarshmallowDebug
+app:packageMarshmallowDebugAndroidTest
+app:packageMarshmallowDebugAndroidTestResources
+app:packageMarshmallowDebugBundle
+app:packageMarshmallowDebugResources
+app:packageMarshmallowDebugUniversalApk
+app:packageMarshmallowNonMinifiedRelease
+benchmark:packageMarshmallowNonMinifiedRelease
+app:packageMarshmallowNonMinifiedReleaseBundle
+app:packageMarshmallowNonMinifiedReleaseResources
+benchmark:packageMarshmallowNonMinifiedReleaseResources
+app:packageMarshmallowNonMinifiedReleaseUniversalApk
+app:packageMarshmallowRelease
+app:packageMarshmallowReleaseBundle
+app:packageMarshmallowReleaseResources
+app:packageMarshmallowReleaseUniversalApk
+core:i18n:parseAndroidMainLocalResources
+app:parseDefaultBenchmarkReleaseIntegrityConfig
+app:parseDefaultBenchmarkReleaseLocalResources
+benchmark:parseDefaultBenchmarkReleaseLocalResources
+app:parseDefaultDebugAndroidTestLocalResources
+app:parseDefaultDebugIntegrityConfig
+app:parseDefaultDebugLocalResources
+app:parseDefaultNonMinifiedReleaseIntegrityConfig
+app:parseDefaultNonMinifiedReleaseLocalResources
+benchmark:parseDefaultNonMinifiedReleaseLocalResources
+app:parseDefaultReleaseIntegrityConfig
+app:parseDefaultReleaseLocalResources
+app:parseMarshmallowBenchmarkReleaseIntegrityConfig
+app:parseMarshmallowBenchmarkReleaseLocalResources
+benchmark:parseMarshmallowBenchmarkReleaseLocalResources
+app:parseMarshmallowDebugAndroidTestLocalResources
+app:parseMarshmallowDebugIntegrityConfig
+app:parseMarshmallowDebugLocalResources
+app:parseMarshmallowNonMinifiedReleaseIntegrityConfig
+app:parseMarshmallowNonMinifiedReleaseLocalResources
+benchmark:parseMarshmallowNonMinifiedReleaseLocalResources
+app:parseMarshmallowReleaseIntegrityConfig
+app:parseMarshmallowReleaseLocalResources
+benchmark:pixel6Api35Setup
+core:common:preAndroidHostTestBuild
+core:data:preAndroidHostTestBuild
+core:i18n:preAndroidHostTestBuild
+core:ui:preAndroidHostTestBuild
+core:common:preAndroidMainBuild
+core:data:preAndroidMainBuild
+core:i18n:preAndroidMainBuild
+core:ui:preAndroidMainBuild
+app:preBuild
+benchmark:preBuild
+app:preDefaultBenchmarkReleaseBuild
+benchmark:preDefaultBenchmarkReleaseBuild
+app:preDefaultDebugAndroidTestBuild
+app:preDefaultDebugBuild
+app:preDefaultDebugUnitTestBuild
+app:preDefaultNonMinifiedReleaseBuild
+benchmark:preDefaultNonMinifiedReleaseBuild
+app:preDefaultReleaseBuild
+app:preMarshmallowBenchmarkReleaseBuild
+benchmark:preMarshmallowBenchmarkReleaseBuild
+app:preMarshmallowDebugAndroidTestBuild
+app:preMarshmallowDebugBuild
+app:preMarshmallowDebugUnitTestBuild
+app:preMarshmallowNonMinifiedReleaseBuild
+benchmark:preMarshmallowNonMinifiedReleaseBuild
+app:preMarshmallowReleaseBuild
+core:common:prepareAndroidMainArtProfile
+core:data:prepareAndroidMainArtProfile
+core:i18n:prepareAndroidMainArtProfile
+core:ui:prepareAndroidMainArtProfile
+core:ui:prepareComposeResourcesTaskForAndroidHostTest
+core:ui:prepareComposeResourcesTaskForAndroidMain
+core:ui:prepareComposeResourcesTaskForCommonMain
+core:ui:prepareComposeResourcesTaskForCommonTest
+core:ui:prepareComposeResourcesTaskForJvmMain
+core:ui:prepareComposeResourcesTaskForJvmTest
+prepareKotlinBuildScriptModel
+core:common:prepareKotlinIdeaImport - Umbrella for all tasks required to run before IDEA/Gradle import
+core:data:prepareKotlinIdeaImport - Umbrella for all tasks required to run before IDEA/Gradle import
+core:i18n:prepareKotlinIdeaImport - Umbrella for all tasks required to run before IDEA/Gradle import
+core:ui:prepareKotlinIdeaImport - Umbrella for all tasks required to run before IDEA/Gradle import
+app:prepareLibraryDefinitionsDefaultBenchmarkRelease - Exports dependency meta data from the current module. Filtered by variant: 'defaultBenchmarkRelease'.
+app:prepareLibraryDefinitionsDefaultDebug - Exports dependency meta data from the current module. Filtered by variant: 'defaultDebug'.
+app:prepareLibraryDefinitionsDefaultNonMinifiedRelease - Exports dependency meta data from the current module. Filtered by variant: 'defaultNonMinifiedRelease'.
+app:prepareLibraryDefinitionsDefaultRelease - Exports dependency meta data from the current module. Filtered by variant: 'defaultRelease'.
+app:prepareLibraryDefinitionsMarshmallowBenchmarkRelease - Exports dependency meta data from the current module. Filtered by variant: 'marshmallowBenchmarkRelease'.
+app:prepareLibraryDefinitionsMarshmallowDebug - Exports dependency meta data from the current module. Filtered by variant: 'marshmallowDebug'.
+app:prepareLibraryDefinitionsMarshmallowNonMinifiedRelease - Exports dependency meta data from the current module. Filtered by variant: 'marshmallowNonMinifiedRelease'.
+app:prepareLibraryDefinitionsMarshmallowRelease - Exports dependency meta data from the current module. Filtered by variant: 'marshmallowRelease'.
+app:prepareLintJarForPublish
+benchmark:prepareLintJarForPublish
+core:common:prepareLintJarForPublish
+core:data:prepareLintJarForPublish
+core:i18n:prepareLintJarForPublish
+core:ui:prepareLintJarForPublish
+app:printBaselineProfileExtensionForVariantDefaultRelease
+app:printBaselineProfileExtensionForVariantMarshmallowRelease
+app:printExperimentalPropertiesForVariantDefaultBenchmarkRelease
+app:printExperimentalPropertiesForVariantDefaultDebug
+app:printExperimentalPropertiesForVariantDefaultNonMinifiedRelease
+app:printExperimentalPropertiesForVariantDefaultRelease
+app:printExperimentalPropertiesForVariantMarshmallowBenchmarkRelease
+app:printExperimentalPropertiesForVariantMarshmallowDebug
+app:printExperimentalPropertiesForVariantMarshmallowNonMinifiedRelease
+app:printExperimentalPropertiesForVariantMarshmallowRelease
+core:common:processAndroidHostTestJavaRes
+core:data:processAndroidHostTestJavaRes
+core:i18n:processAndroidHostTestJavaRes
+core:ui:processAndroidHostTestJavaRes
+core:common:processAndroidMainJavaRes
+core:data:processAndroidMainJavaRes
+core:i18n:processAndroidMainJavaRes
+core:ui:processAndroidMainJavaRes
+core:common:processAndroidMainManifest
+core:data:processAndroidMainManifest
+core:i18n:processAndroidMainManifest
+core:ui:processAndroidMainManifest
+app:processApplicationManifestDefaultBenchmarkReleaseForBundle
+app:processApplicationManifestDefaultDebugForBundle
+app:processApplicationManifestDefaultNonMinifiedReleaseForBundle
+app:processApplicationManifestDefaultReleaseForBundle
+app:processApplicationManifestMarshmallowBenchmarkReleaseForBundle
+app:processApplicationManifestMarshmallowDebugForBundle
+app:processApplicationManifestMarshmallowNonMinifiedReleaseForBundle
+app:processApplicationManifestMarshmallowReleaseForBundle
+app:processDefaultBenchmarkReleaseJavaRes
+benchmark:processDefaultBenchmarkReleaseJavaRes
+app:processDefaultBenchmarkReleaseMainManifest
+app:processDefaultBenchmarkReleaseManifest
+benchmark:processDefaultBenchmarkReleaseManifest
+app:processDefaultBenchmarkReleaseManifestForPackage
+app:processDefaultBenchmarkReleaseNavigationResources
+benchmark:processDefaultBenchmarkReleaseNavigationResources
+app:processDefaultBenchmarkReleaseResources
+benchmark:processDefaultBenchmarkReleaseResources
+app:processDefaultDebugAndroidTestJavaRes
+app:processDefaultDebugAndroidTestManifest
+app:processDefaultDebugAndroidTestNavigationResources
+app:processDefaultDebugAndroidTestResources
+app:processDefaultDebugJavaRes
+app:processDefaultDebugMainManifest
+app:processDefaultDebugManifest
+app:processDefaultDebugManifestForPackage
+app:processDefaultDebugNavigationResources
+app:processDefaultDebugResources
+app:processDefaultDebugUnitTestJavaRes
+app:processDefaultNonMinifiedReleaseJavaRes
+benchmark:processDefaultNonMinifiedReleaseJavaRes
+app:processDefaultNonMinifiedReleaseMainManifest
+app:processDefaultNonMinifiedReleaseManifest
+benchmark:processDefaultNonMinifiedReleaseManifest
+app:processDefaultNonMinifiedReleaseManifestForPackage
+app:processDefaultNonMinifiedReleaseNavigationResources
+benchmark:processDefaultNonMinifiedReleaseNavigationResources
+app:processDefaultNonMinifiedReleaseResources
+benchmark:processDefaultNonMinifiedReleaseResources
+app:processDefaultReleaseJavaRes
+app:processDefaultReleaseMainManifest
+app:processDefaultReleaseManifest
+app:processDefaultReleaseManifestForPackage
+app:processDefaultReleaseNavigationResources
+app:processDefaultReleaseResources
+app:processManifestDefaultBenchmarkReleaseForFeature
+app:processManifestDefaultDebugForFeature
+app:processManifestDefaultNonMinifiedReleaseForFeature
+app:processManifestDefaultReleaseForFeature
+app:processManifestMarshmallowBenchmarkReleaseForFeature
+app:processManifestMarshmallowDebugForFeature
+app:processManifestMarshmallowNonMinifiedReleaseForFeature
+app:processManifestMarshmallowReleaseForFeature
+app:processMarshmallowBenchmarkReleaseJavaRes
+benchmark:processMarshmallowBenchmarkReleaseJavaRes
+app:processMarshmallowBenchmarkReleaseMainManifest
+app:processMarshmallowBenchmarkReleaseManifest
+benchmark:processMarshmallowBenchmarkReleaseManifest
+app:processMarshmallowBenchmarkReleaseManifestForPackage
+app:processMarshmallowBenchmarkReleaseNavigationResources
+benchmark:processMarshmallowBenchmarkReleaseNavigationResources
+app:processMarshmallowBenchmarkReleaseResources
+benchmark:processMarshmallowBenchmarkReleaseResources
+app:processMarshmallowDebugAndroidTestJavaRes
+app:processMarshmallowDebugAndroidTestManifest
+app:processMarshmallowDebugAndroidTestNavigationResources
+app:processMarshmallowDebugAndroidTestResources
+app:processMarshmallowDebugJavaRes
+app:processMarshmallowDebugMainManifest
+app:processMarshmallowDebugManifest
+app:processMarshmallowDebugManifestForPackage
+app:processMarshmallowDebugNavigationResources
+app:processMarshmallowDebugResources
+app:processMarshmallowDebugUnitTestJavaRes
+app:processMarshmallowNonMinifiedReleaseJavaRes
+benchmark:processMarshmallowNonMinifiedReleaseJavaRes
+app:processMarshmallowNonMinifiedReleaseMainManifest
+app:processMarshmallowNonMinifiedReleaseManifest
+benchmark:processMarshmallowNonMinifiedReleaseManifest
+app:processMarshmallowNonMinifiedReleaseManifestForPackage
+app:processMarshmallowNonMinifiedReleaseNavigationResources
+benchmark:processMarshmallowNonMinifiedReleaseNavigationResources
+app:processMarshmallowNonMinifiedReleaseResources
+benchmark:processMarshmallowNonMinifiedReleaseResources
+app:processMarshmallowReleaseJavaRes
+app:processMarshmallowReleaseMainManifest
+app:processMarshmallowReleaseManifest
+app:processMarshmallowReleaseManifestForPackage
+app:processMarshmallowReleaseNavigationResources
+app:processMarshmallowReleaseResources
+app:produceDefaultBenchmarkReleaseBundleIdeListingFile
+app:produceDefaultBenchmarkReleaseComposeMapping
+app:produceDefaultDebugBundleIdeListingFile
+app:produceDefaultNonMinifiedReleaseBundleIdeListingFile
+app:produceDefaultReleaseBundleIdeListingFile
+app:produceDefaultReleaseComposeMapping
+app:produceMarshmallowBenchmarkReleaseBundleIdeListingFile
+app:produceMarshmallowBenchmarkReleaseComposeMapping
+app:produceMarshmallowDebugBundleIdeListingFile
+app:produceMarshmallowNonMinifiedReleaseBundleIdeListingFile
+app:produceMarshmallowReleaseBundleIdeListingFile
+app:produceMarshmallowReleaseComposeMapping
+app:reportDefaultBenchmarkReleaseComposeMappingErrors
+app:reportDefaultReleaseComposeMappingErrors
+app:reportMarshmallowBenchmarkReleaseComposeMappingErrors
+app:reportMarshmallowReleaseComposeMappingErrors
+app:resolveConfigAttr
+benchmark:resolveConfigAttr
+core:common:resolveConfigAttr
+core:data:resolveConfigAttr
+core:i18n:resolveConfigAttr
+core:ui:resolveConfigAttr
+core:common:setupLldbScript - Generate lldbinit file with imported konan_lldb.py script
+core:data:setupLldbScript - Generate lldbinit file with imported konan_lldb.py script
+core:i18n:setupLldbScript - Generate lldbinit file with imported konan_lldb.py script
+core:ui:setupLldbScript - Generate lldbinit file with imported konan_lldb.py script
+app:signDefaultBenchmarkReleaseBundle
+app:signDefaultDebugBundle
+app:signDefaultNonMinifiedReleaseBundle
+app:signDefaultReleaseBundle
+app:signingConfigWriterDefaultBenchmarkRelease
+app:signingConfigWriterDefaultDebug
+app:signingConfigWriterDefaultDebugAndroidTest
+app:signingConfigWriterDefaultNonMinifiedRelease
+app:signingConfigWriterDefaultRelease
+app:signingConfigWriterMarshmallowBenchmarkRelease
+app:signingConfigWriterMarshmallowDebug
+app:signingConfigWriterMarshmallowDebugAndroidTest
+app:signingConfigWriterMarshmallowNonMinifiedRelease
+app:signingConfigWriterMarshmallowRelease
+app:signMarshmallowBenchmarkReleaseBundle
+app:signMarshmallowDebugBundle
+app:signMarshmallowNonMinifiedReleaseBundle
+app:signMarshmallowReleaseBundle
+app:stripDefaultBenchmarkReleaseDebugSymbols
+benchmark:stripDefaultBenchmarkReleaseDebugSymbols
+app:stripDefaultDebugAndroidTestDebugSymbols
+app:stripDefaultDebugDebugSymbols
+app:stripDefaultNonMinifiedReleaseDebugSymbols
+benchmark:stripDefaultNonMinifiedReleaseDebugSymbols
+app:stripDefaultReleaseDebugSymbols
+app:stripMarshmallowBenchmarkReleaseDebugSymbols
+benchmark:stripMarshmallowBenchmarkReleaseDebugSymbols
+app:stripMarshmallowDebugAndroidTestDebugSymbols
+app:stripMarshmallowDebugDebugSymbols
+app:stripMarshmallowNonMinifiedReleaseDebugSymbols
+benchmark:stripMarshmallowNonMinifiedReleaseDebugSymbols
+app:stripMarshmallowReleaseDebugSymbols
+core:common:syncAndroidMainLibJars
+core:data:syncAndroidMainLibJars
+core:i18n:syncAndroidMainLibJars
+core:ui:syncAndroidMainLibJars
+core:common:syncPersistedPackageResolvedToSynthetic
+core:data:syncPersistedPackageResolvedToSynthetic
+core:i18n:syncPersistedPackageResolvedToSynthetic
+core:ui:syncPersistedPackageResolvedToSynthetic
+core:common:syncSyntheticPackageResolvedToPersisted
+core:data:syncSyntheticPackageResolvedToPersisted
+core:i18n:syncSyntheticPackageResolvedToPersisted
+core:ui:syncSyntheticPackageResolvedToPersisted
+core:common:updateLintBaselineAndroidMain - Update the lint baseline using the androidMain variant
+core:data:updateLintBaselineAndroidMain - Update the lint baseline using the androidMain variant
+core:i18n:updateLintBaselineAndroidMain - Update the lint baseline using the androidMain variant
+core:ui:updateLintBaselineAndroidMain - Update the lint baseline using the androidMain variant
+app:updateLintBaselineDefaultBenchmarkRelease - Update the lint baseline using the defaultBenchmarkRelease variant
+app:updateLintBaselineDefaultDebug - Update the lint baseline using the defaultDebug variant
+app:updateLintBaselineDefaultNonMinifiedRelease - Update the lint baseline using the defaultNonMinifiedRelease variant
+app:updateLintBaselineDefaultRelease - Update the lint baseline using the defaultRelease variant
+core:common:updateLintBaselineJvm - Updates the JVM lint baseline for project `common`.
+core:data:updateLintBaselineJvm - Updates the JVM lint baseline for project `data`.
+core:i18n:updateLintBaselineJvm - Updates the JVM lint baseline for project `i18n`.
+core:ui:updateLintBaselineJvm - Updates the JVM lint baseline for project `ui`.
+app:updateLintBaselineMarshmallowBenchmarkRelease - Update the lint baseline using the marshmallowBenchmarkRelease variant
+app:updateLintBaselineMarshmallowDebug - Update the lint baseline using the marshmallowDebug variant
+app:updateLintBaselineMarshmallowNonMinifiedRelease - Update the lint baseline using the marshmallowNonMinifiedRelease variant
+app:updateLintBaselineMarshmallowRelease - Update the lint baseline using the marshmallowRelease variant
+app:validateSigningDefaultBenchmarkRelease
+benchmark:validateSigningDefaultBenchmarkRelease
+app:validateSigningDefaultDebug
+app:validateSigningDefaultDebugAndroidTest
+app:validateSigningDefaultNonMinifiedRelease
+benchmark:validateSigningDefaultNonMinifiedRelease
+app:validateSigningDefaultRelease
+app:validateSigningMarshmallowBenchmarkRelease
+benchmark:validateSigningMarshmallowBenchmarkRelease
+app:validateSigningMarshmallowDebug
+app:validateSigningMarshmallowDebugAndroidTest
+app:validateSigningMarshmallowNonMinifiedRelease
+benchmark:validateSigningMarshmallowNonMinifiedRelease
+app:validateSigningMarshmallowRelease
+core:common:writeAndroidMainAarMetadata
+core:data:writeAndroidMainAarMetadata
+core:i18n:writeAndroidMainAarMetadata
+core:ui:writeAndroidMainAarMetadata
+core:common:writeAndroidMainLintModelMetadata
+core:data:writeAndroidMainLintModelMetadata
+core:i18n:writeAndroidMainLintModelMetadata
+core:ui:writeAndroidMainLintModelMetadata
+app:writeDefaultBenchmarkReleaseApplicationId
+benchmark:writeDefaultBenchmarkReleaseApplicationId
+app:writeDefaultBenchmarkReleaseAppMetadata
+app:writeDefaultBenchmarkReleaseModuleMetadata
+app:writeDefaultBenchmarkReleaseSigningConfigVersions
+benchmark:writeDefaultBenchmarkReleaseSigningConfigVersions
+app:writeDefaultDebugAndroidTestSigningConfigVersions
+app:writeDefaultDebugApplicationId
+app:writeDefaultDebugAppMetadata
+app:writeDefaultDebugModuleMetadata
+app:writeDefaultDebugSigningConfigVersions
+app:writeDefaultNonMinifiedReleaseApplicationId
+benchmark:writeDefaultNonMinifiedReleaseApplicationId
+app:writeDefaultNonMinifiedReleaseAppMetadata
+app:writeDefaultNonMinifiedReleaseModuleMetadata
+app:writeDefaultNonMinifiedReleaseSigningConfigVersions
+benchmark:writeDefaultNonMinifiedReleaseSigningConfigVersions
+app:writeDefaultReleaseApplicationId
+app:writeDefaultReleaseAppMetadata
+app:writeDefaultReleaseModuleMetadata
+app:writeDefaultReleaseSigningConfigVersions
+app:writeMarshmallowBenchmarkReleaseApplicationId
+benchmark:writeMarshmallowBenchmarkReleaseApplicationId
+app:writeMarshmallowBenchmarkReleaseAppMetadata
+app:writeMarshmallowBenchmarkReleaseModuleMetadata
+app:writeMarshmallowBenchmarkReleaseSigningConfigVersions
+benchmark:writeMarshmallowBenchmarkReleaseSigningConfigVersions
+app:writeMarshmallowDebugAndroidTestSigningConfigVersions
+app:writeMarshmallowDebugApplicationId
+app:writeMarshmallowDebugAppMetadata
+app:writeMarshmallowDebugModuleMetadata
+app:writeMarshmallowDebugSigningConfigVersions
+app:writeMarshmallowNonMinifiedReleaseApplicationId
+benchmark:writeMarshmallowNonMinifiedReleaseApplicationId
+app:writeMarshmallowNonMinifiedReleaseAppMetadata
+app:writeMarshmallowNonMinifiedReleaseModuleMetadata
+app:writeMarshmallowNonMinifiedReleaseSigningConfigVersions
+benchmark:writeMarshmallowNonMinifiedReleaseSigningConfigVersions
+app:writeMarshmallowReleaseApplicationId
+app:writeMarshmallowReleaseAppMetadata
+app:writeMarshmallowReleaseModuleMetadata
+app:writeMarshmallowReleaseSigningConfigVersions
+app:zipApksForDefaultBenchmarkRelease
+benchmark:zipApksForDefaultBenchmarkRelease
+app:zipApksForDefaultDebug
+app:zipApksForDefaultNonMinifiedRelease
+benchmark:zipApksForDefaultNonMinifiedRelease
+app:zipApksForDefaultRelease
+app:zipApksForMarshmallowBenchmarkRelease
+benchmark:zipApksForMarshmallowBenchmarkRelease
+app:zipApksForMarshmallowDebug
+app:zipApksForMarshmallowNonMinifiedRelease
+benchmark:zipApksForMarshmallowNonMinifiedRelease
+app:zipApksForMarshmallowRelease
+
+BUILD SUCCESSFUL in 2m 53s
+5 actionable tasks: 5 executed
+Configuration cache entry stored.

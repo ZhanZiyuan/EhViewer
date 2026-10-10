@@ -1,0 +1,102 @@
+[
+  {
+    "file": "app-universal-release.apk",
+    "abi": "universal",
+    "sha256": "5696453fd19664177872d11d36d5e251c64cd3d5d2cd37a28804482ccbc42179",
+    "certificate": [
+      "5d91dff13b6489a9cfadbb197b3e795eefc8c39f849c4543f32c160720fb40a6"
+    ],
+    "native": {
+      "lib/arm64-v8a/libandroidx.graphics.path.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/arm64-v8a/libehviewer.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/armeabi-v7a/libandroidx.graphics.path.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/armeabi-v7a/libehviewer.so": [
+        4096,
+        4096,
+        4096
+      ],
+      "lib/x86_64/libandroidx.graphics.path.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/x86_64/libehviewer.so": [
+        16384,
+        16384,
+        16384
+      ]
+    }
+  },
+  {
+    "file": "app-armeabi-v7a-release.apk",
+    "abi": "armeabi-v7a",
+    "sha256": "804f8029065dae92cf9fb62abbfeeb8c92c4654f040c62bf96976a39eb92a868",
+    "certificate": [
+      "5d91dff13b6489a9cfadbb197b3e795eefc8c39f849c4543f32c160720fb40a6"
+    ],
+    "native": {
+      "lib/armeabi-v7a/libandroidx.graphics.path.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/armeabi-v7a/libehviewer.so": [
+        4096,
+        4096,
+        4096
+      ]
+    }
+  },
+  {
+    "file": "app-x86_64-release.apk",
+    "abi": "x86_64",
+    "sha256": "56b9581278ebadff866e6718cc3402e19b6e2064fbcf5e5f716908ce9d8ce4a5",
+    "certificate": [
+      "5d91dff13b6489a9cfadbb197b3e795eefc8c39f849c4543f32c160720fb40a6"
+    ],
+    "native": {
+      "lib/x86_64/libandroidx.graphics.path.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/x86_64/libehviewer.so": [
+        16384,
+        16384,
+        16384
+      ]
+    }
+  },
+  {
+    "file": "app-arm64-v8a-release.apk",
+    "abi": "arm64-v8a",
+    "sha256": "9e200545bf58e8285136fe03e666288f6f5e7cbe7b2758887e4f079afb2a0423",
+    "certificate": [
+      "5d91dff13b6489a9cfadbb197b3e795eefc8c39f849c4543f32c160720fb40a6"
+    ],
+    "native": {
+      "lib/arm64-v8a/libandroidx.graphics.path.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/arm64-v8a/libehviewer.so": [
+        16384,
+        16384,
+        16384
+      ]
+    }
+  }
+]
