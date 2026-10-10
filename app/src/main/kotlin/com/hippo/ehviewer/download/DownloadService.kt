@@ -66,6 +66,14 @@ class DownloadService :
     private val fatalNotification by lazy { initFatalNotification() }
     private val channelId by unsafeLazy { "$packageName.download" }
 
+    private var serviceTimedOut = false
+
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        // Stop immediately: dataSync timeouts allow only a few seconds to leave the service.
+        serviceTimedOut = true
+        stopSelf()
+    }
+
     override fun onCreate() {
         notifyManager.createNotificationChannel(
             NotificationChannelCompat.Builder(channelId, NotificationManagerCompat.IMPORTANCE_LOW)
@@ -92,7 +100,9 @@ class DownloadService :
     override fun onDestroy() {
         val scope = this
         launch {
-            deferredMgr.await().setDownloadListener(null)
+            val manager = deferredMgr.await()
+            manager.setDownloadListener(null)
+            if (serviceTimedOut) manager.stopAllDownload()
             // Wait for the last notification to be posted
             delay(DELAY)
             scope.cancel()

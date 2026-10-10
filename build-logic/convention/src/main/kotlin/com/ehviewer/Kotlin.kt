@@ -20,7 +20,7 @@ internal fun KotlinCommonCompilerOptions.configureKotlin(includeKotlinX: Boolean
             "kotlinx.serialization.ExperimentalSerializationApi",
         )
     }
-    freeCompilerArgs.addAll("-Xcollection-literals", "-Xwhen-expressions=indy")
+    freeCompilerArgs.addAll("-Xcollection-literals")
 }
 
 internal fun KotlinCommonCompilerOptions.configureKotlinCompose() {

@@ -1,0 +1,1774 @@
+diff --git a/.github/workflows/baseline-profile.yml b/.github/workflows/baseline-profile.yml
+index 6f34d4e14..b36d12405 100644
+--- a/.github/workflows/baseline-profile.yml
++++ b/.github/workflows/baseline-profile.yml
+@@ -2,2 +2,5 @@ name: Baseline profile generation
+ 
++permissions:
++  contents: read
++
+ on:
+@@ -16,5 +19,6 @@ jobs:
+     runs-on: ubuntu-latest
++    timeout-minutes: 60
+     steps:
+       - name: Free disk space
+-        run: rm -rf $AGENT_TOOLSDIRECTORY
++        run: rm -rf "$AGENT_TOOLSDIRECTORY"
+ 
+@@ -28,2 +32,4 @@ jobs:
+         uses: actions/checkout@v6
++        with:
++          persist-credentials: false
+ 
+@@ -35,4 +41,7 @@ jobs:
+ 
++      - name: Native host prerequisites
++        run: sudo apt-get update && sudo apt-get install -y autoconf automake pkg-config
++
+       - name: Install Rust Toolchain
+-        run: rustup target add thumbv7neon-linux-androideabi
++        run: rustup show active-toolchain
+ 
+@@ -42,8 +51,3 @@ jobs:
+           workspaces: "./app/src/main/rust"
+-
+-      - name: CMake Cache
+-        uses: actions/cache/restore@v5
+-        with:
+-          path: app/.cxx
+-          key: cmake-
++          save-if: "false"
+ 
+@@ -53,2 +57,3 @@ jobs:
+           cache-encryption-key: ${{ secrets.GradleEncryptionKey }}
++          validate-wrappers: true
+           cache-read-only: true
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index d0803ed25..6c1da949a 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -4,4 +4,3 @@ on:
+   push:
+-    branches:
+-      - '*'
++    branches: ['**']
+   pull_request:
+@@ -9,54 +8,18 @@ on:
+ 
+-jobs:
+-  check:
+-    runs-on: ubuntu-latest
+-    steps:
+-      - name: Checkout
+-        uses: actions/checkout@v6
++permissions:
++  contents: read
+ 
+-      - name: Setup Java
+-        uses: actions/setup-java@v5
+-        with:
+-          distribution: temurin
+-          java-version-file: .java-version
+-
+-      - name: Install Rust Toolchain
+-        run: rustup target add thumbv7neon-linux-androideabi
+-
+-      - name: Rust Cache
+-        uses: Swatinem/rust-cache@v2
+-        with:
+-          workspaces: "./app/src/main/rust"
+-          shared-key: ${{ runner.os }}
++concurrency:
++  group: ci-${{ github.workflow }}-${{ github.ref }}
++  cancel-in-progress: true
+ 
+-      - name: Rustfmt Check
+-        working-directory: ./app/src/main/rust
+-        run: cargo fmt --all -- --check
+-
+-      - name: Clippy Check
+-        working-directory: ./app/src/main/rust
+-        run: cargo clippy --target aarch64-linux-android --all-features -- -D warnings
+-
+-      - name: Setup Gradle
+-        uses: gradle/actions/setup-gradle@v6
+-        with:
+-          cache-read-only: true
+-
+-      - name: Check build-logic
+-        run: ./gradlew :build-logic:convention:check
+-
+-      - name: Spotless Check
+-        run: ./gradlew spotlessCheck
+-
+-      - name: Lint Check
+-        run: ./gradlew lintMarshmallowRelease
+-
+-  default:
++jobs:
++  android:
+     runs-on: ubuntu-latest
++    timeout-minutes: 60
+     steps:
+-      - name: Checkout
+-        uses: actions/checkout@v6
+-
+-      - name: Setup Java
+-        uses: actions/setup-java@v5
++      - uses: actions/checkout@v6
++        with:
++          persist-credentials: false
++      - uses: actions/setup-java@v5
+         with:
+@@ -64,28 +27,42 @@ jobs:
+           java-version-file: .java-version
+-
+-      - name: Install Rust Toolchain
+-        run: rustup target add thumbv7neon-linux-androideabi
+-
+-      - name: Rust Cache
+-        uses: Swatinem/rust-cache@v2
+-        with:
+-          workspaces: "./app/src/main/rust"
+-          shared-key: ${{ runner.os }}
+-          save-if: "false"
+-
+-      - name: Setup Gradle
+-        uses: gradle/actions/setup-gradle@v6
+-        with:
+-          cache-encryption-key: ${{ secrets.GradleEncryptionKey }}
+-
+-      - name: CMake Cache
+-        uses: actions/cache@v5
+-        with:
+-          path: app/.cxx
+-          key: cmake-default-${{ hashFiles('rust-toolchain.toml', 'settings.gradle.kts', 'app/src/main/cpp/CMakeLists.txt', 'app/src/main/rust/Cargo.lock') }}
+-          restore-keys: cmake-default-
+-
+-      - name: Build
+-        run: ./gradlew assembleDefaultRelease
+-
++      - name: Native host prerequisites
++        run: sudo apt-get update && sudo apt-get install -y autoconf automake pkg-config
++      - name: Rust targets
++        run: rustup show active-toolchain
++      - uses: Swatinem/rust-cache@v2
++        with:
++          workspaces: app/src/main/rust
++          shared-key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'app/src/main/rust/Cargo.lock') }}
++          save-if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
++      - name: Rust format, offline parser tests and Android Clippy
++        working-directory: app/src/main/rust
++        run: |
++          cargo fmt --all -- --check
++          cargo test --locked --lib -- --skip test_parse_info --skip test_parse_profile --skip test_parse_gallery_detail
++          for target in aarch64-linux-android thumbv7neon-linux-androideabi x86_64-linux-android; do
++            cargo clippy --locked --target "$target" --all-features -- -D warnings
++          done
++      - uses: gradle/actions/setup-gradle@v6
++        with:
++          validate-wrappers: true
++          cache-read-only: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
++      - name: Verify APK checker
++        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
++      - name: Check, test, lint and build
++        run: >-
++          ./gradlew :build-logic:convention:check spotlessCheck
++          :app:testDebugUnitTest
++          :core:common:testAndroidHostTest :core:data:testAndroidHostTest
++          :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest
++          :app:lintRelease :app:assembleDebug :app:assembleDebugAndroidTest
++          :app:assembleRelease :benchmark:assembleNonMinifiedRelease
++          --console=plain --no-daemon
++      - name: Verify APK identity, signatures, JNI, ABI and 16KB alignment
++        run: |
++          mkdir -p reports
++          test -s app/build/outputs/mapping/release/mapping.txt
++          test -s app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip
++          python3 scripts/verify_bytecode.py > reports/android-bytecode.json
++          python3 scripts/verify_apks.py app/build/outputs/apk/release --sdk "$ANDROID_HOME" > reports/release-apks.json
++          python3 scripts/verify_apks.py app/build/outputs/apk/debug --sdk "$ANDROID_HOME" --debug --application-id moe.tarsin.ehviewer.debug > reports/debug-apks.json
+       - name: Upload ARM64
+@@ -93,5 +70,11 @@ jobs:
+         with:
+-          name: default-arm64-v8a-${{ github.sha }}
+-          path: app/build/outputs/apk/default/release/app-default-arm64-v8a-release.apk
+-
++          name: arm64-v8a-${{ github.sha }}
++          path: app/build/outputs/apk/release/app-arm64-v8a-release.apk
++          if-no-files-found: error
++      - name: Upload ARM32
++        uses: actions/upload-artifact@v7
++        with:
++          name: armeabi-v7a-${{ github.sha }}
++          path: app/build/outputs/apk/release/app-armeabi-v7a-release.apk
++          if-no-files-found: error
+       - name: Upload x86_64
+@@ -99,32 +82,64 @@ jobs:
+         with:
+-          name: default-x86_64-${{ github.sha }}
+-          path: app/build/outputs/apk/default/release/app-default-x86_64-release.apk
+-
+-      - name: Upload ARM32
++          name: x86_64-${{ github.sha }}
++          path: app/build/outputs/apk/release/app-x86_64-release.apk
++          if-no-files-found: error
++      - name: Upload universal
+         uses: actions/upload-artifact@v7
+         with:
+-          name: default-armeabi-v7a-${{ github.sha }}
+-          path: app/build/outputs/apk/default/release/app-default-armeabi-v7a-release.apk
+-
+-      - name: Upload mapping
+-        if: always()
++          name: universal-${{ github.sha }}
++          path: app/build/outputs/apk/release/app-universal-release.apk
++          if-no-files-found: error
++      - name: Build diagnostics
+         uses: actions/upload-artifact@v7
+         with:
+-          name: default-mapping-${{ github.sha }}
+-          path: app/build/outputs/mapping/defaultRelease/*.txt
+-
+-      - name: Upload native debug symbols
++          name: build-diagnostics-${{ github.sha }}
++          path: |
++            app/build/outputs/mapping/release/mapping.txt
++            app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip
++          if-no-files-found: error
++          retention-days: 14
++      - name: Instrumentation inputs
+         uses: actions/upload-artifact@v7
+         with:
+-          name: default-native-debug-symbols-${{ github.sha }}
+-          path: app/build/outputs/native-debug-symbols/defaultRelease/native-debug-symbols.zip
++          name: instrumentation-inputs
++          path: |
++            app/build/outputs/apk/debug/app-universal-debug.apk
++            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
++          if-no-files-found: error
++      - name: Verification reports
++        if: always()
++        uses: actions/upload-artifact@v7
++        with:
++          name: verification-reports
++          path: |
++            reports/
++            app/build/reports/
++            core/*/build/reports/
++          retention-days: 14
+ 
+-  marshmallow:
++  device:
++    needs: android
+     runs-on: ubuntu-latest
++    timeout-minutes: 25
++    strategy:
++      fail-fast: false
++      matrix:
++        include:
++          - label: api26
++            image: system-images;android-26;google_apis;x86_64
++          - label: api29
++            image: system-images;android-29;google_apis;x86_64
++          - label: api33
++            image: system-images;android-33;google_apis;x86_64
++          - label: api35
++            image: system-images;android-35;google_apis;x86_64
++          - label: api35-16k
++            image: system-images;android-35;google_apis_ps16k;x86_64
++          - label: api37-canary-16k
++            image: system-images;android-canary-20261007;google_apis_ps16k;x86_64
+     steps:
+-      - name: Checkout
+-        uses: actions/checkout@v6
+-
+-      - name: Setup Java
+-        uses: actions/setup-java@v5
++      - uses: actions/checkout@v6
++        with:
++          persist-credentials: false
++      - uses: actions/setup-java@v5
+         with:
+@@ -132,47 +147,14 @@ jobs:
+           java-version-file: .java-version
+-
+-      - name: Install Rust Toolchain
+-        run: rustup target add thumbv7neon-linux-androideabi
+-
+-      - name: Rust Cache
+-        uses: Swatinem/rust-cache@v2
+-        with:
+-          workspaces: "./app/src/main/rust"
+-          shared-key: ${{ runner.os }}
+-          save-if: "false"
+-
+-      - name: Setup Gradle
+-        uses: gradle/actions/setup-gradle@v6
+-        with:
+-          cache-encryption-key: ${{ secrets.GradleEncryptionKey }}
+-
+-      - name: CMake Cache
+-        uses: actions/cache@v5
+-        with:
+-          path: app/.cxx
+-          key: cmake-marshmallow-${{ hashFiles('rust-toolchain.toml', 'settings.gradle.kts', 'app/src/main/cpp/CMakeLists.txt', 'app/src/main/rust/Cargo.lock') }}
+-          restore-keys: cmake-marshmallow-
+-
+-      - name: Build
+-        run: ./gradlew assembleMarshmallowRelease
+-
+-      - name: Upload ARM64
+-        uses: actions/upload-artifact@v7
+-        with:
+-          name: marshmallow-arm64-v8a-${{ github.sha }}
+-          path: app/build/outputs/apk/marshmallow/release/app-marshmallow-arm64-v8a-release.apk
+-
+-      - name: Upload x86_64
+-        uses: actions/upload-artifact@v7
+-        with:
+-          name: marshmallow-x86_64-${{ github.sha }}
+-          path: app/build/outputs/apk/marshmallow/release/app-marshmallow-x86_64-release.apk
+-
+-      - name: Upload ARM32
+-        uses: actions/upload-artifact@v7
+-        with:
+-          name: marshmallow-armeabi-v7a-${{ github.sha }}
+-          path: app/build/outputs/apk/marshmallow/release/app-marshmallow-armeabi-v7a-release.apk
+-
+-      - name: Upload mapping
++      - uses: actions/download-artifact@v8
++        with:
++          name: instrumentation-inputs
++          path: device-inputs
++      - name: Enable KVM
++        run: sudo chmod 666 /dev/kvm
++      - name: Run packaged Android JNI and platform tests
++        env:
++          TEST_IMAGE: ${{ matrix.image }}
++          TEST_LABEL: ${{ matrix.label }}
++        run: bash scripts/run_emulator_tests.sh
++      - name: Device reports
+         if: always()
+@@ -180,9 +162,4 @@ jobs:
+         with:
+-          name: marshmallow-mapping-${{ github.sha }}
+-          path: app/build/outputs/mapping/marshmallowRelease/*.txt
+-
+-      - name: Upload native debug symbols
+-        uses: actions/upload-artifact@v7
+-        with:
+-          name: marshmallow-native-debug-symbols-${{ github.sha }}
+-          path: app/build/outputs/native-debug-symbols/marshmallowRelease/native-debug-symbols.zip
++          name: device-${{ matrix.label }}
++          path: device-reports/
++          retention-days: 14
+diff --git a/.github/workflows/releases.yml b/.github/workflows/releases.yml
+index 3d50f987e..a243f91f6 100644
+--- a/.github/workflows/releases.yml
++++ b/.github/workflows/releases.yml
+@@ -2,2 +2,5 @@ name: Releases
+ 
++permissions:
++  contents: read
++
+ on:
+@@ -20,4 +23,3 @@ jobs:
+     runs-on: ubuntu-latest
+-    permissions:
+-      contents: write
++    timeout-minutes: 60
+     env:
+@@ -35,3 +37,3 @@ jobs:
+       - name: Free disk space
+-        run: rm -rf $AGENT_TOOLSDIRECTORY
++        run: rm -rf "$AGENT_TOOLSDIRECTORY"
+ 
+@@ -48,2 +50,3 @@ jobs:
+           fetch-depth: 0
++          persist-credentials: false
+ 
+@@ -62,4 +65,7 @@ jobs:
+ 
++      - name: Native host prerequisites
++        run: sudo apt-get update && sudo apt-get install -y autoconf automake pkg-config
++
+       - name: Install Rust Toolchain
+-        run: rustup target add thumbv7neon-linux-androideabi
++        run: rustup show active-toolchain
+ 
+@@ -69,8 +75,3 @@ jobs:
+           workspaces: "./app/src/main/rust"
+-
+-      - name: CMake Cache
+-        uses: actions/cache/restore@v5
+-        with:
+-          path: app/.cxx
+-          key: cmake-
++          save-if: "false"
+ 
+@@ -80,2 +81,3 @@ jobs:
+           cache-encryption-key: ${{ secrets.GradleEncryptionKey }}
++          validate-wrappers: true
+           cache-read-only: true
+@@ -91,18 +93,38 @@ jobs:
+ 
++      - name: Verify APK identity, signatures, JNI, ABI and 16KB alignment
++        run: python3 scripts/verify_apks.py app/build/outputs/apk/release --sdk "$ANDROID_HOME"
++
+       - name: Rename Apks
+         run: |
+-          mv app/build/outputs/apk/default/release/app-default-universal-release.apk "EhViewer-${RELEASE_TAG}-default-universal.apk"
+-          mv app/build/outputs/apk/default/release/app-default-arm64-v8a-release.apk "EhViewer-${RELEASE_TAG}-default-arm64-v8a.apk"
+-          mv app/build/outputs/apk/default/release/app-default-x86_64-release.apk "EhViewer-${RELEASE_TAG}-default-x86_64.apk"
+-          mv app/build/outputs/apk/default/release/app-default-armeabi-v7a-release.apk "EhViewer-${RELEASE_TAG}-default-armeabi-v7a.apk"
+-          mv app/build/outputs/mapping/defaultRelease/mapping.txt "EhViewer-${RELEASE_TAG}-default-mapping.txt"
+-          mv app/build/outputs/native-debug-symbols/defaultRelease/native-debug-symbols.zip "EhViewer-${RELEASE_TAG}-default-native-debug-symbols.zip"
+-
+-          mv app/build/outputs/apk/marshmallow/release/app-marshmallow-universal-release.apk "EhViewer-${RELEASE_TAG}-marshmallow-universal.apk"
+-          mv app/build/outputs/apk/marshmallow/release/app-marshmallow-arm64-v8a-release.apk "EhViewer-${RELEASE_TAG}-marshmallow-arm64-v8a.apk"
+-          mv app/build/outputs/apk/marshmallow/release/app-marshmallow-x86_64-release.apk "EhViewer-${RELEASE_TAG}-marshmallow-x86_64.apk"
+-          mv app/build/outputs/apk/marshmallow/release/app-marshmallow-armeabi-v7a-release.apk "EhViewer-${RELEASE_TAG}-marshmallow-armeabi-v7a.apk"
+-          mv app/build/outputs/mapping/marshmallowRelease/mapping.txt "EhViewer-${RELEASE_TAG}-marshmallow-mapping.txt"
+-          mv app/build/outputs/native-debug-symbols/marshmallowRelease/native-debug-symbols.zip "EhViewer-${RELEASE_TAG}-marshmallow-native-debug-symbols.zip"
+-
++          mv app/build/outputs/apk/release/app-universal-release.apk "EhViewer-${RELEASE_TAG}-universal.apk"
++          mv app/build/outputs/apk/release/app-arm64-v8a-release.apk "EhViewer-${RELEASE_TAG}-arm64-v8a.apk"
++          mv app/build/outputs/apk/release/app-x86_64-release.apk "EhViewer-${RELEASE_TAG}-x86_64.apk"
++          mv app/build/outputs/apk/release/app-armeabi-v7a-release.apk "EhViewer-${RELEASE_TAG}-armeabi-v7a.apk"
++          mv app/build/outputs/mapping/release/mapping.txt "EhViewer-${RELEASE_TAG}-mapping.txt"
++          mv app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip "EhViewer-${RELEASE_TAG}-native-debug-symbols.zip"
++
++      - name: Release payload
++        uses: actions/upload-artifact@v7
++        with:
++          name: release-payload
++          path: |
++            EhViewer-${{ env.RELEASE_TAG }}-universal.apk
++            EhViewer-${{ env.RELEASE_TAG }}-arm64-v8a.apk
++            EhViewer-${{ env.RELEASE_TAG }}-x86_64.apk
++            EhViewer-${{ env.RELEASE_TAG }}-armeabi-v7a.apk
++            EhViewer-${{ env.RELEASE_TAG }}-mapping.txt
++            EhViewer-${{ env.RELEASE_TAG }}-native-debug-symbols.zip
++          if-no-files-found: error
++
++  publish:
++    needs: build
++    runs-on: ubuntu-latest
++    permissions:
++      contents: write
++    env:
++      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
++    steps:
++      - uses: actions/download-artifact@v8
++        with:
++          name: release-payload
+       - name: Releases
+@@ -117,14 +139,7 @@ jobs:
+           files: |
+-            EhViewer-${{ env.RELEASE_TAG }}-default-universal.apk
+-            EhViewer-${{ env.RELEASE_TAG }}-default-arm64-v8a.apk
+-            EhViewer-${{ env.RELEASE_TAG }}-default-x86_64.apk
+-            EhViewer-${{ env.RELEASE_TAG }}-default-armeabi-v7a.apk
+-            EhViewer-${{ env.RELEASE_TAG }}-default-mapping.txt
+-            EhViewer-${{ env.RELEASE_TAG }}-default-native-debug-symbols.zip
+-
+-            EhViewer-${{ env.RELEASE_TAG }}-marshmallow-universal.apk
+-            EhViewer-${{ env.RELEASE_TAG }}-marshmallow-arm64-v8a.apk
+-            EhViewer-${{ env.RELEASE_TAG }}-marshmallow-x86_64.apk
+-            EhViewer-${{ env.RELEASE_TAG }}-marshmallow-armeabi-v7a.apk
+-            EhViewer-${{ env.RELEASE_TAG }}-marshmallow-mapping.txt
+-            EhViewer-${{ env.RELEASE_TAG }}-marshmallow-native-debug-symbols.zip
++            EhViewer-${{ env.RELEASE_TAG }}-universal.apk
++            EhViewer-${{ env.RELEASE_TAG }}-arm64-v8a.apk
++            EhViewer-${{ env.RELEASE_TAG }}-x86_64.apk
++            EhViewer-${{ env.RELEASE_TAG }}-armeabi-v7a.apk
++            EhViewer-${{ env.RELEASE_TAG }}-mapping.txt
++            EhViewer-${{ env.RELEASE_TAG }}-native-debug-symbols.zip
+diff --git a/.gitignore b/.gitignore
+index 83324ec6f..31d5c01f4 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -10 +10,4 @@ build
+ /captures
++
++# Local verification scripts
++__pycache__/
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index 108faa215..ae2421533 100644
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -4,5 +4,2 @@ import java.util.regex.Pattern
+ 
+-val isRelease: Boolean
+-    get() = gradle.startParameter.taskNames.any { it.contains("Release") }
+-
+ plugins {
+@@ -23,8 +20,4 @@ android {
+             reset()
+-            if (isRelease) {
+-                include(*supportedAbis)
+-                isUniversalApk = true
+-            } else {
+-                include("arm64-v8a", "x86_64")
+-            }
++            include(*supportedAbis)
++            isUniversalApk = true
+         }
+@@ -58,2 +51,3 @@ android {
+         applicationId = "moe.tarsin.ehviewer"
++        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+         versionCode = 180064
+@@ -70,5 +64,3 @@ android {
+         ndk {
+-            if (isRelease) {
+-                abiFilters.addAll(supportedAbis)
+-            }
++            abiFilters.addAll(supportedAbis)
+             debugSymbolLevel = "FULL"
+@@ -77,13 +69,3 @@ android {
+ 
+-    flavorDimensions += "api"
+-
+-    productFlavors {
+-        create("default") {
+-            minSdk = 26
+-        }
+-        create("marshmallow") {
+-            applicationIdSuffix = ".m"
+-            versionNameSuffix = "-M"
+-        }
+-    }
++    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("docs/modernization/baseline/fixtures"))
+ 
+@@ -175,2 +157,5 @@ baselineProfile {
+ dependencies {
++    androidTestImplementation(libs.androidx.junit)
++    androidTestImplementation(libs.androidx.test.runner)
++
+     implementation(projects.core.data)
+diff --git a/app/src/main/cpp/CMakeLists.txt b/app/src/main/cpp/CMakeLists.txt
+index 708632773..e37b6786c 100644
+--- a/app/src/main/cpp/CMakeLists.txt
++++ b/app/src/main/cpp/CMakeLists.txt
+@@ -34,4 +34,3 @@ FetchContent_Declare(
+         GIT_REPOSITORY https://github.com/tukaani-project/xz.git
+-        GIT_TAG v5.8.3
+-        GIT_SHALLOW 1
++        GIT_TAG 4b73f2ec19a99ef465282fbce633e8deb33691b3 # v5.8.3
+ )
+@@ -59,4 +58,3 @@ ExternalProject_Add(
+         GIT_REPOSITORY https://gitlab.com/gnutls/nettle.git
+-        GIT_TAG nettle_4.0_release_20260205
+-        GIT_SHALLOW 1
++        GIT_TAG bf13ee9e5024014cfa6d2fc097923afe087e63ba # nettle_4.0_release_20260205
+         GIT_CONFIG core.autocrlf=input
+@@ -105,4 +103,3 @@ FetchContent_Declare(
+         GIT_REPOSITORY https://github.com/libarchive/libarchive.git
+-        GIT_TAG v3.8.7
+-        GIT_SHALLOW 1
++        GIT_TAG ded82291ab41d5e355831b96b0e1ff49e24d8939 # v3.8.7
+         PATCH_COMMAND git apply --check -R ${LIBARCHIVE_PATCH} || git apply ${LIBARCHIVE_PATCH}
+@@ -117,4 +114,3 @@ FetchContent_Declare(
+         GIT_REPOSITORY https://github.com/webmproject/libwebp.git
+-        GIT_TAG v1.6.0
+-        GIT_SHALLOW 1
++        GIT_TAG 4fa21912338357f89e4fd51cf2368325b59e9bd9 # v1.6.0
+ )
+@@ -143,4 +139,3 @@ FetchContent_Declare(
+         GIT_REPOSITORY https://github.com/FooIbar/corrosion.git
+-        GIT_TAG v0.6.1
+-        GIT_SHALLOW 1
++        GIT_TAG 3725e651bf2a849b43df99df57ac77643770388a # v0.6.1
+ )
+@@ -151,3 +146,3 @@ corrosion_import_crate(
+         LOCKED
+-        FEATURES $<IF:$<VERSION_GREATER_EQUAL:${ANDROID_NATIVE_API_LEVEL},26>,android-26,android>
++        FEATURES android-26
+         FLAGS $<$<NOT:$<CONFIG:Debug>>:-Z build-std -Z build-std-features=>
+diff --git a/app/src/main/kotlin/com/hippo/ehviewer/EhApplication.kt b/app/src/main/kotlin/com/hippo/ehviewer/EhApplication.kt
+index 56a5f76f3..15f86c186 100644
+--- a/app/src/main/kotlin/com/hippo/ehviewer/EhApplication.kt
++++ b/app/src/main/kotlin/com/hippo/ehviewer/EhApplication.kt
+@@ -44,3 +44,2 @@ import com.ehviewer.core.files.deleteContent
+ import com.ehviewer.core.ui.util.initSETConnection
+-import com.ehviewer.core.util.isAtLeastO
+ import com.ehviewer.core.util.isAtLeastP
+@@ -182,7 +181,3 @@ class EhApplication : Application(), SingletonImageLoader.Factory {
+             add(DownloadThumbInterceptor)
+-            if (isAtLeastO) {
+-                add(HardwareBitmapInterceptor)
+-            } else {
+-                allowRgb565(true)
+-            }
++            add(HardwareBitmapInterceptor)
+             add(CropBorderInterceptor)
+diff --git a/app/src/main/kotlin/com/hippo/ehviewer/coil/CropBorderInterceptor.kt b/app/src/main/kotlin/com/hippo/ehviewer/coil/CropBorderInterceptor.kt
+index fe8972503..9adb37573 100644
+--- a/app/src/main/kotlin/com/hippo/ehviewer/coil/CropBorderInterceptor.kt
++++ b/app/src/main/kotlin/com/hippo/ehviewer/coil/CropBorderInterceptor.kt
+@@ -4,4 +4,2 @@ import android.graphics.Bitmap
+ import android.hardware.HardwareBuffer
+-import android.os.Build
+-import androidx.annotation.RequiresApi
+ import androidx.compose.ui.unit.IntSize
+@@ -19,3 +17,2 @@ import moe.tarsin.coroutines.runSuspendCatching
+ 
+-@RequiresApi(Build.VERSION_CODES.O)
+ private const val USAGE = HardwareBuffer.USAGE_CPU_WRITE_RARELY or HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE
+diff --git a/app/src/main/kotlin/com/hippo/ehviewer/coil/HardwareBitmapInterceptor.kt b/app/src/main/kotlin/com/hippo/ehviewer/coil/HardwareBitmapInterceptor.kt
+index b0df7ea35..c38329761 100644
+--- a/app/src/main/kotlin/com/hippo/ehviewer/coil/HardwareBitmapInterceptor.kt
++++ b/app/src/main/kotlin/com/hippo/ehviewer/coil/HardwareBitmapInterceptor.kt
+@@ -3,4 +3,2 @@ package com.hippo.ehviewer.coil
+ import android.graphics.Bitmap
+-import android.os.Build
+-import androidx.annotation.RequiresApi
+ import coil3.Extras
+@@ -24,3 +22,2 @@ val ImageRequest.hardwareThreshold: Int
+ 
+-@RequiresApi(Build.VERSION_CODES.O)
+ object HardwareBitmapInterceptor : Interceptor {
+diff --git a/app/src/main/kotlin/com/hippo/ehviewer/download/DownloadService.kt b/app/src/main/kotlin/com/hippo/ehviewer/download/DownloadService.kt
+index f29d4e694..339f35feb 100644
+--- a/app/src/main/kotlin/com/hippo/ehviewer/download/DownloadService.kt
++++ b/app/src/main/kotlin/com/hippo/ehviewer/download/DownloadService.kt
+@@ -68,2 +68,10 @@ class DownloadService :
+ 
++    private var serviceTimedOut = false
++
++    override fun onTimeout(startId: Int, fgsType: Int) {
++        // Stop immediately: dataSync timeouts allow only a few seconds to leave the service.
++        serviceTimedOut = true
++        stopSelf()
++    }
++
+     override fun onCreate() {
+@@ -94,3 +102,5 @@ class DownloadService :
+         launch {
+-            deferredMgr.await().setDownloadListener(null)
++            val manager = deferredMgr.await()
++            manager.setDownloadListener(null)
++            if (serviceTimedOut) manager.stopAllDownload()
+             // Wait for the last notification to be posted
+diff --git a/app/src/main/kotlin/com/hippo/ehviewer/gallery/PageLoader.kt b/app/src/main/kotlin/com/hippo/ehviewer/gallery/PageLoader.kt
+index c24ee64c0..56995d953 100644
+--- a/app/src/main/kotlin/com/hippo/ehviewer/gallery/PageLoader.kt
++++ b/app/src/main/kotlin/com/hippo/ehviewer/gallery/PageLoader.kt
+@@ -7,3 +7,2 @@ import arrow.fx.coroutines.bracketCase
+ import com.ehviewer.core.model.GalleryInfo
+-import com.ehviewer.core.util.isAtLeastO
+ import com.ehviewer.core.util.withNonCancellableContext
+@@ -46,7 +45,3 @@ abstract class PageLoader(val scope: CoroutineScope, val info: GalleryInfo?, sta
+     private val cache = SieveCache<Int, Image>(
+-        maxSize = if (isAtLeastO) {
+-            (OSUtils.totalMemory / 8).toInt().coerceIn(MIN_CACHE_SIZE, MAX_CACHE_SIZE)
+-        } else {
+-            (OSUtils.appMaxMemory / 3 * 2).toInt()
+-        },
++        maxSize = (OSUtils.totalMemory / 8).toInt().coerceIn(MIN_CACHE_SIZE, MAX_CACHE_SIZE),
+         sizeOf = { _, v -> v.allocationSize.toInt() },
+diff --git a/app/src/main/kotlin/com/hippo/ehviewer/ui/MainActivity.kt b/app/src/main/kotlin/com/hippo/ehviewer/ui/MainActivity.kt
+index 061f19dc5..517701283 100644
+--- a/app/src/main/kotlin/com/hippo/ehviewer/ui/MainActivity.kt
++++ b/app/src/main/kotlin/com/hippo/ehviewer/ui/MainActivity.kt
+@@ -97,4 +97,4 @@ import androidx.compose.ui.layout.onGloballyPositioned
+ import androidx.compose.ui.layout.onSizeChanged
+-import androidx.compose.ui.platform.LocalConfiguration
+ import androidx.compose.ui.platform.LocalDensity
++import androidx.compose.ui.platform.LocalWindowInfo
+ import androidx.compose.ui.res.painterResource
+@@ -221,3 +221,2 @@ class MainActivity : AppCompatActivity() {
+         setMD3Content {
+-            val configuration = LocalConfiguration.current
+             val navDrawerState = rememberDrawerState(DrawerValue.Closed)
+@@ -382,2 +381,3 @@ class MainActivity : AppCompatActivity() {
+             val density = LocalDensity.current
++            val windowWidth = with(density) { LocalWindowInfo.current.containerSize.width.toDp() }
+             val adaptiveInfo = currentWindowAdaptiveInfoV2()
+@@ -412,3 +412,3 @@ class MainActivity : AppCompatActivity() {
+                                 drawerState = navDrawerState,
+-                                modifier = Modifier.widthIn(max = (configuration.screenWidthDp - 56).dp)
++                                modifier = Modifier.widthIn(max = (windowWidth - 56.dp).coerceAtLeast(0.dp))
+                                     .onSizeChanged { minOffset = -it.width.toFloat() },
+diff --git a/app/src/main/kotlin/com/hippo/ehviewer/ui/settings/AdvancedScreen.kt b/app/src/main/kotlin/com/hippo/ehviewer/ui/settings/AdvancedScreen.kt
+index 5cf1f7736..93f938a7e 100644
+--- a/app/src/main/kotlin/com/hippo/ehviewer/ui/settings/AdvancedScreen.kt
++++ b/app/src/main/kotlin/com/hippo/ehviewer/ui/settings/AdvancedScreen.kt
+@@ -36,3 +36,2 @@ import com.ehviewer.core.files.toOkioPath
+ import com.ehviewer.core.i18n.R
+-import com.ehviewer.core.util.isAtLeastO
+ import com.ehviewer.core.util.launch
+@@ -210,11 +209,9 @@ fun AnimatedVisibilityScope.AdvancedScreen(navigator: DestinationsNavigator) = S
+             }
+-            if (isAtLeastO) {
+-                IntSliderPreference(
+-                    maxValue = 16384,
+-                    step = 3,
+-                    title = stringResource(id = R.string.settings_advanced_hardware_bitmap_threshold),
+-                    summary = stringResource(id = R.string.settings_advanced_hardware_bitmap_threshold_summary),
+-                    state = Settings.hardwareBitmapThreshold.asMutableState(),
+-                )
+-            }
++            IntSliderPreference(
++                maxValue = 16384,
++                step = 3,
++                title = stringResource(id = R.string.settings_advanced_hardware_bitmap_threshold),
++                summary = stringResource(id = R.string.settings_advanced_hardware_bitmap_threshold_summary),
++                state = Settings.hardwareBitmapThreshold.asMutableState(),
++            )
+             SwitchPreference(
+diff --git a/app/src/main/kotlin/com/hippo/ehviewer/util/AppConfig.kt b/app/src/main/kotlin/com/hippo/ehviewer/util/AppConfig.kt
+index 6419b6597..9e08f75b2 100644
+--- a/app/src/main/kotlin/com/hippo/ehviewer/util/AppConfig.kt
++++ b/app/src/main/kotlin/com/hippo/ehviewer/util/AppConfig.kt
+@@ -47,3 +47,3 @@ object AppConfig {
+ 
+-    fun matchVariant(name: String) = name.contains(BuildConfig.FLAVOR) && name.contains(abi)
++    fun matchVariant(name: String) = !name.contains("marshmallow", ignoreCase = true) && name.contains(abi)
+ 
+diff --git a/app/src/main/kotlin/com/hippo/ehviewer/util/LauncherUtils.kt b/app/src/main/kotlin/com/hippo/ehviewer/util/LauncherUtils.kt
+index fa04d91c7..c99ebb08d 100644
+--- a/app/src/main/kotlin/com/hippo/ehviewer/util/LauncherUtils.kt
++++ b/app/src/main/kotlin/com/hippo/ehviewer/util/LauncherUtils.kt
+@@ -8,3 +8,2 @@ import android.content.pm.PackageManager
+ import android.net.Uri
+-import android.os.Build
+ import android.provider.Settings
+@@ -16,3 +15,2 @@ import androidx.activity.result.contract.ActivityResultContracts
+ import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.VisualMediaType
+-import androidx.annotation.RequiresApi
+ import androidx.core.content.ContextCompat
+@@ -24,3 +22,2 @@ import androidx.lifecycle.LifecycleOwner
+ import com.ehviewer.core.i18n.R
+-import com.ehviewer.core.util.isAtLeastO
+ import com.ehviewer.core.util.withIOContext
+@@ -86,3 +83,2 @@ suspend fun pickVisualMedia(type: VisualMediaType): Uri? = awaitActivityResult(A
+ 
+-@RequiresApi(Build.VERSION_CODES.O)
+ context(ctx: Context)
+@@ -106,3 +102,3 @@ context(ctx: Context)
+ suspend fun installPackage(file: File) = with(ctx) {
+-    val canInstall = !isAtLeastO || requestInstallPermission()
++    val canInstall = requestInstallPermission()
+     check(canInstall) { getString(R.string.permission_denied) }
+diff --git a/app/src/main/res/drawable-v26/ic_shortcut_start.xml b/app/src/main/res/drawable-v26/ic_shortcut_start.xml
+deleted file mode 100644
+index bf9912d09..000000000
+--- a/app/src/main/res/drawable-v26/ic_shortcut_start.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?><!--
+-  ~ Copyright 2022 Tarsin Norbin
+-  ~
+-  ~ This file is part of EhViewer
+-  ~
+-  ~ EhViewer is free software: you can redistribute it and/or modify it
+-  ~ under the terms of the GNU General Public License as published
+-  ~ by the Free Software Foundation, either version 3 of the License, or
+-  ~ (at your option) any later version.
+-  ~
+-  ~ EhViewer is distributed in the hope that it will be useful, but WITHOUT
+-  ~ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+-  ~ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+-  ~
+-  ~ You should have received a copy of the GNU General Public License along with EhViewer.
+-  ~ If not, see <https://www.gnu.org/licenses/>.
+-  -->
+-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+-    <background android:drawable="@android:color/white" />
+-    <foreground android:drawable="@drawable/ic_play_arrow_108dp" />
+-</adaptive-icon>
+\ No newline at end of file
+diff --git a/app/src/main/res/drawable-v26/ic_shortcut_stop.xml b/app/src/main/res/drawable-v26/ic_shortcut_stop.xml
+deleted file mode 100644
+index 19b210aad..000000000
+--- a/app/src/main/res/drawable-v26/ic_shortcut_stop.xml
++++ /dev/null
+@@ -1,21 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?><!--
+-  ~ Copyright 2022 Tarsin Norbin
+-  ~
+-  ~ This file is part of EhViewer
+-  ~
+-  ~ EhViewer is free software: you can redistribute it and/or modify it
+-  ~ under the terms of the GNU General Public License as published
+-  ~ by the Free Software Foundation, either version 3 of the License, or
+-  ~ (at your option) any later version.
+-  ~
+-  ~ EhViewer is distributed in the hope that it will be useful, but WITHOUT
+-  ~ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+-  ~ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+-  ~
+-  ~ You should have received a copy of the GNU General Public License along with EhViewer.
+-  ~ If not, see <https://www.gnu.org/licenses/>.
+-  -->
+-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+-    <background android:drawable="@android:color/white" />
+-    <foreground android:drawable="@drawable/ic_pause_108dp" />
+-</adaptive-icon>
+\ No newline at end of file
+diff --git a/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml b/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+deleted file mode 100644
+index 8978f05a8..000000000
+--- a/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
++++ /dev/null
+@@ -1,23 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?><!--
+-  ~ Copyright 2022 Tarsin Norbin
+-  ~
+-  ~ This file is part of EhViewer
+-  ~
+-  ~ EhViewer is free software: you can redistribute it and/or modify it
+-  ~ under the terms of the GNU General Public License as published
+-  ~ by the Free Software Foundation, either version 3 of the License, or
+-  ~ (at your option) any later version.
+-  ~
+-  ~ EhViewer is distributed in the hope that it will be useful, but WITHOUT
+-  ~ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+-  ~ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+-  ~
+-  ~ You should have received a copy of the GNU General Public License along with EhViewer.
+-  ~ If not, see <https://www.gnu.org/licenses/>.
+-  -->
+-
+-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+-    <background android:drawable="@android:color/white" />
+-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+-    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+-</adaptive-icon>
+\ No newline at end of file
+diff --git a/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml b/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+deleted file mode 100644
+index 8978f05a8..000000000
+--- a/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
++++ /dev/null
+@@ -1,23 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?><!--
+-  ~ Copyright 2022 Tarsin Norbin
+-  ~
+-  ~ This file is part of EhViewer
+-  ~
+-  ~ EhViewer is free software: you can redistribute it and/or modify it
+-  ~ under the terms of the GNU General Public License as published
+-  ~ by the Free Software Foundation, either version 3 of the License, or
+-  ~ (at your option) any later version.
+-  ~
+-  ~ EhViewer is distributed in the hope that it will be useful, but WITHOUT
+-  ~ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+-  ~ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+-  ~
+-  ~ You should have received a copy of the GNU General Public License along with EhViewer.
+-  ~ If not, see <https://www.gnu.org/licenses/>.
+-  -->
+-
+-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+-    <background android:drawable="@android:color/white" />
+-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+-    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+-</adaptive-icon>
+\ No newline at end of file
+diff --git a/app/src/main/res/values-v26/bools.xml b/app/src/main/res/values-v26/bools.xml
+deleted file mode 100644
+index e701855da..000000000
+--- a/app/src/main/res/values-v26/bools.xml
++++ /dev/null
+@@ -1,6 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<resources>
+-
+-    <bool name="large_heap">false</bool>
+-
+-</resources>
+diff --git a/app/src/main/res/values/bools.xml b/app/src/main/res/values/bools.xml
+index 6a3aa2527..4f1e40e82 100644
+--- a/app/src/main/res/values/bools.xml
++++ b/app/src/main/res/values/bools.xml
+@@ -20,3 +20,3 @@
+ 
+-    <bool name="large_heap">true</bool>
++    <bool name="large_heap">false</bool>
+     <bool name="tag_translatable">false</bool>
+diff --git a/app/src/main/res/xml-v25/shortcuts.xml b/app/src/main/res/xml-v25/shortcuts.xml
+deleted file mode 100644
+index fb86bff36..000000000
+--- a/app/src/main/res/xml-v25/shortcuts.xml
++++ /dev/null
+@@ -1,48 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?><!--
+-  ~ Copyright 2022 Tarsin Norbin
+-  ~
+-  ~ This file is part of EhViewer
+-  ~
+-  ~ EhViewer is free software: you can redistribute it and/or modify it
+-  ~ under the terms of the GNU General Public License as published
+-  ~ by the Free Software Foundation, either version 3 of the License, or
+-  ~ (at your option) any later version.
+-  ~
+-  ~ EhViewer is distributed in the hope that it will be useful, but WITHOUT
+-  ~ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+-  ~ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+-  ~
+-  ~ You should have received a copy of the GNU General Public License along with EhViewer.
+-  ~ If not, see <https://www.gnu.org/licenses/>.
+-  -->
+-<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+-
+-    <shortcut
+-        android:enabled="true"
+-        android:icon="@drawable/ic_shortcut_start"
+-        android:shortcutDisabledMessage="@string/download_start_all"
+-        android:shortcutId="start_all"
+-        android:shortcutLongLabel="@string/download_start_all"
+-        android:shortcutShortLabel="@string/download_start_all">
+-        <intent
+-            android:action="start_all"
+-            android:targetClass="com.hippo.ehviewer.shortcuts.ShortcutsActivity"
+-            android:targetPackage="moe.tarsin.ehviewer" />
+-        <categories android:name="android.shortcut.conversation" />
+-    </shortcut>
+-
+-    <shortcut
+-        android:enabled="true"
+-        android:icon="@drawable/ic_shortcut_stop"
+-        android:shortcutDisabledMessage="@string/download_stop_all"
+-        android:shortcutId="stop_all"
+-        android:shortcutLongLabel="@string/download_stop_all"
+-        android:shortcutShortLabel="@string/download_stop_all">
+-        <intent
+-            android:action="stop_all"
+-            android:targetClass="com.hippo.ehviewer.shortcuts.ShortcutsActivity"
+-            android:targetPackage="moe.tarsin.ehviewer" />
+-        <categories android:name="android.shortcut.conversation" />
+-    </shortcut>
+-
+-</shortcuts>
+\ No newline at end of file
+diff --git a/benchmark/build.gradle.kts b/benchmark/build.gradle.kts
+index e77c20874..3cb063ef5 100644
+--- a/benchmark/build.gradle.kts
++++ b/benchmark/build.gradle.kts
+@@ -1 +1,3 @@
++import org.jetbrains.kotlin.gradle.dsl.JvmTarget
++
+ plugins {
+@@ -6,2 +8,6 @@ plugins {
+ android {
++    compileOptions {
++        sourceCompatibility = JavaVersion.toVersion(libs.versions.android.jvm.get())
++        targetCompatibility = JavaVersion.toVersion(libs.versions.android.jvm.get())
++    }
+     namespace = "com.ehviewer.baselineprofile"
+@@ -14,8 +20,2 @@ android {
+ 
+-    flavorDimensions += listOf("api")
+-    productFlavors {
+-        create("default") { dimension = "api" }
+-        create("marshmallow") { dimension = "api" }
+-    }
+-
+     testOptions.managedDevices.localDevices {
+@@ -33,2 +33,5 @@ kotlin {
+     jvmToolchain(javaVersion)
++    compilerOptions {
++        jvmTarget = JvmTarget.fromTarget(libs.versions.android.jvm.get())
++    }
+ }
+@@ -36,4 +39,6 @@ kotlin {
+ baselineProfile {
+-    managedDevices += "pixel6Api35"
+-    useConnectedDevices = false
++    // Keep Linux CI managed devices; allow local Android devices on ARM64 hosts.
++    val connected = providers.gradleProperty("baselineProfile.useConnectedDevices").map(String::toBoolean).getOrElse(false)
++    useConnectedDevices = connected
++    if (!connected) managedDevices += "pixel6Api35"
+ }
+diff --git a/build-logic/convention/src/main/kotlin/AndroidApplicationConventionPlugin.kt b/build-logic/convention/src/main/kotlin/AndroidApplicationConventionPlugin.kt
+index 7cf2b3b23..721abeed2 100644
+--- a/build-logic/convention/src/main/kotlin/AndroidApplicationConventionPlugin.kt
++++ b/build-logic/convention/src/main/kotlin/AndroidApplicationConventionPlugin.kt
+@@ -7,2 +7,3 @@ import com.ehviewer.configureSpotless
+ import com.ehviewer.libs
++import org.gradle.api.JavaVersion
+ import org.gradle.api.Plugin
+@@ -13,2 +14,3 @@ import org.gradle.kotlin.dsl.configure
+ import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
++import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+ import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidExtension
+@@ -26,2 +28,3 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
+             compilerOptions {
++                jvmTarget = JvmTarget.fromTarget(libs.versions.android.jvm.get())
+                 configureKotlin(includeKotlinX = true)
+@@ -32,2 +35,6 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
+         configure<ApplicationExtension> {
++            compileOptions {
++                sourceCompatibility = JavaVersion.toVersion(libs.versions.android.jvm.get())
++                targetCompatibility = JavaVersion.toVersion(libs.versions.android.jvm.get())
++            }
+             lint(Lint::configureLint)
+diff --git a/build-logic/convention/src/main/kotlin/MultiplatformLibraryConventionPlugin.kt b/build-logic/convention/src/main/kotlin/MultiplatformLibraryConventionPlugin.kt
+index 7539ffaa6..93b1ceb17 100644
+--- a/build-logic/convention/src/main/kotlin/MultiplatformLibraryConventionPlugin.kt
++++ b/build-logic/convention/src/main/kotlin/MultiplatformLibraryConventionPlugin.kt
+@@ -14,2 +14,3 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+ import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
++import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+@@ -55,2 +56,3 @@ class MultiplatformLibraryConventionPlugin : Plugin<Project> {
+                 compilerOptions {
++                    jvmTarget = JvmTarget.fromTarget(libs.versions.android.jvm.get())
+                     jvmDefault = JvmDefaultMode.NO_COMPATIBILITY
+diff --git a/build-logic/convention/src/main/kotlin/com/ehviewer/Kotlin.kt b/build-logic/convention/src/main/kotlin/com/ehviewer/Kotlin.kt
+index 5242d0c15..1fe59345a 100644
+--- a/build-logic/convention/src/main/kotlin/com/ehviewer/Kotlin.kt
++++ b/build-logic/convention/src/main/kotlin/com/ehviewer/Kotlin.kt
+@@ -22,3 +22,3 @@ internal fun KotlinCommonCompilerOptions.configureKotlin(includeKotlinX: Boolean
+     }
+-    freeCompilerArgs.addAll("-Xcollection-literals", "-Xwhen-expressions=indy")
++    freeCompilerArgs.addAll("-Xcollection-literals")
+ }
+diff --git a/core/common/src/androidMain/kotlin/com/ehviewer/core/util/SDKUtils.kt b/core/common/src/androidMain/kotlin/com/ehviewer/core/util/SDKUtils.kt
+index c35879482..c00be1202 100644
+--- a/core/common/src/androidMain/kotlin/com/ehviewer/core/util/SDKUtils.kt
++++ b/core/common/src/androidMain/kotlin/com/ehviewer/core/util/SDKUtils.kt
+@@ -6,8 +6,2 @@ import androidx.annotation.ChecksSdkIntAtLeast
+ 
+-@ChecksSdkIntAtLeast(Build.VERSION_CODES.N)
+-val isAtLeastN = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
+-
+-@ChecksSdkIntAtLeast(Build.VERSION_CODES.O)
+-val isAtLeastO = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+-
+ @ChecksSdkIntAtLeast(Build.VERSION_CODES.O_MR1)
+diff --git a/gradle/libs.versions.toml b/gradle/libs.versions.toml
+index 765e0986e..c9d051eab 100644
+--- a/gradle/libs.versions.toml
++++ b/gradle/libs.versions.toml
+@@ -23,2 +23,3 @@ compose-preference = "2.2.0"
+ java = "25"
++android-jvm = "17"
+ kotlin = "2.4.10"
+@@ -38,2 +39,3 @@ xmlutil = "1.0.2"
+ junit = "1.3.0"
++androidx-test-runner = "1.7.0"
+ uiautomator = "2.4.0"
+@@ -128,2 +130,3 @@ telephoto-zoomable = { module = "me.saket.telephoto:zoomable", version.ref = "te
+ 
++androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidx-test-runner" }
+ androidx-junit = { module = "androidx.test.ext:junit", version.ref = "junit" }
+diff --git a/gradle/wrapper/gradle-wrapper.properties b/gradle/wrapper/gradle-wrapper.properties
+index ad7845be3..00fba3d33 100644
+--- a/gradle/wrapper/gradle-wrapper.properties
++++ b/gradle/wrapper/gradle-wrapper.properties
+@@ -9 +9,2 @@ zipStoreBase=GRADLE_USER_HOME
+ zipStorePath=wrapper/dists
++distributionSha256Sum=acd53f1edaf02f1a8ff99879f8a34b302661a057d9b063ae9e35b552f804d20a
+diff --git a/rust-toolchain.toml b/rust-toolchain.toml
+index bcbeffb49..f5417b336 100644
+--- a/rust-toolchain.toml
++++ b/rust-toolchain.toml
+@@ -3,3 +3,3 @@ channel = "nightly-2026-08-22"
+ components = ["rustfmt", "clippy", "rust-src"]
+-targets = ["aarch64-linux-android", "x86_64-linux-android"]
++targets = ["aarch64-linux-android", "thumbv7neon-linux-androideabi", "x86_64-linux-android"]
+ profile = "minimal"
+diff --git a/settings.gradle.kts b/settings.gradle.kts
+index b49bdf30e..23cad5a60 100644
+--- a/settings.gradle.kts
++++ b/settings.gradle.kts
+@@ -35,3 +35,3 @@ android {
+     compileSdk = 37
+-    minSdk = 24
++    minSdk = 26
+     targetSdk = 37
+diff --git a/app/src/androidTest/kotlin/com/hippo/ehviewer/PlatformRegressionTest.kt b/app/src/androidTest/kotlin/com/hippo/ehviewer/PlatformRegressionTest.kt
+new file mode 100644
+index 000000000..3149aeffe
+--- /dev/null
++++ b/app/src/androidTest/kotlin/com/hippo/ehviewer/PlatformRegressionTest.kt
+@@ -0,0 +1,79 @@
++package com.hippo.ehviewer
++
++import android.content.Intent
++import android.content.pm.ActivityInfo
++import android.webkit.CookieManager
++import android.webkit.WebView
++import androidx.test.ext.junit.runners.AndroidJUnit4
++import androidx.test.platform.app.InstrumentationRegistry
++import com.hippo.ehviewer.ui.MainActivity
++import com.hippo.ehviewer.util.AppConfig
++import com.hippo.ehviewer.util.setDefaultSettings
++import java.util.concurrent.CountDownLatch
++import java.util.concurrent.TimeUnit
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Test
++import org.junit.runner.RunWith
++
++@RunWith(AndroidJUnit4::class)
++class PlatformRegressionTest {
++    private val instrumentation = InstrumentationRegistry.getInstrumentation()
++
++    @Test
++    fun mainActivityLaunchesAcrossRotation() {
++        val intent = Intent(instrumentation.targetContext, MainActivity::class.java)
++            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
++        val activity = instrumentation.startActivitySync(intent)
++        instrumentation.runOnMainSync { activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
++        instrumentation.waitForIdleSync()
++        instrumentation.runOnMainSync { activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
++        instrumentation.waitForIdleSync()
++        instrumentation.runOnMainSync { activity.finish() }
++    }
++
++    @Test
++    fun webViewUsesMobileUserAgentAndStoresCookies() {
++        val saved = CountDownLatch(1)
++        val completed = CountDownLatch(1)
++        var result = ""
++        var view: WebView? = null
++        instrumentation.runOnMainSync {
++            view = WebView(instrumentation.targetContext).apply {
++                setDefaultSettings()
++                assertTrue(settings.javaScriptEnabled)
++                assertTrue(settings.userAgentString.contains("Mobile"))
++                CookieManager.getInstance().setCookie("https://native-regression.invalid", "p3_test=value; Secure") { saved.countDown() }
++            }
++        }
++        try {
++            assertTrue(saved.await(10, TimeUnit.SECONDS))
++            CookieManager.getInstance().flush()
++            assertTrue(CookieManager.getInstance().getCookie("https://native-regression.invalid").contains("p3_test=value"))
++            instrumentation.runOnMainSync {
++                view!!.evaluateJavascript("navigator.userAgent.includes('Mobile')") {
++                    result = it
++                    completed.countDown()
++                }
++            }
++            assertTrue(completed.await(10, TimeUnit.SECONDS))
++            assertEquals("true", result)
++        } finally {
++            instrumentation.runOnMainSync {
++                CookieManager.getInstance().setCookie("https://native-regression.invalid", "p3_test=; Max-Age=0; Secure")
++                view?.destroy()
++            }
++        }
++    }
++
++    @Test
++    fun updaterAcceptsDefaultAndStandardNamesButRejectsMarshmallow() {
++        val abi = android.os.Build.SUPPORTED_ABIS.first()
++        assertTrue(AppConfig.matchVariant("EhViewer-1.15.0-$abi.apk"))
++        assertTrue(AppConfig.matchVariant("EhViewer-1.15.0-default-$abi.apk"))
++        assertTrue(AppConfig.matchVariant("$abi-commit"))
++        assertFalse(AppConfig.matchVariant("EhViewer-1.15.0-marshmallow-$abi.apk"))
++        assertFalse(AppConfig.matchVariant("marshmallow-$abi-commit"))
++    }
++}
+diff --git a/app/src/androidTest/kotlin/com/hippo/ehviewer/jni/NativeRegressionTest.kt b/app/src/androidTest/kotlin/com/hippo/ehviewer/jni/NativeRegressionTest.kt
+new file mode 100644
+index 000000000..33e40ef1c
+--- /dev/null
++++ b/app/src/androidTest/kotlin/com/hippo/ehviewer/jni/NativeRegressionTest.kt
+@@ -0,0 +1,126 @@
++package com.hippo.ehviewer.jni
++
++import android.os.ParcelFileDescriptor
++import android.system.Os
++import android.system.OsConstants
++import androidx.test.ext.junit.runners.AndroidJUnit4
++import androidx.test.platform.app.InstrumentationRegistry
++import java.io.File
++import java.security.MessageDigest
++import org.junit.Assert.assertArrayEquals
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertNotNull
++import org.junit.Assert.assertTrue
++import org.junit.Test
++import org.junit.runner.RunWith
++
++/** Runs the original JNI contract against the libraries actually packaged for Android. */
++@RunWith(AndroidJUnit4::class)
++class NativeRegressionTest {
++    private val instrumentation = InstrumentationRegistry.getInstrumentation()
++    private val context = instrumentation.targetContext
++
++    private fun fixture(name: String): File = File(context.cacheDir, "native-regression-$name").apply {
++        instrumentation.context.assets.open(name).use { input -> outputStream().use { input.copyTo(it) } }
++    }
++
++    @Test
++    fun hashPreservesCallerDescriptorAndReadsFromOffset() {
++        val file = File(context.cacheDir, "native-regression-hash")
++        for (data in listOf(byteArrayOf(), "abc".toByteArray(), ByteArray(17000) { it.toByte() })) {
++            file.writeBytes(data)
++            ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
++                val offset = if (data.size > 3) 3 else 0
++                Os.lseek(fd.fileDescriptor, offset.toLong(), OsConstants.SEEK_SET)
++                val expected = MessageDigest.getInstance("SHA-1").digest(data.copyOfRange(offset, data.size))
++                    .joinToString("") { "%02x".format(it.toInt() and 255) }
++                assertEquals(expected, sha1(fd.fd))
++                assertEquals(data.size.toLong(), Os.lseek(fd.fileDescriptor, 0, OsConstants.SEEK_CUR))
++            }
++        }
++        file.delete()
++    }
++
++    private fun checkArchive(name: String, encrypted: Boolean = false, sort: Boolean = true) {
++        val file = fixture(name)
++        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
++            try {
++                assertEquals(name, 3, openArchive(fd.fd, file.length(), sort))
++                assertEquals(encrypted, needPassword())
++                if (encrypted) {
++                    assertFalse(providePassword("wrong"))
++                    assertTrue(providePassword("baseline"))
++                }
++                val content = if (sort) listOf("one", "two", "ten") else listOf("ten", "two", "one")
++                val extensions = if (sort) listOf("gif", "jpg", "png") else listOf("png", "jpg", "gif")
++                for (index in listOf(2, 0, 1, 2, 0)) {
++                    val buffer = extractToByteBuffer(index)
++                    assertNotNull(buffer)
++                    requireNotNull(buffer)
++                    try {
++                        assertTrue(buffer.isDirect)
++                        val bytes = ByteArray(buffer.capacity())
++                        buffer.get(bytes)
++                        assertArrayEquals(content[index].toByteArray(), bytes)
++                        assertEquals(extensions[index], getExtension(index))
++                    } finally {
++                        releaseByteBuffer(buffer)
++                    }
++                    val output = File(context.cacheDir, "native-regression-output")
++                    ParcelFileDescriptor.open(output, ParcelFileDescriptor.MODE_CREATE or ParcelFileDescriptor.MODE_TRUNCATE or ParcelFileDescriptor.MODE_WRITE_ONLY).use {
++                        assertTrue(extractToFd(index, it.fd))
++                    }
++                    assertArrayEquals(content[index].toByteArray(), output.readBytes())
++                    output.delete()
++                }
++            } finally {
++                closeArchive()
++            }
++        }
++        file.delete()
++    }
++
++    @Test
++    fun zipTarAndSevenZipRandomAccessAndNaturalSort() {
++        for (name in listOf("stored.zip", "deflated.zip", "pages.tar", "pages.7z")) checkArchive(name)
++        checkArchive("stored.zip", sort = false)
++    }
++
++    @Test
++    fun aesAndZipCryptoPasswords() {
++        checkArchive("password.zip", encrypted = true)
++        checkArchive("zipcrypto.zip", encrypted = true)
++    }
++
++    @Test
++    fun malformedArchiveHasNoEntries() {
++        val file = fixture("broken.zip")
++        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use {
++            try {
++                assertEquals(0, openArchive(it.fd, file.length(), true))
++            } finally {
++                closeArchive()
++            }
++        }
++        file.delete()
++    }
++
++    @Test
++    fun gifMappingAndRewrite() {
++        val file = File(context.cacheDir, "native-regression.gif")
++        file.writeBytes(byteArrayOf(71, 73, 70, 56, 57, 97, 0, 33, -7, 4, 0, 1, 0, 0, 0))
++        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use {
++            assertTrue(isGif(it.fd))
++            val buffer = mmap(it.fd)
++            requireNotNull(buffer)
++            try {
++                rewriteGifSource(buffer)
++                assertEquals(10, buffer.get(11).toInt())
++            } finally {
++                munmap(buffer)
++            }
++        }
++        file.delete()
++    }
++}
+diff --git a/app/src/main/res/drawable/ic_shortcut_start.xml b/app/src/main/res/drawable/ic_shortcut_start.xml
+new file mode 100644
+index 000000000..bf9912d09
+--- /dev/null
++++ b/app/src/main/res/drawable/ic_shortcut_start.xml
+@@ -0,0 +1,21 @@
++<?xml version="1.0" encoding="utf-8"?><!--
++  ~ Copyright 2022 Tarsin Norbin
++  ~
++  ~ This file is part of EhViewer
++  ~
++  ~ EhViewer is free software: you can redistribute it and/or modify it
++  ~ under the terms of the GNU General Public License as published
++  ~ by the Free Software Foundation, either version 3 of the License, or
++  ~ (at your option) any later version.
++  ~
++  ~ EhViewer is distributed in the hope that it will be useful, but WITHOUT
++  ~ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++  ~ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
++  ~
++  ~ You should have received a copy of the GNU General Public License along with EhViewer.
++  ~ If not, see <https://www.gnu.org/licenses/>.
++  -->
++<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
++    <background android:drawable="@android:color/white" />
++    <foreground android:drawable="@drawable/ic_play_arrow_108dp" />
++</adaptive-icon>
+\ No newline at end of file
+diff --git a/app/src/main/res/drawable/ic_shortcut_stop.xml b/app/src/main/res/drawable/ic_shortcut_stop.xml
+new file mode 100644
+index 000000000..19b210aad
+--- /dev/null
++++ b/app/src/main/res/drawable/ic_shortcut_stop.xml
+@@ -0,0 +1,21 @@
++<?xml version="1.0" encoding="utf-8"?><!--
++  ~ Copyright 2022 Tarsin Norbin
++  ~
++  ~ This file is part of EhViewer
++  ~
++  ~ EhViewer is free software: you can redistribute it and/or modify it
++  ~ under the terms of the GNU General Public License as published
++  ~ by the Free Software Foundation, either version 3 of the License, or
++  ~ (at your option) any later version.
++  ~
++  ~ EhViewer is distributed in the hope that it will be useful, but WITHOUT
++  ~ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++  ~ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
++  ~
++  ~ You should have received a copy of the GNU General Public License along with EhViewer.
++  ~ If not, see <https://www.gnu.org/licenses/>.
++  -->
++<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
++    <background android:drawable="@android:color/white" />
++    <foreground android:drawable="@drawable/ic_pause_108dp" />
++</adaptive-icon>
+\ No newline at end of file
+diff --git a/app/src/main/res/mipmap-anydpi/ic_launcher.xml b/app/src/main/res/mipmap-anydpi/ic_launcher.xml
+new file mode 100644
+index 000000000..8978f05a8
+--- /dev/null
++++ b/app/src/main/res/mipmap-anydpi/ic_launcher.xml
+@@ -0,0 +1,23 @@
++<?xml version="1.0" encoding="utf-8"?><!--
++  ~ Copyright 2022 Tarsin Norbin
++  ~
++  ~ This file is part of EhViewer
++  ~
++  ~ EhViewer is free software: you can redistribute it and/or modify it
++  ~ under the terms of the GNU General Public License as published
++  ~ by the Free Software Foundation, either version 3 of the License, or
++  ~ (at your option) any later version.
++  ~
++  ~ EhViewer is distributed in the hope that it will be useful, but WITHOUT
++  ~ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++  ~ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
++  ~
++  ~ You should have received a copy of the GNU General Public License along with EhViewer.
++  ~ If not, see <https://www.gnu.org/licenses/>.
++  -->
++
++<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
++    <background android:drawable="@android:color/white" />
++    <foreground android:drawable="@drawable/ic_launcher_foreground" />
++    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
++</adaptive-icon>
+\ No newline at end of file
+diff --git a/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml b/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml
+new file mode 100644
+index 000000000..8978f05a8
+--- /dev/null
++++ b/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml
+@@ -0,0 +1,23 @@
++<?xml version="1.0" encoding="utf-8"?><!--
++  ~ Copyright 2022 Tarsin Norbin
++  ~
++  ~ This file is part of EhViewer
++  ~
++  ~ EhViewer is free software: you can redistribute it and/or modify it
++  ~ under the terms of the GNU General Public License as published
++  ~ by the Free Software Foundation, either version 3 of the License, or
++  ~ (at your option) any later version.
++  ~
++  ~ EhViewer is distributed in the hope that it will be useful, but WITHOUT
++  ~ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++  ~ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
++  ~
++  ~ You should have received a copy of the GNU General Public License along with EhViewer.
++  ~ If not, see <https://www.gnu.org/licenses/>.
++  -->
++
++<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
++    <background android:drawable="@android:color/white" />
++    <foreground android:drawable="@drawable/ic_launcher_foreground" />
++    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
++</adaptive-icon>
+\ No newline at end of file
+diff --git a/app/src/main/res/xml/shortcuts.xml b/app/src/main/res/xml/shortcuts.xml
+new file mode 100644
+index 000000000..fb86bff36
+--- /dev/null
++++ b/app/src/main/res/xml/shortcuts.xml
+@@ -0,0 +1,48 @@
++<?xml version="1.0" encoding="utf-8"?><!--
++  ~ Copyright 2022 Tarsin Norbin
++  ~
++  ~ This file is part of EhViewer
++  ~
++  ~ EhViewer is free software: you can redistribute it and/or modify it
++  ~ under the terms of the GNU General Public License as published
++  ~ by the Free Software Foundation, either version 3 of the License, or
++  ~ (at your option) any later version.
++  ~
++  ~ EhViewer is distributed in the hope that it will be useful, but WITHOUT
++  ~ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++  ~ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
++  ~
++  ~ You should have received a copy of the GNU General Public License along with EhViewer.
++  ~ If not, see <https://www.gnu.org/licenses/>.
++  -->
++<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
++
++    <shortcut
++        android:enabled="true"
++        android:icon="@drawable/ic_shortcut_start"
++        android:shortcutDisabledMessage="@string/download_start_all"
++        android:shortcutId="start_all"
++        android:shortcutLongLabel="@string/download_start_all"
++        android:shortcutShortLabel="@string/download_start_all">
++        <intent
++            android:action="start_all"
++            android:targetClass="com.hippo.ehviewer.shortcuts.ShortcutsActivity"
++            android:targetPackage="moe.tarsin.ehviewer" />
++        <categories android:name="android.shortcut.conversation" />
++    </shortcut>
++
++    <shortcut
++        android:enabled="true"
++        android:icon="@drawable/ic_shortcut_stop"
++        android:shortcutDisabledMessage="@string/download_stop_all"
++        android:shortcutId="stop_all"
++        android:shortcutLongLabel="@string/download_stop_all"
++        android:shortcutShortLabel="@string/download_stop_all">
++        <intent
++            android:action="stop_all"
++            android:targetClass="com.hippo.ehviewer.shortcuts.ShortcutsActivity"
++            android:targetPackage="moe.tarsin.ehviewer" />
++        <categories android:name="android.shortcut.conversation" />
++    </shortcut>
++
++</shortcuts>
+\ No newline at end of file
+diff --git a/scripts/run_emulator_tests.sh b/scripts/run_emulator_tests.sh
+new file mode 100644
+index 000000000..b1a60f5d9
+--- /dev/null
++++ b/scripts/run_emulator_tests.sh
+@@ -0,0 +1,65 @@
++#!/usr/bin/env bash
++set -euo pipefail
++: "${ANDROID_HOME:?Android SDK required}"
++: "${TEST_IMAGE:?SDK package required}"
++: "${TEST_LABEL:?Test label required}"
++export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
++if adb -s emulator-5554 get-state >/dev/null 2>&1; then
++  echo "Emulator port 5554 is already in use" >&2
++  exit 1
++fi
++mkdir -p device-reports
++sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
++avdmanager="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
++"$sdkmanager" "$TEST_IMAGE"
++avd_path="${RUNNER_TEMP:-/tmp}/ehviewer-ci-avd"
++echo no | "$avdmanager" create avd --name ehviewer-ci --package "$TEST_IMAGE" --device pixel_2 --path "$avd_path"
++python3 - "$avd_path/config.ini" <<'PYAVD'
++import sys
++from pathlib import Path
++p = Path(sys.argv[1])
++lines = [line for line in p.read_text().splitlines() if not line.startswith("disk.dataPartition.size=")]
++p.write_text("\n".join(lines) + "\ndisk.dataPartition.size=2G\n")
++PYAVD
++emulator -avd ehviewer-ci -port 5554 -no-window -no-audio -no-snapshot -gpu swiftshader -no-boot-anim > device-reports/emulator.log 2>&1 &
++emulator_pid=$!
++finish() {
++  adb -s emulator-5554 logcat -d > device-reports/logcat.txt 2>&1 || true
++  if kill -0 "$emulator_pid" 2>/dev/null; then
++    adb -s emulator-5554 emu kill || true
++  fi
++  wait "$emulator_pid" || true
++}
++trap finish EXIT
++booted=false
++for _ in {1..180}; do
++  if [[ "$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]]; then
++    booted=true
++    break
++  fi
++  kill -0 "$emulator_pid"
++  sleep 2
++done
++[[ "$booted" == true ]] || { echo 'Emulator failed to boot'; exit 1; }
++adb -s emulator-5554 shell getprop ro.build.version.sdk > device-reports/api.txt
++if ! adb -s emulator-5554 shell getconf PAGE_SIZE > device-reports/page-size.txt 2> device-reports/page-size-error.txt; then
++  # Older Android images do not ship getconf. Read this shell process's actual mappings.
++  adb -s emulator-5554 shell cat /proc/self/smaps > device-reports/smaps.txt
++  awk '/^KernelPageSize:/ { print $2 * 1024; exit }' device-reports/smaps.txt > device-reports/page-size.txt
++fi
++page_size=$(tr -d '\r\n' < device-reports/page-size.txt)
++[[ "$page_size" =~ ^[0-9]+$ && "$page_size" -ge 4096 ]]
++expected_api="${TEST_LABEL#api}"
++expected_api="${expected_api%%-*}"
++[[ "$(tr -d '\r\n' < device-reports/api.txt)" == "$expected_api" ]]
++if [[ "$TEST_LABEL" == *16k ]]; then
++  [[ "$(tr -d '\r\n' < device-reports/page-size.txt)" == 16384 ]]
++fi
++app=$(find device-inputs -name app-universal-debug.apk -print -quit)
++test_apk=$(find device-inputs -name app-debug-androidTest.apk -print -quit)
++[[ -f "$app" && -f "$test_apk" ]]
++adb -s emulator-5554 install -r "$app"
++adb -s emulator-5554 install -r "$test_apk"
++adb -s emulator-5554 shell am instrument -w -r moe.tarsin.ehviewer.debug.test/androidx.test.runner.AndroidJUnitRunner | tee device-reports/instrumentation.txt
++grep -Eq '^OK \([1-9][0-9]* tests?\)' device-reports/instrumentation.txt
++! grep -Eq 'FAILURES!!!|INSTRUMENTATION_FAILED|Process crashed' device-reports/instrumentation.txt
+diff --git a/scripts/test_verify_apks.py b/scripts/test_verify_apks.py
+new file mode 100644
+index 000000000..2a781c8a6
+--- /dev/null
++++ b/scripts/test_verify_apks.py
+@@ -0,0 +1,59 @@
++import struct
++import unittest
++from verify_apks import elf
++
++
++def sample(abi='arm64-v8a', align=16384, offset=0, vaddr=0, count=1):
++    is64 = abi != 'armeabi-v7a'
++    data = bytearray(128)
++    data[:6] = b'\x7fELF' + bytes([2 if is64 else 1, 1])
++    struct.pack_into('<H', data, 18, {'arm64-v8a': 183, 'x86_64': 62, 'armeabi-v7a': 40}[abi])
++    if is64:
++        struct.pack_into('<Q', data, 32, 64)
++        struct.pack_into('<HH', data, 54, 56, count)
++        struct.pack_into('<IIQQQQQQ', data, 64, 1, 5, offset, vaddr, 0, 32, 32, align)
++    else:
++        struct.pack_into('<I', data, 28, 52)
++        struct.pack_into('<HH', data, 42, 32, count)
++        struct.pack_into('<IIIIIIII', data, 52, 1, offset, vaddr, 0, 32, 32, 5, align)
++    return bytes(data)
++
++
++class ElfValidationTest(unittest.TestCase):
++    def test_all_abis(self):
++        for abi in ['arm64-v8a', 'x86_64', 'armeabi-v7a']:
++            self.assertEqual([16384], elf(sample(abi), abi))
++
++    def test_rejects_four_kib_64_bit(self):
++        for abi in ['arm64-v8a', 'x86_64']:
++            with self.assertRaisesRegex(ValueError, '16KB'):
++                elf(sample(abi, align=4096), abi)
++
++    def test_allows_four_kib_32_bit(self):
++        self.assertEqual([4096], elf(sample('armeabi-v7a', align=4096), 'armeabi-v7a'))
++
++    def test_rejects_wrong_machine(self):
++        with self.assertRaisesRegex(ValueError, 'machine'):
++            elf(sample('x86_64'), 'arm64-v8a')
++
++    def test_rejects_misaligned_load(self):
++        with self.assertRaisesRegex(ValueError, 'alignment'):
++            elf(sample(offset=1), 'arm64-v8a')
++
++    def test_rejects_non_power_of_two(self):
++        with self.assertRaisesRegex(ValueError, 'alignment'):
++            elf(sample(align=20000), 'arm64-v8a')
++
++    def test_rejects_empty_load_table(self):
++        with self.assertRaisesRegex(ValueError, 'no LOAD'):
++            elf(sample(count=0), 'arm64-v8a')
++
++    def test_rejects_bad_magic_and_class(self):
++        with self.assertRaises(ValueError):
++            elf(b'not ELF', 'arm64-v8a')
++        with self.assertRaisesRegex(ValueError, 'class'):
++            elf(sample('armeabi-v7a'), 'arm64-v8a')
++
++
++if __name__ == '__main__':
++    unittest.main()
+diff --git a/scripts/verify_apks.py b/scripts/verify_apks.py
+new file mode 100644
+index 000000000..44c2bad1b
+--- /dev/null
++++ b/scripts/verify_apks.py
+@@ -0,0 +1,130 @@
++#!/usr/bin/env python3
++"""Verify real AGP APK metadata, identity, signing, ABI/JNI and 16KB alignment."""
++import argparse
++import hashlib
++import json
++import re
++import struct
++import subprocess
++import tempfile
++import zipfile
++from pathlib import Path
++
++ABIS = {'arm64-v8a': 183, 'armeabi-v7a': 40, 'x86_64': 62}
++CERT = '5d91dff13b6489a9cfadbb197b3e795eefc8c39f849c4543f32c160720fb40a6'
++JNI = {'JNI_OnLoad', 'Java_com_hippo_ehviewer_jni_HashKt_sha1',
++       *{'Java_com_hippo_ehviewer_jni_ArchiveKt_' + n for n in (
++           'openArchive', 'closeArchive', 'extractToByteBuffer', 'extractToFd',
++           'releaseByteBuffer', 'getExtension', 'needPassword', 'providePassword', 'archiveFdBatch')},
++       *{'Java_com_hippo_ehviewer_jni_GifUtilsKt_' + n for n in ('isGif', 'rewriteGifSource', 'mmap', 'munmap')}}
++
++
++def elf(data, abi):
++    if data[:4] != b'\x7fELF' or data[5] != 1:
++        raise ValueError('Expected little-endian ELF')
++    is64 = data[4] == 2
++    if data[4] not in (1, 2) or is64 != (abi != 'armeabi-v7a'):
++        raise ValueError('Incorrect ELF class')
++    if struct.unpack_from('<H', data, 18)[0] != ABIS[abi]:
++        raise ValueError('Incorrect ELF machine')
++    phoff = struct.unpack_from('<Q' if is64 else '<I', data, 32 if is64 else 28)[0]
++    entsize, count = struct.unpack_from('<HH', data, 54 if is64 else 42)
++    loads = []
++    for i in range(count):
++        off = phoff + i * entsize
++        fields = struct.unpack_from('<IIQQQQQQ' if is64 else '<IIIIIIII', data, off)
++        if fields[0] == 1:
++            offset, vaddr, align = (fields[2], fields[3], fields[7]) if is64 else (fields[1], fields[2], fields[7])
++            if align < 4096 or align & (align - 1) or (offset - vaddr) % align:
++                raise ValueError('Invalid LOAD alignment')
++            if is64 and align < 16384:
++                raise ValueError('64-bit LOAD not 16KB aligned')
++            loads.append(align)
++    if not loads:
++        raise ValueError('ELF has no LOAD segments')
++    return loads
++
++
++def run(*args):
++    return subprocess.check_output([str(a) for a in args], text=True, stderr=subprocess.STDOUT)
++
++
++def verify(directory, sdk, ndk, application_id, release, version_code=None):
++    metadata = json.loads((directory / 'output-metadata.json').read_text())
++    if metadata['artifactType']['type'] != 'APK':
++        raise ValueError('Expected APK metadata')
++    if metadata['applicationId'] != application_id:
++        raise ValueError('Metadata applicationId changed')
++    expected_code = metadata['elements'][0]['versionCode']
++    expected_name = metadata['elements'][0]['versionName']
++    if expected_code <= 0 or (version_code is not None and expected_code != version_code):
++        raise ValueError('Unexpected versionCode')
++    seen, reports = set(), []
++    host = 'darwin-x86_64' if __import__('sys').platform == 'darwin' else 'linux-x86_64'
++    nm = sdk / 'ndk' / ndk / 'toolchains/llvm/prebuilt' / host / 'bin/llvm-nm'
++    tools = sdk / 'build-tools/37.0.0'
++    for element in metadata['elements']:
++        filters = element['filters']
++        if filters and (len(filters) != 1 or filters[0]['filterType'] != 'ABI'):
++            raise ValueError('Unexpected APK filters')
++        abi = filters[0]['value'] if filters else 'universal'
++        if abi in seen or abi not in {*ABIS, 'universal'}:
++            raise ValueError('Unexpected/duplicate APK ABI')
++        seen.add(abi)
++        apk = directory / element['outputFile']
++        if apk.resolve().parent != directory.resolve():
++            raise ValueError('APK escapes output directory')
++        if element['versionCode'] != expected_code or element['versionName'] != expected_name:
++            raise ValueError('Inconsistent APK versions')
++        badging = run(tools / 'aapt2', 'dump', 'badging', apk)
++        if f"package: name='{application_id}'" not in badging or "minSdkVersion:'26'" not in badging or "targetSdkVersion:'37'" not in badging:
++            raise ValueError('Packaged manifest identity/SDK mismatch')
++        if f"versionCode='{expected_code}'" not in badging or f"versionName='{expected_name}'" not in badging:
++            raise ValueError('Packaged version differs from metadata')
++        signing = run(tools / 'apksigner', 'verify', '--verbose', '--print-certs', apk)
++        certs = re.findall(r'certificate SHA-256 digest: ([0-9a-f]+)', signing)
++        if not certs or (release and certs != [CERT]):
++            raise ValueError('APK signature/certificate mismatch')
++        run(tools / 'zipalign', '-c', '-P', '16', '-v', '4', apk)
++        libraries, actual_abis = {}, set()
++        with zipfile.ZipFile(apk) as archive, tempfile.TemporaryDirectory() as temp:
++            for info in archive.infolist():
++                if not info.filename.startswith('lib/') or not info.filename.endswith('.so'):
++                    continue
++                _, libabi, name = info.filename.split('/')
++                actual_abis.add(libabi)
++                if libabi not in ABIS:
++                    raise ValueError('Unexpected packaged ABI')
++                data = archive.read(info)
++                alignment = elf(data, libabi)
++                libraries[info.filename] = alignment
++                if name == 'libehviewer.so':
++                    path = Path(temp) / (libabi + '.so')
++                    path.write_bytes(data)
++                    exports = [line.split()[-1] for line in run(nm, '--dynamic', '--defined-only', path).splitlines() if line.split()]
++                    if len(exports) != len(set(exports)) or not JNI.issubset(exports):
++                        raise ValueError('Missing/duplicate JNI symbols')
++                    if not any('ParserKt_' in x for x in exports):
++                        raise ValueError('Rust JNI parser exports missing')
++            expected = set(ABIS) if abi == 'universal' else {abi}
++            if actual_abis != expected or not all('lib/' + a + '/libehviewer.so' in libraries for a in expected):
++                raise ValueError('Packaged native ABI set mismatch')
++        reports.append({'file': apk.name, 'abi': abi, 'sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
++                        'versionCode': expected_code, 'versionName': expected_name, 'certificate': certs, 'native': libraries})
++    if seen != {*ABIS, 'universal'}:
++        raise ValueError('Expected three splits and universal APK')
++    if {p.name for p in directory.glob('*.apk')} != {e['outputFile'] for e in metadata['elements']}:
++        raise ValueError('Unexpected/stale APK in output directory')
++    return reports
++
++
++if __name__ == '__main__':
++    p = argparse.ArgumentParser(description=__doc__)
++    p.add_argument('directory', type=Path)
++    p.add_argument('--sdk', type=Path, required=True)
++    p.add_argument('--ndk', default='29.0.14206865')
++    p.add_argument('--application-id', default='moe.tarsin.ehviewer')
++    p.add_argument('--debug', action='store_true')
++    p.add_argument('--version-code', type=int, help='Optional migration baseline versionCode')
++    a = p.parse_args()
++    print(json.dumps(verify(a.directory, a.sdk, a.ndk, a.application_id, not a.debug, a.version_code), indent=2))
+diff --git a/scripts/verify_bytecode.py b/scripts/verify_bytecode.py
+new file mode 100644
+index 000000000..c4ca92e39
+--- /dev/null
++++ b/scripts/verify_bytecode.py
+@@ -0,0 +1,24 @@
++#!/usr/bin/env python3
++"""Verify produced Android Java/Kotlin class files, independently of the build JDK."""
++import json
++import struct
++from pathlib import Path
++
++roots = {
++    'app': [Path('app/build/intermediates') / kind / variant
++            for kind in ('javac', 'built_in_kotlinc') for variant in ('debug', 'release')],
++    'benchmark': [Path('benchmark/build/intermediates/built_in_kotlinc/nonMinifiedRelease')],
++    **{name: [Path('core') / name / 'build/classes/kotlin/android/main']
++       for name in ('common', 'data', 'i18n', 'ui')},
++}
++counts = {}
++for name, directories in roots.items():
++    files = [path for directory in directories for path in directory.rglob('*.class')]
++    if not files:
++        raise RuntimeError('No compiled Android classes for ' + name)
++    for path in files:
++        data = path.read_bytes()
++        if data[:4] != b'\xca\xfe\xba\xbe' or struct.unpack('>H', data[6:8])[0] != 61:
++            raise RuntimeError('Expected Java 17 class: ' + str(path))
++    counts[name] = len(files)
++print(json.dumps({'androidClassMajor': 61, 'classes': counts}, indent=2))

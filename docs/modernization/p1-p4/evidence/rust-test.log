@@ -1,0 +1,35 @@
+warning: variant `IpBanned` is never constructed
+  --> src/lib.rs:79:5
+   |
+72 | enum EhError {
+   |      ------- variant in this enum
+...
+79 |     IpBanned(String),
+   |     ^^^^^^^^
+   |
+   = note: `EhError` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `get_image_info` is never used
+  --> src/img/webp.rs:22:22
+   |
+22 | pub(crate) unsafe fn get_image_info(dec: *const WebPAnimDecoder) -> WebPAnimInfo {
+   |                      ^^^^^^^^^^^^^^
+
+warning: function `decode_next_frame` is never used
+  --> src/img/webp.rs:32:22
+   |
+32 | pub(crate) unsafe fn decode_next_frame(dec: *mut WebPAnimDecoder, reset: bool) -> (*const u8, i32) {
+   |                      ^^^^^^^^^^^^^^^^^
+
+warning: `ehviewer_rust` (lib test) generated 3 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.66s
+     Running unittests src/lib.rs (/private/tmp/ehviewer-p0-c5156a2/cargo-target/debug/build/ehviewer_rust/e98b343bde3dd61d/out/ehviewer_rust-e98b343bde3dd61d)
+
+running 3 tests
+test parser::test_parser::tests::test_parse_tag_gallery ... ok
+test parser::test_parser::tests::test_parse_archive_url ... ok
+test parser::test_parser::tests::test_parse_archives_with_funds ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.01s
+

@@ -1,0 +1,46 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Type-safe project accessors is an incubating feature.
+> Task :build-logic:convention:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:convention:pluginDescriptors
+> Task :build-logic:convention:processResources
+> Task :build-logic:convention:compileKotlin
+> Task :build-logic:convention:compileJava NO-SOURCE
+> Task :build-logic:convention:classes
+> Task :build-logic:convention:jar
+> Task :app:preBuild UP-TO-DATE
+> Task :core:ui:androidPreBuild UP-TO-DATE
+> Task :core:common:androidPreBuild UP-TO-DATE
+> Task :core:data:androidPreBuild UP-TO-DATE
+> Task :core:common:preAndroidMainBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :core:ui:preAndroidMainBuild UP-TO-DATE
+> Task :core:data:preAndroidMainBuild UP-TO-DATE
+> Task :core:ui:generateAndroidMainEmptyResourceFiles
+> Task :core:data:generateAndroidMainEmptyResourceFiles
+> Task :core:common:generateAndroidMainEmptyResourceFiles
+> Task :core:i18n:generateMRcommonTest
+> Task :core:i18n:generateMRjvmTest
+> Task :core:i18n:generateMRandroidHostTest
+> Task :core:i18n:generateMRcommonMain
+> Task :core:i18n:generateMRjvmMain
+> Task :core:i18n:generateMRandroidMain
+> Task :core:i18n:androidPreBuild UP-TO-DATE
+> Task :core:i18n:preAndroidMainBuild UP-TO-DATE
+> Task :core:i18n:packageAndroidMainResources
+> Task :app:prepareLibraryDefinitionsDebug
+> Task :app:extractDebugSupportedLocales
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:prepareLibraryDefinitionsRelease
+> Task :app:extractReleaseSupportedLocales
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:generateReleaseResources
+> Task :app:generateDebugLocaleConfig
+> Task :app:generateReleaseLocaleConfig
+> Task :app:mergeDebugResources
+> Task :app:mergeReleaseResources
+
+BUILD SUCCESSFUL in 20s
+26 actionable tasks: 26 executed

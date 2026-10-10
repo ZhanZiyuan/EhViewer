@@ -42,7 +42,6 @@ import com.ehviewer.core.database.SearchDatabase
 import com.ehviewer.core.database.roomDb
 import com.ehviewer.core.files.deleteContent
 import com.ehviewer.core.ui.util.initSETConnection
-import com.ehviewer.core.util.isAtLeastO
 import com.ehviewer.core.util.isAtLeastP
 import com.ehviewer.core.util.isAtLeastS
 import com.ehviewer.core.util.launchIO
@@ -180,11 +179,7 @@ class EhApplication : Application(), SingletonImageLoader.Factory {
             )
             add(MergeInterceptor)
             add(DownloadThumbInterceptor)
-            if (isAtLeastO) {
-                add(HardwareBitmapInterceptor)
-            } else {
-                allowRgb565(true)
-            }
+            add(HardwareBitmapInterceptor)
             add(CropBorderInterceptor)
             add(DetectBorderInterceptor)
             add(QrCodeInterceptor)

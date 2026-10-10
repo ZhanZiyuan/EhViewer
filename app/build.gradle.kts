@@ -2,9 +2,6 @@ import com.mikepenz.aboutlibraries.plugin.DuplicateMode
 import com.mikepenz.aboutlibraries.plugin.DuplicateRule
 import java.util.regex.Pattern
 
-val isRelease: Boolean
-    get() = gradle.startParameter.taskNames.any { it.contains("Release") }
-
 plugins {
     alias(libs.plugins.ehviewer.android.application)
     alias(libs.plugins.kotlin.serialization)
@@ -21,12 +18,8 @@ android {
         abi {
             isEnable = true
             reset()
-            if (isRelease) {
-                include(*supportedAbis)
-                isUniversalApk = true
-            } else {
-                include("arm64-v8a", "x86_64")
-            }
+            include(*supportedAbis)
+            isUniversalApk = true
         }
     }
 
@@ -56,6 +49,7 @@ android {
 
     defaultConfig {
         applicationId = "moe.tarsin.ehviewer"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = 180064
         versionName = if (snapshot) {
             "1.15.0-SNAPSHOT"
@@ -68,24 +62,12 @@ android {
         buildConfigField("long", "COMMIT_TIME", commitTime)
         buildConfigField("String", "REPO_NAME", "\"$repoName\"")
         ndk {
-            if (isRelease) {
-                abiFilters.addAll(supportedAbis)
-            }
+            abiFilters.addAll(supportedAbis)
             debugSymbolLevel = "FULL"
         }
     }
 
-    flavorDimensions += "api"
-
-    productFlavors {
-        create("default") {
-            minSdk = 26
-        }
-        create("marshmallow") {
-            applicationIdSuffix = ".m"
-            versionNameSuffix = "-M"
-        }
-    }
+    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("docs/modernization/baseline/fixtures"))
 
     externalNativeBuild {
         cmake {
@@ -173,6 +155,9 @@ baselineProfile {
 }
 
 dependencies {
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+
     implementation(projects.core.data)
     implementation(projects.core.i18n)
     implementation(projects.core.ui)

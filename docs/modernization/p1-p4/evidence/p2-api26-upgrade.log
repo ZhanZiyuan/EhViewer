@@ -1,0 +1,9 @@
+Performing Streamed Install
+Success
+Starting: Intent { cmp=moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity }
+Status: ok
+Activity: moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity
+ThisTime: 797
+TotalTime: 797
+WaitTime: 808
+Complete

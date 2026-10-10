@@ -1,0 +1,10 @@
+error: failed to get `libwebp-sys2` as a dependency of package `ehviewer_rust v0.0.0 (/Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/rust)`
+
+Caused by:
+  failed to load source for dependency `libwebp-sys2`
+
+Caused by:
+  unable to update https://github.com/FooIbar/libwebp-sys2-rs.git#138c7114
+
+Caused by:
+  can't checkout from 'https://github.com/FooIbar/libwebp-sys2-rs.git': you are in the offline mode (--offline)

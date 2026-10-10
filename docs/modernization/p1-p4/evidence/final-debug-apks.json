@@ -1,0 +1,110 @@
+[
+  {
+    "file": "app-universal-debug.apk",
+    "abi": "universal",
+    "sha256": "b172ecc0bfb27efa8918e9f0d3f3fd75fca5a24c56941de6b9db3ef1d4e3af07",
+    "versionCode": 180064,
+    "versionName": "1.15.0",
+    "certificate": [
+      "9ad4340b4df47941e05e2f1bbe7e3b2ac3d6dee7f8458b7480cd1e52f1778551"
+    ],
+    "native": {
+      "lib/arm64-v8a/libandroidx.graphics.path.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/arm64-v8a/libehviewer.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/armeabi-v7a/libandroidx.graphics.path.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/armeabi-v7a/libehviewer.so": [
+        4096,
+        4096,
+        4096
+      ],
+      "lib/x86_64/libandroidx.graphics.path.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/x86_64/libehviewer.so": [
+        16384,
+        16384,
+        16384
+      ]
+    }
+  },
+  {
+    "file": "app-x86_64-debug.apk",
+    "abi": "x86_64",
+    "sha256": "53f549b1b57f933e5c9989ccba74bf446cbfe805e53ec8b4aea31da4367c309c",
+    "versionCode": 180064,
+    "versionName": "1.15.0",
+    "certificate": [
+      "9ad4340b4df47941e05e2f1bbe7e3b2ac3d6dee7f8458b7480cd1e52f1778551"
+    ],
+    "native": {
+      "lib/x86_64/libandroidx.graphics.path.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/x86_64/libehviewer.so": [
+        16384,
+        16384,
+        16384
+      ]
+    }
+  },
+  {
+    "file": "app-armeabi-v7a-debug.apk",
+    "abi": "armeabi-v7a",
+    "sha256": "a33745ecc33d19fc27dfa73e127ef98ed52a660129686d879522a28d056c65ca",
+    "versionCode": 180064,
+    "versionName": "1.15.0",
+    "certificate": [
+      "9ad4340b4df47941e05e2f1bbe7e3b2ac3d6dee7f8458b7480cd1e52f1778551"
+    ],
+    "native": {
+      "lib/armeabi-v7a/libandroidx.graphics.path.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/armeabi-v7a/libehviewer.so": [
+        4096,
+        4096,
+        4096
+      ]
+    }
+  },
+  {
+    "file": "app-arm64-v8a-debug.apk",
+    "abi": "arm64-v8a",
+    "sha256": "dd623e98ae7a5d736be4ce6e8bd14ae4299e9371837ca0c08d6e562e98635239",
+    "versionCode": 180064,
+    "versionName": "1.15.0",
+    "certificate": [
+      "9ad4340b4df47941e05e2f1bbe7e3b2ac3d6dee7f8458b7480cd1e52f1778551"
+    ],
+    "native": {
+      "lib/arm64-v8a/libandroidx.graphics.path.so": [
+        16384,
+        16384,
+        16384
+      ],
+      "lib/arm64-v8a/libehviewer.so": [
+        16384,
+        16384,
+        16384
+      ]
+    }
+  }
+]

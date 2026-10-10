@@ -1,0 +1,27 @@
+{
+  "5560": {
+    "sdk": "26",
+    "pageSize": "4096",
+    "fingerprint": "google/sdk_gphone_arm64/generic_arm64:8.0.0/OSR1.180418.028.A3/10734686:userdebug/dev-keys"
+  },
+  "5562": {
+    "sdk": "37",
+    "pageSize": "16384",
+    "fingerprint": "google/sdk_gphone16k_arm64/emu64a16k:CANARY/ZP11.260918.008/16518831:userdebug/dev-keys"
+  },
+  "5568": {
+    "sdk": "35",
+    "pageSize": "4096",
+    "fingerprint": "Android/sdk_phone64_arm64/emu64a:15/AE3A.240806.019/12368160:userdebug/test-keys"
+  },
+  "5564": {
+    "sdk": "29",
+    "pageSize": "4096",
+    "fingerprint": "Android/sdk_phone64_arm64/emulator64_arm64:10/QSR1.211112.002/7910984:userdebug/test-keys"
+  },
+  "5566": {
+    "sdk": "33",
+    "pageSize": "4096",
+    "fingerprint": "Android/sdk_phone64_arm64/emulator64_arm64:13/TE1A.220922.034/10940250:userdebug/test-keys"
+  }
+}

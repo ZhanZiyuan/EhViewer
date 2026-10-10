@@ -1,0 +1,166 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Type-safe project accessors is an incubating feature.
+> Task :build-logic:convention:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:convention:compileKotlin UP-TO-DATE
+> Task :build-logic:convention:compileJava NO-SOURCE
+> Task :build-logic:convention:pluginDescriptors UP-TO-DATE
+> Task :build-logic:convention:processResources UP-TO-DATE
+> Task :build-logic:convention:classes UP-TO-DATE
+> Task :build-logic:convention:jar UP-TO-DATE
+> Task :core:common:androidPreBuild UP-TO-DATE
+> Task :core:data:androidPreBuild UP-TO-DATE
+> Task :core:i18n:androidPreBuild UP-TO-DATE
+> Task :core:ui:androidPreBuild UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :core:common:preAndroidMainBuild UP-TO-DATE
+> Task :core:ui:preAndroidMainBuild UP-TO-DATE
+> Task :core:i18n:preAndroidMainBuild UP-TO-DATE
+> Task :core:data:preAndroidMainBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :core:ui:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :core:data:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :core:i18n:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :core:common:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :core:i18n:kmpPartiallyResolvedDependenciesChecker
+> Task :core:common:kmpPartiallyResolvedDependenciesChecker
+> Task :core:ui:kmpPartiallyResolvedDependenciesChecker
+> Task :core:data:kmpPartiallyResolvedDependenciesChecker
+> Task :core:i18n:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:common:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:ui:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:data:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:i18n:generateMRcommonTest UP-TO-DATE
+> Task :core:i18n:generateMRjvmTest UP-TO-DATE
+> Task :core:ui:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :core:i18n:generateMRandroidHostTest UP-TO-DATE
+> Task :core:ui:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :core:data:processAndroidMainManifest UP-TO-DATE
+> Task :core:ui:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :core:ui:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :core:data:extractProguardFiles UP-TO-DATE
+> Task :core:i18n:generateMRcommonMain UP-TO-DATE
+> Task :core:ui:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :core:data:prepareLintJarForPublish UP-TO-DATE
+> Task :core:ui:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :core:i18n:generateMRjvmMain UP-TO-DATE
+> Task :core:ui:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :core:ui:generateResourceAccessorsForCommonMain SKIPPED
+> Task :core:ui:convertXmlValueResourcesForJvmMain NO-SOURCE
+> Task :core:ui:copyNonXmlValueResourcesForJvmMain NO-SOURCE
+> Task :core:ui:prepareComposeResourcesTaskForJvmMain NO-SOURCE
+> Task :core:ui:generateResourceAccessorsForJvmMain SKIPPED
+> Task :core:ui:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :core:ui:generateComposeResClass SKIPPED
+> Task :core:ui:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :core:i18n:generateMRandroidMain UP-TO-DATE
+> Task :core:data:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :core:data:writeAndroidMainLintModelMetadata UP-TO-DATE
+> Task :core:data:preAndroidHostTestBuild UP-TO-DATE
+> Task :core:ui:processAndroidMainManifest UP-TO-DATE
+> Task :core:ui:extractProguardFiles UP-TO-DATE
+> Task :core:ui:prepareLintJarForPublish UP-TO-DATE
+> Task :core:i18n:packageAndroidMainResources UP-TO-DATE
+> Task :core:ui:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :core:ui:writeAndroidMainLintModelMetadata UP-TO-DATE
+> Task :core:ui:preAndroidHostTestBuild UP-TO-DATE
+> Task :core:i18n:parseAndroidMainLocalResources UP-TO-DATE
+> Task :core:i18n:generateAndroidMainRFile UP-TO-DATE
+> Task :core:common:compileAndroidMain UP-TO-DATE
+> Task :core:common:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :app:generateReleaseBuildConfig
+> Task :core:i18n:compileAndroidMain UP-TO-DATE
+> Task :core:common:processAndroidMainManifest UP-TO-DATE
+> Task :core:i18n:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :core:common:bundleAndroidMainClassesToRuntimeJar UP-TO-DATE
+> Task :core:i18n:processAndroidMainManifest UP-TO-DATE
+> Task :core:i18n:bundleAndroidMainClassesToRuntimeJar UP-TO-DATE
+> Task :core:common:processAndroidMainJavaRes UP-TO-DATE
+> Task :core:common:createFullJarAndroidMain UP-TO-DATE
+> Task :core:i18n:processAndroidMainJavaRes UP-TO-DATE
+> Task :core:common:extractProguardFiles UP-TO-DATE
+> Task :core:i18n:createFullJarAndroidMain UP-TO-DATE
+> Task :core:i18n:extractProguardFiles UP-TO-DATE
+> Task :core:common:generateAndroidMainLintModel UP-TO-DATE
+> Task :core:i18n:generateAndroidMainLintModel UP-TO-DATE
+> Task :core:common:prepareLintJarForPublish UP-TO-DATE
+> Task :core:i18n:prepareLintJarForPublish UP-TO-DATE
+> Task :core:data:kspAndroidMain UP-TO-DATE
+> Task :core:common:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :core:data:copyRoomSchemas NO-SOURCE
+> Task :core:i18n:checkAndroidMainAarMetadata UP-TO-DATE
+> Task :core:common:checkAndroidMainAarMetadata UP-TO-DATE
+> Task :core:ui:compileAndroidMain UP-TO-DATE
+> Task :core:ui:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :core:ui:bundleAndroidMainClassesToRuntimeJar UP-TO-DATE
+> Task :app:prepareLibraryDefinitionsRelease UP-TO-DATE
+> Task :core:common:extractAndroidMainAnnotations UP-TO-DATE
+> Task :core:i18n:extractAndroidMainAnnotations UP-TO-DATE
+> Task :core:ui:processAndroidMainJavaRes UP-TO-DATE
+> Task :core:ui:createFullJarAndroidMain UP-TO-DATE
+> Task :core:common:mergeAndroidMainJavaResource UP-TO-DATE
+> Task :core:i18n:mergeAndroidMainJavaResource UP-TO-DATE
+> Task :app:extractReleaseSupportedLocales UP-TO-DATE
+> Task :core:i18n:syncAndroidMainLibJars UP-TO-DATE
+> Task :core:common:syncAndroidMainLibJars UP-TO-DATE
+> Task :core:data:compileAndroidMain UP-TO-DATE
+> Task :core:i18n:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :core:common:bundleAndroidMainLocalLintAar UP-TO-DATE
+> Task :core:data:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :core:i18n:bundleAndroidMainLocalLintAar UP-TO-DATE
+> Task :core:data:bundleAndroidMainClassesToRuntimeJar UP-TO-DATE
+> Task :app:mapReleaseSourceSetPaths
+> Task :core:data:processAndroidMainJavaRes UP-TO-DATE
+> Task :app:generateReleaseLocaleConfig UP-TO-DATE
+> Task :core:data:createFullJarAndroidMain UP-TO-DATE
+> Task :app:generateReleaseResources UP-TO-DATE
+> Task :core:i18n:lintAnalyzeAndroidMain UP-TO-DATE
+> Task :core:common:lintAnalyzeAndroidMain UP-TO-DATE
+> Task :core:i18n:writeAndroidMainLintModelMetadata UP-TO-DATE
+> Task :core:common:writeAndroidMainLintModelMetadata UP-TO-DATE
+> Task :core:common:preAndroidHostTestBuild UP-TO-DATE
+> Task :core:i18n:preAndroidHostTestBuild UP-TO-DATE
+> Task :app:packageReleaseResources UP-TO-DATE
+> Task :core:i18n:generateAndroidHostTestLintModel UP-TO-DATE
+> Task :core:i18n:lintAnalyzeAndroidHostTest UP-TO-DATE
+> Task :core:common:generateAndroidHostTestLintModel UP-TO-DATE
+> Task :core:common:lintAnalyzeAndroidHostTest UP-TO-DATE
+> Task :core:data:generateAndroidMainLintModel UP-TO-DATE
+> Task :core:data:checkAndroidMainAarMetadata UP-TO-DATE
+> Task :core:data:extractAndroidMainAnnotations UP-TO-DATE
+> Task :core:data:mergeAndroidMainJavaResource UP-TO-DATE
+> Task :core:data:syncAndroidMainLibJars UP-TO-DATE
+> Task :core:data:bundleAndroidMainLocalLintAar UP-TO-DATE
+> Task :app:processReleaseNavigationResources UP-TO-DATE
+> Task :app:parseReleaseLocalResources UP-TO-DATE
+> Task :app:generateReleaseRFile UP-TO-DATE
+> Task :core:data:lintAnalyzeAndroidMain UP-TO-DATE
+> Task :core:ui:generateAndroidMainLintModel UP-TO-DATE
+> Task :core:ui:checkAndroidMainAarMetadata UP-TO-DATE
+> Task :core:data:generateAndroidHostTestLintModel UP-TO-DATE
+> Task :core:ui:extractAndroidMainAnnotations UP-TO-DATE
+> Task :core:ui:mergeAndroidMainJavaResource UP-TO-DATE
+> Task :core:ui:syncAndroidMainLibJars UP-TO-DATE
+> Task :core:ui:bundleAndroidMainLocalLintAar UP-TO-DATE
+> Task :core:data:lintAnalyzeAndroidHostTest UP-TO-DATE
+> Task :core:ui:lintAnalyzeAndroidMain UP-TO-DATE
+> Task :core:ui:generateAndroidHostTestLintModel UP-TO-DATE
+> Task :core:ui:lintAnalyzeAndroidHostTest UP-TO-DATE
+> Task :app:javaPreCompileRelease UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:extractDeepLinksRelease UP-TO-DATE
+> Task :app:processReleaseMainManifest
+> Task :app:kspReleaseKotlin
+> Task :app:compileReleaseKotlin
+> Task :app:compileReleaseJavaWithJavac
+> Task :app:generateReleaseLintReportModel
+> Task :app:lintAnalyzeRelease
+
+> Task :app:lintReportRelease
+Wrote HTML report to file:///Users/zhanziyuan/Documents/GitHub/EhViewer/app/build/reports/lint-results-release.html
+Wrote SARIF report to file:///Users/zhanziyuan/Documents/GitHub/EhViewer/app/build/reports/lint-results-release.sarif
+
+> Task :app:lintRelease
+
+BUILD SUCCESSFUL in 54s
+119 actionable tasks: 14 executed, 105 up-to-date

@@ -1,5 +1,8 @@
 name: Baseline profile generation
 
+permissions:
+  contents: read
+
 on:
   schedule:
     - cron: '30 0 * * *'
@@ -14,9 +17,10 @@ on:
 jobs:
   baseline-profile:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Free disk space
-        run: rm -rf $AGENT_TOOLSDIRECTORY
+        run: rm -rf "$AGENT_TOOLSDIRECTORY"
 
       - name: Enable KVM group perms
         run: |
@@ -26,6 +30,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -33,24 +39,23 @@ jobs:
           distribution: temurin
           java-version-file: .java-version
 
+      - name: Native host prerequisites
+        run: sudo apt-get update && sudo apt-get install -y autoconf automake pkg-config
+
       - name: Install Rust Toolchain
-        run: rustup target add thumbv7neon-linux-androideabi
+        run: rustup show active-toolchain
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: "./app/src/main/rust"
-
-      - name: CMake Cache
-        uses: actions/cache/restore@v5
-        with:
-          path: app/.cxx
-          key: cmake-
+          save-if: "false"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
           cache-encryption-key: ${{ secrets.GradleEncryptionKey }}
+          validate-wrappers: true
           cache-read-only: true
 
       - name: Generate Baseline Profile

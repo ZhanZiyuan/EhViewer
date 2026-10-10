@@ -1,0 +1,418 @@
+--------- beginning of system
+10-10 10:59:47.769   560   581 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_ORIENTATION_OVERRIDE
+10-10 10:59:47.769   560   581 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_RESIZEABLE_ACTIVITY_OVERRIDES
+10-10 10:59:47.770   560   581 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_MIN_ASPECT_RATIO_OVERRIDE
+--------- beginning of main
+10-10 10:59:47.770   560   581 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10121, packageName = null, attributionTag = null, token = android.os.Binder@6b87d74, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-10 10:59:47.772   910   910 I vol.VolumeDialogImpl: mDialog.dismiss() reason: volume_controller from: com.android.systemui.volume.VolumeDialogImpl$7.onDismissRequested:3
+10-10 10:59:47.773   910   981 D KeyguardService: setOccluded(false)
+10-10 10:59:47.773   910   981 D KeyguardViewMediator: setOccluded(false)
+10-10 10:59:47.773   910   910 D KeyguardViewMediator: handleSetOccluded(false)
+10-10 10:59:47.774   910   910 D KeyguardViewMediator: KeyguardViewMediator queue processing message: SET_OCCLUDED
+10-10 10:59:47.774  1332  1332 W SplitSelectStateCtor: Missing session instanceIds
+10-10 10:59:47.774  1332  1332 D StatsLog: LAUNCHER_SPLIT_SELECTION_EXIT_INTERRUPTED
+10-10 10:59:47.775   560   581 I ActivityTaskManager: START u0 {act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10000100 cmp=com.android.launcher3/.uioverrides.QuickstepLauncher (has extras)} with LAUNCH_SINGLE_TASK from uid 0 (BAL_ALLOW_ALLOWLISTED_UID) result code=3
+10-10 10:59:47.775  1332  1332 D OverviewCommandHelper: clearing pending commands - size: 0
+10-10 10:59:47.775  1332  1332 D StatsLog: LAUNCHER_ONRESUME
+10-10 10:59:47.785   910   951 D WindowManagerShell: onActivityRestartAttempt: ComponentInfo{com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher}
+10-10 10:59:47.791   560   583 D OomAdjuster: Not killing cached processes
+10-10 10:59:47.795  1332  1490 D EGL_emulation: app_time_stats: avg=27.69ms min=2.55ms max=546.93ms count=35
+10-10 10:59:47.806  2561  2575 D Benchmark: Starting activity with command: am start  -W "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;launchFlags=0x10008000;package=moe.tarsin.ehviewer;component=moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity;end"
+10-10 10:59:47.811  1468  1636 W MediaProvider: isAppCloneUserPair for user 0: false
+10-10 10:59:47.836   560  1029 W ActivityTaskManager: callingPackage for (uid=0, pid=4024) has no WPC
+10-10 10:59:47.836   560  1029 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_ORIENTATION_OVERRIDE
+10-10 10:59:47.836   560  1029 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10150, packageName = null, attributionTag = null, token = android.os.Binder@6b87d74, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-10 10:59:47.836   560  1029 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_RESIZEABLE_ACTIVITY_OVERRIDES
+10-10 10:59:47.837   560  1029 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_MIN_ASPECT_RATIO_OVERRIDE
+10-10 10:59:47.841   560  1029 I ActivityTaskManager: START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 pkg=moe.tarsin.ehviewer cmp=moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity} with LAUNCH_SINGLE_TASK from uid 0 (BAL_ALLOW_ALLOWLISTED_UID) result code=0
+10-10 10:59:47.842   910   966 D SplashScreenView: Build android.window.SplashScreenView{b51f0ba V.E...... ......ID 0,0-0,0}
+10-10 10:59:47.842   910   966 D SplashScreenView: Icon: view: android.widget.ImageView{3185b6b V.ED..... ......I. 0,0-0,0 #1020504 android:id/splashscreen_icon_view} drawable: com.android.wm.shell.startingsurface.SplashscreenIconDrawableFactory$ImmobileIconDrawable@cfbb6c8 size: 504
+10-10 10:59:47.842   910   966 D SplashScreenView: Branding: view: android.view.View{f8df361 G.ED..... ......I. 0,0-0,0 #1020503 android:id/splashscreen_branding_view} drawable: null size w: 0 h: 0
+10-10 10:59:47.843   910   951 V WindowManagerShell: Transition requested (#29): android.os.BinderProxy@edf4347 TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=15 displayId=0 isRunning=true baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 pkg=moe.tarsin.ehviewer cmp=moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity } baseActivity=ComponentInfo{moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity} topActivity=ComponentInfo{moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity} origActivity=null realActivity=ComponentInfo{moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity} numActivities=1 lastActiveTime=409391 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@b797774} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{cd5649d com.hippo.ehviewer.ui.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= falseisLetterboxEducationEnabled= false isLetterboxDoubleTapEnabled= false topActivityEligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=1080 topActivityLetterboxHeight=1920 isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false cameraCompatTaskInfo=CameraCompatTaskInfo { cameraCompatControlState=hidden freeformCameraCompatMode=inactive}}}, pipTask = null, remoteTransition = null, displayChange = null, flags = 0, debugId = 29 }
+10-10 10:59:47.852   560   583 V GrammaticalInflectionUtils: AttributionSource: AttributionSource { uid = 10150, packageName = null, attributionTag = null, token = android.os.Binder@6b87d74, deviceId = 0, next = null } does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-10 10:59:47.858   910   951 D WindowManagerShell: setLauncherKeepClearAreaHeight: visible=false, height=294
+10-10 10:59:47.858  1332  1332 W SplitSelectStateCtor: Missing session instanceIds
+10-10 10:59:47.858  1332  1332 D StatsLog: LAUNCHER_SPLIT_SELECTION_EXIT_INTERRUPTED
+10-10 10:59:47.859   400   400 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+10-10 10:59:47.873   560  1016 I AppsFilter: interaction: PackageSetting{b4ef463 moe.tarsin.ehviewer.debug/10148} -> PackageSetting{858dfda moe.tarsin.ehviewer/10150} BLOCKED
+10-10 10:59:47.873   560  1016 I AppsFilter: interaction: PackageSetting{2e7e119 moe.tarsin.ehviewer.debug.test/10149} -> PackageSetting{858dfda moe.tarsin.ehviewer/10150} BLOCKED
+10-10 10:59:47.875  1332  1332 I TopTaskTracker: onTaskMovedToFront: (moved taskInfo to front) taskId=15, baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 pkg=moe.tarsin.ehviewer cmp=moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity }
+10-10 10:59:47.882   560   854 I AppWidgetServiceImpl: Received broadcast: android.intent.action.PACKAGE_UNSTOPPED on user 0
+10-10 10:59:47.882   560   854 I AppWidgetServiceImpl: Updating package stopped masked state for uid 10150 package moe.tarsin.ehviewer isStopped false
+10-10 10:59:47.884   360   458 I netd    : tetherGetStats() -> {[]} <1.10ms>
+10-10 10:59:47.888   361   361 D Zygote  : Forked child process 4027
+10-10 10:59:47.889   560   591 I ActivityManager: Start proc 4027:moe.tarsin.ehviewer/u0a150 for next-top-activity {moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity}
+10-10 10:59:47.904  4027  4027 I tarsin.ehviewer: Using CollectorTypeCMC GC.
+10-10 10:59:47.918   560   580 V WindowManager: Sent Transition (#29) createdAt=10-10 10:59:47.837 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=15 displayId=0 isRunning=true baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 pkg=moe.tarsin.ehviewer cmp=moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity } baseActivity=ComponentInfo{moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity} topActivity=ComponentInfo{moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity} origActivity=null realActivity=ComponentInfo{moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity} numActivities=1 lastActiveTime=409391 supportsMultiWindow=true resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{c744f00 Task{c945d93 #15 type=standard A=10150:moe.tarsin.ehviewer}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=null topActivityInfo=ActivityInfo{797d339 com.hippo.ehviewer.ui.MainActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false topActivityEligibleForLetterboxEducation= falseisLetterboxEducationEnabled= false isLetterboxDoubleTapEnabled= false topActivityEligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=1080 topActivityLetterboxHeight=1920 isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false cameraCompatTaskInfo=CameraCompatTaskInfo { cameraCompatControlState=hidden freeformCameraCompatMode=inactive}}}, pipTask = null, remoteTransition = null, displayChange = null, flags = 0, debugId = 29 }
+10-10 10:59:47.920   560   580 V WindowManager:     startWCT=WindowContainerTransaction { changes = {} hops = [] errorCallbackToken=null taskFragmentOrganizer=null }
+10-10 10:59:47.920   560   580 V WindowManager:     info={id=29 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+10-10 10:59:47.920   560   580 V WindowManager:         {WCT{RemoteToken{c744f00 Task{c945d93 #15 type=standard A=10150:moe.tarsin.ehviewer}}} m=OPEN f=NONE leash=Surface(name=Task=15)/@0x1fbed94 sb=Rect(0, 0 - 1080, 1920) eb=Rect(0, 0 - 1080, 1920) d=0 taskParent=-1},
+10-10 10:59:47.920   560   580 V WindowManager:         {WCT{RemoteToken{22e9cdd Task{3e8a670 #1 type=home}}} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xfcb242b sb=Rect(0, 0 - 1080, 1920) eb=Rect(0, 0 - 1080, 1920) d=0 taskParent=-1}
+10-10 10:59:47.920   560   580 V WindowManager:     ]}
+10-10 10:59:47.922   910   923 V WindowManagerShell: onTransitionReady(transaction=2405181686854)
+10-10 10:59:47.922   910   951 V WindowManagerShell: onTransitionReady (#29) android.os.BinderProxy@edf4347: {id=29 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{android.window.IWindowContainerToken$Stub$Proxy@e6e61f8} m=OPEN f=NONE leash=Surface(name=Task=15)/@0x5cd8a55 sb=Rect(0, 0 - 1080, 1920) eb=Rect(0, 0 - 1080, 1920) d=0 taskParent=-1},{WCT{android.window.IWindowContainerToken$Stub$Proxy@4a976d1} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xb67fc6a sb=Rect(0, 0 - 1080, 1920) eb=Rect(0, 0 - 1080, 1920) d=0 taskParent=-1}]}
+10-10 10:59:47.923   910   951 V WindowManagerShell: Playing animation for (#29) android.os.BinderProxy@edf4347@0
+10-10 10:59:47.923   910   951 V WindowManagerShell:  try handler com.android.wm.shell.transition.DefaultMixedHandler@eae807
+10-10 10:59:47.923   910   951 V WindowManagerShell:  try handler com.android.wm.shell.keyguard.KeyguardTransitionHandler@3211d34
+10-10 10:59:47.923   910   951 V WindowManagerShell:  try handler com.android.wm.shell.pip.PipTransition@637775d
+10-10 10:59:47.923   910   951 V WindowManagerShell:  try handler com.android.wm.shell.activityembedding.ActivityEmbeddingController@aea58d2
+10-10 10:59:47.923   910   951 V WindowManagerShell:  try handler com.android.wm.shell.recents.RecentsTransitionHandler@143fda3
+10-10 10:59:47.923   910   951 V ShellRecents: RecentsTransitionHandler.startAnimation: no controller found
+10-10 10:59:47.923   910   951 V WindowManagerShell:  try handler com.android.wm.shell.splitscreen.StageCoordinator@4cd8a0
+10-10 10:59:47.923   910   951 V WindowManagerShell:  try handler com.android.wm.shell.transition.RemoteTransitionHandler@6792c59
+10-10 10:59:47.923   910   951 V WindowManagerShell: Transition doesn't have explicit remote, search filters for match for {id=29 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{android.window.IWindowContainerToken$Stub$Proxy@e6e61f8} m=OPEN f=NONE leash=Surface(name=Task=15)/@0x5cd8a55 sb=Rect(0, 0 - 1080, 1920) eb=Rect(0, 0 - 1080, 1920) d=0 taskParent=-1},{WCT{android.window.IWindowContainerToken$Stub$Proxy@4a976d1} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xb67fc6a sb=Rect(0, 0 - 1080, 1920) eb=Rect(0, 0 - 1080, 1920) d=0 taskParent=-1}]}
+10-10 10:59:47.923   910   951 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=TOP topActivity=ComponentInfo{com.android.launcher3/com.android.launcher3.uioverrides.QuickstepLauncher} launchCookie=null},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@ee239d8, appThread = android.app.IApplicationThread$Stub$Proxy@902a131, debugName = QuickstepLaunchHome }}
+10-10 10:59:47.923   910   951 V WindowManagerShell:  Delegate animation for (#29) to null
+10-10 10:59:47.923   910   951 V WindowManagerShell:  try handler com.android.wm.shell.transition.DefaultTransitionHandler@2f1301e
+10-10 10:59:47.923   910   951 V WindowManagerShell: start default transition animation, info = {id=29 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{WCT{android.window.IWindowContainerToken$Stub$Proxy@e6e61f8} m=OPEN f=NONE leash=Surface(name=Task=15)/@0x5cd8a55 sb=Rect(0, 0 - 1080, 1920) eb=Rect(0, 0 - 1080, 1920) d=0 taskParent=-1},{WCT{android.window.IWindowContainerToken$Stub$Proxy@4a976d1} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1)/@0xb67fc6a sb=Rect(0, 0 - 1080, 1920) eb=Rect(0, 0 - 1080, 1920) d=0 taskParent=-1}]}
+10-10 10:59:47.924   910   951 V WindowManagerShell: loadAnimation: anim=android.view.animation.AnimationSet@5017536 animAttr=0x13 type=OPEN isEntrance=false
+10-10 10:59:47.932   403   422 I adbd    : jdwp connection from 4027
+10-10 10:59:47.933   560  3961 W UserManagerService: Requested status bar icon for non-badged user 0
+10-10 10:59:47.939   910   951 V WindowManagerShell: loadAnimation: anim=android.view.animation.AnimationSet@7e7aec2 animAttr=0x12 type=OPEN isEntrance=true
+10-10 10:59:47.940   910   951 V WindowManagerShell:  animated by com.android.wm.shell.transition.DefaultTransitionHandler@2f1301e
+10-10 10:59:47.940  4027  4027 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+10-10 10:59:47.976  4027  4027 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+10-10 10:59:47.976  4027  4027 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.sidecar.jar
+10-10 10:59:47.996  1332  1490 D EGL_emulation: app_time_stats: avg=767.06ms min=1.29ms max=6667.19ms count=9
+10-10 10:59:47.998   910  1050 D EGL_emulation: app_time_stats: avg=1141.08ms min=4.34ms max=6769.42ms count=6
+10-10 10:59:48.016  4027  4027 D nativeloader: Configuring clns-7 for other apk /data/app/~~pohBhiT530cdVQ43tcEEfQ==/moe.tarsin.ehviewer-ZVrtB2jAoVm-mE3CYZa3sw==/base.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~pohBhiT530cdVQ43tcEEfQ==/moe.tarsin.ehviewer-ZVrtB2jAoVm-mE3CYZa3sw==/lib/arm64:/data/app/~~pohBhiT530cdVQ43tcEEfQ==/moe.tarsin.ehviewer-ZVrtB2jAoVm-mE3CYZa3sw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/moe.tarsin.ehviewer
+10-10 10:59:48.027  4027  4027 V GraphicsEnvironment: Currently set values for:
+10-10 10:59:48.027  4027  4027 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+10-10 10:59:48.027  4027  4027 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+10-10 10:59:48.027  4027  4027 V GraphicsEnvironment: Global.Settings values are invalid: number of packages: 0, number of values: 0
+10-10 10:59:48.027  4027  4027 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+10-10 10:59:48.032  4027  4027 D WM-WrkMgrInitializer: Initializing WorkManager with default configuration.
+10-10 10:59:48.035  4027  4027 D WM-PackageManagerHelper: Skipping component enablement for androidx.work.impl.background.systemjob.SystemJobService
+10-10 10:59:48.035  4027  4027 D WM-Schedulers: Created SystemJobScheduler and enabled SystemJobService
+10-10 10:59:48.035  4027  4042 D WM-ForceStopRunnable: The default process name was not specified.
+10-10 10:59:48.036  4027  4042 D WM-ForceStopRunnable: Performing cleanup operations.
+10-10 10:59:48.041  4027  4027 D nativeloader: Load /data/app/~~pohBhiT530cdVQ43tcEEfQ==/moe.tarsin.ehviewer-ZVrtB2jAoVm-mE3CYZa3sw==/base.apk!/lib/arm64-v8a/libehviewer.so using ns clns-7 from class loader (caller=/data/app/~~pohBhiT530cdVQ43tcEEfQ==/moe.tarsin.ehviewer-ZVrtB2jAoVm-mE3CYZa3sw==/base.apk!classes4.dex): ok
+10-10 10:59:48.048  4027  4042 D WM-ForceStopRunnable: Application was force-stopped, rescheduling.
+10-10 10:59:48.062  4027  4043 I WebViewFactory: Loading com.android.webview version 124.0.6367.219 (code 636771901)
+10-10 10:59:48.066  4027  4043 V ResourcesManager: The following library key has been added: ResourcesKey{ mHash=ec246151 mResDir=null mSplitDirs=[] mOverlayDirs=[/data/resource-cache/com.android.systemui-neutral-rwqj.frro,/data/resource-cache/com.android.systemui-accent-UOo5.frro,/data/resource-cache/com.android.systemui-dynamic-slDv.frro] mLibDirs=[/product/app/webview/webview.apk,/system_ext/framework/androidx.window.extensions.jar] mDisplayId=0 mOverrideConfig=v35 mCompatInfo={420dpi always-compat} mLoaders=[]}
+10-10 10:59:48.069  4027  4043 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+10-10 10:59:48.071  4027  4043 D nativeloader: InitLlndkLibrariesProduct: libEGL.so:libGLESv1_CM.so:libGLESv2.so:libGLESv3.so:libRS.so:libandroid_net.so:libapexsupport.so:libbinder_ndk.so:libc.so:libcgrouprc.so:libclang_rt.asan-aarch64-android.so:libclang_rt.hwasan-aarch64-android.so:libcom.android.tethering.connectivity_native.so:libdl.so:libft2.so:liblog.so:libm.so:libmediandk.so:libnativewindow.so:libneuralnetworks.so:libselinux.so:libsync.so:libvendorsupport.so:libvndksupport.so:libvulkan.so
+10-10 10:59:48.071  4027  4043 D nativeloader: Configuring product-clns-8 for unbundled product apk /product/app/webview/webview.apk. target_sdk_version=34, uses_libraries=, library_path=/product/app/webview/lib/arm64:/product/app/webview/webview.apk!/lib/arm64-v8a:/product/lib64:/system/product/lib64, permitted_path=/data:/mnt/expand:/product/lib64:/system/product/lib64
+10-10 10:59:48.071  4027  4043 D nativeloader: InitVndkspLibrariesProduct: VNDK is deprecated with product
+10-10 10:59:48.083  4027  4042 D WM-PackageManagerHelper: Skipping component enablement for androidx.work.impl.background.systemalarm.RescheduleReceiver
+10-10 10:59:48.101  4027  4043 I cr_WVCFactoryProvider: Loaded version=124.0.6367.219 minSdkVersion=1 isBundle=false multiprocess=true packageId=2
+10-10 10:59:48.103  4027  4043 D nativeloader: Load /product/app/webview/webview.apk!/lib/arm64-v8a/libwebviewchromium.so using ns product-clns-8 from class loader (caller=/product/app/webview/webview.apk): ok
+10-10 10:59:48.107  4027  4043 D nativeloader: Load /system/lib64/libwebviewchromium_plat_support.so using ns product-clns-8 from class loader (caller=/product/app/webview/webview.apk): ok
+10-10 10:59:48.107  4027  4027 W HWUI    : Unknown dataspace 0
+10-10 10:59:48.125   560  1016 D CoreBackPreview: Window{fd961cf u0 moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@19d533a, mPriority=-1, mIsAnimationCallback=false}
+10-10 10:59:48.130  4027  4067 E chromium: [1010/105948.130618:ERROR:variations_seed_loader.cc(37)] Seed missing signature.
+10-10 10:59:48.130  4027  4067 I cr_VariationsUtils: Failed reading seed file "/data/user/0/moe.tarsin.ehviewer/app_webview/variations_seed_new"
+10-10 10:59:48.130  4027  4067 I chromium: [1010/105948.130831:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+10-10 10:59:48.130  4027  4067 I cr_VariationsUtils: Failed reading seed file "/data/user/0/moe.tarsin.ehviewer/app_webview/variations_seed"
+10-10 10:59:48.133  4027  4043 I cr_LibraryLoader: Successfully loaded native library
+10-10 10:59:48.133  4027  4043 I cr_CachingUmaRecorder: Flushed 6 samples from 6 histograms, 0 samples were dropped.
+10-10 10:59:48.139   560  1016 D BiometricService: canAuthenticate: User=0, Caller=0, Authenticators=65536
+10-10 10:59:48.139   560  1016 E BiometricService: Non-biometric, non-credential bits found. Authenticators: 65536
+10-10 10:59:48.139   560  1016 D BiometricService: canAuthenticate: User=0, Caller=0, Authenticators=33023
+10-10 10:59:48.139   560  1016 D BiometricService/PreAuthInfo: Package: moe.tarsin.ehviewer Sensor ID: 0 Modality: 2 Status: 7
+10-10 10:59:48.140   560  1016 D BiometricService/PreAuthInfo: Package: moe.tarsin.ehviewer Sensor ID: 4 Modality: 8 Status: 7
+10-10 10:59:48.140   560  1016 D BiometricService/PreAuthInfo: getCanAuthenticateInternal Modality: 8 AuthenticatorStatus: 7
+10-10 10:59:48.140   560  1016 D AuthService: canAuthenticate, userId: 0, callingUserId: 0, authenticators: 33023, result: 11
+10-10 10:59:48.141  4027  4027 I WindowExtensionsImpl: Initializing Window Extensions, vendor API level=6, activity embedding enabled=true
+10-10 10:59:48.201  4027  4058 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+10-10 10:59:48.201  4027  4058 I EGL_emulation: Opening libGLESv2_emulation.so
+10-10 10:59:48.206  4027  4058 W HWUI    : Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+10-10 10:59:48.207  4027  4058 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+10-10 10:59:48.232   910   951 V WindowManagerShell: Transition animation finished (aborted=false), notifying core (#29) android.os.BinderProxy@edf4347@0
+10-10 10:59:48.233   560   580 V WindowManager: Finish Transition (#29): created at 10-10 10:59:47.837 collect-started=0.045ms request-sent=4.403ms started=6.499ms ready=76.095ms sent=80.775ms finished=395.777ms
+10-10 10:59:48.234   910   951 V WindowManagerShell: Track 0 became idle
+10-10 10:59:48.234   910   951 V WindowManagerShell: All active transition animations finished
+10-10 10:59:48.234   560  1016 W UserManagerService: Requested status bar icon for non-badged user 0
+10-10 10:59:48.235   560  1016 W UserManagerService: Requested status bar icon for non-badged user 0
+10-10 10:59:48.237   154   154 I hwservicemanager: getTransport: Cannot find entry android.hardware.graphics.mapper@4.0::IMapper/default in either framework or device VINTF manifest.
+10-10 10:59:48.237  4027  4058 I Gralloc4: mapper 4.x is not supported
+--------- beginning of kernel
+10-10 10:59:48.239   153   153 I servicemanager: Caller(pid=4027,uid=10150,sid=u:r:untrusted_app:s0:c150,c256,c512,c768) Could not find android.hardware.graphics.allocator.IAllocator/default in the VINTF manifest. No alternative instances declared in VINTF.
+10-10 10:59:48.271  1332  1332 D VRI[QuickstepLauncher]: visibilityChanged oldVisibility=true newVisibility=false
+10-10 10:59:48.345   560   580 I ActivityTaskManager: Displayed moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity for user 0: +507ms
+10-10 10:59:48.349   560  1029 D BiometricService: canAuthenticate: User=0, Caller=0, Authenticators=65536
+10-10 10:59:48.349   560  1029 E BiometricService: Non-biometric, non-credential bits found. Authenticators: 65536
+10-10 10:59:48.349   560  1029 D BiometricService: canAuthenticate: User=0, Caller=0, Authenticators=33023
+10-10 10:59:48.349   560  1029 D BiometricService/PreAuthInfo: Package: moe.tarsin.ehviewer Sensor ID: 0 Modality: 2 Status: 7
+10-10 10:59:48.350   560  1029 D BiometricService/PreAuthInfo: Package: moe.tarsin.ehviewer Sensor ID: 4 Modality: 8 Status: 7
+10-10 10:59:48.350   560  1029 D BiometricService/PreAuthInfo: getCanAuthenticateInternal Modality: 8 AuthenticatorStatus: 7
+10-10 10:59:48.350   560  1029 D AuthService: canAuthenticate, userId: 0, callingUserId: 0, authenticators: 33023, result: 11
+10-10 10:59:48.350  4027  4045 W System.err: SLF4J(W): No SLF4J providers were found.
+10-10 10:59:48.351  4027  4045 W System.err: SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+10-10 10:59:48.351  4027  4045 W System.err: SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+10-10 10:59:48.352  4027  4045 D EhRequest: https://e-hentai.org?f_cats=767
+10-10 10:59:48.355  4027  4081 D cr_HttpFlagsLoader: [HttpFlagsLoader.java:72] Not loading HTTP flags because they are disabled in the manifest
+10-10 10:59:48.357  4027  4081 W tarsin.ehviewer: Core platform API violation: Llibcore/io/Memory;->pokeByte(JB)V from Landroid/net/connectivity/com/google/protobuf/UnsafeUtil; using reflection
+10-10 10:59:48.357  4027  4081 W tarsin.ehviewer: Core platform API violation: Llibcore/io/Memory;->peekByte(J)B from Landroid/net/connectivity/com/google/protobuf/UnsafeUtil; using reflection
+10-10 10:59:48.379   560  1029 D ConnectivityService: requestNetwork for uid/pid:10150/4027 activeRequest: null callbackRequest: 91 [NetworkRequest [ REQUEST id=92, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10150 RequestorUid: 10150 RequestorPkg: moe.tarsin.ehviewer UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false
+10-10 10:59:48.380  2561  2575 D Benchmark: Result: Starting: Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10008000 pkg=moe.tarsin.ehviewer cmp=moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity }
+10-10 10:59:48.380  2561  2575 D Benchmark: Status: ok
+10-10 10:59:48.380  2561  2575 D Benchmark: LaunchState: COLD
+10-10 10:59:48.380  2561  2575 D Benchmark: Activity: moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity
+10-10 10:59:48.380  2561  2575 D Benchmark: TotalTime: 507
+10-10 10:59:48.380  2561  2575 D Benchmark: WaitTime: 508
+10-10 10:59:48.380  2561  2575 D Benchmark: Complete
+10-10 10:59:48.380   560   822 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=92, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10150 RequestorUid: 10150 RequestorPkg: moe.tarsin.ehviewer UnderlyingNetworks: Null] ]
+10-10 10:59:48.380   560   829 D ConnectivityService: NetReassign [92 : null → 100] [c 0] [a 0] [i 0]
+10-10 10:59:48.381   560   822 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=92, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10150 RequestorUid: 10150 RequestorPkg: moe.tarsin.ehviewer UnderlyingNetworks: Null] ]
+10-10 10:59:48.381   560   822 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=92, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10150 RequestorUid: 10150 RequestorPkg: moe.tarsin.ehviewer UnderlyingNetworks: Null] ]
+10-10 10:59:48.381   560   822 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=92, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10150 RequestorUid: 10150 RequestorPkg: moe.tarsin.ehviewer UnderlyingNetworks: Null] ]
+10-10 10:59:48.382   560   829 D ConnectivityService: NetReassign [no changes] [c 0] [a 0] [i 0]
+10-10 10:59:48.383   560   571 W system_server: Missing inline cache for void android.net.LinkProperties.writeToParcel(android.os.Parcel, int)
+10-10 10:59:48.391   560   560 W AccessibilityManagerService:  wait for adding window timeout: 20
+10-10 10:59:48.396   560   670 I ImeTracker: moe.tarsin.ehviewer:cc0ac2e2: onRequestHide at ORIGIN_SERVER reason HIDE_ALWAYS_HIDDEN_STATE fromUser false
+10-10 10:59:48.396   560   670 I ImeTracker: moe.tarsin.ehviewer:cc0ac2e2: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-10 10:59:48.413  4027  4045 D nativeloader: Load libmainlinecronet.121.0.6167.71.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity.jar: ok
+10-10 10:59:48.414  4027  4045 I cr_CronetLibraryLoader: Cronet version: 121.0.6167.71, arch: aarch64
+10-10 10:59:48.416  4027  4045 D ExperimentalOptions: Failed to get QUIC options: No value for QUIC
+10-10 10:59:48.416  4027  4045 D ExperimentalOptions: Failed to get QUIC options: No value for QUIC
+10-10 10:59:48.416  4027  4045 D ExperimentalOptions: Failed to get QUIC options: No value for QUIC
+10-10 10:59:48.416  4027  4045 D ExperimentalOptions: Failed to get QUIC options: No value for QUIC
+10-10 10:59:48.416  4027  4045 D ExperimentalOptions: Failed to get QUIC options: No value for QUIC
+10-10 10:59:48.416  4027  4045 D ExperimentalOptions: Failed to get QUIC options: No value for QUIC
+10-10 10:59:48.416  4027  4045 D ExperimentalOptions: Failed to get QUIC options: No value for QUIC
+10-10 10:59:48.416  4027  4045 D ExperimentalOptions: Failed to get QUIC options: No value for QUIC
+10-10 10:59:48.416  4027  4045 D ExperimentalOptions: Failed to get QUIC options: No value for QUIC
+10-10 10:59:48.416  4027  4045 D ExperimentalOptions: Failed to get QUIC options: No value for QUIC
+10-10 10:59:48.416  4027  4045 D ExperimentalOptions: Failed to get QUIC options: No value for QUIC
+10-10 10:59:48.417  4027  4045 D ExperimentalOptions: Failed to get QUIC options: No value for QUIC
+10-10 10:59:48.417  4027  4045 D ExperimentalOptions: Failed to get AsyncDNS options: No value for AsyncDNS
+10-10 10:59:48.417  4027  4045 D ExperimentalOptions: Failed to get StaleDNS options: No value for StaleDNS
+10-10 10:59:48.417  4027  4045 D ExperimentalOptions: Failed to get StaleDNS options: No value for StaleDNS
+10-10 10:59:48.417  4027  4045 D ExperimentalOptions: Failed to get StaleDNS options: No value for StaleDNS
+10-10 10:59:48.417  4027  4045 D ExperimentalOptions: Failed to get StaleDNS options: No value for StaleDNS
+10-10 10:59:48.417  4027  4045 D ExperimentalOptions: Failed to get StaleDNS options: No value for StaleDNS
+10-10 10:59:48.417  4027  4045 D ExperimentalOptions: Failed to get StaleDNS options: No value for StaleDNS
+10-10 10:59:48.417  4027  4045 D ExperimentalOptions: Failed to get StaleDNS options: No value for StaleDNS
+10-10 10:59:48.417  4027  4045 D ExperimentalOptions: Failed to get StaleDNS options: No value for StaleDNS
+10-10 10:59:48.417  4027  4045 D ExperimentalOptions: Failed to get disable_ipv6_on_wifi options: No value for disable_ipv6_on_wifi
+10-10 10:59:48.437   360  4098 I resolv  : GetAddrInfoHandler::run: {100 100 100 983140 10150 0}
+10-10 10:59:48.439   360  4101 I resolv  : res_nmkquery: (QUERY, IN, AAAA)
+10-10 10:59:48.439   360  4102 I resolv  : res_nmkquery: (QUERY, IN, A)
+10-10 10:59:48.441   360  4101 I resolv  : res_nsend: used send_dg 58 terrno: 0
+10-10 10:59:48.442   360  4101 I resolv  : doQuery: rcode=0, ancount=1, return value=58
+10-10 10:59:48.445   360  4102 I resolv  : res_nsend: used send_dg 46 terrno: 0
+10-10 10:59:48.445   360  4102 I resolv  : doQuery: rcode=0, ancount=1, return value=46
+10-10 10:59:48.465  1468  2584 W MediaProvider: isAppCloneUserPair for user 0: false
+10-10 10:59:48.495   560  1024 D ActivityManager: freezer override set to true
+10-10 10:59:48.507   560  1024 D ActivityManager: sync unfroze 1527 com.android.music for 19
+10-10 10:59:48.507   560  1024 D ActivityManager: sync unfroze 1289 com.android.carrierconfig for 19
+10-10 10:59:48.508   560  1024 D ActivityManager: sync unfroze 1563 com.android.keychain for 19
+10-10 10:59:48.508   560  1024 D ActivityManager: sync unfroze 1756 com.android.quicksearchbox for 19
+10-10 10:59:48.509   560  1024 D ActivityManager: sync unfroze 1859 com.android.traceur for 19
+10-10 10:59:48.509   560  1024 D ActivityManager: sync unfroze 1502 com.android.printspooler for 19
+10-10 10:59:48.510   560  1024 D ActivityManager: sync unfroze 1881 com.android.calendar for 19
+10-10 10:59:48.510   560  1024 D ActivityManager: sync unfroze 1618 com.android.managedprovisioning for 19
+10-10 10:59:48.510   560  1024 D ActivityManager: sync unfroze 1918 .adservices for 19
+10-10 10:59:48.510   560  1024 D ActivityManager: sync unfroze 1941 com.android.camera2 for 19
+10-10 10:59:48.510   560  1024 D ActivityManager: sync unfroze 1957 com.android.dynsystem for 19
+10-10 10:59:48.510   560  1024 D ActivityManager: sync unfroze 1980 com.android.dynsystem:dynsystem for 19
+10-10 10:59:48.510   560  1024 D ActivityManager: sync unfroze 1971 com.android.federatedcompute.services for 19
+10-10 10:59:48.511   560  1024 D ActivityManager: sync unfroze 1525 com.android.sdksetup for 19
+10-10 10:59:48.511   560  1024 D ActivityManager: sync unfroze 2032 com.android.ondevicepersonalization.services for 19
+10-10 10:59:48.511   560  1024 D ActivityManager: sync unfroze 1406 com.android.carrierdefaultapp for 19
+10-10 10:59:48.511   560  1024 D ActivityManager: sync unfroze 2087 com.android.shell for 19
+10-10 10:59:48.511   560  1024 D ActivityManager: sync unfroze 1836 com.android.messaging for 19
+10-10 10:59:48.514   560  1024 D ActivityManager: sync unfroze 1698 com.android.imsserviceentitlement for 19
+10-10 10:59:48.514   560  1024 D ActivityManager: sync unfroze 1239 com.android.cellbroadcastreceiver for 19
+10-10 10:59:48.515   560  1024 D ActivityManager: sync unfroze 1222 com.android.cellbroadcastreceiver.module for 19
+10-10 10:59:48.515   560  1024 D ActivityManager: sync unfroze 2058 com.android.rkpdapp for 19
+10-10 10:59:48.516   560  1024 D ActivityManager: sync unfroze 1589 android.process.media for 19
+10-10 10:59:48.516   560  1024 D ActivityManager: sync unfroze 1669 com.android.externalstorage for 19
+10-10 10:59:48.516   560  1024 D ActivityManager: sync unfroze 1711 com.android.contacts for 19
+10-10 10:59:48.516   560  1024 D ActivityManager: sync unfroze 1641 com.android.providers.calendar for 19
+10-10 10:59:48.517   560  1024 D ActivityManager: sync unfroze 1090 com.android.settings for 19
+10-10 10:59:48.517   560  1024 D ActivityManager: sync unfroze 2376 com.android.webview:webview_apk for 19
+10-10 10:59:48.517   560  1024 D ActivityManager: sync unfroze 2085 com.android.localtransport for 19
+10-10 10:59:48.517   560  1024 D ActivityManager: sync unfroze 2044 com.android.packageinstaller for 19
+10-10 10:59:48.519   560  1024 D ActivityManager: sync unfroze 1814 com.android.statementservice for 19
+10-10 10:59:48.520   560  1024 D ActivityManager: sync unfroze 2314 com.android.webview:webview_service for 19
+10-10 10:59:48.529   560  1024 D ActivityManager: sync unfroze 1476 com.android.documentsui for 19
+10-10 10:59:48.529   560  1024 D ActivityManager: sync unfroze 926 com.android.permissioncontroller for 19
+10-10 10:59:48.529   560  1024 D ActivityManager: sync unfroze 1309 android.process.acore for 19
+10-10 10:59:48.548   926  1176 D AccessibilitySourceService: enabled a11y services count 0
+10-10 10:59:48.548   926  1176 D AccessibilitySourceService: a11y source sending 0 issue to sc
+10-10 10:59:48.549   560  1029 D SafetySourceDataValidat: No cert check requested for package com.android.permissioncontroller
+10-10 10:59:48.559   926  1176 D AccessibilitySourceService: enabled a11y services count 0
+10-10 10:59:48.559   926  1176 D AccessibilitySourceService: a11y source sending 0 issue to sc
+10-10 10:59:48.559   560  1016 D SafetySourceDataValidat: No cert check requested for package com.android.permissioncontroller
+10-10 10:59:48.562   560  1024 D ActivityManager: freezer override set to false
+10-10 10:59:48.600  2561  2575 I System.out: 0 Flags,FrameTimelineVsyncId,IntendedVsync,Vsync,InputEventId,HandleInputStart,AnimationStart,PerformTraversalsStart,DrawStart,FrameDeadline,FrameInterval,FrameStartTime,SyncQueued,SyncStart,IssueDrawCommandsStart,SwapBuffers,FrameCompleted,DequeueBufferDuration,QueueBufferDuration,GpuCompleted,SwapBuffersCompleted,DisplayPresentTime,CommandSubmissionCompleted,
+10-10 10:59:48.600  2561  2575 I System.out: 1 1,99258,409658810028,409658810028,0,409675072278,409675073069,409675073194,409790133778,409675476694,409675068694,16666666,409805456903,409805757111,409806038111,409873944320,409909169861,1666,112125,409909169861,409875811111,0,409873944320,
+10-10 10:59:48.600  2561  2575 I System.out: 2 0,99302,409692143360,409892143352,0,409898677611,409898677986,409905496861,409906388111,409942143350,409898389153,16666666,409931033570,409931502278,409931562778,409934070486,409942864570,1625,338375,409942864570,409941920153,0,409934070486,
+10-10 10:59:48.600  2561  2575 I System.out: 3 0,99497,409908810018,409925476684,0,409933356070,409933356195,409933811861,409933830111,409975476682,409933354820,16666666,409933997445,409941972320,409942201236,409963553611,409975780028,2875,3389167,409975780028,409972221778,0,409963553611,
+10-10 10:59:48.600  2561  2575 I System.out: 4 0,99541,409942143350,409942143350,0,409943939445,409943939695,409945128570,409945338736,410008810014,409943937903,16666666,409945441611,409972241403,409972748986,409989401736,410004072736,13877833,395500,409996748486,410004072736,0,409989401736,
+10-10 10:59:48.600  2561  2575 I System.out: 5 0,99549,409958810016,409975476682,0,409981171945,409981172111,409981247070,409981260945,410025476680,409981170736,16666666,409981378070,410004093153,410004141611,410018572070,410038871153,8077500,33959,410038871153,410027064361,0,410018572070,
+10-10 10:59:48.600  2561  2575 I System.out: 6 0,99593,409992143348,409992143348,0,410007335820,410007336070,410007435653,410007447695,410058810012,410007334278,16666666,410007749028,410035401861,410036066695,410038144320,410059547361,9188000,47250,410059547361,410048083653,72904454231491824,410038144320,
+10-10 10:59:48.600  2561  2575 I System.out: 7 0,99615,410008810014,410025476680,0,410035653528,410035653611,410035844028,410035857903,410092143344,410035652403,16666666,410035997653,410048107111,410055307278,410082033778,410094330903,1083,429375,410094330903,410083028820,72057628414509167,410082033778,
+10-10 10:59:48.600  2561  2575 I System.out: 8 0,99645,410042143346,410075476678,0,410082731486,410082731736,410082881195,410082891361,410058810012,410082729611,16666666,410082966861,410083047111,410083085861,410099300070,0,1125,67167,0,410110935903,0,410099300070,
+10-10 10:59:48.600  2561  2575 D UiDevice: Searching for node with selector: BySelector [TEXT='\QUsername\E'].
+10-10 10:59:48.636  1332  1332 D BaseDepthController: setSurface:
+10-10 10:59:48.636  1332  1332 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+10-10 10:59:48.636  1332  1332 D BaseDepthController: 	mSurface: null
+10-10 10:59:48.724  1332  1332 D BaseDepthController: mSurface is null and mCurrentBlur is: 0
+10-10 10:59:48.727  1332  1332 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+10-10 10:59:48.727  1332  1332 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:453)
+10-10 10:59:48.727  1332  1332 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:444)
+10-10 10:59:48.727  1332  1332 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(StatefulActivity.java:119)
+10-10 10:59:48.727  1332  1332 D StatsLog: LAUNCHER_ONSTOP
+10-10 10:59:48.729   560  1024 I AppWidgetServiceImpl: setAppWidgetHidden() 0
+10-10 10:59:48.843   560  1024 W InputManager-JNI: Input channel object '21d3fef Splash Screen moe.tarsin.ehviewer (client)' was disposed without first being removed with the input manager!
+10-10 10:59:48.890   910   965 W FrameTracker: Missed App frame:UNKNOWN: 24, 99490, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed SF frame:UNKNOWN: 24, 99490, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missing HWUI jank callback for vsyncId: 99490, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed SF frame:UNKNOWN: 80, 99512, 0, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missing HWUI jank callback for vsyncId: 99512, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed App frame:UNKNOWN: 88, 99527, 72140428, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed SF frame:UNKNOWN: 88, 99527, 72140428, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed App frame:UNKNOWN: 88, 99579, 91504222, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed SF frame:UNKNOWN: 88, 99579, 91504222, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed SF frame:UNKNOWN: 80, 99608, 102268806, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed App frame:UNKNOWN: 88, 99631, 108029849, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed SF frame:UNKNOWN: 88, 99631, 108029849, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed App frame:UNKNOWN: 88, 99669, 211687642, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed SF frame:UNKNOWN: 88, 99669, 211687642, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed App frame:UNKNOWN: 74, 99685, 233631935, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.890   910   965 W FrameTracker: Missed SF frame:UNKNOWN: 74, 99685, 233631935, CUJ=J<SPLASHSCREEN_EXIT_ANIM>
+10-10 10:59:48.892   910   954 V PerfettoTrigger: Not triggering com.android.telemetry.interaction-jank-monitor-39 - not enough time since last trigger
+10-10 10:59:49.397  4027  4058 D EGL_emulation: app_time_stats: avg=19.05ms min=0.97ms max=139.11ms count=35
+10-10 10:59:49.448  2561  2575 D UiDevice: Waiting 10000ms for SearchCondition[hasObject=BySelector [TEXT='\QNON-H\E']].
+10-10 10:59:49.448  2561  2575 D UiDevice: Searching for node with selector: BySelector [TEXT='\QNON-H\E'].
+10-10 10:59:49.461   560   580 I ActivityTaskManager: Fully drawn moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity: +1s625ms
+10-10 10:59:49.479   360  4124 I resolv  : GetAddrInfoHandler::run: {100 100 100 983140 10150 0}
+10-10 10:59:49.479   360  4126 I resolv  : res_nmkquery: (QUERY, IN, A)
+10-10 10:59:49.479   360  4125 I resolv  : res_nmkquery: (QUERY, IN, AAAA)
+10-10 10:59:49.481   360  4125 I resolv  : res_nsend: used send_dg 54 terrno: 0
+10-10 10:59:49.481   360  4125 I resolv  : doQuery: rcode=0, ancount=1, return value=54
+10-10 10:59:49.486   360  4126 I resolv  : res_nsend: used send_dg 42 terrno: 0
+10-10 10:59:49.486   360  4126 I resolv  : doQuery: rcode=0, ancount=1, return value=42
+10-10 10:59:50.029   560  1024 W MagnificationConnectionManager: requestConnection duplicated request: connect=false, mConnectionState=DISCONNECTED
+10-10 10:59:50.035   926  1176 D AccessibilitySourceService: enabled a11y services count 0
+10-10 10:59:50.035   926  1176 D AccessibilitySourceService: a11y source sending 0 issue to sc
+10-10 10:59:50.036   560  1024 D SafetySourceDataValidat: No cert check requested for package com.android.permissioncontroller
+10-10 10:59:50.041  2561  2575 D UiDevice: Retrieving node with selector: BySelector [SCROLLABLE='true'].
+10-10 10:59:50.052  2561  2575 D UiObject2: Flinging down (bounds=Rect(108, 192 - 972, 1728)) at 19687px/s.
+10-10 10:59:50.052  2561  2575 D UiDevice: Performing action [[Pause(point=Point(540, 1728), duration=0ms), Move(start=Point(540, 1728), end=Point(540, 192), duration=78ms)]] and waiting 5000ms for EventCondition[scrollFinished=DOWN].
+10-10 10:59:50.106  4027  4123 D EhRequest: https://e-hentai.org?f_cats=767&next=4241278
+10-10 10:59:50.330  4027  4127 W HWUI    : Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+10-10 10:59:50.331  4027  4127 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+10-10 10:59:50.405  4027  4058 D EGL_emulation: app_time_stats: avg=36.50ms min=5.87ms max=568.30ms count=24
+10-10 10:59:50.682   560   822 W BestClock: java.time.DateTimeException: Missing network time fix
+10-10 10:59:50.682   560   822 W BestClock: java.time.DateTimeException: Missing network time fix
+10-10 10:59:50.682   560   822 W BestClock: java.time.DateTimeException: Missing network time fix
+10-10 10:59:50.682   560   822 W BestClock: java.time.DateTimeException: Missing network time fix
+10-10 10:59:50.682   560   822 W BestClock: java.time.DateTimeException: Missing network time fix
+10-10 10:59:50.774  4027  4093 W chromium: [1010/105950.774314:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 1
+10-10 10:59:51.002  4027  4093 W chromium: [1010/105951.002686:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 3
+10-10 10:59:51.011  4027  4093 W chromium: [1010/105951.011642:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 5
+10-10 10:59:51.100  4027  4093 W chromium: [1010/105951.100451:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 7
+10-10 10:59:51.232  4027  4093 W chromium: [1010/105951.232316:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 9
+10-10 10:59:51.256  4027  4093 W chromium: [1010/105951.255993:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 11
+10-10 10:59:51.285  4027  4093 W chromium: [1010/105951.285029:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 13
+10-10 10:59:51.285  4027  4093 W chromium: [1010/105951.285168:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 15
+10-10 10:59:51.285  4027  4093 W chromium: [1010/105951.285188:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 17
+10-10 10:59:51.285  4027  4093 W chromium: [1010/105951.285201:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 19
+10-10 10:59:51.285  4027  4093 W chromium: [1010/105951.285213:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 21
+10-10 10:59:51.285  4027  4093 W chromium: [1010/105951.285223:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 23
+10-10 10:59:51.285  4027  4093 W chromium: [1010/105951.285239:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 25
+10-10 10:59:51.285  4027  4093 W chromium: [1010/105951.285250:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 27
+10-10 10:59:51.285  4027  4093 W chromium: [1010/105951.285404:WARNING:spdy_session.cc(2984)] Received HEADERS for invalid stream 29
+10-10 10:59:51.320  4027  4123 D EhRequest: https://e-hentai.org?f_cats=767&next=4240234
+10-10 10:59:51.407  4027  4058 D EGL_emulation: app_time_stats: avg=8.70ms min=2.68ms max=24.89ms count=48
+10-10 10:59:51.856   560  1773 E TaskPersister: File error accessing recents directory (directory doesn't exist?).
+10-10 10:59:53.664  4027  4128 D ProfileInstaller: Skipping profile installation for moe.tarsin.ehviewer
+10-10 10:59:53.688   560   822 W BestClock: java.time.DateTimeException: Missing network time fix
+10-10 10:59:53.689   560   822 W BestClock: java.time.DateTimeException: Missing network time fix
+10-10 10:59:53.689   560   822 W BestClock: java.time.DateTimeException: Missing network time fix
+10-10 10:59:53.689   560   822 W BestClock: java.time.DateTimeException: Missing network time fix
+10-10 10:59:53.690   560   822 W BestClock: java.time.DateTimeException: Missing network time fix
+10-10 10:59:54.199  4027  4058 D EGL_emulation: app_time_stats: avg=62.47ms min=1.83ms max=2019.58ms count=38
+10-10 10:59:55.247  2561  2575 W UiDevice: Timed out waiting 5000ms on the condition.
+10-10 10:59:55.247  2561  2575 W UiDevice: java.util.concurrent.TimeoutException: Expected event not received within: 5000 ms among: []
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at android.app.UiAutomation.executeAndWaitForEvent(UiAutomation.java:1180)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.test.uiautomator.UiDevice.performActionAndWait(UiDevice.java:289)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.test.uiautomator.GestureController.performGestureAndWait(GestureController.java:133)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.test.uiautomator.UiObject2.fling(UiObject2.java:1000)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.test.uiautomator.UiObject2.fling(UiObject2.java:973)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at com.ehviewer.baselineprofile.BaselineProfileGenerator.generate$lambda$0(BaselineProfileGenerator.kt:40)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at com.ehviewer.baselineprofile.BaselineProfileGenerator$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.benchmark.macro.BaselineProfilesKt$collect$1$1$3.invoke(BaselineProfiles.kt:94)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.benchmark.macro.BaselineProfilesKt$collect$1$1$3.invoke(BaselineProfiles.kt:91)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.benchmark.macro.CompilationMode$Partial.compileImpl$benchmark_macro(CompilationMode.kt:359)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.benchmark.macro.BaselineProfilesKt.collect(BaselineProfiles.kt:91)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.benchmark.macro.junit4.BaselineProfileRule.collect(BaselineProfileRule.kt:94)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.benchmark.macro.junit4.BaselineProfileRule.collect$default(BaselineProfileRule.kt:84)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at com.ehviewer.baselineprofile.BaselineProfileGenerator.generate(BaselineProfileGenerator.kt:21)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at java.lang.reflect.Method.invoke(Native Method)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.benchmark.macro.junit4.BaselineProfileRule$apply$1.evaluate(BaselineProfileRule.kt:56)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.Suite.runChild(Suite.java:128)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.Suite.runChild(Suite.java:27)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:68)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:59)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:467)
+10-10 10:59:55.247  2561  2575 W UiDevice: 	at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2594)
+10-10 10:59:55.247  2561  2575 I UiObject2: No scroll event received after fling.
+10-10 10:59:55.253   560  1029 W MagnificationConnectionManager: requestConnection duplicated request: connect=false, mConnectionState=DISCONNECTED
+10-10 10:59:55.274   926  1176 D AccessibilitySourceService: enabled a11y services count 0
+10-10 10:59:55.274   926  1176 D AccessibilitySourceService: a11y source sending 0 issue to sc
+10-10 10:59:55.277   560  1029 D SafetySourceDataValidat: No cert check requested for package com.android.permissioncontroller
+10-10 10:59:55.286  2561  2575 D UiObject2: Clicking on (540, 960).
+10-10 10:59:55.286  2561  2575 W UiObject2: Clicking on non-clickable object: android.view.accessibility.AccessibilityNodeInfo@9ed6; boundsInParent: Rect(0, 0 - 0, 0); boundsInScreen: Rect(0, 0 - 1080, 1920); boundsInWindow: Rect(0, 0 - 1080, 1920); packageName: moe.tarsin.ehviewer; className: android.view.View; text: null; error: null; maxTextLength: -1; stateDescription: null; contentDescription: null; tooltipText: null; containerTitle: null; viewIdResName: null; uniqueId: null; checkable: false; checked: false; focusable: false; focused: false; selected: false; clickable: false; longClickable: false; contextClickable: false; enabled: true; password: false; scrollable: true; granularScrollingSupported: false; importantForAccessibility: true; visible: true; actions: [AccessibilityAction: ACTION_SCROLL_UP - null, AccessibilityAction: ACTION_SCROLL_DOWN - null, AccessibilityAction: ACTION_ACCESSIBILITY_FOCUS - null, AccessibilityAction: ACTION_SCROLL_FORWARD - null, AccessibilityAction: ACTION_SCROLL_BACKWARD - null]; isTextSelectable: false
+10-10 10:59:55.311  4027  4058 D EGL_emulation: app_time_stats: avg=66.13ms min=6.38ms max=851.40ms count=15
+10-10 10:59:55.325   396   862 D audioserver: logFgsApiBegin: FGS Logger Transaction failed, -129
+10-10 10:59:55.335   560   638 W AS.PlaybackActivityMon: No piid assigned for invalid/internal port id 15
+10-10 10:59:55.340   396   509 D AudioFlinger: mixer(0xb400007f359808e0) throttle end: throttle time(35)
+10-10 10:59:55.344  2561  2575 W GestureController: Gestures took longer than expected (58ms >> 16ms), device might be in a busy state.
+10-10 10:59:55.345  2561  2575 D UiDevice: Waiting 10000ms for SearchCondition[hasObject=BySelector [TEXT='\QSimilar\E']].
+10-10 10:59:55.345  2561  2575 D UiDevice: Searching for node with selector: BySelector [TEXT='\QSimilar\E'].
+10-10 10:59:55.353   560  1029 D CoreBackPreview: Window{fd961cf u0 moe.tarsin.ehviewer/com.hippo.ehviewer.ui.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@e8493bd, mPriority=0, mIsAnimationCallback=true}
+10-10 10:59:55.411  4027  4054 D EhRequest: https://e-hentai.org/g/4240928/19674be743
+10-10 10:59:55.481  4027  4035 W tarsin.ehviewer: ApkAssets: Deleting an ApkAssets object '<empty> and /product/app/webview/webview.apk' with 2 weak references
+10-10 10:59:55.500   396   509 D audioserver: logFgsApiEnd: FGS Logger Transaction failed, -129
+10-10 10:59:55.526  2561  2575 W ByMatcher: Node returned null child: android.view.accessibility.AccessibilityNodeInfo@11b52; boundsInParent: Rect(0, 0 - 0, 0); boundsInScreen: Rect(25, 933 - 266, 1293); boundsInWindow: Rect(25, 933 - 266, 1293); packageName: moe.tarsin.ehviewer; className: android.view.View; text: null; error: null; maxTextLength: -1; stateDescription: null; contentDescription: null; tooltipText: null; containerTitle: null; viewIdResName: null; uniqueId: null; checkable: false; checked: false; focusable: false; focused: false; selected: false; clickable: false; longClickable: false; contextClickable: false; enabled: true; password: false; scrollable: false; granularScrollingSupported: false; importantForAccessibility: true; visible: true; actions: [AccessibilityAction: ACTION_ACCESSIBILITY_FOCUS - null]; isTextSelectable: false
+10-10 10:59:55.527  2561  2575 W ByMatcher: Skipping null child (0 of 1)
+10-10 10:59:55.562  2561  2575 W ByMatcher: Node returned null child: android.view.accessibility.AccessibilityNodeInfo@11b14; boundsInParent: Rect(0, 0 - 0, 0); boundsInScreen: Rect(25, 933 - 1041, 1293); boundsInWindow: Rect(25, 933 - 1041, 1293); packageName: moe.tarsin.ehviewer; className: android.view.View; text: null; error: null; maxTextLength: -1; stateDescription: null; contentDescription: null; tooltipText: null; containerTitle: null; viewIdResName: null; uniqueId: null; checkable: false; checked: false; focusable: true; focused: false; selected: false; clickable: true; longClickable: true; contextClickable: false; enabled: true; password: false; scrollable: false; granularScrollingSupported: false; importantForAccessibility: true; visible: true; actions: [AccessibilityAction: ACTION_FOCUS - null, AccessibilityAction: ACTION_ACCESSIBILITY_FOCUS - null, AccessibilityAction: ACTION_CLICK - null, AccessibilityAction: ACTION_LONG_CLICK - null]; isTextSelectable: false
+10-10 10:59:55.562  2561  2575 W ByMatcher: Skipping null child (1 of 6)
+10-10 10:59:55.613  2561  2575 W ByMatcher: Skipping null child (2 of 6)
+10-10 10:59:55.665  2561  2575 W ByMatcher: Skipping null child (3 of 6)
+10-10 10:59:55.705  2561  2575 W ByMatcher: Skipping null child (4 of 6)
+10-10 10:59:55.723  2561  2575 W ByMatcher: Skipping null child (5 of 6)
+10-10 10:59:55.739  2561  2575 W ByMatcher: Node returned null child: android.view.accessibility.AccessibilityNodeInfo@9ed6; boundsInParent: Rect(0, 0 - 0, 0); boundsInScreen: Rect(0, 0 - 1073, 1920); boundsInWindow: Rect(0, 0 - 1073, 1920); packageName: moe.tarsin.ehviewer; className: android.view.View; text: null; error: null; maxTextLength: -1; stateDescription: null; contentDescription: null; tooltipText: null; containerTitle: null; viewIdResName: null; uniqueId: null; checkable: false; checked: false; focusable: false; focused: false; selected: false; clickable: false; longClickable: false; contextClickable: false; enabled: true; password: false; scrollable: true; granularScrollingSupported: false; importantForAccessibility: true; visible: true; actions: [AccessibilityAction: ACTION_SCROLL_UP - null, AccessibilityAction: ACTION_SCROLL_DOWN - null, AccessibilityAction: ACTION_ACCESSIBILITY_FOCUS - null, AccessibilityAction: ACTION_SCROLL_FORWARD - null, AccessibilityAction: ACTION_SCROLL_BACKWARD - null]; isTextSelectable: false
+10-10 10:59:55.739  2561  2575 W ByMatcher: Skipping null child (4 of 6)
+10-10 10:59:55.757  2561  2575 W ByMatcher: Skipping null child (5 of 6)
+10-10 10:59:55.764  2561  2575 W ByMatcher: Node returned null child: android.view.accessibility.AccessibilityNodeInfo@9a3c; boundsInParent: Rect(0, 0 - 0, 0); boundsInScreen: Rect(0, 0 - 1073, 1920); boundsInWindow: Rect(0, 0 - 1073, 1920); packageName: moe.tarsin.ehviewer; className: android.view.View; text: null; error: null; maxTextLength: -1; stateDescription: null; contentDescription: null; tooltipText: null; containerTitle: null; viewIdResName: null; uniqueId: null; checkable: false; checked: false; focusable: false; focused: false; selected: false; clickable: false; longClickable: false; contextClickable: false; enabled: true; password: false; scrollable: false; granularScrollingSupported: false; importantForAccessibility: true; visible: true; actions: [AccessibilityAction: ACTION_ACCESSIBILITY_FOCUS - null]; isTextSelectable: false
+10-10 10:59:55.764  2561  2575 W ByMatcher: Skipping null child (1 of 3)
+10-10 10:59:55.781  2561  2575 W ByMatcher: Skipping null child (2 of 3)
+10-10 10:59:55.878   560  1029 D BiometricService: canAuthenticate: User=0, Caller=0, Authenticators=65536
+10-10 10:59:55.878   560  1029 E BiometricService: Non-biometric, non-credential bits found. Authenticators: 65536
+10-10 10:59:55.883   560  1029 D BiometricService: canAuthenticate: User=0, Caller=0, Authenticators=33023
+10-10 10:59:55.884   560  1029 D BiometricService/PreAuthInfo: Package: moe.tarsin.ehviewer Sensor ID: 0 Modality: 2 Status: 7
+10-10 10:59:55.885   560  1029 D BiometricService/PreAuthInfo: Package: moe.tarsin.ehviewer Sensor ID: 4 Modality: 8 Status: 7
+10-10 10:59:55.885   560  1029 D BiometricService/PreAuthInfo: getCanAuthenticateInternal Modality: 8 AuthenticatorStatus: 7
+10-10 10:59:55.885   560  1029 D AuthService: canAuthenticate, userId: 0, callingUserId: 0, authenticators: 33023, result: 11

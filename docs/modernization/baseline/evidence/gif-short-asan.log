@@ -1,0 +1,61 @@
+=================================================================
+==66447==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x602000000af7 at pc 0x000100cc4f5c bp 0x00016f139b20 sp 0x00016f139b18
+READ of size 1 at 0x602000000af7 thread T0
+==66447==WARNING: external symbolizer didn't start up correctly!
+==66447==WARNING: Can't read from symbolizer at fd 3
+==66447==WARNING: atos failed to symbolize address "0x100cc4f58"
+==66447==WARNING: Can't read from symbolizer at fd 3
+==66447==WARNING: atos failed to symbolize address "0x100cc62ac"
+==66447==WARNING: Can't read from symbolizer at fd 3
+==66447==WARNING: atos failed to symbolize address "0x1973abe7c"
+    #0 0x000100cc4f58 in doRewrite+0x1e8 (/private/tmp/ehviewer-p0-c5156a2/native-final/gif_short:arm64+0x100000f58)
+    #1 0x000100cc62ac in main+0x44 (/private/tmp/ehviewer-p0-c5156a2/native-final/gif_short:arm64+0x1000022ac)
+    #2 0x0001973abe7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+0x602000000af7 is located 0 bytes after 7-byte region [0x602000000af0,0x602000000af7)
+allocated by thread T0 here:
+==66447==WARNING: Can't read from symbolizer at fd 3
+==66447==WARNING: atos failed to symbolize address "0x101369274"
+==66447==WARNING: Can't read from symbolizer at fd 3
+==66447==WARNING: atos failed to symbolize address "0x100cc6288"
+==66447==WARNING: Can't read from symbolizer at fd 3
+==66447==WARNING: atos failed to symbolize address "0x1973abe7c"
+    #0 0x000101369274 in malloc+0x78 (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x000100cc6288 in main+0x20 (/private/tmp/ehviewer-p0-c5156a2/native-final/gif_short:arm64+0x100002288)
+    #2 0x0001973abe7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+==66447==WARNING: Can't read from symbolizer at fd 3
+==66447==WARNING: atos failed to symbolize address "0x100cc4f58"
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/private/tmp/ehviewer-p0-c5156a2/native-final/gif_short:arm64+0x100000f58) in doRewrite+0x1e8
+Shadow bytes around the buggy address:
+  0x602000000800: fa fa 00 00 fa fa 00 00 fa fa 00 00 fa fa 00 00
+  0x602000000880: fa fa 00 00 fa fa 00 00 fa fa 00 00 fa fa 00 00
+  0x602000000900: fa fa fd fa fa fa fd fa fa fa fd fa fa fa fd fd
+  0x602000000980: fa fa fd fa fa fa fd fa fa fa fd fa fa fa fd fa
+  0x602000000a00: fa fa fd fd fa fa fd fa fa fa fd fa fa fa fd fa
+=>0x602000000a80: fa fa fd fa fa fa 00 00 fa fa 00 04 fa fa[07]fa
+  0x602000000b00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000000b80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000000c00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000000c80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000000d00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==66447==ABORTING
