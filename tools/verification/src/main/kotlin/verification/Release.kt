@@ -177,16 +177,21 @@ fun combineRelease(parts: Path, tools: AndroidTools, output: Path, tag: String):
     staging.resolve("output-metadata.json").writeText(json(metadata.values.first() + ("elements" to elements)))
     verifyApks(staging, tools)
     require(!output.exists(NOFOLLOW_LINKS)) { "Refusing to overwrite release payload" }
-    output.createDirectories()
-    attachments.forEach { Files.copy(staging.resolve(it.str("name")), output.resolve(it.str("name"))) }
-    val encrypted = output.parent.resolve("diagnostics").createDirectory()
+    val encrypted = temp.resolve("diagnostics").createDirectory()
     val diagnostics = architectures.associateWith { abi ->
         val input = parts.resolve("release-part-$abi/diagnostics.enc")
-        require(input.isRegularFile(NOFOLLOW_LINKS) && input.fileSize() > 0) { "Missing encrypted matrix diagnostics" }
+        require(input.isRegularFile(NOFOLLOW_LINKS) && input.fileSize() > 8 + 4 + 384 + 12 + 16) { "Missing/truncated encrypted matrix diagnostics" }
+        require(input.inputStream().use { it.readNBytes(8).contentEquals("EHVDIAG1".toByteArray()) }) { "Invalid encrypted diagnostics envelope" }
         val file = encrypted.resolve("$abi.enc")
         Files.copy(input, file)
         mapOf("sha256" to sha256(file), "manifest" to manifests.getValue(abi)["diagnostics"])
     }
+    // Validate all inputs before exposing any public payload.
+    require(!output.parent.resolve("diagnostics").exists(NOFOLLOW_LINKS)) { "Refusing to overwrite encrypted diagnostics" }
+    output.createDirectories()
+    attachments.forEach { Files.copy(staging.resolve(it.str("name")), output.resolve(it.str("name"))) }
+    val destination = output.parent.resolve("diagnostics").createDirectory()
+    encrypted.listDirectoryEntries().forEach { Files.copy(it, destination.resolve(it.name)) }
     val manifest = mapOf(
         "mode" to "verified-payload", "tag" to tag, "version" to versionFromTag(tag),
         "versionCode" to manifests.values.first()["versionCode"], "source_commit" to source,
