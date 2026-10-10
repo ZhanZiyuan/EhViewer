@@ -64,6 +64,7 @@ jobs:
           test -s app/build/outputs/mapping/release/mapping.txt
           test -s app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip
           python3 scripts/verify_native_sources.py > reports/native-sources.json
+          python3 scripts/verify_native_diagnostics.py --sdk "$ANDROID_HOME" > reports/native-diagnostics.json
           python3 scripts/verify_bytecode.py > reports/android-bytecode.json
           python3 scripts/verify_apks.py app/build/outputs/apk/release --sdk "$ANDROID_HOME" > reports/release-apks.json
           python3 scripts/verify_apks.py app/build/outputs/apk/debug --sdk "$ANDROID_HOME" --debug --application-id moe.tarsin.ehviewer.debug > reports/debug-apks.json
@@ -91,15 +92,6 @@ jobs:
           name: universal-${{ github.sha }}
           path: app/build/outputs/apk/release/app-universal-release.apk
           if-no-files-found: error
-      - name: Build diagnostics
-        uses: actions/upload-artifact@v7
-        with:
-          name: build-diagnostics-${{ github.sha }}
-          path: |
-            app/build/outputs/mapping/release/mapping.txt
-            app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip
-          if-no-files-found: error
-          retention-days: 14
       - name: Instrumentation inputs
         uses: actions/upload-artifact@v7
         with:

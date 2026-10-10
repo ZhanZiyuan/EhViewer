@@ -32,6 +32,8 @@ memmap2 = "0.9"
 
 [profile.release]
 panic = "unwind"
-strip = true
+# AGP strips the APK copies after retaining FULL native diagnostics privately.
+debug = 2
+strip = false
 lto = true
 codegen-units = 1
