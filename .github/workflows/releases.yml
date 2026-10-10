@@ -139,11 +139,14 @@ jobs:
           EHVIEWER_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           EHVIEWER_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           EHVIEWER_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease -Prelease --console=plain --no-daemon
+        run: |
+          ./gradlew :app:assembleRelease -Prelease --console=plain --no-daemon
+          git status --porcelain --untracked-files=all
       - name: Verify packaging regression tests
         run: |
           ./gradlew -p tools/verification check installDist --console=plain --no-daemon
           tools/verification/build/install/verification/bin/verification release-input-tests --sdk "$ANDROID_HOME"
+          git status --porcelain --untracked-files=all
       - name: Prepare exactly four APKs and encrypt diagnostics
         run: |
           tools/verification/build/install/verification/bin/verification prepare-release --tag "$RELEASE_TAG" \

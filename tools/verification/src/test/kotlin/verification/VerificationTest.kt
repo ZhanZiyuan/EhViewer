@@ -199,6 +199,10 @@ class VerificationTest {
         rejects { command("sleep", "2", timeout = java.time.Duration.ofMillis(50)) }
     }
 
+    @Test fun machineReadableOutputExcludesDiagnostics() {
+        assertEquals("clean\n", command("git", "-c", "alias.output-probe=!printf diagnostic >&2; printf 'clean\\n'", "output-probe", mergeError = false))
+    }
+
     @Test fun jsonRoundTrip() = temporary { temp ->
         val path = temp.resolve("metadata.json").apply { writeText(json(metadata())) }
         assertEquals(4, attachmentPlan(readJson(path), "v1.15.2").size)

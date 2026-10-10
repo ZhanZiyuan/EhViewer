@@ -72,6 +72,9 @@ fun prepareRelease(apkDirectory: Path, tools: AndroidTools, output: Path, privat
     val plan = attachmentPlan(metadata, tag)
     verifyApks(apkDirectory, tools)
     val source = command("git", "rev-parse", "HEAD").trim()
+    // Git warnings belong in logs, not in the machine-readable source status.
+    val sourceStatus = command("git", "status", "--porcelain", "--untracked-files=all", mergeError = false).lineSequence().filter(String::isNotBlank).toList()
+    require(System.getenv("GITHUB_ACTIONS") != "true" || sourceStatus.isEmpty()) { "Release source is not clean: ${sourceStatus.joinToString("; ")}" }
     val diagnostics = mapOf(
         "mapping.txt" to root.resolve("app/build/outputs/mapping/release/mapping.txt"),
         "native-debug-symbols.zip" to root.resolve("app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip"),
@@ -106,7 +109,7 @@ fun prepareRelease(apkDirectory: Path, tools: AndroidTools, output: Path, privat
     val manifest = mapOf(
         "mode" to "verified-payload", "tag" to tag, "version" to version,
         "versionCode" to plan.first().first.code, "source_commit" to source,
-        "source_dirty" to command("git", "status", "--porcelain").isNotBlank(),
+        "source_dirty" to sourceStatus.isNotEmpty(), "source_status" to sourceStatus,
         "created_at" to now.toString(), "publication" to "separate gated Release job", "attachments" to attachments,
         "github_automatic_sources" to listOf("Source code (zip)", "Source code (tar.gz)"),
         "diagnostics" to mapOf(
