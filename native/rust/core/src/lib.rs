@@ -149,3 +149,7 @@ pub mod fd;
 pub mod gif;
 pub mod hash;
 pub mod sort;
+
+#[cfg(test)]
+#[path = "../tests/support/mod.rs"]
+mod test_fixtures;

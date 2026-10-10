@@ -2,11 +2,8 @@ package verification
 
 import java.nio.file.Files
 import java.nio.file.Path
-import java.time.Duration
-import java.util.concurrent.TimeUnit
 import kotlin.io.path.createDirectories
 import kotlin.io.path.name
-import kotlin.io.path.readLines
 import kotlin.io.path.writeText
 
 fun deviceTests(sdk: Path, serial: String, output: Path, app: Path, test: Path, expectedApi: Int? = null, expectedPageSize: Int? = null): Map<String, Any?> {
@@ -42,39 +39,3 @@ fun deviceTests(sdk: Path, serial: String, output: Path, app: Path, test: Path, 
 }
 
 private const val ADB_LOG_NAME = "logcat-clear.log"
-
-fun emulatorTests(options: Options): Map<String, Any?> {
-    val sdk = options.path("--sdk", System.getenv("ANDROID_HOME"))
-    val image = options.get("--image", System.getenv("TEST_IMAGE"))
-    val label = options.get("--label", System.getenv("TEST_LABEL"))
-    require(Regex("api[0-9]+(?:-16k|-[a-z0-9-]+)?").matches(label))
-    val expectedApi = label.removePrefix("api").substringBefore('-').toInt()
-    val output = options.path("--output", "device-reports").createDirectories()
-    val sdkManager = sdk.resolve("cmdline-tools/latest/bin/sdkmanager")
-    val avdManager = sdk.resolve("cmdline-tools/latest/bin/avdmanager")
-    val adb = sdk.resolve("platform-tools/adb")
-    require(runCatching { command(adb, "-s", "emulator-5554", "get-state") }.isFailure) { "Emulator port 5554 is already in use" }
-    command(sdkManager, image, timeout = Duration.ofMinutes(15))
-    return temporary { temp ->
-        val avd = temp.resolve("avd")
-        command(avdManager, "create", "avd", "--name", "ehviewer-ci", "--package", image, "--device", "pixel_2", "--path", avd, input = "no\n")
-        val config = avd.resolve("config.ini")
-        config.writeText(config.readLines().filterNot { it.startsWith("disk.dataPartition.size=") }.joinToString("\n", postfix = "\ndisk.dataPartition.size=2G\n"))
-        val process = ProcessBuilder(sdk.resolve("emulator/emulator").toString(), "-avd", "ehviewer-ci", "-port", "5554", "-no-window", "-no-audio", "-no-snapshot", "-gpu", "swiftshader", "-no-boot-anim")
-            .redirectErrorStream(true).redirectOutput(output.resolve("emulator.log").toFile()).start()
-        try {
-            val deadline = System.nanoTime() + Duration.ofMinutes(6).toNanos()
-            while (runCatching { command(adb, "-s", "emulator-5554", "shell", "getprop", "sys.boot_completed", timeout = Duration.ofSeconds(10)).trim() }.getOrNull() != "1") {
-                require(process.isAlive && System.nanoTime() < deadline) { "Emulator failed to boot" }
-                Thread.sleep(2000)
-            }
-            fun input(name: String): Path = filesBelow(root.resolve("device-inputs"), name).single { it.name == name }
-            deviceTests(sdk, "emulator-5554", output, input("app-universal-debug.apk"), input("app-debug-androidTest.apk"), expectedApi, if (label.endsWith("16k")) 16384 else null)
-        } finally {
-            runCatching { output.resolve("logcat.txt").writeText(command(adb, "-s", "emulator-5554", "logcat", "-d")) }
-            if (process.isAlive) runCatching { command(adb, "-s", "emulator-5554", "emu", "kill") }
-            if (!process.waitFor(20, TimeUnit.SECONDS)) process.destroyForcibly().waitFor()
-            runCatching { command(avdManager, "delete", "avd", "--name", "ehviewer-ci") }
-        }
-    }
-}

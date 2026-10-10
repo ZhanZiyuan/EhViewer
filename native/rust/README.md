@@ -26,4 +26,4 @@ done
 cargo rustc --locked --release --features jvm --lib --crate-type cdylib
 ```
 
-Archive regression fixtures and their licenses are in `../test-fixtures/`. Reproducible Kotlin verification tools are documented in `../../tools/verification/README.md`. Migration logs and temporary C comparison drivers are retained locally outside the repository.
+Archive regression fixtures and their licenses are restored locally into the ignored `.local-test-fixtures/` directory from immutable baseline `8fdfb6c5550fab506759a5587b1c8ee4050f507e`. Rust tests restore their inputs automatically; Android test assets are prepared by Gradle. A full Git history is required (`git fetch --unshallow` for shallow clones). Reproducible Kotlin verification tools are documented in `../../tools/verification/README.md`. Migration logs and temporary C comparison drivers are retained locally outside the repository.

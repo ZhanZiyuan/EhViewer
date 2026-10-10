@@ -7,6 +7,5 @@
 
 # Documentation and binary regression fixtures are not product source.
 docs/** linguist-documentation=true
-native/test-fixtures/** linguist-documentation=true
 **/build/** linguist-generated=true
 **/target/** linguist-generated=true

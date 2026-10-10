@@ -23,7 +23,7 @@ The release integration tests reject mismatched versions, missing/extra APKs and
 a genuinely tampered signature without creating a public payload.
 
 ```sh
-tools/verification/build/install/verification/bin/verification prepare-release --tag v1.15.2 \
+tools/verification/build/install/verification/bin/verification prepare-release --tag v1.15.5 \
   --sdk "$ANDROID_HOME" --output release-dry-run/apks --private-dir "$PWD/.private-release" --retention-days 180
 tools/verification/build/install/verification/bin/verification device --serial emulator-5560 \
   --sdk "$ANDROID_HOME" --output reports/api26
@@ -35,14 +35,53 @@ version/commit directory with permissions 0700 and files 0600, records SHA-256
 and the retention deadline, and refuses unsafe overwrites. Use a canonical local
 path without symlink ancestors. Retention requires the owner's backup and
 deletion policy; this tool does not provide durable remote storage or a scheduler.
-Formal publication remains disabled. GitHub provides source archives itself.
+The `Release` workflow automatically follows successful main push CI and builds
+that exact commit. Manual runs default to a dry run; checking `publish` requires
+main and successful CI for the same commit. A version already published is
+skipped, tags pointing elsewhere are rejected, and only the separate publication
+job receives write permission. GitHub provides source archives itself.
 
-`device` tests an already booted dedicated device. `emulator` installs the SDK
-image from `TEST_IMAGE`, creates its own AVD on port 5554, verifies the API from
-`TEST_LABEL` and 16 KB pages when requested, runs all 19 instrumentation tests,
-captures logs, and shuts down its AVD. For manual emulator runs, supply the Debug
-and androidTest APKs in `device-inputs/`. The emulator matrix is not part of CI.
+Production signing reads `EHVIEWER_KEYSTORE`, `EHVIEWER_STORE_PASSWORD`,
+`EHVIEWER_KEY_ALIAS` and `EHVIEWER_KEY_PASSWORD`. For local builds, keep the
+original keystore at `.private-signing/androidkey.jks` and the three properties
+`storePassword`, `keyAlias`, `keyPassword` in `.private-signing/signing.properties`
+(directory 0700, files 0600). These files must be backed up separately. Never
+replace the production key. Trusted push CI builds restore the original signing key; pull requests and
+secret-free manual CI builds use the debug signing key;
+`apks --test-signing` accepts this only for SNAPSHOT versions. `-Prelease` fails
+without the original external signing material, and final APK verification
+requires the historical certificate digest.
 
-Migration-only C comparison drivers, raw logs, reports and duplicate outputs
-are kept outside the source checkout. Maintained Rust tests and Android tests
-share `native/test-fixtures/`; parser tests use minimal inline Rust inputs.
+Repository secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_STORE_PASSWORD`,
+`ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Repository variable:
+`DIAGNOSTICS_PUBLIC_KEY` (RSA public PEM; never the private key).
+
+```sh
+tools/verification/build/install/verification/bin/verification diagnostics-key --output "$PWD/.private-release/keys"
+tools/verification/build/install/verification/bin/verification encrypt-diagnostics \
+  --private-dir "$PWD/.private-release/VERSION-COMMIT" \
+  --public-key "$PWD/.private-release/keys/public.pem" --output diagnostics.enc
+tools/verification/build/install/verification/bin/verification decrypt-diagnostics \
+  --input diagnostics.enc --private-key "$PWD/.private-release/keys/private.pem" \
+  --output "$PWD/.private-release/restored/diagnostics.zip"
+```
+
+The diagnostics envelope uses RSA-3072 OAEP (SHA-256 and MGF1-SHA256) and
+AES-256-GCM with a random key/nonce and an authenticated header. It contains
+mapping, matching native symbols and their version/commit/checksum manifest.
+Only ciphertext is retained in Actions for 90 days; plaintext is removed from
+the runner. Public repository artifacts are not private storage. Back up the
+owner-only private key offline and download encrypted artifacts before expiry.
+The decrypt command authenticates the complete envelope before retaining a
+0600 plaintext archive in an owner-only directory.
+
+`device` runs all 19 instrumentation tests on an already booted dedicated
+local device and captures its API, page size, APK digests and logs. The removed
+CI emulator matrix and its AVD provisioning code are no longer maintained here.
+
+Regression archives, expected data and licenses are restored into the ignored
+`.local-test-fixtures/` directory from immutable Git baseline
+`8fdfb6c5550fab506759a5587b1c8ee4050f507e`. Rust tests restore their own inputs;
+Gradle prepares Android test assets automatically. A full Git history is required
+(`git fetch --unshallow` for shallow clones). No fixture data is tracked in the
+current tree or included in production APKs. Parser inputs stay inline in Rust.

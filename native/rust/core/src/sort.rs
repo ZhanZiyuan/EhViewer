@@ -93,8 +93,10 @@ mod tests {
     use super::*;
     #[test]
     fn original_oracle_all_pairs() {
-        let oracle: serde_json::Value =
-            serde_json::from_str(include_str!("../../../test-fixtures/sort-oracle.json")).unwrap();
+        let oracle: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(crate::test_fixtures::fixture("sort-oracle.json")).unwrap(),
+        )
+        .unwrap();
         let inputs = oracle["inputs"].as_array().unwrap();
         for (i, a) in inputs.iter().enumerate() {
             for (j, b) in inputs.iter().enumerate() {

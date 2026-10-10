@@ -104,10 +104,10 @@ fun prepareRelease(apkDirectory: Path, tools: AndroidTools, output: Path, privat
         if (staging.exists()) Files.walk(staging).use { it.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
     }
     val manifest = mapOf(
-        "mode" to "dry-run-only", "tag" to tag, "version" to version,
+        "mode" to "verified-payload", "tag" to tag, "version" to version,
         "versionCode" to plan.first().first.code, "source_commit" to source,
         "source_dirty" to command("git", "status", "--porcelain").isNotBlank(),
-        "created_at" to now.toString(), "publication_enabled" to false, "attachments" to attachments,
+        "created_at" to now.toString(), "publication" to "separate gated Release job", "attachments" to attachments,
         "github_automatic_sources" to listOf("Source code (zip)", "Source code (tar.gz)"),
         "diagnostics" to mapOf(
             "access" to "local owner only; no public upload",
