@@ -93,7 +93,9 @@ android {
         buildConfigField("long", "COMMIT_TIME", commitTime)
         buildConfigField("String", "REPO_NAME", "\"$repoName\"")
         ndk {
-            abiFilters.addAll(buildAbis)
+            // Single-ABI split builds are already filtered by splits.abi.
+            // AGP rejects configuring the same single ABI in both filters.
+            if (releaseAbi == null || releaseAbi == "universal") abiFilters.addAll(supportedAbis)
             debugSymbolLevel = "FULL"
         }
     }
