@@ -1,0 +1,19 @@
+--- a/cmake/Corrosion.cmake
++++ b/cmake/Corrosion.cmake
+@@ -775,9 +775,13 @@
+     # We set a target folder based on the manifest path so if you build multiple workspaces (or standalone projects
+     # without workspace) they won't collide if they use a common dependency. This would confuse cargo and trigger
+     # unnecessary rebuilds
+-    cmake_path(GET workspace_manifest_path PARENT_PATH parent_path)
+-    cmake_path(GET parent_path PARENT_PATH grandparent_path)
+-    string(REPLACE "${grandparent_path}/" "" cargo_folder_name "${parent_path}")
++    # Extract a basename rather than removing an absolute prefix. An absolute
++    # appended component would discard CMAKE_BINARY_DIR and pollute the source tree.
++    get_filename_component(parent_path "${workspace_manifest_path}" DIRECTORY)
++    get_filename_component(cargo_folder_name "${parent_path}" NAME)
++    if(cargo_folder_name STREQUAL "" OR IS_ABSOLUTE "${cargo_folder_name}")
++        message(FATAL_ERROR "Invalid Cargo workspace output directory")
++    endif()
+     string(SHA1 cargo_path_hash ${workspace_manifest_path})
+     # Include a hash of the full path in case there are multiple projects with the same folder name
+     string(SUBSTRING "${cargo_path_hash}" 0 5 cargo_path_hash)

@@ -103,6 +103,43 @@ class VerificationTest {
         assertEquals((abis.keys + "universal").map { "EhViewer-1.15.2-$it.apk" }.toSet(), attachmentPlan(metadata(), "v1.15.2").map { it.second }.toSet())
     }
 
+    @Test fun matrixMetadataRequiresItsExactArchitecture() {
+        (abis.keys + "universal").forEach { abi ->
+            val data = metadata()
+            data["elements"] = elements(data).filter { it["outputFile"] == "app-$abi-release.apk" }
+            assertEquals(abi, apkInputs(data, "moe.tarsin.ehviewer", setOf(abi)).single().abi)
+            rejects { apkInputs(data, "moe.tarsin.ehviewer") }
+            rejects { apkInputs(data, "moe.tarsin.ehviewer", setOf("x86")) }
+        }
+    }
+
+    @Test fun matrixPlanRejectsMixedSourcesVersionsAndDirtyArtifacts() {
+        val source = "1".repeat(40)
+        fun parts(): Map<String, Map<String, Any?>> = (abis.keys + "universal").associateWith { abi ->
+            mapOf(
+                "mode" to "verified-payload", "tag" to "v1.15.5", "version" to "1.15.5", "versionCode" to 180069,
+                "source_commit" to source, "source_dirty" to false, "source_status" to emptyList<String>(),
+                "diagnostics" to mapOf("retention_days" to 90),
+                "attachments" to listOf(mapOf("abi" to abi, "name" to "EhViewer-1.15.5-$abi.apk", "sha256" to "a".repeat(64))),
+            )
+        }
+        assertEquals(4, releasePartsPlan(parts(), "v1.15.5", source).size)
+        rejects { releasePartsPlan(parts() - "universal", "v1.15.5", source) }
+        listOf(
+            "source_commit" to "2".repeat(40),
+            "source_dirty" to true,
+            "source_status" to listOf("?? unexpected"),
+            "versionCode" to 180068,
+            "version" to "1.15.4",
+            "diagnostics" to mapOf("retention_days" to 14),
+            "attachments" to listOf(mapOf("abi" to "universal", "name" to "../bad.apk", "sha256" to "a".repeat(64))),
+        ).forEach { changed ->
+            val data = parts().toMutableMap()
+            data["arm64-v8a"] = data.getValue("arm64-v8a") + changed
+            rejects { releasePartsPlan(data, "v1.15.5", source) }
+        }
+    }
+
     @Test fun missingOrDuplicateAbi() {
         val missing = metadata()
         elements(missing).removeLast()
@@ -197,6 +234,10 @@ class VerificationTest {
     @Test fun failedCommandsAndTimeoutsPropagate() {
         assertTrue(runCatching { command("git", "definitely-not-a-command") }.exceptionOrNull() is CommandFailure)
         rejects { command("sleep", "2", timeout = java.time.Duration.ofMillis(50)) }
+    }
+
+    @Test fun machineReadableOutputExcludesDiagnostics() {
+        assertEquals("clean\n", command("git", "-c", "alias.output-probe=!printf diagnostic >&2; printf 'clean\\n'", "output-probe", mergeError = false))
     }
 
     @Test fun jsonRoundTrip() = temporary { temp ->

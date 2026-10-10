@@ -13,7 +13,8 @@ fun main(args: Array<String>) {
             verifyApks(root.resolve(options.positional.single()), tools(), options.get("--application-id", "moe.tarsin.ehviewer"), !options.has("--debug") && !options.has("--test-signing"), if (options.has("--version-code")) options.get("--version-code").toInt() else null)
         }
         "diagnostics" -> verifyDiagnostics(options.path("--symbols", "app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip"), options.path("--apk-dir", "app/build/outputs/apk/release"), tools())
-        "prepare-release" -> prepareRelease(options.path("--apk-dir", "app/build/outputs/apk/release"), tools(), options.path("--output"), options.path("--private-dir"), options.get("--tag"), options.get("--retention-days", "180").toInt())
+        "prepare-release" -> prepareRelease(options.path("--apk-dir", "app/build/outputs/apk/release"), tools(), options.path("--output"), options.path("--private-dir"), options.get("--tag"), options.get("--retention-days", "180").toInt(), if (options.has("--abi")) setOf(options.get("--abi")) else abis.keys + "universal")
+        "combine-release" -> combineRelease(options.path("--parts"), tools(), options.path("--output"), options.get("--tag"))
         "release-input-tests" -> releaseInputTests(tools())
         "diagnostics-key" -> diagnosticsKey(options.path("--output"))
         "encrypt-diagnostics" -> encryptDiagnostics(options.path("--private-dir"), options.path("--public-key"), options.path("--output"))

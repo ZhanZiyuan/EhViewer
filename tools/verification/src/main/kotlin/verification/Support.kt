@@ -38,12 +38,14 @@ class CommandFailure(val command: List<String>, val output: String) : IllegalSta
     "Command failed: ${command.joinToString(" ")}\n$output",
 )
 
-fun command(vararg args: Any, input: String? = null, timeout: Duration = Duration.ofMinutes(5)): String {
+fun command(vararg args: Any, input: String? = null, timeout: Duration = Duration.ofMinutes(5), mergeError: Boolean = true): String {
     val arguments = args.map(Any::toString)
     // Redirect to a file so a verbose child cannot deadlock on a full output pipe.
     val capture = Files.createTempFile("ehviewer-command-", ".log")
     try {
-        val process = ProcessBuilder(arguments).redirectErrorStream(true).redirectOutput(capture.toFile()).start()
+        val builder = ProcessBuilder(arguments).redirectErrorStream(mergeError).redirectOutput(capture.toFile())
+        if (!mergeError) builder.redirectError(ProcessBuilder.Redirect.INHERIT)
+        val process = builder.start()
         process.outputStream.bufferedWriter().use { if (input != null) it.write(input) }
         if (!process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
             process.destroyForcibly().waitFor()
