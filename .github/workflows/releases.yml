@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Optional expected version (e.g. v1.15.5); no existing tag required"
+        description: "Optional expected version (e.g. v1.15.6); no existing tag required"
         required: false
         type: string
       publish:
@@ -269,21 +269,61 @@ jobs:
             [[ "$name" != */* && "$name" == *.apk && "$digest" =~ ^[0-9a-f]{64}$ ]] || { echo "::error::Unsafe checksum entry."; exit 1; }
             printf '%s  %s\n' "$digest" "apks/$name" | sha256sum -c || exit 1
           done < <(jq -r '.attachments[] | [.name,.sha256] | @tsv' manifest/release-manifest.json)
-          if gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" > release.json 2> query-error; then
+          # The tag endpoint only discovers published releases reliably. Include drafts so a
+          # failed upload can resume without creating another draft for the same version.
+          gh api --paginate --slurp "repos/$GH_REPO/releases?per_page=100" > release-pages.json
+          jq --arg tag "$RELEASE_TAG" '[.[][] | select(.tag_name == $tag)]' release-pages.json > matching-releases.json
+          release_count=$(jq 'length' matching-releases.json)
+          [[ "$release_count" -le 1 ]] || { echo "::error::Multiple releases use this tag; refusing ambiguous publication."; exit 1; }
+          if [[ "$release_count" == 1 ]]; then
+            jq '.[0]' matching-releases.json > release.json
             [[ $(jq -r .draft release.json) == true ]] || { echo "Release already published; refusing to modify it."; exit 1; }
             [[ $(jq -r .target_commitish release.json) == "$SOURCE_SHA" ]] || { echo "Draft belongs to a different commit."; exit 1; }
-          elif grep -q '(HTTP 404)' query-error; then
-            gh release create "$RELEASE_TAG" --target "$SOURCE_SHA" --title "$RELEASE_TAG" --generate-notes --draft
-          else
-            cat query-error; exit 1
           fi
-          # Refuse tag replacement, including races with another publisher.
-          if gh api "repos/$GH_REPO/commits/$RELEASE_TAG" > tag.json 2> tag-error; then
-            [[ $(jq -r .sha tag.json) == "$SOURCE_SHA" ]] || { echo "::error::Tag points to a different commit."; exit 1; }
-          elif ! grep -q '(HTTP 404)' tag-error; then
+
+          # A draft does not create a Git tag. Test the exact ref (404 means absent),
+          # create it only at the verified source, and never update an existing ref.
+          if gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" > tag-ref.json 2> tag-error; then
+            :
+          elif grep -q '(HTTP 404)' tag-error; then
+            if ! gh api --method POST "repos/$GH_REPO/git/refs" \
+              -f "ref=refs/tags/$RELEASE_TAG" -f "sha=$SOURCE_SHA" > tag-created.json 2> tag-create-error; then
+              # A competing creator is acceptable only if the ref now resolves to this source.
+              grep -Eq '\(HTTP (409|422)\)' tag-create-error || { cat tag-create-error; exit 1; }
+            fi
+          else
             cat tag-error; exit 1
+          fi
+          verify_tag() {
+            gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" > tag-ref.json
+            [[ $(jq -r .ref tag-ref.json) == "refs/tags/$RELEASE_TAG" ]] || { echo "::error::Unexpected tag reference."; exit 1; }
+            tag_type=$(jq -r .object.type tag-ref.json)
+            tag_sha=$(jq -r .object.sha tag-ref.json)
+            # Peel the exact Git ref, including nested annotated tags. Avoid the commits
+            # endpoint: a missing ref returns 422 there and branch names can be ambiguous.
+            for ((depth=0; depth<16; depth++)); do
+              [[ "$tag_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid tag object SHA."; exit 1; }
+              case "$tag_type" in
+                commit)
+                  [[ "$tag_sha" == "$SOURCE_SHA" ]] || { echo "::error::Tag points to a different commit."; exit 1; }
+                  return
+                  ;;
+                tag)
+                  gh api "repos/$GH_REPO/git/tags/$tag_sha" > tag-object.json
+                  tag_type=$(jq -r .object.type tag-object.json)
+                  tag_sha=$(jq -r .object.sha tag-object.json)
+                  ;;
+                *) echo "::error::Tag does not resolve to a commit."; exit 1 ;;
+              esac
+            done
+            echo "::error::Annotated tag nesting exceeds the verification limit."; exit 1
+          }
+          verify_tag
+          if [[ "$release_count" == 0 ]]; then
+            gh release create "$RELEASE_TAG" --verify-tag --target "$SOURCE_SHA" --title "$RELEASE_TAG" --generate-notes --draft
           fi
           gh release upload "$RELEASE_TAG" apks/*.apk --clobber || exit 1
           gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | sort > published-assets
           printf '%s\n' "$expected" | diff -u - published-assets || exit 1
+          verify_tag
           gh release edit "$RELEASE_TAG" --draft=false --latest

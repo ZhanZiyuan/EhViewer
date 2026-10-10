@@ -22,8 +22,13 @@ certificate continuity, ABI/JNI exports, ELF LOAD alignment and ZIP alignment.
 The release integration tests reject mismatched versions, missing/extra APKs and
 a genuinely tampered signature without creating a public payload.
 
+`check` also executes the actual Release publication script against a stateful
+Kotlin GitHub CLI mock. These offline tests require Bash and jq, cover
+first publication, draft retries, lightweight/annotated tags, creation races and
+API failures, and never contact GitHub or publish assets.
+
 ```sh
-tools/verification/build/install/verification/bin/verification prepare-release --tag v1.15.5 \
+tools/verification/build/install/verification/bin/verification prepare-release --tag v1.15.6 \
   --sdk "$ANDROID_HOME" --output release-dry-run/apks --private-dir "$PWD/.private-release" --retention-days 180
 tools/verification/build/install/verification/bin/verification device --serial emulator-5560 \
   --sdk "$ANDROID_HOME" --output reports/api26
@@ -47,6 +52,9 @@ Manual runs default to a dry run; checking `publish` requires
 main and successful CI for the same commit. A version already published is
 skipped, tags pointing elsewhere are rejected, and only the separate publication
 job receives write permission. GitHub provides source archives itself.
+Publication explicitly creates a missing tag at the verified source commit,
+reuses a matching draft, rejects duplicate drafts and conflicting tags, and
+checks the tag again after uploading the four APKs. Existing tags are never moved.
 
 Production signing reads `EHVIEWER_KEYSTORE`, `EHVIEWER_STORE_PASSWORD`,
 `EHVIEWER_KEY_ALIAS` and `EHVIEWER_KEY_PASSWORD`. For local builds, keep the
