@@ -1,0 +1,39 @@
+[workspace]
+members = ["core"]
+resolver = "3"
+
+[package]
+name = "ehviewer_rust"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+crate-type = ["staticlib"]
+
+[features]
+jvm = ["dep:jni", "dep:jni_fn"]
+android = ["dep:ndk", "jvm", "ndk/bitmap", "dep:android_logger"]
+android-26 = ["android", "ndk/api-level-26"]
+
+[dependencies]
+ehviewer_core = { path = "core" }
+anyhow = "1.0"
+jni = { version = "0.21", optional = true }
+jni_fn = { version = "0.1", optional = true }
+ndk = { version = "0.9", optional = true }
+android_logger = { default-features = false, version = "0.15", optional = true }
+log = "0.4"
+serde = "1.0"
+serde_cbor = "0.11"
+image = { default-features = false, version = "0.25" }
+tl = { git = "https://github.com/FooIbar/tl.git", features = ["simd"] }
+libwebp-sys2 = { git = "https://github.com/FooIbar/libwebp-sys2-rs.git", features = ["1_5", "demux", "extern-types"] }
+memmap2 = "0.9"
+
+[profile.release]
+panic = "unwind"
+# AGP strips the APK copies after retaining FULL native diagnostics privately.
+debug = 2
+strip = false
+lto = true
+codegen-units = 1

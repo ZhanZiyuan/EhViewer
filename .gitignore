@@ -9,5 +9,12 @@ build
 .vscode
 /captures
 
-# Local verification scripts
-__pycache__/
+# Native build caches and local, access-restricted release diagnostics
+/native/rust/target/
+/.private-release/
+/release-dry-run/
+/reports/
+
+# Generated verification and emulator inputs/reports
+/device-inputs/
+/device-reports/

@@ -48,7 +48,7 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "./app/src/main/rust"
+          workspaces: "./native/rust"
           save-if: "false"
 
       - name: Setup Gradle

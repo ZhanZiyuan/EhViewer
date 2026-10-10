@@ -1,0 +1,12 @@
+# The language bar describes product source, not build helpers or recorded fixtures.
+# Keep syntax highlighting truthful; do not relabel supporting languages as Kotlin.
+* linguist-detectable=false
+*.kt linguist-detectable=true linguist-language=Kotlin
+*.kts linguist-detectable=true linguist-language=Kotlin
+*.rs linguist-detectable=true linguist-language=Rust
+
+# Documentation and binary regression fixtures are not product source.
+docs/** linguist-documentation=true
+native/test-fixtures/** linguist-documentation=true
+**/build/** linguist-generated=true
+**/target/** linguist-generated=true

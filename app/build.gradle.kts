@@ -50,11 +50,11 @@ android {
     defaultConfig {
         applicationId = "moe.tarsin.ehviewer"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        versionCode = 180064
+        versionCode = 180068
         versionName = if (snapshot) {
-            "1.15.0-SNAPSHOT"
+            "1.15.4-SNAPSHOT"
         } else {
-            "1.15.0"
+            "1.15.4"
         }
         buildConfigField("boolean", "SNAPSHOT", "$snapshot")
         buildConfigField("String", "RAW_VERSION_NAME", "\"$versionName\"")
@@ -67,13 +67,11 @@ android {
         }
     }
 
-    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("docs/modernization/baseline/fixtures"))
-
-    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("docs/modernization/p5-p7/fixtures"))
+    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("native/test-fixtures"))
 
     externalNativeBuild {
         cmake {
-            path = File("src/main/cpp/CMakeLists.txt")
+            path = rootProject.file("native/third-party/CMakeLists.txt")
         }
     }
 
@@ -157,9 +155,11 @@ baselineProfile {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.test.runner)
 
+    implementation(projects.core.common)
     implementation(projects.core.data)
     implementation(projects.core.i18n)
     implementation(projects.core.ui)

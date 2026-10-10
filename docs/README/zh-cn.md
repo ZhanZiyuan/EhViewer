@@ -20,20 +20,20 @@
 </h1>
 
 <p align="center">
-  <a href="https://github.com/FooIbar/EhViewer/actions/workflows/ci.yml">
-    <img src="https://github.com/FooIbar/EhViewer/actions/workflows/ci.yml/badge.svg" alt="Github Actions">
+  <a href="https://github.com/ZhanZiyuan/EhViewer/actions/workflows/ci.yml">
+    <img src="https://github.com/ZhanZiyuan/EhViewer/actions/workflows/ci.yml/badge.svg" alt="Github Actions">
   </a>
-  <a href="/LICENSE">
-    <img src="https://img.shields.io/github/license/FooIbar/EhViewer" alt="LICENSE">
+  <a href="https://github.com/ZhanZiyuan/EhViewer/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/ZhanZiyuan/EhViewer" alt="LICENSE">
   </a>
   <a href="https://www.codefactor.io/repository/github/FooIbar/EhViewer">
     <img src="https://www.codefactor.io/repository/github/FooIbar/EhViewer/badge" alt="CodeFactor">
   </a>
-  <a href="https://github.com/FooIbar/EhViewer/releases">
-    <img src="https://img.shields.io/github/v/release/FooIbar/EhViewer" alt="Release">
+  <a href="https://github.com/ZhanZiyuan/EhViewer/releases">
+    <img src="https://img.shields.io/github/v/release/ZhanZiyuan/EhViewer" alt="Release">
   </a>
-  <a href="https://github.com/FooIbar/EhViewer/issues">
-    <img src="https://img.shields.io/github/issues/FooIbar/EhViewer" alt="Issues">
+  <a href="https://github.com/ZhanZiyuan/EhViewer/issues">
+    <img src="https://img.shields.io/github/issues/ZhanZiyuan/EhViewer" alt="Issues">
   </a>
 </p>
 
@@ -74,7 +74,7 @@
 | Default | 8.0           | 完全支持     |
 | Nougat  | 7.0           | 有限支持，无保证 |
 
-<a href="https://github.com/FooIbar/EhViewer/releases">
+<a href="https://github.com/ZhanZiyuan/EhViewer/releases">
 <img alt="Get it on GitHub" src="https://github.com/FooIbar/EhViewer-art/blob/master/get-it-on-github.svg" width="200px"/>
 </a>
 

@@ -59,7 +59,7 @@ object AppUpdater {
             } else {
                 val curVersion = BuildConfig.RAW_VERSION_NAME
                 val release = ghStatement(LATEST_RELEASE_URL).executeAndParseAs<GithubRelease>()
-                val latestVersion = release.version
+                val latestVersion = release.version.removePrefix("v")
                 val description = release.info
                 val downloadUrl = release.getDownloadLink()
                 if (latestVersion != curVersion) {
@@ -75,7 +75,7 @@ object AppUpdater {
         timeoutBySpeed(
             url,
             {
-                ghStatement(url) {
+                ghStatement(url, authenticatedDownload = isZip) {
                     // https://docs.github.com/en/rest/releases/assets?apiVersion=2022-11-28#get-a-release-asset
                     if (!isZip) accept(ContentType.Application.OctetStream)
                     it()
@@ -100,18 +100,12 @@ object AppUpdater {
 
 private suspend inline fun ghStatement(
     url: String,
+    authenticatedDownload: Boolean = false,
     builder: HttpRequestBuilder.() -> Unit = {},
 ) = ktorClient.prepareGet(url) {
-    bearerAuth(GithubTokenParts.joinToString("_"))
+    if (authenticatedDownload) bearerAuth(GitHubSessionCredentials.forDownload(url))
     apply(builder)
 }
-
-private val GithubTokenParts = arrayOf(
-    "github",
-    "pat",
-    "11A4H2ACI0iGDuL1O6wPYW",
-    "OTFg8xaCNUwR1NHaJE1AT3LoYPfz6bouI7E7ReLf8GjIRFHCL5UsHL9EnWP",
-)
 
 data class Release(
     val version: String,

@@ -632,4 +632,7 @@
     <string name="blocked_image">Blocked image</string>
     <string name="show_blocked_image">Show blocked image</string>
     <!-- Tachiyomi Reader End-->
+    <string name="github_session_token">GitHub token for CI downloads</string>
+    <string name="github_session_token_summary">Kept only until the app process exits. Leave empty to clear. Public release updates do not require a token.</string>
+    <string name="invalid_github_token">Enter a valid token without control characters (maximum 255 characters).</string>
 </resources>
