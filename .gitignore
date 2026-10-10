@@ -18,3 +18,8 @@ build
 # Generated verification and emulator inputs/reports
 /device-inputs/
 /device-reports/
+
+# Local signing material and regression data restored from the immutable test baseline
+/.private-signing/
+/.local-test-fixtures/
+/release-output/

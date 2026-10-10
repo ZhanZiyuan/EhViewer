@@ -69,6 +69,7 @@ fun verifyApks(directory: Path, tools: AndroidTools, applicationId: String = "mo
     val inputs = apkInputs(readJson(directory.resolve("output-metadata.json")), applicationId)
     require(code == null || inputs.first().code == code) { "Unexpected versionCode" }
     require(directory.listDirectoryEntries("*.apk").map { it.name }.toSet() == inputs.map { it.file }.toSet()) { "Unexpected/stale APK" }
+    val signingCertificates = mutableSetOf<List<String>>()
     return inputs.map { input ->
         val apk = directory.resolve(input.file)
         require(!apk.isSymbolicLink() && apk.toRealPath().parent == directory.toRealPath()) { "APK escapes output directory" }
@@ -84,7 +85,9 @@ fun verifyApks(directory: Path, tools: AndroidTools, applicationId: String = "mo
         ) { "Packaged manifest identity/version/SDK mismatch" }
         val signing = command(tools.buildTools.resolve("apksigner"), "verify", "--verbose", "--print-certs", apk)
         val certificates = Regex("certificate SHA-256 digest: ([0-9a-f]+)").findAll(signing).map { it.groupValues[1] }.toList()
-        require(certificates.isNotEmpty() && (!release || certificates == listOf(CERTIFICATE))) { "APK certificate mismatch" }
+        require(certificates.size == 1 && (!release || certificates == listOf(CERTIFICATE))) { "APK certificate mismatch" }
+        signingCertificates += certificates
+        require(signingCertificates.size == 1) { "APK splits have different signing certificates" }
         command(tools.buildTools.resolve("zipalign"), "-c", "-P", "16", "-v", "4", apk)
         val libraries = mutableMapOf<String, List<Long>>()
         val actualAbis = mutableSetOf<String>()

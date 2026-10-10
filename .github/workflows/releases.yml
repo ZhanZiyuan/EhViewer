@@ -1,55 +1,123 @@
-name: Release dry run
+name: Release
 
-# Publication is deliberately disabled until private retention and distribution rights
-# are approved. A tag push cannot publish or even trigger this workflow.
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Existing version tag merged into main (e.g. v1.15.2)"
-        required: true
+        description: "Optional expected version (e.g. v1.15.5); no existing tag required"
+        required: false
         type: string
+      publish:
+        description: "Publish after successful main CI (unchecked = dry run)"
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
+# Serialize automatic runs and manual retries; publication never cancels midway.
 concurrency:
-  group: release-dry-run-${{ inputs.release_tag }}
+  group: release
   cancel-in-progress: false
 
 jobs:
-  dry-run:
+  prepare:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      sha: ${{ steps.plan.outputs.sha }}
+      publish: ${{ steps.plan.outputs.publish }}
+      build: ${{ steps.plan.outputs.build }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate source, CI and version
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.release_tag }}
+          PUBLISH: ${{ github.event_name == 'workflow_run' || inputs.publish == true }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_sha=$(git rev-parse HEAD)
+          version=$(sed -n 's/^val releaseVersion = "\([^"]*\)"$/\1/p' app/build.gradle.kts)
+          [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+            echo "::error::Expected a stable project releaseVersion."; exit 1;
+          }
+          tag="v$version"
+          [[ -z "$REQUESTED_TAG" || "${REQUESTED_TAG#v}" == "$version" ]] || {
+            echo "::error::Requested version differs from the checked-out project version ($version)."; exit 1;
+          }
+          if [[ "$PUBLISH" == true ]]; then
+            [[ "$GITHUB_EVENT_NAME" == workflow_run || "$GITHUB_REF" == refs/heads/main ]] || {
+              echo "::error::Manual publication must run from main."; exit 1;
+            }
+            git merge-base --is-ancestor "$source_sha" refs/remotes/origin/main || { echo "::error::Source is not merged into main."; exit 1; }
+            # Also require a successful main push CI for manual publication.
+            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?event=push&head_sha=$source_sha" \
+              --jq '.workflow_runs | any(.head_branch == "main" and .conclusion == "success")' | grep -qx true || { echo "::error::Successful main CI is required for this commit."; exit 1; }
+          fi
+          build=true
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" > "$RUNNER_TEMP/existing-release.json" 2> "$RUNNER_TEMP/release-query-error"; then
+            if [[ "$PUBLISH" == true && $(jq -r '.draft' "$RUNNER_TEMP/existing-release.json") == false ]]; then
+              echo "Version $tag is already published; no duplicate release or rebuild is needed."
+              build=false
+            fi
+          elif ! grep -q '(HTTP 404)' "$RUNNER_TEMP/release-query-error"; then
+            cat "$RUNNER_TEMP/release-query-error"; exit 1
+          fi
+          if [[ "$build" == true ]] && git show-ref --verify --quiet "refs/tags/$tag"; then
+            [[ $(git rev-parse "$tag^{commit}") == "$source_sha" ]] || {
+              echo "::error::Existing tag points to a different commit."; exit 1;
+            }
+          fi
+          printf 'tag=%s\nsha=%s\npublish=%s\nbuild=%s\n' "$tag" "$source_sha" "$PUBLISH" "$build" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      RELEASE_TAG: ${{ inputs.release_tag }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
     steps:
-      - name: Validate version tag syntax
-        shell: bash
-        run: |
-          if [[ ! "$RELEASE_TAG" =~ ^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
-            echo "::error::A version tag such as v1.15.2 is required."
-            exit 1
-          fi
-          release_tag_lower=$(printf '%s' "$RELEASE_TAG" | tr '[:upper:]' '[:lower:]')
-          case "$release_tag_lower" in
-            *snapshot*|*default*|*marshmallow*)
-              echo "::error::Snapshot and flavor tags are forbidden."
-              exit 1
-              ;;
-          esac
-          git check-ref-format "refs/tags/$RELEASE_TAG"
       - uses: actions/checkout@v6
         with:
-          ref: refs/tags/${{ env.RELEASE_TAG }}
+          ref: ${{ needs.prepare.outputs.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify tag is merged into main
+      - name: Restore original signing key and diagnostics public key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          PUBLIC_KEY: ${{ vars.DIAGNOSTICS_PUBLIC_KEY }}
         run: |
-          git merge-base --is-ancestor HEAD refs/remotes/origin/main || {
-            echo "::error::The release tag must point to a commit merged into main."
-            exit 1
+          set -euo pipefail
+          [[ -n "$KEYSTORE_BASE64" && -n "$PUBLIC_KEY" ]] || {
+            echo "::error::Original signing key and diagnostics encryption public key must be configured."; exit 1;
           }
+          EHVIEWER_KEYSTORE="$RUNNER_TEMP/signing/androidkey.jks"
+          printf 'EHVIEWER_KEYSTORE=%s\n' "$EHVIEWER_KEYSTORE" >> "$GITHUB_ENV"
+          umask 077
+          mkdir -p "$RUNNER_TEMP/signing"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$EHVIEWER_KEYSTORE"
+          printf '%s\n' "$PUBLIC_KEY" > "$RUNNER_TEMP/diagnostics-public.pem"
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -67,36 +135,103 @@ jobs:
           validate-wrappers: true
           cache-read-only: true
       - name: Build signed release and diagnostics
+        env:
+          EHVIEWER_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          EHVIEWER_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          EHVIEWER_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease -Prelease --console=plain --no-daemon
       - name: Verify packaging regression tests
         run: |
           ./gradlew -p tools/verification check installDist --console=plain --no-daemon
           tools/verification/build/install/verification/bin/verification release-input-tests --sdk "$ANDROID_HOME"
-      - name: Prepare exactly four APK attachments
-        run: >-
-          tools/verification/build/install/verification/bin/verification prepare-release --tag "$RELEASE_TAG"
-          --sdk "$ANDROID_HOME" --output release-dry-run/apks
-          --private-dir "$RUNNER_TEMP/private-release" --retention-days 180
-      - name: Upload APK dry-run payload only
+      - name: Prepare exactly four APKs and encrypt diagnostics
+        run: |
+          tools/verification/build/install/verification/bin/verification prepare-release --tag "$RELEASE_TAG" \
+            --sdk "$ANDROID_HOME" --output release-output/apks \
+            --private-dir "$RUNNER_TEMP/private-release" --retention-days 90
+          tools/verification/build/install/verification/bin/verification encrypt-diagnostics \
+            --private-dir "$RUNNER_TEMP/private-release/${RELEASE_TAG#v}-$(git rev-parse HEAD)" \
+            --public-key "$RUNNER_TEMP/diagnostics-public.pem" --output release-output/diagnostics.enc
+      - name: Retain encrypted diagnostics before publication
         uses: actions/upload-artifact@v7
         with:
-          name: release-apks-dry-run
-          path: |
-            release-dry-run/apks/EhViewer-*-arm64-v8a.apk
-            release-dry-run/apks/EhViewer-*-armeabi-v7a.apk
-            release-dry-run/apks/EhViewer-*-universal.apk
-            release-dry-run/apks/EhViewer-*-x86_64.apk
+          name: diagnostics-${{ env.RELEASE_TAG }}-${{ needs.prepare.outputs.sha }}
+          path: release-output/diagnostics.enc
+          if-no-files-found: error
+          retention-days: 90
+          overwrite: true
+      - name: Upload verified APK payload
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-apks
+          path: release-output/apks/*.apk
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
       - name: Upload checksum manifest
         uses: actions/upload-artifact@v7
         with:
-          name: release-dry-run-manifest
-          path: release-dry-run/release-manifest.json
+          name: release-manifest
+          path: release-output/release-manifest.json
           if-no-files-found: error
-          retention-days: 14
-      - name: Report publication gate
+          retention-days: 90
+          overwrite: true
+      - name: Clean runner signing material and plaintext diagnostics
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/signing" "$RUNNER_TEMP/private-release"
+
+  publish:
+    needs: [prepare, build]
+    if: needs.prepare.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      SOURCE_SHA: ${{ needs.prepare.outputs.sha }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-apks
+          path: apks
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-manifest
+          path: manifest
+      - name: Verify payload and publish exactly four APK attachments
+        shell: bash
         run: |
-          echo "Dry run only: no GitHub Release is created."
-          echo "Runner-local diagnostics are temporary; durable private retention is not configured."
-          echo "Maintain an owner-only local copy before any future publication."
+          set -euo pipefail
+          version=${RELEASE_TAG#v}
+          expected=$(printf 'EhViewer-%s-%s.apk\n' "$version" arm64-v8a "$version" armeabi-v7a "$version" universal "$version" x86_64 | sort)
+          actual=$(find apks -type f | sed 's,^.*/,,' | sort)
+          [[ "$actual" == "$expected" ]] || { echo "::error::Expected exactly four APKs."; exit 1; }
+          [[ $(jq -r .source_commit manifest/release-manifest.json) == "$SOURCE_SHA" ]] || { echo "::error::Manifest source commit differs."; exit 1; }
+          [[ $(jq -r .tag manifest/release-manifest.json) == "$RELEASE_TAG" ]] || { echo "::error::Manifest version differs."; exit 1; }
+          [[ $(jq '.attachments | length' manifest/release-manifest.json) == 4 ]] || { echo "::error::Manifest must contain four attachments."; exit 1; }
+          [[ $(jq -r .source_dirty manifest/release-manifest.json) == false ]] || { echo "::error::Refusing to publish a dirty source tree."; exit 1; }
+          printf '%s\n' "$expected" | diff -u - <(jq -r '.attachments[].name' manifest/release-manifest.json | sort) || exit 1
+          while IFS=$'\t' read -r name digest; do
+            [[ "$name" != */* && "$name" == *.apk && "$digest" =~ ^[0-9a-f]{64}$ ]] || { echo "::error::Unsafe checksum entry."; exit 1; }
+            printf '%s  %s\n' "$digest" "apks/$name" | sha256sum -c || exit 1
+          done < <(jq -r '.attachments[] | [.name,.sha256] | @tsv' manifest/release-manifest.json)
+          if gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" > release.json 2> query-error; then
+            [[ $(jq -r .draft release.json) == true ]] || { echo "Release already published; refusing to modify it."; exit 1; }
+            [[ $(jq -r .target_commitish release.json) == "$SOURCE_SHA" ]] || { echo "Draft belongs to a different commit."; exit 1; }
+          elif grep -q '(HTTP 404)' query-error; then
+            gh release create "$RELEASE_TAG" --target "$SOURCE_SHA" --title "$RELEASE_TAG" --generate-notes --draft
+          else
+            cat query-error; exit 1
+          fi
+          # Refuse tag replacement, including races with another publisher.
+          if gh api "repos/$GH_REPO/commits/$RELEASE_TAG" > tag.json 2> tag-error; then
+            [[ $(jq -r .sha tag.json) == "$SOURCE_SHA" ]] || { echo "::error::Tag points to a different commit."; exit 1; }
+          elif ! grep -q '(HTTP 404)' tag-error; then
+            cat tag-error; exit 1
+          fi
+          gh release upload "$RELEASE_TAG" apks/*.apk --clobber || exit 1
+          gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | sort > published-assets
+          printf '%s\n' "$expected" | diff -u - published-assets || exit 1
+          gh release edit "$RELEASE_TAG" --draft=false --latest

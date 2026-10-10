@@ -3,14 +3,11 @@ use std::{
     fs::{self, File},
     io::{Seek, SeekFrom},
     os::fd::AsRawFd,
-    path::PathBuf,
     sync::Arc,
 };
-fn fixture(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../test-fixtures")
-        .join(name)
-}
+mod support;
+use support::fixture;
+
 fn open(name: &str, sort: bool) -> ArchiveSession {
     let file = File::open(fixture(name)).unwrap();
     let len = file.metadata().unwrap().len();
@@ -149,11 +146,6 @@ fn zip_writer_preserves_fds_and_offsets() {
     fs::remove_dir_all(dir).unwrap();
 }
 
-fn extra(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../test-fixtures")
-        .join(name)
-}
 #[test]
 fn rar_unicode_and_real_limits() {
     for (name, expected, password) in [
@@ -169,7 +161,7 @@ fn rar_unicode_and_real_limits() {
             Some("密码🔑"),
         ),
     ] {
-        let file = File::open(extra(name)).unwrap();
+        let file = File::open(fixture(name)).unwrap();
         let len = file.metadata().unwrap().len();
         let session = unsafe { ArchiveSession::open(file, len, true, Limits::default()) }.unwrap();
         assert_eq!(session.len(), 1);
@@ -180,7 +172,7 @@ fn rar_unicode_and_real_limits() {
         assert_eq!(session.extract(0).unwrap().as_mut_slice(), expected);
     }
     for name in ["traversal.zip", "oversized.tar"] {
-        let file = File::open(extra(name)).unwrap();
+        let file = File::open(fixture(name)).unwrap();
         let len = file.metadata().unwrap().len();
         assert!(unsafe { ArchiveSession::open(file, len, true, Limits::default()) }.is_err());
     }
@@ -189,7 +181,7 @@ fn rar_unicode_and_real_limits() {
 #[test]
 fn tar_filters_and_malformed_mutations() {
     for name in ["pages.tgz", "pages.txz"] {
-        let file = File::open(extra(name)).unwrap();
+        let file = File::open(fixture(name)).unwrap();
         let size = file.metadata().unwrap().len();
         let session = unsafe { ArchiveSession::open(file, size, true, Limits::default()) }.unwrap();
         assert_eq!(session.len(), 3);
@@ -231,9 +223,9 @@ fn tar_filters_and_malformed_mutations() {
 #[test]
 fn rar5_compressed_solid_and_backward_seek() {
     let oracle: serde_json::Value =
-        serde_json::from_slice(&fs::read(extra("rar-expected.json")).unwrap()).unwrap();
+        serde_json::from_slice(&fs::read(fixture("rar-expected.json")).unwrap()).unwrap();
     for (name, value) in oracle.as_object().unwrap() {
-        let file = File::open(extra(name)).unwrap();
+        let file = File::open(fixture(name)).unwrap();
         let len = file.metadata().unwrap().len();
         let session = unsafe { ArchiveSession::open(file, len, true, Limits::default()) }.unwrap();
         assert_eq!(session.len(), value["count"].as_u64().unwrap() as usize);

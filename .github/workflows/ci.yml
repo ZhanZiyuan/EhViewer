@@ -21,6 +21,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -51,6 +52,22 @@ jobs:
         run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
       - name: Verify Kotlin boundaries and language policy
         run: tools/verification/build/install/verification/bin/verification architecture
+      - name: Restore original signing for trusted push builds
+        if: github.event_name == 'push'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          [[ -n "$KEYSTORE_BASE64" && -n "$STORE_PASSWORD" && -n "$KEY_ALIAS" && -n "$KEY_PASSWORD" ]] || {
+            echo "::error::Trusted push builds require the original signing credentials."; exit 1;
+          }
+          umask 077
+          mkdir -p .private-signing
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > .private-signing/androidkey.jks
+          printf 'storePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > .private-signing/signing.properties
       - name: Check, test, lint and build
         run: >-
           ./gradlew :build-logic:convention:check spotlessCheck
@@ -68,7 +85,7 @@ jobs:
           tools/verification/build/install/verification/bin/verification native-sources > reports/native-sources.json
           tools/verification/build/install/verification/bin/verification diagnostics --sdk "$ANDROID_HOME" > reports/native-diagnostics.json
           tools/verification/build/install/verification/bin/verification bytecode > reports/android-bytecode.json
-          tools/verification/build/install/verification/bin/verification apks app/build/outputs/apk/release --sdk "$ANDROID_HOME" > reports/release-apks.json
+          tools/verification/build/install/verification/bin/verification apks app/build/outputs/apk/release --sdk "$ANDROID_HOME" --test-signing > reports/release-apks.json
           tools/verification/build/install/verification/bin/verification apks app/build/outputs/apk/debug --sdk "$ANDROID_HOME" --debug --application-id moe.tarsin.ehviewer.debug > reports/debug-apks.json
       - name: Upload ARM64
         uses: actions/upload-artifact@v7
@@ -104,3 +121,6 @@ jobs:
             app/build/reports/
             core/*/build/reports/
           retention-days: 14
+      - name: Remove runner signing material
+        if: always()
+        run: rm -rf .private-signing

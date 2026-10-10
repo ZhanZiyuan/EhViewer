@@ -1,5 +1,6 @@
 import com.mikepenz.aboutlibraries.plugin.DuplicateMode
 import com.mikepenz.aboutlibraries.plugin.DuplicateRule
+import java.util.Properties
 import java.util.regex.Pattern
 
 plugins {
@@ -11,7 +12,21 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
+val releaseVersion = "1.15.5"
+
 val supportedAbis = arrayOf("arm64-v8a", "x86_64", "armeabi-v7a")
+
+// The immutable regression baseline remains in Git history, not in the current tree.
+val prepareNativeTestFixtures = tasks.register<NativeTestFixturesTask>("prepareNativeTestFixtures") {
+    baseline.set("8fdfb6c5550fab506759a5587b1c8ee4050f507e")
+    outputDirectory.set(rootProject.layout.projectDirectory.dir(".local-test-fixtures"))
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.androidTest?.sources?.assets?.addGeneratedSourceDirectory(prepareNativeTestFixtures) { it.outputDirectory }
+    }
+}
 
 android {
     splits {
@@ -23,13 +38,24 @@ android {
         }
     }
 
-    val signConfig = signingConfigs.create("release") {
-        storeFile = File(projectDir.path + "/keystore/androidkey.jks")
-        storePassword = "000000"
-        keyAlias = "key0"
-        keyPassword = "000000"
-        enableV3Signing = true
-        enableV4Signing = true
+    val signingProperties = Properties().apply {
+        rootProject.file(".private-signing/signing.properties").takeIf { it.isFile }?.inputStream()?.use(::load)
+    }
+    fun signingValue(environment: String, property: String): String? = providers.environmentVariable(environment).orNull ?: signingProperties.getProperty(property)
+    val signingFile = file(providers.environmentVariable("EHVIEWER_KEYSTORE").orElse(rootProject.file(".private-signing/androidkey.jks").absolutePath))
+    val signConfig = if (signingFile.isFile) {
+        signingConfigs.create("release") {
+            storeFile = signingFile
+            storePassword = signingValue("EHVIEWER_STORE_PASSWORD", "storePassword")
+            keyAlias = signingValue("EHVIEWER_KEY_ALIAS", "keyAlias")
+            keyPassword = signingValue("EHVIEWER_KEY_PASSWORD", "keyPassword")
+            require(listOf(storePassword, keyAlias, keyPassword).all { !it.isNullOrEmpty() }) { "Release signing credentials are incomplete" }
+            enableV3Signing = true
+            enableV4Signing = true
+        }
+    } else {
+        require(!hasProperty("release")) { "A production release requires the original external signing key" }
+        signingConfigs.getByName("debug") // Secret-free CI snapshots cannot be installed over production.
     }
 
     val commitSha = providers.exec {
@@ -50,11 +76,11 @@ android {
     defaultConfig {
         applicationId = "moe.tarsin.ehviewer"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        versionCode = 180068
+        versionCode = 180069
         versionName = if (snapshot) {
-            "1.15.4-SNAPSHOT"
+            "$releaseVersion-SNAPSHOT"
         } else {
-            "1.15.4"
+            releaseVersion
         }
         buildConfigField("boolean", "SNAPSHOT", "$snapshot")
         buildConfigField("String", "RAW_VERSION_NAME", "\"$versionName\"")
@@ -66,8 +92,6 @@ android {
             debugSymbolLevel = "FULL"
         }
     }
-
-    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("native/test-fixtures"))
 
     externalNativeBuild {
         cmake {

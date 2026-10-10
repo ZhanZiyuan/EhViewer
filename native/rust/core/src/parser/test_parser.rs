@@ -27,9 +27,9 @@ mod tests {
             </div></div><p>742,189,531 GP [?] &nbsp; 1,561,004,772 Credits [?]</p>
             <p><a href="#" onclick="return do_hathdl('org')">Original</a></p>
             <p>15.47 GiB</p><p>332315 GP</p>"##;
-        let dom = tl::parse(&body, ParserOptions::default()).expect("Failed to parse html");
+        let dom = tl::parse(body, ParserOptions::default()).expect("Failed to parse html");
         let result =
-            parse_archives_with_funds(&dom, dom.parser(), &body).expect("Failed to parse archives");
+            parse_archives_with_funds(&dom, dom.parser(), body).expect("Failed to parse archives");
         assert_eq!(result.funds.gp, 742189);
         assert_eq!(result.funds.credit, 1561004772);
         assert_eq!(result.archiveList.len(), 2);
@@ -42,9 +42,8 @@ mod tests {
     #[test]
     fn test_parse_archive_url() {
         let body = r#"<div id="continue"><a href="https://0">Continue</a></div>"#;
-        let dom = tl::parse(&body, ParserOptions::default()).expect("Failed to parse html");
-        let result =
-            parse_archive_url(&dom, dom.parser(), &body).expect("Failed to parse archives");
+        let dom = tl::parse(body, ParserOptions::default()).expect("Failed to parse html");
+        let result = parse_archive_url(&dom, dom.parser(), body).expect("Failed to parse archives");
         assert_eq!(result, Some("https://0?start=1".to_string()));
     }
 
@@ -52,7 +51,7 @@ mod tests {
     #[ignore = "requires the live forum service"]
     async fn test_parse_profile() {
         let body = r#"<div id="userlinks"><a href="https://forums.e-hentai.org/index.php?showuser=6">Tenboro</a></div>"#;
-        let dom = tl::parse(&body, ParserOptions::default()).expect("Failed to parse html");
+        let dom = tl::parse(body, ParserOptions::default()).expect("Failed to parse html");
         let result = parse_profile_url(&dom, dom.parser()).expect("Failed to parse profile url");
         let resp = get(result).await.expect("Failed to get!");
         let body = resp.text().await.expect("Failed to receive!");
@@ -81,7 +80,7 @@ mod tests {
     #[test]
     fn test_parse_tag_gallery() {
         let json = r#"{"error":"You cannot vote for this tag"}"#;
-        let result = parse_vote_tag(&json).expect_err("Should fail to parse");
+        let result = parse_vote_tag(json).expect_err("Should fail to parse");
         dbg!(result);
     }
 
