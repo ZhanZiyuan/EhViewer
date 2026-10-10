@@ -138,11 +138,12 @@ FetchContent_Declare(
         Corrosion
         GIT_REPOSITORY https://github.com/FooIbar/corrosion.git
         GIT_TAG 3725e651bf2a849b43df99df57ac77643770388a # v0.6.1
+        PATCH_COMMAND git apply --check -R ${CMAKE_CURRENT_LIST_DIR}/0003-Keep-Corrosion-Cargo-output-in-build-tree.patch || git apply ${CMAKE_CURRENT_LIST_DIR}/0003-Keep-Corrosion-Cargo-output-in-build-tree.patch
 )
 
 FetchContent_MakeAvailable(Corrosion)
 corrosion_import_crate(
-        MANIFEST_PATH ../rust/Cargo.toml
+        MANIFEST_PATH ${CMAKE_CURRENT_LIST_DIR}/../rust/Cargo.toml
         LOCKED
         FEATURES android-26
         FLAGS $<$<NOT:$<CONFIG:Debug>>:-Z build-std -Z build-std-features=panic-unwind>

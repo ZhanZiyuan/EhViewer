@@ -95,8 +95,13 @@ jobs:
     if: needs.prepare.outputs.build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64-v8a, armeabi-v7a, x86_64, universal]
     env:
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_ABI: ${{ matrix.abi }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -140,26 +145,71 @@ jobs:
           EHVIEWER_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           EHVIEWER_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          ./gradlew :app:assembleRelease -Prelease --console=plain --no-daemon
+          ./gradlew :app:assembleRelease -Prelease -PreleaseAbi="$RELEASE_ABI" --console=plain --no-daemon
           git status --porcelain --untracked-files=all
       - name: Verify packaging regression tests
         run: |
           ./gradlew -p tools/verification check installDist --console=plain --no-daemon
-          tools/verification/build/install/verification/bin/verification release-input-tests --sdk "$ANDROID_HOME"
           git status --porcelain --untracked-files=all
-      - name: Prepare exactly four APKs and encrypt diagnostics
+      - name: Verify matrix APK and encrypt its diagnostics
         run: |
-          tools/verification/build/install/verification/bin/verification prepare-release --tag "$RELEASE_TAG" \
+          tools/verification/build/install/verification/bin/verification prepare-release --tag "$RELEASE_TAG" --abi "$RELEASE_ABI" \
             --sdk "$ANDROID_HOME" --output release-output/apks \
             --private-dir "$RUNNER_TEMP/private-release" --retention-days 90
           tools/verification/build/install/verification/bin/verification encrypt-diagnostics \
             --private-dir "$RUNNER_TEMP/private-release/${RELEASE_TAG#v}-$(git rev-parse HEAD)" \
             --public-key "$RUNNER_TEMP/diagnostics-public.pem" --output release-output/diagnostics.enc
+      - name: Retain matrix APK, metadata and encrypted diagnostics
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-part-${{ matrix.abi }}
+          path: |
+            release-output/apks/*.apk
+            release-output/output-metadata.json
+            release-output/release-manifest.json
+            release-output/diagnostics.enc
+          if-no-files-found: error
+          retention-days: 90
+          overwrite: true
+      - name: Clean runner signing material and plaintext diagnostics
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/signing" "$RUNNER_TEMP/private-release"
+
+  package:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-part-*
+          path: release-output/parts
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Install packaging inspection tools
+        run: sdkmanager 'build-tools;37.0.0' 'ndk;29.0.14206865'
+      - name: Verify and combine exactly four APKs
+        run: |
+          ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+          tools/verification/build/install/verification/bin/verification combine-release \
+            --parts release-output/parts --sdk "$ANDROID_HOME" --tag "$RELEASE_TAG" --output release-output/apks
       - name: Retain encrypted diagnostics before publication
         uses: actions/upload-artifact@v7
         with:
           name: diagnostics-${{ env.RELEASE_TAG }}-${{ needs.prepare.outputs.sha }}
-          path: release-output/diagnostics.enc
+          path: release-output/diagnostics/*.enc
           if-no-files-found: error
           retention-days: 90
           overwrite: true
@@ -179,12 +229,9 @@ jobs:
           if-no-files-found: error
           retention-days: 90
           overwrite: true
-      - name: Clean runner signing material and plaintext diagnostics
-        if: always()
-        run: rm -rf "$RUNNER_TEMP/signing" "$RUNNER_TEMP/private-release"
 
   publish:
-    needs: [prepare, build]
+    needs: [prepare, package]
     if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-latest
     permissions:

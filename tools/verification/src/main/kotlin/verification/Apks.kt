@@ -46,7 +46,7 @@ fun elfAlignment(data: ByteArray, abi: String): List<Long> {
 
 data class ApkInput(val abi: String, val file: String, val version: String, val code: Int)
 
-fun apkInputs(metadata: Map<String, Any?>, applicationId: String): List<ApkInput> {
+fun apkInputs(metadata: Map<String, Any?>, applicationId: String, expectedAbis: Set<String> = abis.keys + "universal"): List<ApkInput> {
     require(metadata["artifactType"].obj()["type"] == "APK" && metadata["applicationId"] == applicationId) { "Unexpected artifact/application ID" }
     val inputs = metadata["elements"].array().map { value ->
         val element = value.obj()
@@ -59,14 +59,15 @@ fun apkInputs(metadata: Map<String, Any?>, applicationId: String): List<ApkInput
         require(code is Int && code > 0) { "Invalid versionCode" }
         ApkInput(abi, file, element.str("versionName"), code)
     }
-    require(inputs.size == 4 && inputs.map { it.abi }.toSet() == abis.keys + "universal") { "Expected three splits and universal APK" }
-    require(inputs.map { it.file }.toSet().size == 4) { "Duplicate input filename" }
+    require(expectedAbis.isNotEmpty() && expectedAbis.all { it in abis || it == "universal" }) { "Invalid expected ABI set" }
+    require(inputs.size == expectedAbis.size && inputs.map { it.abi }.toSet() == expectedAbis) { "Unexpected APK architecture set" }
+    require(inputs.map { it.file }.toSet().size == inputs.size) { "Duplicate input filename" }
     require(inputs.map { it.code }.toSet().size == 1 && inputs.map { it.version }.toSet().size == 1) { "Inconsistent APK versions" }
     return inputs
 }
 
-fun verifyApks(directory: Path, tools: AndroidTools, applicationId: String = "moe.tarsin.ehviewer", release: Boolean = true, code: Int? = null): List<Map<String, Any?>> {
-    val inputs = apkInputs(readJson(directory.resolve("output-metadata.json")), applicationId)
+fun verifyApks(directory: Path, tools: AndroidTools, applicationId: String = "moe.tarsin.ehviewer", release: Boolean = true, code: Int? = null, expectedAbis: Set<String> = abis.keys + "universal"): List<Map<String, Any?>> {
+    val inputs = apkInputs(readJson(directory.resolve("output-metadata.json")), applicationId, expectedAbis)
     require(code == null || inputs.first().code == code) { "Unexpected versionCode" }
     require(directory.listDirectoryEntries("*.apk").map { it.name }.toSet() == inputs.map { it.file }.toSet()) { "Unexpected/stale APK" }
     val signingCertificates = mutableSetOf<List<String>>()
@@ -126,25 +127,29 @@ fun verifyApks(directory: Path, tools: AndroidTools, applicationId: String = "mo
     }
 }
 
-fun verifyDiagnostics(symbols: Path, apkDirectory: Path, tools: AndroidTools): List<Map<String, Any?>> = temporary { temp ->
+fun verifyDiagnostics(symbols: Path, apkDirectory: Path, tools: AndroidTools, expectedAbis: Set<String> = abis.keys + "universal"): List<Map<String, Any?>> = temporary { temp ->
+    val inputs = apkInputs(readJson(apkDirectory.resolve("output-metadata.json")), "moe.tarsin.ehviewer", expectedAbis)
+    val nativeAbis = if ("universal" in expectedAbis) abis.keys else expectedAbis
     fun buildId(path: Path): String = Regex("Build ID: ([0-9a-f]+)").find(command(tools.llvm.resolve("llvm-readelf"), "--notes", path))?.groupValues?.get(1) ?: error("Native build ID missing")
     ZipFile(symbols.toFile()).use { zip ->
         val names = zip.entries().asSequence().filterNot { it.isDirectory }.map { it.name }.toList()
-        require(names.size == 3 && names.toSet() == abis.keys.map { "$it/libehviewer.so.dbg" }.toSet()) { "Expected precisely three diagnostic ELFs" }
-        abis.keys.map { abi ->
+        require(names.size == nativeAbis.size && names.toSet() == nativeAbis.map { "$it/libehviewer.so.dbg" }.toSet()) { "Diagnostic ELF architecture set mismatch" }
+        nativeAbis.map { abi ->
             val debug = temp.resolve("$abi.dbg").apply {
                 writeBytes(zip.getInputStream(zip.getEntry("$abi/libehviewer.so.dbg")).use { it.readBytes() })
                 setPosixFilePermissions(permissions600)
             }
             val lines = command(tools.llvm.resolve("llvm-dwarfdump"), "--debug-line", debug)
             require("archive.rs" in lines && "native.rs" in lines) { "Rust Core/JNI source information missing: $abi" }
-            val packaged = temp.resolve("$abi.so")
-            ZipFile(apkDirectory.resolve("app-$abi-release.apk").toFile()).use { apk ->
-                packaged.writeBytes(apk.getInputStream(apk.getEntry("lib/$abi/libehviewer.so")).use { it.readBytes() })
-            }
-            require(".debug_info" !in command(tools.llvm.resolve("llvm-readelf"), "--sections", packaged)) { "Debug info shipped in APK" }
             val identifier = buildId(debug)
-            require(buildId(packaged) == identifier) { "Diagnostic build ID differs: $abi" }
+            inputs.filter { it.abi == abi || it.abi == "universal" }.forEach { input ->
+                val packaged = temp.resolve("$abi-${input.abi}.so")
+                ZipFile(apkDirectory.resolve(input.file).toFile()).use { apk ->
+                    packaged.writeBytes(apk.getInputStream(apk.getEntry("lib/$abi/libehviewer.so")).use { it.readBytes() })
+                }
+                require(".debug_info" !in command(tools.llvm.resolve("llvm-readelf"), "--sections", packaged)) { "Debug info shipped in APK" }
+                require(buildId(packaged) == identifier) { "Diagnostic build ID differs: $abi/${input.abi}" }
+            }
             mapOf("abi" to abi, "build_id" to identifier, "rust_core_lines" to true, "rust_jni_lines" to true, "apk_debug_info" to false)
         }
     }

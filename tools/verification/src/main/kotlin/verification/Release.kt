@@ -34,9 +34,9 @@ fun versionFromTag(tag: String): String {
     return tag.removePrefix("v")
 }
 
-fun attachmentPlan(metadata: Map<String, Any?>, tag: String): List<Pair<ApkInput, String>> {
+fun attachmentPlan(metadata: Map<String, Any?>, tag: String, expectedAbis: Set<String> = abis.keys + "universal"): List<Pair<ApkInput, String>> {
     val version = versionFromTag(tag)
-    val inputs = apkInputs(metadata, "moe.tarsin.ehviewer")
+    val inputs = apkInputs(metadata, "moe.tarsin.ehviewer", expectedAbis)
     require(inputs.all { it.version == version }) { "Release tag and packaged versionName differ" }
     return inputs.map { it to "EhViewer-$version-${it.abi}.apk" }.sortedBy { it.second }
 }
@@ -65,12 +65,12 @@ fun retainFile(source: Path, destination: Path) {
     require(destination.getPosixFilePermissions() == permissions600 && Files.getOwner(destination) == Files.getOwner(root)) { "Retained file must be owner-only (0600)" }
 }
 
-fun prepareRelease(apkDirectory: Path, tools: AndroidTools, output: Path, privateRoot: Path, tag: String, retention: Int = 180): Map<String, Any?> {
+fun prepareRelease(apkDirectory: Path, tools: AndroidTools, output: Path, privateRoot: Path, tag: String, retention: Int = 180, expectedAbis: Set<String> = abis.keys + "universal"): Map<String, Any?> {
     require(retention in 1..3650) { "Retention must be between 1 and 3650 days" }
     val version = versionFromTag(tag)
     val metadata = readJson(apkDirectory.resolve("output-metadata.json"))
-    val plan = attachmentPlan(metadata, tag)
-    verifyApks(apkDirectory, tools)
+    val plan = attachmentPlan(metadata, tag, expectedAbis)
+    verifyApks(apkDirectory, tools, expectedAbis = expectedAbis)
     val source = command("git", "rev-parse", "HEAD").trim()
     // Git warnings belong in logs, not in the machine-readable source status.
     val sourceStatus = command("git", "status", "--porcelain", "--untracked-files=all", mergeError = false).lineSequence().filter(String::isNotBlank).toList()
@@ -80,7 +80,7 @@ fun prepareRelease(apkDirectory: Path, tools: AndroidTools, output: Path, privat
         "native-debug-symbols.zip" to root.resolve("app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip"),
     )
     diagnostics.values.forEach { require(it.isRegularFile(NOFOLLOW_LINKS) && it.fileSize() > 0) { "Missing diagnostics" } }
-    verifyDiagnostics(diagnostics.getValue("native-debug-symbols.zip"), apkDirectory, tools)
+    verifyDiagnostics(diagnostics.getValue("native-debug-symbols.zip"), apkDirectory, tools, expectedAbis)
     require(!output.isSymbolicLink() && (!output.exists() || output.isDirectory() && output.listDirectoryEntries().isEmpty())) { "Refusing to overwrite populated public payload" }
     privateDirectory(privateRoot)
     val private = privateRoot.resolve("$version-$source")
@@ -125,7 +125,77 @@ fun prepareRelease(apkDirectory: Path, tools: AndroidTools, output: Path, privat
     require(manifestPath.getPosixFilePermissions() == permissions600 && Files.getOwner(manifestPath) == Files.getOwner(root))
     manifestPath.writeText(json(manifest))
     output.parent.resolve("release-manifest.json").writeText(json(manifest))
+    // Each matrix artifact carries metadata for its one verified APK.
+    output.parent.resolve("output-metadata.json").writeText(
+        json(
+            metadata + (
+                "elements" to metadata["elements"].array().map { value ->
+                    val element = value.obj()
+                    element + ("outputFile" to plan.single { it.first.file == element.str("outputFile") }.second)
+                }
+                ),
+        ),
+    )
     return manifest
+}
+
+fun releasePartsPlan(manifests: Map<String, Map<String, Any?>>, tag: String, source: String): List<Map<String, Any?>> {
+    require(manifests.keys == abis.keys + "universal") { "Expected four matrix artifacts" }
+    val codes = manifests.values.map { it["versionCode"] }.toSet()
+    require(codes.size == 1 && codes.single() is Int && (codes.single() as Int) > 0) { "Matrix version codes differ" }
+    return manifests.map { (abi, manifest) ->
+        require(manifest["mode"] == "verified-payload" && manifest["tag"] == tag && manifest["version"] == versionFromTag(tag)) { "Matrix release version differs" }
+        require(manifest["source_commit"] == source && manifest["source_dirty"] == false && manifest["source_status"].array().isEmpty()) { "Matrix source differs or is dirty" }
+        require(manifest["diagnostics"].obj()["retention_days"] == 90) { "Matrix diagnostics must be retained for 90 days" }
+        val attachment = manifest["attachments"].array().single().obj()
+        require(attachment["abi"] == abi && attachment["name"] == "EhViewer-${versionFromTag(tag)}-$abi.apk") { "Matrix APK name/architecture differs" }
+        require(Regex("[0-9a-f]{64}").matches(attachment.str("sha256"))) { "Invalid matrix checksum" }
+        attachment
+    }.sortedBy { it.str("name") }
+}
+
+fun combineRelease(parts: Path, tools: AndroidTools, output: Path, tag: String): Map<String, Any?> = temporary { temp ->
+    val architectures = abis.keys + "universal"
+    require(parts.listDirectoryEntries().map { it.name }.toSet() == architectures.map { "release-part-$it" }.toSet()) { "Unexpected matrix artifact" }
+    val manifests = architectures.associateWith { readJson(parts.resolve("release-part-$it/release-manifest.json")) }
+    val source = command("git", "rev-parse", "HEAD").trim()
+    require(command("git", "status", "--porcelain", "--untracked-files=all", mergeError = false).isBlank()) { "Aggregation source is not clean" }
+    val attachments = releasePartsPlan(manifests, tag, source)
+    val staging = temp.resolve("apks").createDirectory()
+    val metadata = architectures.associateWith { readJson(parts.resolve("release-part-$it/output-metadata.json")) }
+    val elements = architectures.map { abi ->
+        val part = parts.resolve("release-part-$abi")
+        val input = apkInputs(metadata.getValue(abi), "moe.tarsin.ehviewer", setOf(abi)).single()
+        val attachment = attachments.single { it["abi"] == abi }
+        require(input.file == attachment["name"] && input.code == manifests.getValue(abi)["versionCode"] && input.version == versionFromTag(tag)) { "Matrix APK metadata differs" }
+        val apk = part.resolve("apks/${input.file}")
+        require(apk.isRegularFile(NOFOLLOW_LINKS) && sha256(apk) == attachment["sha256"]) { "Matrix APK checksum differs" }
+        require(part.resolve("apks").listDirectoryEntries().map { it.name } == listOf(input.file)) { "Unexpected matrix payload" }
+        Files.copy(apk, staging.resolve(input.file))
+        metadata.getValue(abi)["elements"].array().single()
+    }
+    staging.resolve("output-metadata.json").writeText(json(metadata.values.first() + ("elements" to elements)))
+    verifyApks(staging, tools)
+    require(!output.exists(NOFOLLOW_LINKS)) { "Refusing to overwrite release payload" }
+    output.createDirectories()
+    attachments.forEach { Files.copy(staging.resolve(it.str("name")), output.resolve(it.str("name"))) }
+    val encrypted = output.parent.resolve("diagnostics").createDirectory()
+    val diagnostics = architectures.associateWith { abi ->
+        val input = parts.resolve("release-part-$abi/diagnostics.enc")
+        require(input.isRegularFile(NOFOLLOW_LINKS) && input.fileSize() > 0) { "Missing encrypted matrix diagnostics" }
+        val file = encrypted.resolve("$abi.enc")
+        Files.copy(input, file)
+        mapOf("sha256" to sha256(file), "manifest" to manifests.getValue(abi)["diagnostics"])
+    }
+    val manifest = mapOf(
+        "mode" to "verified-payload", "tag" to tag, "version" to versionFromTag(tag),
+        "versionCode" to manifests.values.first()["versionCode"], "source_commit" to source,
+        "source_dirty" to false, "source_status" to emptyList<String>(), "attachments" to attachments,
+        "diagnostics" to mapOf("retention_days" to 90, "encrypted_parts" to diagnostics),
+        "github_automatic_sources" to listOf("Source code (zip)", "Source code (tar.gz)"),
+    )
+    output.parent.resolve("release-manifest.json").writeText(json(manifest))
+    manifest
 }
 
 fun releaseInputTests(tools: AndroidTools): List<Map<String, Any?>> {

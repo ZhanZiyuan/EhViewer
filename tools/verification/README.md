@@ -29,14 +29,21 @@ tools/verification/build/install/verification/bin/verification device --serial e
   --sdk "$ANDROID_HOME" --output reports/api26
 ```
 
-`prepare-release` accepts only the actual AGP metadata's three ABI splits plus
-universal APK. It copies mapping and matching Rust Core/JNI symbols into a
+`prepare-release` accepts the actual AGP metadata's three ABI splits plus
+universal APK, or exactly one architecture selected with `--abi` for a matrix part. It copies mapping and matching Rust Core/JNI symbols into a
 version/commit directory with permissions 0700 and files 0600, records SHA-256
 and the retention deadline, and refuses unsafe overwrites. Use a canonical local
 path without symlink ancestors. Retention requires the owner's backup and
 deletion policy; this tool does not provide durable remote storage or a scheduler.
 The `Release` workflow automatically follows successful main push CI and builds
-that exact commit. Manual runs default to a dry run; checking `publish` requires
+that exact commit. Its `build` matrix contains `arm64-v8a`, `armeabi-v7a`,
+`x86_64` and `universal`. `-PreleaseAbi=ABI` builds one APK; universal includes
+all three native ABIs. Each part verifies and encrypts its own mapping and native
+symbols, so independently linked binaries retain their matching diagnostics.
+`combine-release` rejects missing/extra parts, mixed commits/versions, dirty sources
+and checksum/signature mismatches before staging exactly four APKs. All four encrypted
+diagnostic bundles are retained for 90 days before publication.
+Manual runs default to a dry run; checking `publish` requires
 main and successful CI for the same commit. A version already published is
 skipped, tags pointing elsewhere are rejected, and only the separate publication
 job receives write permission. GitHub provides source archives itself.

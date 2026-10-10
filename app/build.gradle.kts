@@ -15,6 +15,11 @@ plugins {
 val releaseVersion = "1.15.5"
 
 val supportedAbis = arrayOf("arm64-v8a", "x86_64", "armeabi-v7a")
+val releaseAbi = providers.gradleProperty("releaseAbi").orNull
+require(releaseAbi == null || releaseAbi in supportedAbis || releaseAbi == "universal") {
+    "releaseAbi must be arm64-v8a, armeabi-v7a, x86_64 or universal"
+}
+val buildAbis = releaseAbi?.takeUnless { it == "universal" }?.let { arrayOf(it) } ?: supportedAbis
 
 // The immutable regression baseline remains in Git history, not in the current tree.
 val prepareNativeTestFixtures = tasks.register<NativeTestFixturesTask>("prepareNativeTestFixtures") {
@@ -31,10 +36,10 @@ androidComponents {
 android {
     splits {
         abi {
-            isEnable = true
+            isEnable = releaseAbi != "universal"
             reset()
-            include(*supportedAbis)
-            isUniversalApk = true
+            include(*buildAbis)
+            isUniversalApk = releaseAbi == null
         }
     }
 
@@ -88,7 +93,7 @@ android {
         buildConfigField("long", "COMMIT_TIME", commitTime)
         buildConfigField("String", "REPO_NAME", "\"$repoName\"")
         ndk {
-            abiFilters.addAll(supportedAbis)
+            abiFilters.addAll(buildAbis)
             debugSymbolLevel = "FULL"
         }
     }
