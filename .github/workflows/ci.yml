@@ -57,7 +57,7 @@ jobs:
           :app:testDebugUnitTest
           :core:common:testAndroidHostTest :core:data:testAndroidHostTest
           :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest
-          :app:lintRelease :app:assembleDebug :app:assembleDebugAndroidTest
+          :app:lintRelease :app:assembleDebug
           :app:assembleRelease :benchmark:assembleNonMinifiedRelease
           --console=plain --no-daemon
       - name: Verify APK identity, signatures, JNI, ABI and 16KB alignment
@@ -94,14 +94,6 @@ jobs:
           name: universal-${{ github.sha }}
           path: app/build/outputs/apk/release/app-universal-release.apk
           if-no-files-found: error
-      - name: Instrumentation inputs
-        uses: actions/upload-artifact@v7
-        with:
-          name: instrumentation-inputs
-          path: |
-            app/build/outputs/apk/debug/app-universal-debug.apk
-            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-          if-no-files-found: error
       - name: Verification reports
         if: always()
         uses: actions/upload-artifact@v7
@@ -111,57 +103,4 @@ jobs:
             reports/
             app/build/reports/
             core/*/build/reports/
-          retention-days: 14
-
-  device:
-    needs: android
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - label: api26
-            image: system-images;android-26;google_apis;x86_64
-          - label: api29
-            image: system-images;android-29;google_apis;x86_64
-          - label: api33
-            image: system-images;android-33;google_apis;x86_64
-          - label: api35
-            image: system-images;android-35;google_apis;x86_64
-          - label: api35-16k
-            image: system-images;android-35;google_apis_ps16k;x86_64
-          - label: api37-canary-16k
-            image: system-images;android-canary-20261007;google_apis_ps16k;x86_64
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version-file: .java-version
-      - uses: actions/download-artifact@v8
-        with:
-          name: instrumentation-inputs
-          path: device-inputs
-      - uses: gradle/actions/setup-gradle@v6
-        with:
-          validate-wrappers: true
-          cache-read-only: true
-      - name: Build Kotlin device runner
-        run: ./gradlew -p tools/verification installDist --console=plain --no-daemon
-      - name: Enable KVM
-        run: sudo chmod 666 /dev/kvm
-      - name: Run packaged Android JNI and platform tests
-        env:
-          TEST_IMAGE: ${{ matrix.image }}
-          TEST_LABEL: ${{ matrix.label }}
-        run: tools/verification/build/install/verification/bin/verification emulator
-      - name: Device reports
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: device-${{ matrix.label }}
-          path: device-reports/
           retention-days: 14

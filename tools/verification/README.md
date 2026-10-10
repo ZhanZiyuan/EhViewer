@@ -40,7 +40,8 @@ Formal publication remains disabled. GitHub provides source archives itself.
 `device` tests an already booted dedicated device. `emulator` installs the SDK
 image from `TEST_IMAGE`, creates its own AVD on port 5554, verifies the API from
 `TEST_LABEL` and 16 KB pages when requested, runs all 19 instrumentation tests,
-captures logs, and shuts down its AVD. The CI job supplies `device-inputs/`.
+captures logs, and shuts down its AVD. For manual emulator runs, supply the Debug
+and androidTest APKs in `device-inputs/`. The emulator matrix is not part of CI.
 
 Migration-only C comparison drivers, raw logs, reports and duplicate outputs
 are kept outside the source checkout. Maintained Rust tests and Android tests

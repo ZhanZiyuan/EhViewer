@@ -50,11 +50,11 @@ android {
     defaultConfig {
         applicationId = "moe.tarsin.ehviewer"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        versionCode = 180066
+        versionCode = 180068
         versionName = if (snapshot) {
-            "1.15.2-SNAPSHOT"
+            "1.15.4-SNAPSHOT"
         } else {
-            "1.15.2"
+            "1.15.4"
         }
         buildConfigField("boolean", "SNAPSHOT", "$snapshot")
         buildConfigField("String", "RAW_VERSION_NAME", "\"$versionName\"")
