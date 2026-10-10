@@ -1,0 +1,12 @@
+cwd=/Users/zhanziyuan/Documents/GitHub/EhViewer
+git apply --reverse --check /Users/zhanziyuan/Documents/GitHub/EhViewer/docs/modernization/p5-p7/p5-p7-forward.patch
+exit=0
+
+cwd=/private/tmp/ehviewer-p5-p7/rollback-verified
+git apply --reverse /Users/zhanziyuan/Documents/GitHub/EhViewer/docs/modernization/p5-p7/p5-p7-forward.patch
+exit=0
+/Users/zhanziyuan/Documents/GitHub/EhViewer/docs/modernization/p5-p7/p5-p7-forward.patch:1133: new blank line at EOF.
++
+warning: 1 line adds whitespace errors.
+
+PASS: 80 stage file operations restored to their before SHA-256; user working tree untouched.

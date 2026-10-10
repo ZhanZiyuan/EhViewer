@@ -1,0 +1,482 @@
+[
+  {
+    "file": ".github/workflows/ci.yml",
+    "operation": "modify",
+    "before_sha256": "2b6d60948f1c5fec874093cd32217d773975a369d6821ae85b02bebb48aaffc8",
+    "after_sha256": "aa613aeca0a99b9eed3fbecb03444745a4b3d429dfd12ede933ecd3f327d7bbe"
+  },
+  {
+    "file": "app/build.gradle.kts",
+    "operation": "modify",
+    "before_sha256": "9c67835f08693657e7682547da89d891f71a267eb3a9203d3f310def92dc76e9",
+    "after_sha256": "5178cbd59cb76f1989834ce17983e5c636f9b868e5950d627ee9dab9f2a8e0a0"
+  },
+  {
+    "file": "app/src/androidTest/kotlin/com/hippo/ehviewer/jni/NativeRegressionTest.kt",
+    "operation": "modify",
+    "before_sha256": "91e0faf5f9ee0409bd191b621cf9839d58064ded98e28bab775e9955bf6b732b",
+    "after_sha256": "4a6d3ad420ff75161bc8863e0401c7a96a8146b25cb4cca357a8dda946dba5ad"
+  },
+  {
+    "file": "app/src/main/cpp/CMakeLists.txt",
+    "operation": "modify",
+    "before_sha256": "1c5cc2fb0452ffcc8a061e6e54310aeb4a0a0724e08fc1b6b70fba73ddb3223e",
+    "after_sha256": "8d12e00d00507a58cc4e5f1f87ad38d2d13ed20a83c1a77f700f41fac8970652"
+  },
+  {
+    "file": "app/src/main/cpp/archive.c",
+    "operation": "delete",
+    "before_sha256": "a78ac5c9d0148a1dde356330957e20a68738f7f8252f0648ef0c854ee8d4239a",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/cpp/ehviewer.h",
+    "operation": "delete",
+    "before_sha256": "72364e5cb606f7151f63a3919e0a222a3692b14d254269de8452ffd244f2d15b",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/cpp/gifutils.c",
+    "operation": "delete",
+    "before_sha256": "af9460d01560ee90b52a2c1284f488f1305ca71a8756f49350bbd39a441c922c",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/cpp/hash.c",
+    "operation": "delete",
+    "before_sha256": "186be92ab7b014dfb9a12ebb26f0602a02dd86c5c3474c9ca348b437d7815b1c",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/cpp/natsort/strnatcmp.c",
+    "operation": "delete",
+    "before_sha256": "89fc05ffab62ae2facceede6bd1a249fbbaf9b9c3efc2e6800e08e66012c8c83",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/cpp/natsort/strnatcmp.h",
+    "operation": "delete",
+    "before_sha256": "421ab7aec2ee1d7953faa3c3a36c8c19ba1e2f40e5bfef4538c7ed3a703d1080",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/Cargo.lock",
+    "operation": "modify",
+    "before_sha256": "03f0b789b0750b3da76b2c0cc830af0edbb40da28e40a9d42866f88464eceaa2",
+    "after_sha256": "a73e5e1e5b63d1e5640636a6fc78e52038d12ccdb57e9c58e8bea8e35232581c"
+  },
+  {
+    "file": "app/src/main/rust/Cargo.toml",
+    "operation": "modify",
+    "before_sha256": "82ca7521eecdce0c67c99fbeb8f9ce86d56f2c9275cb3a3124e44062413eb27f",
+    "after_sha256": "f5f9fa1a0fa8d6518013108331236921ec442a93d2d6ed34d76934118cd708cb"
+  },
+  {
+    "file": "app/src/main/rust/README.md",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "04d400bdf7fa59e8adabe5b5076c4df3af9df02f9d86ab2f90887192da0e5a0a"
+  },
+  {
+    "file": "app/src/main/rust/build.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "ef628a25857b05dffd53fe45f7021399720545ee47cf730a42f4044fb284a6f8"
+  },
+  {
+    "file": "app/src/main/rust/core/Cargo.toml",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "a29518fe7e6e81060095cabed29fade262f7be37ee36deab884e3c677aa6d1ad"
+  },
+  {
+    "file": "app/src/main/rust/core/examples/native_probe.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "b4863ca428b3b4ea559272f9533e790b731927c4d584f06a35d526e9a3e592b6"
+  },
+  {
+    "file": "app/src/main/rust/core/src/archive.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "0277ec30f267002f3e90fa20842fc509a1940ac30a4c5bec3cf4fe6ee2fc5f90"
+  },
+  {
+    "file": "app/src/main/rust/core/src/archive/sys.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "3e6795998d43ef925df905944356b8691ae618f79915ff3011f929a182543752"
+  },
+  {
+    "file": "app/src/main/rust/core/src/fd.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "0b06572031d951387b6c37d219205bf1b19e7ec269fbc2adfe88ce0834896cdc"
+  },
+  {
+    "file": "app/src/main/rust/core/src/gif.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "257e122e3d172875957253fab38a38e0b494db016e098d0b16ea12c19e1ba17c"
+  },
+  {
+    "file": "app/src/main/rust/core/src/hash.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "e2fde31067be576e3d8866db6683df3ed29825185ec11f1426272ac784f5bd3f"
+  },
+  {
+    "file": "app/src/main/rust/core/src/img.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "16f482be99c856cd1118b43a37ec7ba534f0a0afff99f18b6e1c18ae1f8342c6"
+  },
+  {
+    "file": "app/src/main/rust/core/src/img/border.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "23f1eeace83ed3d02caf461776b973c4f925e3cfe398a389535b44c4dff3c791"
+  },
+  {
+    "file": "app/src/main/rust/core/src/img/copy_region.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "ca00aa8694b8bfe8ce0ed1a05e0044807fb89288511f914323c22caaff882f2b"
+  },
+  {
+    "file": "app/src/main/rust/core/src/img/core.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "4bab87e3c646f3c2e9e90229a33f62c9eee5f4235751db49171f127e9161c89e"
+  },
+  {
+    "file": "app/src/main/rust/core/src/img/qr_code.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "90ef4839de53df914a10948cb2f3b96e8d673e04099cf114eaddfed4bc9423d0"
+  },
+  {
+    "file": "app/src/main/rust/core/src/img/webp.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "715c6db150eb171d5a9a88e19cd1a598b6b4a335e116bdd7a043ef0b894b6f5f"
+  },
+  {
+    "file": "app/src/main/rust/core/src/lib.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "692609c5cd3418435a6026ad95344f7a186527c5bea027e16eac5fbdc23a82c5"
+  },
+  {
+    "file": "app/src/main/rust/core/src/parser.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "7b017f3a8789c3f1fe0bcb13d503f2ed071f7ce6ae08e8b3c066c2f4828f0016"
+  },
+  {
+    "file": "app/src/main/rust/core/src/parser/api.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "86cb0abad1cf78253924d0377b6ea4803c9f2e2f657d71c416a6b2164c8e3d28"
+  },
+  {
+    "file": "app/src/main/rust/core/src/parser/archive.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "bbba5b76f738861cab3dcf10dcaacb191880ad90d1e5341338aa3ad587eb6da7"
+  },
+  {
+    "file": "app/src/main/rust/core/src/parser/config.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "71213f2da2e19a85aecb69c3258d043d3f375beacf1240827df26724d59e6303"
+  },
+  {
+    "file": "app/src/main/rust/core/src/parser/detail.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "c687e8e8d9bdcefd9f1ec4b1833f6fcf4768ca3c176cd5e9bdf3fa9ef423f241"
+  },
+  {
+    "file": "app/src/main/rust/core/src/parser/fav.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "98b61b99b49a533dbc96324ffcd4298298f85acaa889d892cff18494c08ac6b6"
+  },
+  {
+    "file": "app/src/main/rust/core/src/parser/home.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "2d20402c393de932e78755ec190ba29e4db39fa1e3828bbbf725e62808c93eed"
+  },
+  {
+    "file": "app/src/main/rust/core/src/parser/list.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "8dc3ef2498de9c77be553f28f1da848241c822d7a7024626b291c57145067a22"
+  },
+  {
+    "file": "app/src/main/rust/core/src/parser/profile.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "01b10e1bbe3133cf1aa66538f0b20165d5e24a4b0ff7dff4923240b95756593d"
+  },
+  {
+    "file": "app/src/main/rust/core/src/parser/test_parser.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "65a6500dadfcf32c66981eb9599fc73058be0871bef1d256ffc596c6d927ddc4"
+  },
+  {
+    "file": "app/src/main/rust/core/src/parser/torrent.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "0253cc3b5bf5a66a8b00f031dadab42340944b82d9181421b05d7d5c437c82f0"
+  },
+  {
+    "file": "app/src/main/rust/core/src/parser/utils.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "9e8b27d6fe6808149657de63a0b9d07779fcd9cfae85b5bc59e0a887ffaed41a"
+  },
+  {
+    "file": "app/src/main/rust/core/src/sort.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "9f6cc1b5d012647c4b8ba0f70ea7f24b181323624ccef999c32f42b59198ee67"
+  },
+  {
+    "file": "app/src/main/rust/core/test_data/archive_url.html",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "812f4cd9a0ae55177946bcd42518bcbc6c080b579d33da3a37cd68ca6a5b4ae1"
+  },
+  {
+    "file": "app/src/main/rust/core/test_data/archives_with_funds.html",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "52f21275747c7a401fd6be1266ed63190d9d7c9122238d314ad15c7e21da1a13"
+  },
+  {
+    "file": "app/src/main/rust/core/test_data/profile_url.html",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "eade8e30c90e1bdf1efdbd83b38482ea3be71bfa6f384948c2fdab0e2541d8d6"
+  },
+  {
+    "file": "app/src/main/rust/core/test_data/vote_tag.json",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "64016ec2cdbefbb4a40b95dbd2fb9963a8f8cfb5ae11461a4e51018c6eb5fc37"
+  },
+  {
+    "file": "app/src/main/rust/core/tests/archive.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "9595b34b43a27f3d6168b1270bbed3c47dbdc4ddce8f0f110138510ecbe58716"
+  },
+  {
+    "file": "app/src/main/rust/src/ffi.rs",
+    "operation": "modify",
+    "before_sha256": "ae0f984c37bef8159ad6488bafc6f0b59925b546b66f18848bfbd1a5be144f65",
+    "after_sha256": "5e2474922496913646d9ae8666a7a8e024da84f2ba8543fc23e05726467b9f67"
+  },
+  {
+    "file": "app/src/main/rust/src/ffi/android.rs",
+    "operation": "modify",
+    "before_sha256": "a496ebbdb57807dd8e7108bfcfd1906778650f415fdf726ce089764a3d4314a8",
+    "after_sha256": "91b2fc9f6631fa8e0dccdfa505debd27b4139e57325c20b52de1682cbd99a4ce"
+  },
+  {
+    "file": "app/src/main/rust/src/ffi/android_o.rs",
+    "operation": "modify",
+    "before_sha256": "12f86d2829b2c792fdaadbc41675b347c961ed29aa5d488d38a90b29c5e8e0e5",
+    "after_sha256": "ccb6ac0f2afbf63d4eabdf77ac0774ea93dd1e76f0ca5bc25ccdae2908e2c3a1"
+  },
+  {
+    "file": "app/src/main/rust/src/ffi/jvm.rs",
+    "operation": "modify",
+    "before_sha256": "90e3d5402446c759f812058a61d27b8145d701055c15d86b0de796af942aeac3",
+    "after_sha256": "465490a9bf8a0a52d3ab1c3695717bc7e034f40110bd02d767af7d9814b0bf12"
+  },
+  {
+    "file": "app/src/main/rust/src/ffi/native.rs",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "e6d0b82ce1ecf7a3b69d07ea1c494afbc87bc857228d5014f2d18d0497fc1554"
+  },
+  {
+    "file": "app/src/main/rust/src/img.rs",
+    "operation": "delete",
+    "before_sha256": "16f482be99c856cd1118b43a37ec7ba534f0a0afff99f18b6e1c18ae1f8342c6",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/img/border.rs",
+    "operation": "delete",
+    "before_sha256": "23f1eeace83ed3d02caf461776b973c4f925e3cfe398a389535b44c4dff3c791",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/img/copy_region.rs",
+    "operation": "delete",
+    "before_sha256": "897eb031e3589415ea13a5072388e86127d0a8a509c06457bb4459ea1c68a4f6",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/img/core.rs",
+    "operation": "delete",
+    "before_sha256": "4bab87e3c646f3c2e9e90229a33f62c9eee5f4235751db49171f127e9161c89e",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/img/qr_code.rs",
+    "operation": "delete",
+    "before_sha256": "90ef4839de53df914a10948cb2f3b96e8d673e04099cf114eaddfed4bc9423d0",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/img/webp.rs",
+    "operation": "delete",
+    "before_sha256": "f32fc54770d3a9f8cccab7b1581853472f7c085c9e9720914b6661c9bd418bf1",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/lib.rs",
+    "operation": "modify",
+    "before_sha256": "273861836a8f6b00b13564cf6ca3df72badece65784542ec5ed63fec1e1aa0f7",
+    "after_sha256": "eed539e0665a26510159f09faf8297478e11cf4cf7760e0bc616e271c00899de"
+  },
+  {
+    "file": "app/src/main/rust/src/parser.rs",
+    "operation": "delete",
+    "before_sha256": "7b017f3a8789c3f1fe0bcb13d503f2ed071f7ce6ae08e8b3c066c2f4828f0016",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/parser/api.rs",
+    "operation": "delete",
+    "before_sha256": "86cb0abad1cf78253924d0377b6ea4803c9f2e2f657d71c416a6b2164c8e3d28",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/parser/archive.rs",
+    "operation": "delete",
+    "before_sha256": "bbba5b76f738861cab3dcf10dcaacb191880ad90d1e5341338aa3ad587eb6da7",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/parser/config.rs",
+    "operation": "delete",
+    "before_sha256": "71213f2da2e19a85aecb69c3258d043d3f375beacf1240827df26724d59e6303",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/parser/detail.rs",
+    "operation": "delete",
+    "before_sha256": "c687e8e8d9bdcefd9f1ec4b1833f6fcf4768ca3c176cd5e9bdf3fa9ef423f241",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/parser/fav.rs",
+    "operation": "delete",
+    "before_sha256": "98b61b99b49a533dbc96324ffcd4298298f85acaa889d892cff18494c08ac6b6",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/parser/home.rs",
+    "operation": "delete",
+    "before_sha256": "2d20402c393de932e78755ec190ba29e4db39fa1e3828bbbf725e62808c93eed",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/parser/list.rs",
+    "operation": "delete",
+    "before_sha256": "8dc3ef2498de9c77be553f28f1da848241c822d7a7024626b291c57145067a22",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/parser/profile.rs",
+    "operation": "delete",
+    "before_sha256": "01b10e1bbe3133cf1aa66538f0b20165d5e24a4b0ff7dff4923240b95756593d",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/parser/test_parser.rs",
+    "operation": "delete",
+    "before_sha256": "65a6500dadfcf32c66981eb9599fc73058be0871bef1d256ffc596c6d927ddc4",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/parser/torrent.rs",
+    "operation": "delete",
+    "before_sha256": "0253cc3b5bf5a66a8b00f031dadab42340944b82d9181421b05d7d5c437c82f0",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/src/parser/utils.rs",
+    "operation": "delete",
+    "before_sha256": "9e8b27d6fe6808149657de63a0b9d07779fcd9cfae85b5bc59e0a887ffaed41a",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/test_data/archive_url.html",
+    "operation": "delete",
+    "before_sha256": "812f4cd9a0ae55177946bcd42518bcbc6c080b579d33da3a37cd68ca6a5b4ae1",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/test_data/archives_with_funds.html",
+    "operation": "delete",
+    "before_sha256": "52f21275747c7a401fd6be1266ed63190d9d7c9122238d314ad15c7e21da1a13",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/test_data/profile_url.html",
+    "operation": "delete",
+    "before_sha256": "eade8e30c90e1bdf1efdbd83b38482ea3be71bfa6f384948c2fdab0e2541d8d6",
+    "after_sha256": null
+  },
+  {
+    "file": "app/src/main/rust/test_data/vote_tag.json",
+    "operation": "delete",
+    "before_sha256": "64016ec2cdbefbb4a40b95dbd2fb9963a8f8cfb5ae11461a4e51018c6eb5fc37",
+    "after_sha256": null
+  },
+  {
+    "file": "scripts/materialize_native_reference.py",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "82e93e6a7fb6dcaff6ffc6f0de93ceb1930fc17e6c889ff59d826205bc550f80"
+  },
+  {
+    "file": "scripts/native_archive_differential.py",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "1ced42640aab37bc34d29ab8962458dc2b12f5c1484df8228cc48cb6b5d08bad"
+  },
+  {
+    "file": "scripts/native_benchmark.py",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "4278b903b3f87c23981e5e1250e5c4dcc819ece126acd1340f6f3f36197d4dc8"
+  },
+  {
+    "file": "scripts/native_differential.py",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "73a678cef94d75e3818c547f41d6a79aa07a41b536ac1d13f7c48c001e1a398b"
+  },
+  {
+    "file": "scripts/run_native_device_tests.py",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "898242a7a924b7deaa8f531abec90e952b8a016ff9f34776ca5f2ada1ef56866"
+  },
+  {
+    "file": "scripts/verify_native_sources.py",
+    "operation": "add",
+    "before_sha256": null,
+    "after_sha256": "32c2efc24d18245d522c14ace4e4651beac200d37d9275877a20f9ff2785afd0"
+  }
+]

@@ -69,6 +69,8 @@ android {
 
     sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("docs/modernization/baseline/fixtures"))
 
+    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("docs/modernization/p5-p7/fixtures"))
+
     externalNativeBuild {
         cmake {
             path = File("src/main/cpp/CMakeLists.txt")

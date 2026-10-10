@@ -26,7 +26,7 @@ jobs:
           distribution: temurin
           java-version-file: .java-version
       - name: Native host prerequisites
-        run: sudo apt-get update && sudo apt-get install -y autoconf automake pkg-config
+        run: sudo apt-get update && sudo apt-get install -y autoconf automake pkg-config libarchive-dev libwebp-dev
       - name: Rust targets
         run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@v2
@@ -34,13 +34,14 @@ jobs:
           workspaces: app/src/main/rust
           shared-key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'app/src/main/rust/Cargo.lock') }}
           save-if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
-      - name: Rust format, offline parser tests and Android Clippy
+      - name: Rust format, Core/JNI tests and Android Clippy
         working-directory: app/src/main/rust
         run: |
           cargo fmt --all -- --check
-          cargo test --locked --lib -- --skip test_parse_info --skip test_parse_profile --skip test_parse_gallery_detail
+          cargo test --locked -p ehviewer_core -- --skip test_parse_info --skip test_parse_profile --skip test_parse_gallery_detail
+          cargo test --locked --features jvm --lib
           for target in aarch64-linux-android thumbv7neon-linux-androideabi x86_64-linux-android; do
-            cargo clippy --locked --target "$target" --all-features -- -D warnings
+            cargo clippy --locked --workspace --target "$target" --all-features -- -D warnings
           done
       - uses: gradle/actions/setup-gradle@v6
         with:
@@ -62,6 +63,7 @@ jobs:
           mkdir -p reports
           test -s app/build/outputs/mapping/release/mapping.txt
           test -s app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip
+          python3 scripts/verify_native_sources.py > reports/native-sources.json
           python3 scripts/verify_bytecode.py > reports/android-bytecode.json
           python3 scripts/verify_apks.py app/build/outputs/apk/release --sdk "$ANDROID_HOME" > reports/release-apks.json
           python3 scripts/verify_apks.py app/build/outputs/apk/debug --sdk "$ANDROID_HOME" --debug --application-id moe.tarsin.ehviewer.debug > reports/debug-apks.json

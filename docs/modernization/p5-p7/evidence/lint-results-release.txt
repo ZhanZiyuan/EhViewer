@@ -1,0 +1,231 @@
+/Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/kotlin/com/google/accompanist/web/WebView.kt:243: Warning: WebViewClient should implement onRenderProcessGone to handle render process crashes or out-of-memory errors. Otherwise, the app will crash when the render process is shut down. [MissingOnRenderProcessGone from androidx.webkit]
+open class AccompanistWebViewClient : WebViewClient() {
+           ~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/kotlin/com/google/accompanist/web/WebView.kt:243: Warning: WebViewClient should implement onRenderProcessGone to handle render process crashes or out-of-memory errors. Otherwise, the app will crash when the render process is shut down. [MissingOnRenderProcessGone from androidx.webkit]
+open class AccompanistWebViewClient : WebViewClient() {
+                                      ~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "MissingOnRenderProcessGone":
+   If a WebView's render process is shut down, the app will crash unless the
+   WebViewClient implements onRenderProcessGone and returns true. It is highly
+   recommended to handle this callback.
+
+   https://developer.android.com/develop/ui/views/layout/webapps/handle-termination
+
+   Vendor: Android Open Source Project
+   Identifier: androidx.webkit
+   Feedback: https://issuetracker.google.com/issues/new?component=460423
+
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/wrapper/gradle-wrapper.properties:3: Warning: A newer version of Gradle than 9.7.1 is available: 9.8.1 [AndroidGradlePluginVersion]
+distributionUrl=https\://services.gradle.org/distributions/gradle-9.7.1-bin.zip
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:4: Warning: A newer version of com.android.application than 9.3.1 is available: 9.4.1. (There is also a newer version of 9.3.𝑥 available, if upgrading to 9.4.1 is difficult: 9.3.3) [AndroidGradlePluginVersion]
+agp = "9.3.1"
+      ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:4: Warning: A newer version of com.android.kotlin.multiplatform.library than 9.3.1 is available: 9.4.1. (There is also a newer version of 9.3.𝑥 available, if upgrading to 9.4.1 is difficult: 9.3.3) [AndroidGradlePluginVersion]
+agp = "9.3.1"
+      ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:4: Warning: A newer version of com.android.library than 9.3.1 is available: 9.4.1. (There is also a newer version of 9.3.𝑥 available, if upgrading to 9.4.1 is difficult: 9.3.3) [AndroidGradlePluginVersion]
+agp = "9.3.1"
+      ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:4: Warning: A newer version of com.android.lint than 9.3.1 is available: 9.4.1. (There is also a newer version of 9.3.𝑥 available, if upgrading to 9.4.1 is difficult: 9.3.3) [AndroidGradlePluginVersion]
+agp = "9.3.1"
+      ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:4: Warning: A newer version of com.android.test than 9.3.1 is available: 9.4.1. (There is also a newer version of 9.3.𝑥 available, if upgrading to 9.4.1 is difficult: 9.3.3) [AndroidGradlePluginVersion]
+agp = "9.3.1"
+      ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:4: Warning: A newer version of com.android.tools.build:gradle than 9.3.1 is available: 9.4.1. (There is also a newer version of 9.3.𝑥 available, if upgrading to 9.4.1 is difficult: 9.3.3) [AndroidGradlePluginVersion]
+agp = "9.3.1"
+      ~~~~~~~
+
+   Explanation for issues of type "AndroidGradlePluginVersion":
+   This detector looks for usage of the Android Gradle Plugin where the
+   version you are using is not the current stable release. Using older
+   versions is fine, and there are cases where you deliberately want to stick
+   with an older version. However, you may simply not be aware that a more
+   recent version is available, and that is what this lint check helps find.
+
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:9: Warning: A newer version of androidx.core:core-ktx than 1.19.0 is available: 1.19.1 [GradleDependency]
+androidx-core = "1.19.0"
+                ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:13: Warning: A newer version of androidx.paging:paging-compose than 3.5.1 is available: 3.5.2 [GradleDependency]
+androidx-paging = "3.5.1"
+                  ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:14: Warning: A newer version of androidx.room than 2.8.4 is available: 2.8.5 [GradleDependency]
+androidx-room = "2.8.4"
+                ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:14: Warning: A newer version of androidx.room:room-compiler than 2.8.4 is available: 2.8.5 [GradleDependency]
+androidx-room = "2.8.4"
+                ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:14: Warning: A newer version of androidx.room:room-paging than 2.8.4 is available: 2.8.5 [GradleDependency]
+androidx-room = "2.8.4"
+                ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:15: Warning: A newer version of androidx.webkit:webkit than 1.17.0 is available: 1.17.1 [GradleDependency]
+androidx-webkit = "1.17.0"
+                  ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:16: Warning: A newer version of androidx.work:work-runtime than 2.11.2 is available: 2.12.0 [GradleDependency]
+androidx-work = "2.11.2"
+                ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:19: Warning: A newer version of androidx.compose:compose-bom-alpha than 2026.08.00 is available: 2026.10.00 [GradleDependency]
+compose-bom = "2026.08.00"
+              ~~~~~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:42: Warning: A newer version of androidx.baselineprofile than 1.5.0-rc01 is available: 1.5.0 [GradleDependency]
+benchmark = "1.5.0-rc01"
+            ~~~~~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:42: Warning: A newer version of androidx.benchmark:benchmark-macro-junit4 than 1.5.0-rc01 is available: 1.5.0 [GradleDependency]
+benchmark = "1.5.0-rc01"
+            ~~~~~~~~~~~~
+
+   Explanation for issues of type "GradleDependency":
+   This detector looks for usages of libraries where the version you are using
+   is not the current stable release. Using older versions is fine, and there
+   are cases where you deliberately want to stick with an older version.
+   However, you may simply not be aware that a more recent version is
+   available, and that is what this lint check helps find.
+
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:2: Warning: A newer version of com.mikepenz.aboutlibraries.plugin than 14.2.1 is available: 15.2.0 [NewerVersionAvailable]
+aboutlibraries = "14.2.1"
+                 ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:2: Warning: A newer version of com.mikepenz.aboutlibraries.plugin.android than 14.2.1 is available: 15.2.0 [NewerVersionAvailable]
+aboutlibraries = "14.2.1"
+                 ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:2: Warning: A newer version of com.mikepenz:aboutlibraries-compose-m3 than 14.2.1 is available: 15.2.0 [NewerVersionAvailable]
+aboutlibraries = "14.2.1"
+                 ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:2: Warning: A newer version of com.mikepenz:aboutlibraries-core than 14.2.1 is available: 15.2.0 [NewerVersionAvailable]
+aboutlibraries = "14.2.1"
+                 ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:18: Warning: A newer version of io.coil-kt.coil3:coil-bom than 3.5.0 is available: 3.6.3 [NewerVersionAvailable]
+coil = "3.5.0"
+       ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:20: Warning: A newer version of org.jetbrains.compose than 1.11.1 is available: 1.12.1 [NewerVersionAvailable]
+compose-multiplatform = "1.11.1"
+                        ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:20: Warning: A newer version of org.jetbrains.compose.ui:ui-backhandler than 1.11.1 is available: 1.12.1 [NewerVersionAvailable]
+compose-multiplatform = "1.11.1"
+                        ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:20: Warning: A newer version of org.jetbrains.compose.ui:ui-tooling-preview than 1.11.1 is available: 1.12.1 [NewerVersionAvailable]
+compose-multiplatform = "1.11.1"
+                        ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:25: Warning: A newer version of org.jetbrains.kotlin.multiplatform than 2.4.10 is available: 2.4.21 [NewerVersionAvailable]
+kotlin = "2.4.10"
+         ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:25: Warning: A newer version of org.jetbrains.kotlin.plugin.compose than 2.4.10 is available: 2.4.21 [NewerVersionAvailable]
+kotlin = "2.4.10"
+         ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:25: Warning: A newer version of org.jetbrains.kotlin.plugin.serialization than 2.4.10 is available: 2.4.21 [NewerVersionAvailable]
+kotlin = "2.4.10"
+         ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:31: Warning: A newer version of io.ktor:ktor-client-core than 3.5.2 is available: 3.6.0 [NewerVersionAvailable]
+ktor = "3.5.2"
+       ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:31: Warning: A newer version of io.ktor:ktor-client-okhttp than 3.5.2 is available: 3.6.0 [NewerVersionAvailable]
+ktor = "3.5.2"
+       ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:32: Warning: A newer version of dev.icerock.mobile.multiplatform-resources than 0.26.4 is available: 0.27.1 [NewerVersionAvailable]
+moko-resources = "0.26.4"
+                 ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:32: Warning: A newer version of dev.icerock.moko:resources than 0.26.4 is available: 0.27.1 [NewerVersionAvailable]
+moko-resources = "0.26.4"
+                 ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:34: Warning: A newer version of com.squareup.okio:okio than 3.18.1 is available: 3.18.2 [NewerVersionAvailable]
+okio = "3.18.1"
+       ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:36: Warning: A newer version of com.diffplug.spotless than 8.10.0 is available: 8.10.4 [NewerVersionAvailable]
+spotless = "8.10.0"
+           ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:36: Warning: A newer version of com.diffplug.spotless:spotless-plugin-gradle than 8.10.0 is available: 8.10.4 [NewerVersionAvailable]
+spotless = "8.10.0"
+           ~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:38: Warning: A newer version of io.github.pdvrieze.xmlutil:serialization than 1.0.2 is available: 1.0.2.1 [NewerVersionAvailable]
+xmlutil = "1.0.2"
+          ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:38: Warning: A newer version of io.github.pdvrieze.xmlutil:serialization-io than 1.0.2 is available: 1.0.2.1 [NewerVersionAvailable]
+xmlutil = "1.0.2"
+          ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:83: Warning: A newer version of org.jetbrains.compose.material3.adaptive:adaptive than 1.2.0 is available: 1.3.0 [NewerVersionAvailable]
+compose-material3-adaptive = { module = "org.jetbrains.compose.material3.adaptive:adaptive", version = "1.2.0" }
+                                                                                                       ~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:94: Warning: A newer version of com.materialkolor:material-kolor than 5.0.0 is available: 5.0.1 [NewerVersionAvailable]
+material-kolor = "com.materialkolor:material-kolor:5.0.0"
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/zhanziyuan/Documents/GitHub/EhViewer/gradle/libs.versions.toml:98: Warning: A newer version of io.github.petertrr:kotlin-multiplatform-diff than 1.3.0 is available: 1.4.0 [NewerVersionAvailable]
+diff = "io.github.petertrr:kotlin-multiplatform-diff:1.3.0"
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "NewerVersionAvailable":
+   This detector checks with a central repository to see if there are newer
+   versions available for the dependencies used by this project. This is
+   similar to the GradleDependency check, which checks for newer versions
+   available in the Android SDK tools and libraries, but this works with any
+   MavenCentral dependency, and connects to the library every time, which
+   makes it more flexible but also much slower.
+
+/Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/res/values/arrays.xml:169: Warning: Did you mean "sha!" instead of "sha1"? [Typos]
+        <item>tag-translations-zh-rCN.json.sha1</item>
+                                           ~~~~
+
+   Explanation for issues of type "Typos":
+   This check looks through the string definitions, and if it finds any words
+   that look like likely misspellings, they are flagged.
+
+/Users/zhanziyuan/Documents/GitHub/EhViewer/app/build.gradle.kts:21: Warning: Missing x86_64 ABI support for ChromeOS [ChromeOsAbiSupport]
+            include(*supportedAbis)
+                     ~~~~~~~~~~~~~
+
+   Explanation for issues of type "ChromeOsAbiSupport":
+   To properly support ChromeOS, your Android application should have an x86
+   and/or x86_64 binary as part of the build configuration. To fix the issue,
+   ensure your files are properly optimized for ARM; the binary translator
+   will then ensure compatibility with x86. Alternatively, add an abiSplit for
+   x86 within your build.gradle file and create the required x86
+   dependencies.
+
+   https://developer.android.com/ndk/guides/abis
+
+/Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/res/menu/context_comment.xml:2: Warning: The resource R.menu.context_comment appears to be unused [UnusedResources]
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+^
+
+   Explanation for issues of type "UnusedResources":
+   Unused resources make applications larger and slow down builds.
+
+
+   The unused resource check can ignore tests. If you want to include
+   resources that are only referenced from tests, consider packaging them in a
+   test source set instead.
+
+   You can include test sources in the unused resource check by setting the
+   system property lint.unused-resources.include-tests=true, and to exclude
+   them (usually for performance reasons), use
+   lint.unused-resources.exclude-tests=true.
+
+   Available options:
+
+   **skip-libraries** (default is true):
+   Whether the unused resource check should skip reporting unused resources in libraries.
+
+   Many libraries will declare resources that are part of the library surface; other modules depending on the library will also reference the resources. To avoid reporting all these resources as unused (in the context of a library), the unused resource check normally skips reporting unused resources in libraries. Instead, run the unused resource check on the consuming app module (along with `checkDependencies=true`).
+
+   However, there are cases where you want to check that all the resources declared in a library are used; in that case, you can disable the skip option.
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UnusedResources">
+           <option name="skip-libraries" value="true" />
+       </issue>
+   </lint>
+   ```
+
+/Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp: Warning: The following images appear both as density independent .xml files and as bitmap files: src/main/res/mipmap-anydpi/ic_launcher.xml, src/main/res/mipmap-hdpi/ic_launcher.webp [IconXmlAndPng]
+/Users/zhanziyuan/Documents/GitHub/EhViewer/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp: Warning: The following images appear both as density independent .xml files and as bitmap files: src/main/res/mipmap-anydpi/ic_launcher_round.xml, src/main/res/mipmap-hdpi/ic_launcher_round.webp [IconXmlAndPng]
+
+   Explanation for issues of type "IconXmlAndPng":
+   If a drawable resource appears as an .xml file in the drawable/ folder,
+   it's usually not intentional for it to also appear as a bitmap using the
+   same name; generally you expect the drawable XML file to define states and
+   each state has a corresponding drawable bitmap.
+
+0 errors, 47 warnings

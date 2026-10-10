@@ -1,0 +1,88 @@
+{
+  "branch": "feature/rusty",
+  "head": "c5156a2de34e08fe9d11acd0f7552f6b8189a5db",
+  "stages": [
+    "P5",
+    "P6",
+    "P7"
+  ],
+  "jdk": "25.0.3",
+  "gradle": "9.7.1",
+  "android_bytecode_major": 61,
+  "rust_core_tests": 15,
+  "rust_release_jni_guard_tests": 1,
+  "android_tests_per_device": 16,
+  "android_total_executions": 80,
+  "android_matrix": [
+    {
+      "serial": "emulator-5560",
+      "api": 26,
+      "page_size": 4096,
+      "tests": 16,
+      "apks": {
+        "app-universal-debug.apk": "c5c1fa31323bc405adb9facfae96316d3980047dbf7078e60095ed5f58d5e97d",
+        "app-debug-androidTest.apk": "0c2d22946c5c21985f71a8ea8f46bd4647cf069f756deeec23b6a8cc2a09140e"
+      },
+      "result": "PASS"
+    },
+    {
+      "serial": "emulator-5564",
+      "api": 29,
+      "page_size": 4096,
+      "tests": 16,
+      "apks": {
+        "app-universal-debug.apk": "c5c1fa31323bc405adb9facfae96316d3980047dbf7078e60095ed5f58d5e97d",
+        "app-debug-androidTest.apk": "0c2d22946c5c21985f71a8ea8f46bd4647cf069f756deeec23b6a8cc2a09140e"
+      },
+      "result": "PASS"
+    },
+    {
+      "serial": "emulator-5566",
+      "api": 33,
+      "page_size": 4096,
+      "tests": 16,
+      "apks": {
+        "app-universal-debug.apk": "c5c1fa31323bc405adb9facfae96316d3980047dbf7078e60095ed5f58d5e97d",
+        "app-debug-androidTest.apk": "0c2d22946c5c21985f71a8ea8f46bd4647cf069f756deeec23b6a8cc2a09140e"
+      },
+      "result": "PASS"
+    },
+    {
+      "serial": "emulator-5568",
+      "api": 35,
+      "page_size": 4096,
+      "tests": 16,
+      "apks": {
+        "app-universal-debug.apk": "c5c1fa31323bc405adb9facfae96316d3980047dbf7078e60095ed5f58d5e97d",
+        "app-debug-androidTest.apk": "0c2d22946c5c21985f71a8ea8f46bd4647cf069f756deeec23b6a8cc2a09140e"
+      },
+      "result": "PASS"
+    },
+    {
+      "serial": "emulator-5562",
+      "api": 37,
+      "page_size": 16384,
+      "tests": 16,
+      "apks": {
+        "app-universal-debug.apk": "c5c1fa31323bc405adb9facfae96316d3980047dbf7078e60095ed5f58d5e97d",
+        "app-debug-androidTest.apk": "0c2d22946c5c21985f71a8ea8f46bd4647cf069f756deeec23b6a8cc2a09140e"
+      },
+      "result": "PASS"
+    }
+  ],
+  "c_and_rust_original_jni_checks_each": 210,
+  "sort_pairs_per_char_mode": 26896,
+  "char_modes": 2,
+  "gif_vectors_per_char_mode": 2004,
+  "archive_differential_cases": 13,
+  "asan_scope": "Rust/std on macOS; external C libraries not instrumented; leak detection disabled",
+  "build_log": "build-acceptance.log",
+  "unverified": [
+    "ARM32 and x86_64 Android runtime",
+    "network-dependent parser tests (3)",
+    "multi-GiB production galleries and sustained Android RSS",
+    "encrypted/split RAR5 and header-encrypted 7z",
+    "full user-data upgrade and network/UI business flows",
+    "remote GitHub Actions"
+  ]
+}

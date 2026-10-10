@@ -1,0 +1,11 @@
+{
+  "androidClassMajor": 61,
+  "classes": {
+    "app": 3544,
+    "benchmark": 2,
+    "common": 65,
+    "data": 160,
+    "i18n": 3,
+    "ui": 171
+  }
+}

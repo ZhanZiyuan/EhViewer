@@ -47,9 +47,12 @@ pub fn nativeDecodeNextFrame(
             let info = unsafe { get_image_info(dec) };
             let handle = unsafe { Bitmap::from_jni(env.get_raw(), bitmap) };
             let dst = handle.lock_pixels()? as *mut u8;
+            let unlock = PixelUnlock(&handle);
             let size = info.canvas_width * info.canvas_height * 4;
             unsafe { copy_nonoverlapping(buf, dst, size as usize) };
-            handle.unlock_pixels()?;
+            let unlocked = handle.unlock_pixels();
+            std::mem::forget(unlock);
+            unlocked?;
         }
         Ok(timestamp)
     })
@@ -65,6 +68,13 @@ fn ptr_as_image<'local, P: CustomPixel>(
     ImageBuffer::from_raw(w, h, buffer).unwrap()
 }
 
+struct PixelUnlock<'a>(&'a Bitmap);
+impl Drop for PixelUnlock<'_> {
+    fn drop(&mut self) {
+        let _ = self.0.unlock_pixels();
+    }
+}
+
 pub fn use_bitmap_content<R, F: ImageConsumer<R>>(
     env: &mut JNIEnv,
     bitmap: jobject,
@@ -76,12 +86,15 @@ pub fn use_bitmap_content<R, F: ImageConsumer<R>>(
     let info = handle.info()?;
     let (w, h, format) = (info.width(), info.height(), info.format());
     let p = handle.lock_pixels()? as *const !;
+    let unlock = PixelUnlock(&handle);
     let result = match format {
         BitmapFormat::RGBA_8888 => f.apply(&ptr_as_image::<Rgba8888>(p, w, h)),
         BitmapFormat::RGB_565 => f.apply(&ptr_as_image::<Rgb565>(p, w, h)),
         BitmapFormat::RGBA_F16 => f.apply(&ptr_as_image::<RgbaF16>(p, w, h)),
         _ => Err(anyhow!("Unsupported bitmap format")),
     };
-    handle.unlock_pixels()?;
+    let unlocked = handle.unlock_pixels();
+    std::mem::forget(unlock);
+    unlocked?;
     result
 }

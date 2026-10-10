@@ -12,6 +12,7 @@ use crate::parser::home::parse_limit;
 use crate::parser::list::parse_info_list;
 use crate::parser::profile::{parse_profile, parse_profile_url};
 use crate::parser::torrent::parse_torrent_list;
+#[cfg(feature = "android")]
 use android_logger::Config;
 use anyhow::{Context, Result, ensure};
 use jni::objects::{JByteBuffer, JClass};
@@ -19,12 +20,13 @@ use jni::sys::{JNI_TRUE, JNI_VERSION_1_6, jboolean, jint, jlong, jobject};
 use jni::{JNIEnv, JavaVM};
 use jni_fn::jni_fn;
 use libwebp_sys::{WebPAnimDecoder, WebPAnimDecoderDelete};
+#[cfg(feature = "android")]
 use log::LevelFilter;
 use serde::Serialize;
 use std::ffi::c_void;
 use std::io::Cursor;
 use std::ptr::slice_from_raw_parts_mut;
-use std::str::from_utf8_unchecked;
+
 use tl::{ParserOptions, VDom};
 
 #[jni_fn("com.hippo.ehviewer.client.parser.FavoritesParserKt")]
@@ -213,11 +215,16 @@ where
     F: FnOnce(&mut JNIEnv) -> Result<R>,
     R: ThrowingHasDefault,
 {
-    match f(env) {
-        Ok(value) => value,
-        Err(err) => {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(env))) {
+        Ok(Ok(value)) => value,
+        Ok(Err(err)) => {
             let msg = format!("{err}");
             env.throw_new("java/lang/RuntimeException", msg).ok();
+            R::default()
+        }
+        Err(_) => {
+            env.throw_new("java/lang/RuntimeException", "Native operation panicked")
+                .ok();
             R::default()
         }
     }
@@ -259,8 +266,8 @@ where
         ensure!(limit > 0, "Empty response");
         let buffer = deref_mut_direct_bytebuffer(env, str)?;
 
-        // SAFETY: ktor client ensure html content is valid utf-8.
-        let body = unsafe { from_utf8_unchecked(&buffer[..limit as usize]) };
+        ensure!(limit as usize <= buffer.len(), "Response exceeds buffer");
+        let body = std::str::from_utf8(&buffer[..limit as usize])?;
         match f(body) {
             Ok(value) => serialize_to_buffer(buffer, &value),
             Err(err) => {
@@ -283,6 +290,10 @@ fn serialize_to_buffer<T: Serialize>(buffer: &mut [u8], value: &T) -> Result<i32
 #[unsafe(no_mangle)]
 #[allow(non_snake_case)]
 pub extern "system" fn JNI_OnLoad(_: JavaVM, _: *mut c_void) -> jint {
-    android_logger::init_once(Config::default().with_max_level(LevelFilter::Debug));
-    JNI_VERSION_1_6
+    std::panic::catch_unwind(|| {
+        #[cfg(feature = "android")]
+        android_logger::init_once(Config::default().with_max_level(LevelFilter::Debug));
+        JNI_VERSION_1_6
+    })
+    .unwrap_or(jni::sys::JNI_ERR)
 }
