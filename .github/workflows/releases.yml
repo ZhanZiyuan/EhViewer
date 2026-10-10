@@ -198,8 +198,10 @@ jobs:
         with:
           validate-wrappers: true
           cache-read-only: true
-      - name: Install packaging inspection tools
-        run: sdkmanager 'build-tools;37.0.0' 'ndk;29.0.14206865'
+      - name: Verify packaging inspection tools
+        run: |
+          test -x "$ANDROID_HOME/build-tools/37.0.0/aapt2"
+          test -x "$ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
       - name: Verify and combine exactly four APKs
         run: |
           ./gradlew -p tools/verification check installDist --console=plain --no-daemon
