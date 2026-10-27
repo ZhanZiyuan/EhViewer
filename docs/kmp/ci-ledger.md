@@ -54,7 +54,7 @@ actionlint .github/workflows/ci.yml .github/workflows/releases.yml
 
 Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读取或设置生产凭据。准确命令结果、环境差异、失败/修复关系随运行追加。远程 Actions 只读轮询必须同时核对 event、head_sha/PR head 与 test-merge SHA、job conclusion，不能只看 PR 汇总绿色。
 
-## M1-001：Kotlin-only iOS 启动切片（尚未提交）
+## M1-001：Kotlin-only iOS 启动切片
 
 前置 M0 SHA 两条 CI 与候选包预检均已 SUCCESS 后才开始。范围为 `app/ios` 的 Kotlin/Native executable + UIKit delegate + CMP 画面，声明式 plist、Kotlin DSL 打包、Kotlin 生命周期验证器和必选 `ci/ios`。无 Swift/ObjC/C/C++ 自主源文件，无参考项目实现复制；见 ADR 0001。尚无 iOS P0、Rust C ABI 或 unsigned IPA 验收结论。
 
@@ -66,4 +66,18 @@ Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读
 - 第三次 smoke：真实安装、冷启动、Compose ready/active 和截图均成功；已人工检查画面显示 EhViewer Kotlin/Native 启动文本。但后台断言 FAILED，不计为完整 smoke 通过；保留 failure.txt / failed-lifecycle.log。专用 Simulator 清理确认无残留。
 - 改用显式 Kotlin UIWindowSceneDelegate + plist scene 配置，两 executable 再次构建 SUCCESS（20s）；第四次完整 smoke **SUCCESS**：iOS 27.0 / iPhone 18 Pro / ARM64，两个不同 PID 的 cold-start/compose-ready、后台、回前台与截图均成功，清理退出码 0，无本次 Simulator 残留。截图已人工检查。
 - 本地报告 `reports/ios-m1-attempt4/startup.json` 明确 source_dirty=true（提交前），source_commit 为前置 M0 HEAD；不能当作新 SHA 的远程结果。实际 executable SHA-256 `be1e9be6b616d442e8a0eb661a8a212cd871e9c9b561e623d33d04833a0160de`。CI 强制 clean source，需从新提交树重建、重跑。
-- 新切片 commit SHA、push/PR CI 与 iOS runner 的最终结果：**PENDING**。整个 M1 仍 IN_PROGRESS；Rust C ABI/Desktop FFI、Intel DMG 与其余跨架构 spike 尚未完成。
+- Commit：`8388fb3667b77525dac21b187bec0e7d70107317`，`feat(ios): prove Kotlin-only UIKit startup in simulator`；单独 push：2026-10-27 23:25:38 +0800。
+- [Push CI 40530854323](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40530854323)、[PR CI 40530863965](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40530863965)：**FAILED**。两条 android（含原 Rust/source-policy/四包 dry-run）SUCCESS；两条 ci/ios 的两个 executable 与验证器 tests 构建 SUCCESS，但真实 Simulator smoke FAILED，ci/gate 正确失败。停止下一功能切片，只修复本门禁。
+- PR [iOS job 122282943222](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40530863965/job/122282943222)：cold-start/compose-ready/active/background/active 已记录，严格 terminate 返回 code 3（found nothing to terminate）。Push [iOS job 122282908934](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40530854323/job/122282908934)：生命周期计数断言失败。两份工件已下载保留；现有日志不足以证明应用退出原因，不以本地成功替代远程失败。
+- PR test-merge SHA：`9b35b4147714a38e8016a0f30e811349bc0e3997`；base 仍为 `423b8af13632896b55780783b54b5f720ec4c9dd`，PR 仍 Draft。
+- 整个 M1 仍 IN_PROGRESS；Rust C ABI/Desktop FFI、Intel DMG 与其余跨架构 spike 尚未完成。
+
+## M1-002：修复启动参数与逐进程生命周期验证
+
+仅纠正 M1-001 失败门禁，不开始新功能。UIKit 入口传递真实 argc/argv；验证器逐 PID 捕获输出、检查存活、相同 PID 前后台恢复和严格终止后的不同 PID 冷启动。参考依据、设计差异、无代码复制与许可证处理见 ADR 0001，未修改 Android/Rust 实现、依赖版本或 runner。
+
+- iosSimulatorArm64 与 iosArm64 executable / Simulator ad-hoc 打包 / Spotless：SUCCESS（24s）。
+- 本地 Android 原完整 tests/lint/build：SUCCESS（2m50s，315 tasks）；Native/diagnostics/bytecode/签名/JNI/ABI/16 KiB 检查与真实四 APK snapshot：SUCCESS，1.15.10-SNAPSHOT / 180074、测试签名模式。报告 source_dirty=true，不能替代新 SHA CI。
+- 修复后第一次本地 smoke：FAILED，新的 stdout/stderr 指向 Documents 下仓库报告目录，launchd_sim 在创建进程前返回 EPERM / launch failed；没有执行应用入口。保留 `reports/ios-m1-repair-attempt1` 的环境、阶段与系统日志。改为仅写本次应用自身沙箱 tmp，在 shutdown/delete 前复制诊断到报告；等待重新实测，不据此次失败判断 argv 修复有效性。
+- 最终 Kotlin verifier `spotlessApply check installDist`：SUCCESS（1m06s），110 tests / 0 failure/error/skipped；actionlint 与 diff whitespace 检查 SUCCESS。
+- 第二次本地 smoke：**SUCCESS**，iOS 27.0 / iPhone 18 Pro / ARM64；first/foreground PID=28131、严格 terminate 后 second PID=28247，逐进程 cold/Compose/active 和 background/active 全部通过，截图已人工检查；清理退出码 0。报告 `reports/ios-m1-repair-attempt2`，提交前 source_dirty=true；executable SHA-256 `b36bae647786ec066e8bb8b5a6211c93760cc1e272c2d808cf18a07a802f6b68`。本机通过不证明远程故障已解决，须等待新 SHA 的两条必选 CI。

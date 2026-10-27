@@ -3,10 +3,19 @@
 package com.hippo.ehviewer.ios
 
 import androidx.compose.ui.window.ComposeUIViewController
+import kotlinx.cinterop.ByteVar
+import kotlinx.cinterop.CPointerVar
 import kotlinx.cinterop.ExportObjCClass
 import kotlinx.cinterop.ObjCObjectBase.OverrideInit
+import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.autoreleasepool
+import kotlinx.cinterop.cstr
+import kotlinx.cinterop.get
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
+import kotlinx.cinterop.set
 import platform.Foundation.NSLog
+import platform.Foundation.NSProcessInfo
 import platform.UIKit.UIApplication
 import platform.UIKit.UIApplicationDelegateProtocol
 import platform.UIKit.UIApplicationMain
@@ -57,6 +66,13 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
 
 fun main() {
     autoreleasepool {
-        UIApplicationMain(0, null, null, "EhViewerAppDelegate")
+        memScoped {
+            val arguments = NSProcessInfo.processInfo.arguments.map { it as String }
+            require(arguments.isNotEmpty()) { "UIKit requires the executable argument" }
+            val argv = allocArray<CPointerVar<ByteVar>>(arguments.size + 1)
+            arguments.forEachIndexed { index, argument -> argv[index] = argument.cstr.ptr }
+            argv[arguments.size] = null
+            UIApplicationMain(arguments.size, argv, null, "EhViewerAppDelegate")
+        }
     }
 }

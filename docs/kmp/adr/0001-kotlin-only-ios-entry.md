@@ -1,6 +1,6 @@
 # ADR 0001：Kotlin-only iOS executable 启动 Spike
 
-状态：IMPLEMENTED / LOCAL_VERIFIED / CI_PENDING。前置 M0 提交 `1134f2b1c20740fe0002ee8b48c33482d90f1ad1` 的 push/PR CI 与候选四包预检均 SUCCESS，详见 ledger。
+状态：IMPLEMENTED / LOCAL_VERIFIED / CI_FAILED（8388fb366，修复中）。前置 M0 提交 `1134f2b1c20740fe0002ee8b48c33482d90f1ad1` 的 push/PR CI 与候选四包预检均 SUCCESS，详见 ledger。
 
 问题：KMP framework 和 ComposeUIViewController 不是完整 iOS 应用。Animeko 本地快照 `app/shared/application/src/iosMain/kotlin/ios/AniIos.kt` 提供 Kotlin controller，但 `app/ios/Animeko/ContentView.swift` 仍承载 SwiftUI 容器。不能照搬其入口，也不采用其 CocoaPods、视频 Native、C++/Swift 补丁。
 
@@ -19,3 +19,9 @@
 后续实测：ObjC UIKit 初始化 delegate 触发 MissingInitImp，已用 SDK 实际提供的 `ObjCObjectBase.OverrideInit` 显式导出 init；参照 [Objective-C initializer overriding](https://kotlinlang.org/docs/native-objc-interop.html)。随后真实安装、启动、Compose 画面与截图成功；但切入 Settings 后后台断言失败。保持该断言，改用显式 Kotlin UIWindowSceneDelegate + plist 场景配置，把窗口与 active/background 事件交给场景；完整生命周期重跑仍待结果。没有使用 Swift 或放宽语言政策。
 
 最终本地结果：显式 SceneDelegate 方案在 iOS 27.0 / iPhone 18 Pro Simulator 通过冷启动、Compose ready、真实画面、background → active、终止后第二次冷启动，日志中的两个 PID 分别为 74764/75004。清理完整成功。iosArm64 与 iosSimulatorArm64 executable 均真实编译；109 verifier tests、Android 原完整回归与四 APK 预检全部成功。新 SHA 的 macos-latest ARM64 CI 仍待执行；真机、最低 OS、P0 与分发仍未验证。当前实现代码不依赖本地 Animeko。
+
+远程结果修正：8388fb366 的 push/PR 均在 Simulator smoke 失败；Android 与两个 Native executable 编译通过。PR 在 terminate 时已无进程，push 后台标记缺失且截图显示主屏幕。原 5 分钟滚动日志和累计标记不足以识别每个进程的退出原因，因此不能据此认定 UIKit 或 Simulator 的根因。
+
+修复切片：按 [Apple UIApplicationMain 参数约定](https://developer.apple.com/documentation/uikit/uiapplicationmain(_:_:_:_:)-1yub7)，由 NSProcessInfo 提取包含 executable 的真实参数，在 memScoped 内创建带尾部 null 的 argv，并覆盖整个 UIApplicationMain 生命周期。验证器捕获每次冷启动独立的 stdout/stderr，解析 simctl 返回的 PID，等待每个进程的 Compose/active 标记；后台/恢复必须保持同一存活 PID，严格 terminate 必须成功且进程退出，第二次启动必须是不同 PID。统一日志仅用于诊断，不再用跨进程累计计数证明生命周期成功。失败保留阶段、环境、输出和系统日志。未复制 Animeko 实现，未更改依赖或 runner，未减少任何生命周期或 Android 断言；修复效果必须重新在本机和两条 CI 验证。
+
+修复后本地验证：两 ARM64 executable 编译成功、110 verifier tests 成功、Android 原完整回归与四包预检成功。首次日志重定向到 Documents 触发 launchd_sim 创建进程前 EPERM，已保留失败并改用应用自身沙箱 tmp，清理前复制输出。随后完整 smoke 在 iOS 27.0 成功，前后台 PID=28131、严格终止后第二冷启动 PID=28247，截图已检查，测试设备完整清理。远程修复效果仍待新 SHA CI；不将本地通过解释为原远程故障根因已确认。

@@ -32,4 +32,11 @@ class IosStartupTest {
         assertTrue(runCatching { runtimeIphone(mapOf("supportedDeviceTypes" to emptyList<Any>())) }.isFailure)
         assertTrue(runCatching { runtimeIphone(emptyMap()) }.isFailure)
     }
+
+    @Test fun requiresTheExactBundleAndAPositivePidFromSimulator() {
+        assertEquals(1234L, iosLaunchPid("moe.tarsin.ehviewer: 1234\n", "moe.tarsin.ehviewer"))
+        assertTrue(runCatching { iosLaunchPid("com.apple.Preferences: 1234\n", "moe.tarsin.ehviewer") }.isFailure)
+        assertTrue(runCatching { iosLaunchPid("moe.tarsin.ehviewer: 0\n", "moe.tarsin.ehviewer") }.isFailure)
+        assertTrue(runCatching { iosLaunchPid("Application launch failed", "moe.tarsin.ehviewer") }.isFailure)
+    }
 }
