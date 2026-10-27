@@ -48,8 +48,9 @@ symbols, so independently linked binaries retain their matching diagnostics.
 `combine-release` rejects missing/extra parts, mixed commits/versions, dirty sources
 and checksum/signature mismatches before staging exactly four APKs. All four encrypted
 diagnostic bundles are retained for 90 days before publication.
-Manual runs default to a dry run; checking `publish` requires
-main and successful CI for the same commit. A version already published is
+Manual Release runs are main-only and default to a dry run; checking `publish` requires
+main and successful CI for the same commit. Feature branches use the secret-free
+CI snapshot path, not the production Release workflow. A version already published is
 skipped, tags pointing elsewhere are rejected, and only the separate publication
 job receives write permission. GitHub provides source archives itself.
 Publication explicitly creates a missing tag at the verified source commit,
@@ -61,8 +62,8 @@ Production signing reads `EHVIEWER_KEYSTORE`, `EHVIEWER_STORE_PASSWORD`,
 original keystore at `.private-signing/androidkey.jks` and the three properties
 `storePassword`, `keyAlias`, `keyPassword` in `.private-signing/signing.properties`
 (directory 0700, files 0600). These files must be backed up separately. Never
-replace the production key. Trusted push and main manual CI builds restore the original signing key;
-pull requests and other manual CI builds use the debug signing key;
+replace the production key. Main push and main manual CI builds restore the original signing key;
+feature push, pull requests and other manual CI builds use the debug signing key;
 `apks --test-signing` accepts this only for SNAPSHOT versions. `-Prelease` fails
 without the original external signing material, and final APK verification
 requires the historical certificate digest.

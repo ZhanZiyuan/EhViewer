@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/feature/kmp' && github.head_ref != 'feature/kmp' }}
 
 jobs:
   android:
@@ -107,7 +107,7 @@ jobs:
         if: steps.snapshot.outputs.build == 'true'
         run: tools/verification/build/install/verification/bin/verification architecture
       - name: Restore original signing for trusted builds
-        if: steps.snapshot.outputs.build == 'true' && (github.event_name == 'push' || (github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch')))
+        if: steps.snapshot.outputs.build == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
@@ -150,14 +150,14 @@ jobs:
           PUBLIC_KEY: ${{ vars.DIAGNOSTICS_PUBLIC_KEY }}
         run: |
           args=(prepare-snapshot --sdk "$ANDROID_HOME" --output release-output/snapshot)
-          if [[ "$GITHUB_EVENT_NAME" == push || ("$GITHUB_REF" == refs/heads/main && "$GITHUB_EVENT_NAME" == workflow_dispatch) ]]; then
+          if [[ "$GITHUB_REF" == refs/heads/main && ("$GITHUB_EVENT_NAME" == push || "$GITHUB_EVENT_NAME" == workflow_dispatch) ]]; then
             [[ -n "$PUBLIC_KEY" ]] || { echo "::error::Snapshot diagnostics encryption key is required."; exit 1; }
             args+=(--private-dir "$RUNNER_TEMP/private-snapshot")
           else
             args+=(--test-signing)
           fi
           tools/verification/build/install/verification/bin/verification "${args[@]}" > reports/snapshot.json
-          if [[ "$GITHUB_EVENT_NAME" == push || ("$GITHUB_REF" == refs/heads/main && "$GITHUB_EVENT_NAME" == workflow_dispatch) ]]; then
+          if [[ "$GITHUB_REF" == refs/heads/main && ("$GITHUB_EVENT_NAME" == push || "$GITHUB_EVENT_NAME" == workflow_dispatch) ]]; then
             if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
               [[ $(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha) == "$GITHUB_SHA" ]] || { echo "::error::Snapshot source was superseded."; exit 1; }
             fi
@@ -168,7 +168,7 @@ jobs:
           fi
       - name: Retain encrypted snapshot diagnostics
         id: snapshot_diagnostics
-        if: steps.snapshot.outputs.build == 'true' && (github.event_name == 'push' || (github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'))
+        if: steps.snapshot.outputs.build == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/upload-artifact@v7
         with:
           name: snapshot-diagnostics-${{ github.sha }}
@@ -239,3 +239,14 @@ jobs:
       - name: Remove runner signing material
         if: steps.snapshot.outputs.build == 'true' && (always())
         run: rm -rf .private-signing "$RUNNER_TEMP/private-snapshot" "$RUNNER_TEMP/snapshot-public.pem"
+
+  gate:
+    name: ci/gate
+    if: always()
+    needs: android
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the complete M0 Android, shared, Rust and snapshot checks
+        env:
+          ANDROID_RESULT: ${{ needs.android.result }}
+        run: test "$ANDROID_RESULT" = success
