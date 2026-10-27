@@ -240,13 +240,48 @@ jobs:
         if: steps.snapshot.outputs.build == 'true' && (always())
         run: rm -rf .private-signing "$RUNNER_TEMP/private-snapshot" "$RUNNER_TEMP/snapshot-public.pem"
 
+  ios:
+    name: ci/ios
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require ARM64 macOS
+        run: test "$(uname -m)" = arm64
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build Kotlin-only Simulator application
+        run: ./gradlew :app:ios:packageSimulatorApp :app:ios:linkDebugExecutableIosArm64 :app:ios:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g -Pkotlin.native.jvmArgs=-Xmx3g
+      - name: Build and test lifecycle verifier
+        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - name: Launch, render and exercise the real Simulator app
+        run: tools/verification/build/install/verification/bin/verification ios-startup --app app/ios/build/simulator/EhViewer.app --output reports/ios-startup
+      - name: Retain startup evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-startup-${{ github.sha }}
+          path: reports/ios-startup/
+          if-no-files-found: error
+          retention-days: 14
+
   gate:
     name: ci/gate
     if: always()
-    needs: android
+    needs: [android, ios]
     runs-on: ubuntu-latest
     steps:
-      - name: Require the complete M0 Android, shared, Rust and snapshot checks
+      - name: Require Android regression, snapshot and real iOS startup
         env:
           ANDROID_RESULT: ${{ needs.android.result }}
-        run: test "$ANDROID_RESULT" = success
+          IOS_RESULT: ${{ needs.ios.result }}
+        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success

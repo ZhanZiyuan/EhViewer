@@ -112,7 +112,7 @@ fun verifyArchitecture(): Map<String, Any?> {
     return mapOf(
         "kotlin_files_checked" to checked,
         "language_policy" to languages.sorted(),
-        "android_only" to true,
+        "shared_core_android_only" to true,
         "archive_loader_uses_port" to true,
         "bundled_github_credentials" to false,
         "result" to "PASS",

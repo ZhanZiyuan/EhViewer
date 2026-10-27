@@ -73,21 +73,25 @@ class CiTrustBoundaryTest {
         }
         assertTrue(workflow("releases").contains("(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||"))
         assertTrue(ci.contains("cancel-in-progress: ${'$'}{{ github.ref != 'refs/heads/feature/kmp' && github.head_ref != 'feature/kmp' }}"))
-        assertTrue(ci.contains("name: ci/gate\n    if: always()\n    needs: android"))
+        assertTrue(ci.contains("name: ci/gate\n    if: always()\n    needs: [android, ios]"))
         assertTrue(ci.contains("run: test \"${'$'}ANDROID_RESULT\" = success"))
     }
 
     @Test fun gateRejectsSkippedFailedAndIncompleteChecks() {
         val script = workflow("ci").substringAfter("  gate:\n").substringAfter("        run: ").trim()
-        for (result in listOf("success", "failure", "cancelled", "skipped", "neutral", "pending", "")) {
-            val process = ProcessBuilder("bash", "-c", script).apply {
-                environment()["ANDROID_RESULT"] = result
-            }.start()
-            if (!process.waitFor(10, TimeUnit.SECONDS)) {
-                process.destroyForcibly().waitFor()
-                error("Gate regression timed out: $result")
+        for (target in listOf("ANDROID_RESULT", "IOS_RESULT")) {
+            for (result in listOf("success", "failure", "cancelled", "skipped", "neutral", "pending", "")) {
+                val process = ProcessBuilder("bash", "-c", script).apply {
+                    environment()["ANDROID_RESULT"] = "success"
+                    environment()["IOS_RESULT"] = "success"
+                    environment()[target] = result
+                }.start()
+                if (!process.waitFor(10, TimeUnit.SECONDS)) {
+                    process.destroyForcibly().waitFor()
+                    error("Gate regression timed out: $result")
+                }
+                assertEquals(result, result == "success", process.exitValue() == 0)
             }
-            assertEquals(result, result == "success", process.exitValue() == 0)
         }
     }
 }

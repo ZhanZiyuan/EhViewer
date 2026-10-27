@@ -6,6 +6,7 @@ fun main(args: Array<String>) {
     fun tools(): AndroidTools = AndroidTools(options.path("--sdk", System.getenv("ANDROID_HOME")))
     val result: Any = when (args[0]) {
         "architecture" -> verifyArchitecture()
+        "ios-startup" -> iosStartup(options.path("--app"), options.path("--output"))
         "bytecode" -> verifyBytecode()
         "native-sources" -> verifyNativeSources()
         "apks" -> {

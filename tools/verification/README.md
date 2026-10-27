@@ -1,9 +1,14 @@
-# Android verification tools
+# Platform verification tools
 
 This independent Kotlin/JVM build contains build and regression tools, not another
 application platform. Run it with the repository Gradle Wrapper and JDK 25; its
 bytecode target is Java 17. It uses Gradle's bundled Kotlin DSL and Groovy JSON
 library. No Python installation or additional shell helper is required.
+
+The M1 `ios-startup --app PATH --output NEW_DIRECTORY` command checks a real
+Kotlin-only Simulator app and its cold-start/background/foreground lifecycle in
+an owned temporary device. See [KMP build and run](../../docs/kmp/build-and-run.md)
+for prerequisites, scope and evidence. It never substitutes for signed-device tests.
 
 ```sh
 ./gradlew -p tools/verification check installDist

@@ -1,6 +1,6 @@
 # Animeko → EhViewer 只读参考审计
 
-审计日期：2026-10-27（Asia/Shanghai）。状态：M0 / IN_PROGRESS。执行依据为用户要求及 PRD v2.2；PRD §2.2 中“本次只编写 PRD”是附件的编写背景，不替代用户本次明确授权的真实实施。
+审计日期：2026-10-27（Asia/Shanghai）。M0 审计提交与门禁已通过，后续参考项按阶段追加。执行依据为用户要求及 PRD v2.2；PRD §2.2 中“本次只编写 PRD”是附件的编写背景，不替代用户本次明确授权的真实实施。
 
 ## 来源与可信度
 
@@ -67,3 +67,5 @@
 EhViewer `LICENSE` 为 GPLv3；参考 `LICENSE.txt` 和所阅源文件的版权头声明 AGPLv3。这里只形成独立的结构分析与接口计划，不作许可证可互换的结论。精确代码复用必须先核实逐文件及依赖的许可、作者和义务，再取得用户单独许可；当前没有此类复用。
 
 后续每个参考设计变更需在本表或 ADR 追加：参考相对路径、EhViewer 实际修改路径、行为差异、许可处理及精确 CI SHA/URL。本地参考目录不是任何 Gradle、Cargo、CI 或打包任务的输入。
+
+M1-001 实际落点：`app/ios/build.gradle.kts`、`app/ios/src/commonMain/kotlin/com/hippo/ehviewer/ios/StartupContent.kt`、`app/ios/src/iosMain/kotlin/com/hippo/ehviewer/ios/Main.kt`、`tools/verification/src/main/kotlin/verification/IosStartup.kt`、`ci.yml`。仅借鉴 AniIos 与 ContentView 所体现的平台入口/共享 controller 边界；本实现直接由 Kotlin UIApplicationMain 和 SceneDelegate 启动，未采用 Swift 容器或搬用源码。初始失败、修复与最终本地生命周期通过记录见 ADR 0001 / ledger；独立切片远程 CI 尚未执行，不能据此宣称 iOS P0 已交付。
