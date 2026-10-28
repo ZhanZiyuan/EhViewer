@@ -1,5 +1,6 @@
 import java.net.URI
 import java.security.MessageDigest
+import java.util.Base64
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
@@ -191,8 +192,13 @@ val releaseVersion = providers.fileContents(androidBuild).asText.map {
     Regex("val releaseVersion = \"([^\"]+)\"").find(it)?.groupValues?.get(1) ?: error("Missing authoritative version")
 }
 
-val ffiLibrary = providers.gradleProperty("ffiLibrary")
-val ffiOutput = providers.gradleProperty("ffiOutput")
+// Keep every process/launcher boundary ASCII-safe; decode the real UTF-8 paths inside the caller.
+val ffiLibrary = providers.gradleProperty("ffiLibraryBase64").orElse(
+    providers.gradleProperty("ffiLibrary").map { Base64.getEncoder().encodeToString(it.toByteArray(Charsets.UTF_8)) },
+)
+val ffiOutput = providers.gradleProperty("ffiOutputBase64").orElse(
+    providers.gradleProperty("ffiOutput").map { Base64.getEncoder().encodeToString(it.toByteArray(Charsets.UTF_8)) },
+)
 tasks.register<JavaExec>("rustCapiProbe") {
     group = "verification"
     description = "Call the real Rust C ABI from a native desktop JVM"
@@ -201,7 +207,7 @@ tasks.register<JavaExec>("rustCapiProbe") {
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     argumentProviders.add(
         CommandLineArgumentProvider {
-            listOf("--library", ffiLibrary.get(), "--output", ffiOutput.get())
+            listOf("--library-base64", ffiLibrary.get(), "--output-base64", ffiOutput.get())
         },
     )
 }

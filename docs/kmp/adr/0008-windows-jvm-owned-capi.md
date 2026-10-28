@@ -1,6 +1,6 @@
 # ADR 0008：Windows ARM64 JVM 的 Rust C ABI 所有权调用
 
-状态：本地FFM/工具/Android/桌面回归已验证，Windows阳性待新SHA CI；本机iOS27系统boot阻塞单独保留。前置47ebcc959双事件全部九job/gate及全部实际工件SUCCESS已记录ledger和同一英文Draft PR后开始。M1整体IN_PROGRESS，应用版本冻结1.15.10 / 180074。
+状态：7f1afefe7的Windows JVM双事件参数传输失败，独立修复本地验证通过、待新SHA CI；Windows FFI阳性尚未取得。本机iOS27系统boot阻塞单独保留。前置47ebcc959双事件全部九job/gate及全部实际工件SUCCESS已记录ledger和同一英文Draft PR后开始。M1整体IN_PROGRESS，应用版本冻结1.15.10 / 180074。
 
 ## 独立范围
 
@@ -20,7 +20,9 @@
 
 Native构建依赖与版本保持ADR0007，复用同一干净源SHA对应的Core报告和实际DLL摘要。JDK ZIP先核对固定SHA，再以独占创建文件解包，拒绝目录逃逸、drive/backslash路径、既有目标和超预算内容。回归验证路径越界与保留既有所有者文件，不把ZIP测试fixture当作可运行JDK。
 
-CLI用固定JDK直接运行原Gradle Wrapper JAR，避免cmd二次解析Unicode/空格参数。FFM源码只在Desktop模块以JDK25编译，Java17字节码目标保留；原验证工具仍可由Windows镜像的原生JDK21启动，不加入FFM编译时依赖。子进程环境只对该调用生效，JVM不继承Core构建临时添加的vcpkg DLL路径。
+CLI用固定JDK直接运行原Gradle Wrapper JAR，避免cmd二次解析。7f1afefe7真实CI证明仅用ProcessBuilder仍不足：Java原生编码Cp1252，调用器收到的Unicode目录变为`??`并在Path解析失败，尚未到达Rust。独立修复在helper→Gradle与Gradle→调用器两跳均用UTF-8/Base64 ASCII传路径，在调用器内严格解码并使用原真实Unicode目录，保留宽字符加载/真实路径核对。普通本地Gradle路径属性由任务编码；不修改系统代码页、目录或测试。[JDK25启动器规范](https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html)亦说明参数文件有系统编码约束，此处不假定所有启动边界都保持Unicode。失败日志、实际DLL/输入许可与完整门禁继续保留。
+
+FFM源码只在Desktop模块以JDK25编译，Java17字节码目标保留；原验证工具仍可由Windows镜像的原生JDK21启动，不加入FFM编译时依赖。子进程环境只对该调用生效，JVM不继承Core构建临时添加的vcpkg DLL路径。
 
 ## 真正调用与证据
 

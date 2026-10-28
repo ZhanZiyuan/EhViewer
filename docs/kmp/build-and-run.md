@@ -117,3 +117,5 @@ tools\verification\build\install\verification\bin\verification.bat windows-jvm-f
 ```
 
 工具重新下载并校验固定Microsoft ARM64 JDK，构建既有C API动态库，在含空格/Unicode的自建目录中运行真实原生JVM调用器。2,000次不同输入、复制/错误/释放与active0均须实际通过，保留DLL、JDK输入/许可、原生证明、编译/调用日志和receipt。原Core39项/fmt/Clippy及全部原job不减少；新Windows阳性尚待CI。本机Mac的同一通用FFM调用器已真实通过，不替代Windows加载器、窗口或最终ZIP验证，见ADR0008。
+
+7f1afefe7双事件真实失败在Unicode目录通过JVM参数传输时变为`??`，尚未调用Rust；固定JDK原生编码为Cp1252。独立修复以UTF-8/Base64 ASCII在helper→Gradle→调用器传路径，再在调用器内严格解码；真实目录和宽字符加载保持，`path_transport`及实际加载路径须读回核对。普通本地Gradle `ffiLibrary`/`ffiOutput`属性继续支持；Windows helper使用对应Base64属性。失败记录与新SHA完整门禁见ledger。

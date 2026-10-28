@@ -3,6 +3,7 @@ package verification
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
+import java.util.Base64
 import java.util.Properties
 import java.util.zip.ZipFile
 import kotlin.io.path.createDirectories
@@ -122,10 +123,12 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
     val evidence = output.resolve("native-libraries").createDirectories()
     Files.copy(library, evidence.resolve(library.fileName))
     val caller = output.resolve("caller")
-    // Invoke the original wrapper JAR directly, preserving Unicode/spaces without cmd.exe parsing.
+
+    // The native Windows launcher can still use Cp1252. Keep both JVM hops ASCII-only.
+    fun encoded(path: Path) = Base64.getEncoder().encodeToString(path.toString().toByteArray(Charsets.UTF_8))
     capture(
         "jvm-probe.txt", jdk.resolve("bin/java.exe"), "-Dorg.gradle.appname=gradlew", "-jar", root.resolve("gradle/wrapper/gradle-wrapper.jar"),
-        "-p", root.resolve("app/desktop"), "rustCapiProbe", "spotlessCheck", "-PffiLibrary=$library", "-PffiOutput=$caller",
+        "-p", root.resolve("app/desktop"), "rustCapiProbe", "spotlessCheck", "-PffiLibraryBase64=${encoded(library)}", "-PffiOutputBase64=${encoded(caller)}",
         "--console=plain", "--no-daemon", "--max-workers=1", "-Dorg.gradle.parallel=false", "-Dorg.gradle.jvmargs=-Xmx2g", "-Dorg.gradle.java.home=$jdk",
         environment = mapOf("JAVA_HOME" to jdk.toString(), pathKey to "${jdk.resolve("bin")};${System.getenv(pathKey)}"),
     )
@@ -133,6 +136,7 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
     require(proof.getProperty("result") == "PASS" && proof.getProperty("architecture") == "aarch64" && proof.getProperty("os").startsWith("Windows")) { "Caller was not a real Windows ARM64 JVM" }
     require(proof.getProperty("java_version") == "25.0.5.0.2" && Path.of(proof.getProperty("java_home")).toRealPath() == jdk.toRealPath()) { "Caller used a different JVM" }
     require(Path.of(proof.getProperty("library")).toRealPath() == library.toRealPath()) { "Caller loaded a different DLL" }
+    require(proof.getProperty("path_transport") == "utf8-base64") { "Caller did not preserve the explicit UTF-8 path transport" }
     require(proof.getProperty("rust_hash_results") == "2000" && proof.getProperty("rust_active_results") == "0" && proof.getProperty("abi_version") == "1") { "Incomplete real Rust ownership calls" }
     for (name in listOf("undersized_copy", "stale_handle", "double_free", "library_closed")) require(proof.getProperty(name) == "PASS") { "Missing FFI check: $name" }
     val result = mapOf(

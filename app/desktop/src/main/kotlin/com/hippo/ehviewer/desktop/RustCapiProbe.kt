@@ -15,6 +15,7 @@ import java.lang.invoke.MethodHandle
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
+import java.util.Base64
 import java.util.Properties
 
 private interface CapiSymbols : AutoCloseable {
@@ -155,10 +156,11 @@ private fun probeCapi(symbols: CapiSymbols): Int {
 
 /** M1 standalone JVM caller; the packaged Compose window is a separate subsequent slice. */
 fun main(arguments: Array<String>) {
-    require(arguments.size == 4 && arguments[0] == "--library" && arguments[2] == "--output") { "Expected --library <native-library> --output <fresh-directory>" }
+    require(arguments.size == 4 && arguments[0] == "--library-base64" && arguments[2] == "--output-base64") { "Expected --library-base64 <UTF-8 path> --output-base64 <UTF-8 path>" }
     require(ADDRESS.byteSize() == 8L) { "This C ABI probe requires a 64-bit JVM" }
-    val library = Path.of(arguments[1]).toRealPath()
-    val output = Path.of(arguments[3]).toAbsolutePath().normalize()
+    fun path(argument: String) = Path.of(Base64.getDecoder().decode(argument).decodeToString(throwOnInvalidSequence = true))
+    val library = path(arguments[1]).toRealPath()
+    val output = path(arguments[3]).toAbsolutePath().normalize()
     require(!Files.exists(output)) { "Use a fresh FFI report directory" }
     val (completed, loaded) = openCapi(library).use { symbols -> probeCapi(symbols) to symbols.loadedPath }
     val proof = Properties().apply {
@@ -167,6 +169,8 @@ fun main(arguments: Array<String>) {
         setProperty("os", System.getProperty("os.name"))
         setProperty("java_version", System.getProperty("java.version"))
         setProperty("java_home", System.getProperty("java.home"))
+        setProperty("path_transport", "utf8-base64")
+        setProperty("native_encoding", System.getProperty("native.encoding", "unknown"))
         setProperty("library", loaded.toString())
         setProperty("abi_version", "1")
         setProperty("rust_hash_results", completed.toString())
