@@ -204,7 +204,7 @@ Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读
 - 两条Intel job122631403116/122631416255亦均SUCCESS。实际完整DMG工件12792697772/12792429857已下载并校验官方ZIP digest、包自身SHA与报告一致：push=`6d1b6ae6a8b8ce80b93653bf7b3a61429432b9e2562286445d55395f219c3d97`，PR=`6719e9f5275d1c9eb6da78ff9ef59d7f1ca159fc0d40de567e1be805b1014529`。各自干净源码精确匹配head/test-merge、1.15.10、真实32个x86_64 Native/依赖、六份安装后许可证原文摘要、两次包内runtime/Compose各100次Core调用、同库4,170项+13样例全部PASS。
 - 本切片**GATE_PASSED**，先将以上证据记录同一PR后才开始下一独立改动。M1整体仍IN_PROGRESS；物理Intel、Linux/Windows ARM64 runtime、最低OS、完整P0/依赖许可证与SBOM、开发签名设备、11包和M2–M8仍未验收，稳定版本继续冻结。
 
-## M1-010：原生Intel消费ARM构建的同一DMG（进行中）
+## M1-010：原生Intel消费ARM构建的同一DMG（GATE_PASSED）
 
 前置3c8a2f285全部双事件门禁/实际工件SUCCESS写ledger和同一Draft PR后，新增独立必选消费job及Kotlin命令。产品仍只在macos-latest ARM64构建；macos-26-intel只下载同一运行的同SHA DMG/生产者报告，验证干净精确源码、ARM/Rosetta生产环境及实际包摘要，再执行完整原安装/许可证/Native/两次包内runtime/同库回归。原releases矩阵/业务/版本不变，CI仍无生产密钥和只读权限。设计与官方标签依据见ADR0004。
 
@@ -212,3 +212,22 @@ Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读
 - 本地工具格式/编译/check/installDist SUCCESS（1m18s），116 tests/0失败错误跳过；新增来源边界用例拒绝错误源码SHA/脏源/失败生产者/错误主机或Rosetta/目标/包摘要。Gate新增第五依赖，35次门禁状态检查均按规则验证，原测试不删减。完整Android和原ARM/Rosetta路径回归正在进行；真正原生Intel阳性尚待新SHA必选CI，未提交/推送该切片。
 - 最终本地原完整Android tests/lint/build SUCCESS（1m29s，319 tasks，44执行/275复用）；原Native/diagnostics/Java17/身份/测试签名/JNI/ABI/16KiB及真实四包snapshot均SUCCESS，1.15.10-SNAPSHOT/180074。原产品DMG构建/lint SUCCESS（27s，20任务复用已验证输出），产品源码未改；新验证器对实际包重跑原ARM路径SUCCESS，明确记录arm64/rosetta/Apple M4/1/1，六份材料、32 Native/依赖、两次包内runtime/Compose各100次Core调用/1个frame、同库4,170项+13样例全部通过。报告source=3c8a2f285+dirty，本机不报告Intel阳性。
 - 新增测试job只下载并校验ARM工件，编译验证工具；没有产品/Rust构建步骤。消费报告将构建工具来源标为已校验的ARM报告，保留真实消费机环境。原release四段/矩阵/生产材料隔离与正式版本未改，actionlint和diff检查SUCCESS。新SHA必须独立push并通过新增必选Intel job及全部原push/PR门禁，才可继续。
+- Commit：`be27ac67ad90ea189ef1a5b951d42d432052cdb9`，`test(desktop): verify ARM-built DMG on native Intel`；2026-10-28 13:06 +0800单独push。[Push CI40636080918](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40636080918)、[PR CI40636086745](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40636086745)已触发，尚待原全部检查与新增必选Intel消费job真实成功。PR test-merge=`a339f0e832b59c88ff4db40ef82c0ed329822f88`，base仍423b8af13632896b55780783b54b5f720ec4c9dd，Draft=true。当前不声明原生Intel已通过，不开始下一功能。
+- 本轮四host实际工件12793995864/12793772371/12793797141/12793703772已下载并核对官方ZIP摘要，source=be27ac67a/a339f0e83、dirty=false，JVM/Native实际CPU与固定Rust对应，4,170项+13样例均PASS。对应push Linux122643250163/macOS ARM64 122643251137、PR Linux122643268248/macOS ARM64 122643268272的源/结果均保留；这不是原生Intel消费阳性。
+- Push iOS122643249691已SUCCESS，真实启动12794255823及Rust Apple12794161160工件已下载/官方ZIP摘要一致：干净be27ac67a、iOS26.5/iPhone17Pro/1.15.10/180074，PID18825→19326，两次2000/live0、完整生命周期/清理PASS，两target生成头SHA均c922f090b75be5774d570b23a2c3bae8429453d5be453a836eaf95a67303345a。其余原检查/新增Intel消费者/总gate仍需真实成功。
+- PR iOS实际启动12794491014及Rust Apple12794885130工件亦已下载、官方ZIP摘要一致：干净a339f0e83、同runtime/device/冻结版本，PID39030→40384，两次2000/live0、完整生命周期/清理PASS，生成头与push一致。新原生Intel消费阳性仍未取得，不据既有平台成功提前放行。
+- 本轮两Android实际报告12794575832/12794198282已完整下载，官方ZIP摘要及干净be27ac67a/a339f0e83源、1.15.10-SNAPSHOT/180074、测试签名、精确四ABI与逐包manifest SHA全部相符。原保障保留；ARM生产者、原生Intel消费者及总gate尚未完成，不提前放行。
+- PR40636086745已最终**SUCCESS**，API status=completed/event=pull_request/head_sha=be27ac67ad90ea189ef1a5b951d42d432052cdb9已核对。原生Intel job122652206101实际SUCCESS，消费工件12795245201和ARM生产工件12794279110均已下载、官方ZIP摘要核验一致。干净test-merge a339f0e83、Intel Core i7-8700B/macOS26.6.1，ARM/Rosetta标志均为空（未知OID），execution_mode=native-intel；包SHA=`81efe58232c97918ece4577758a0c7cabd539bf4765df50e62562c8422038406`与ARM生产者完全一致，生产报告SHA=`26edacae622996f0d4c07c7f4fddae456e536d2f8476ca5ac4e22e7be48aaeb3`也逐字节匹配。六份材料、32 Native/依赖、两次包内runtime/Compose各100次Core调用/1个frame、同库4,170项+13样例全部PASS；构建工具来源明确为ARM报告。首次取得原生Intel阳性，仍须push完整七job成功，不开始下一功能。
+- 最终：[Push40636080918](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40636080918) / [PR40636086745](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40636086745)均**SUCCESS**，API status=completed/event=push/pull_request/head_sha=be27ac67ad90ea189ef1a5b951d42d432052cdb9精确核对；两事件全部七job真实SUCCESS，gate122657460955/122653921983均成功。base/test-merge/Draft状态再次核对不变。
+- Push原生Intel job122655755954已SUCCESS，实际消费工件12795202332与ARM工件12794819020完整下载、官方ZIP摘要校验一致。干净be27ac67a、同Intel Core i7-8700B/macOS26.6.1，真实native-intel、无ARM/Rosetta；同包SHA=`0d831ba72df66d0fca0f1428d509657af3f0488471a873aad2a1e5b20b632479`，ARM报告SHA=`e38a9a9fedd6e99abe79409314f8cd1e1192134e56edc23972f6bb2c2796ff08`均匹配。两个事件的生产/消费32个Native逐路径/摘要/依赖、六份材料、两次包内runtime/100次Core/实际frame及4,170项+13样例逐项比对全部相等；产品仅ARM构建，Intel没有产品/Rust构建。
+- 结论：本切片**GATE_PASSED**，原生Intel的当前系统技术证明已完成；最低OS、签名/公证、完整P0仍NOT_VERIFIED。先把最终结果同步同一Draft PR，再开始M1 Linux aarch64 runtime独立切片。M1整体仍IN_PROGRESS，Windows ARM64已有真实Core编译失败待修复，不提前进入M2或升版。
+
+## M1-011：Linux aarch64包内JVM/Skiko/Rust运行时（LOCAL_VALIDATION）
+
+前置be27ac67a全部双事件七job/gate及实际工件SUCCESS写入ledger和同一Draft PR后开始。仅扩展原Desktop探针到原生Linux ARM64应用目录，复用原窗口、完整JNI/Core和六份材料；Kotlin检查ELF、动态依赖、固定Skiko、实际包内JVM/窗口/调用数与同库回归。新增指定ubuntu-24.04-arm必选job，原检查保留，gate六依赖/八job全部必须success。原releases/Android业务/稳定版本不变；设计、来源与未验收边界见ADR0005。
+
+- 本地工具格式/编译/check/installDist SUCCESS（1m29s），117 tests/0失败错误跳过；ELF错误CPU/格式/字节序/类型/截断按预期拒绝。新Linux命令在实际macOS上按预期拒绝且未创建报告目录，该负向不算Linux运行阳性。Linux ARM64完整JNI/Core `cargo check --locked --features jvm --target aarch64-unknown-linux-gnu` SUCCESS（2.95s），仅编译检查，不算链接/运行通过。
+- 原Intel DMG真实重建/lint SUCCESS（1m54s，22 tasks，12执行/10复用），原macOS真实启动/归档回归和完整Android检查正在执行。Linux ARM64第三方Skiko原生文件的实际NEEDED含libGL/libX11/fontconfig/libEGL/libstdc++/libm/libc和AArch64 loader，CI显式安装对应图形依赖，未假定只靠JAR即可启动。尚未提交/推送，不宣称Linux阳性。
+- 原Intel DMG实际安装/启动回归已SUCCESS，SHA=`d8a8510de5cabf1bcc5d33c81634d73e2e6780035b33365cd5a5a59337614e44`，32 Native/依赖、六份材料、两次包内JVM/Compose各100次Core/1个frame与4,170项+13样例均通过，实际运行版本1.15.10。原完整Android tests/lint/build SUCCESS（1m46s，319 tasks，46执行/273复用），原APK/Native/diagnostics/Java17/JNI/ABI/16KiB及真实精确四包snapshot全部SUCCESS，1.15.10-SNAPSHOT/180074/测试签名。
+- 官方JDK元数据实际确认25.0.5+8.0.LTS/Linux/aarch64存在，未把元数据或交叉编译当作运行成功。审查补充对目录符号链接也执行出界拒绝，工具最终复验正在执行。以上仍为be27ac67a+dirty本地源，下一SHA必须独立push并取得双事件全部八job和实际Linux阳性工件，才能继续。
+- 最终符号链接边界更新后工具格式/编译/check/installDist全部SUCCESS，117 tests/0失败错误跳过；暂存源码语言/architecture、actionlint和diff检查均SUCCESS。原Intel/Android/四包实际回归证据不变；没有修改Cargo.lock、原releases.yml、Android业务或稳定版本。LOCAL_VALIDATION完成，Linux真实阳性仍须新SHA必选CI，不能据本机编译/负向检查放行。

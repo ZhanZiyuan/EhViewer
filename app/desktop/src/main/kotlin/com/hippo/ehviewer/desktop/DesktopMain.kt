@@ -21,14 +21,16 @@ import kotlinx.coroutines.withTimeout
 
 /** A real M1 window/native runtime probe. Shared reader and desktop P0 arrive in M5. */
 fun main(arguments: Array<String>) {
-    check(System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64"))
+    val macIntel = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")
+    val linuxArm = System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") == "aarch64"
+    check(macIntel || linuxArm) { "This M1 probe supports macOS Intel and Linux ARM64" }
     val report = when {
         arguments.isEmpty() -> null
         arguments.size == 2 && arguments[0] == "--m1-smoke" -> Path.of(arguments[1])
         else -> error("Expected --m1-smoke <fresh-report-directory>")
     }
     val nativeRoot = Path.of(checkNotNull(System.getProperty("compose.application.resources.dir")))
-    System.load(nativeRoot.resolve("libehviewer_rust.dylib").toAbsolutePath().toString())
+    System.load(nativeRoot.resolve("libehviewer_rust.${if (macIntel) "dylib" else "so"}").toAbsolutePath().toString())
     val sample = Files.createTempFile("ehviewer-m1-core-", ".txt")
     var completed = 0
     try {
@@ -67,6 +69,7 @@ fun main(arguments: Array<String>) {
                         setProperty("architecture", System.getProperty("os.arch"))
                         setProperty("java_version", System.getProperty("java.version"))
                         setProperty("java_home", System.getProperty("java.home"))
+                        setProperty("application_version", System.getProperty("jpackage.app-version"))
                         setProperty("rust_hash_results", completed.toString())
                         setProperty("compose_frames", frames.get().toString())
                         setProperty("window_showing", window.isShowing.toString())

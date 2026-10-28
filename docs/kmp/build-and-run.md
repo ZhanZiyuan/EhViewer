@@ -55,7 +55,7 @@ tools/verification/build/install/verification/bin/verification desktop-intel-dmg
 
 `--dmg`接受真实DMG文件或恰有一个DMG的目录。打包自动构建同一固定WebP源码和Rust JNI，验证Skiko原始SHA并选取Intel条目；原依赖缓存保持只读。验证器检查真实UDIF/全部包内Native和JAR内架构、临时安装、两次包内JVM/Compose/Rust启动、逐Native动态依赖及同库4,170项/13样例。临时挂载/安装由工具拥有并清理，仓库GPL许可继续保留。运行时是jlink镜像及真正launcher，镜像无需另带java命令；完整JNI测试由同版本Intel测试JDK运行，包内launcher自身独立执行实测Core调用。
 
-这仍是M1探针，不是Desktop P0。物理Intel硬件、最低系统和签名/公证明确未验收；内部DMG名不代表M6最终11包已实现。设计、上游双架构JAR问题与失败/修复见ADR0004和ledger。
+这仍是M1探针，不是Desktop P0。be27ac67a已在macOS26.6.1原生Intel上消费ARM构建的同一DMG并通过双事件检查；最低系统和签名/公证仍未验收。内部DMG名不代表M6最终11包已实现。设计、上游双架构JAR问题与失败/修复见ADR0004和ledger。
 
 安装后的应用应在`Contents/app/resources/licenses/`保留项目GPL、当前固定WebP的COPYING/PATENTS/AUTHORS及Skiko的LICENSE/NOTICE。验证器在挂载/安装后逐一核对六份原文摘要，缺失或被修改即失败；来源见同目录的元数据及ADR0004。这是直接Native材料的入包检查，完整依赖许可证/SBOM仍待M4/M8，不因该检查通过而标记全部完成。
 
@@ -67,4 +67,16 @@ tools/verification/build/install/verification/bin/verification desktop-intel-dmg
 tools/verification/build/install/verification/bin/verification desktop-intel-native --dmg <ARM-artifact-dmg-directory> --producer-report <ARM-artifact-intel-dmg.json> --output reports/<fresh-native-report>
 ```
 
-生产者报告必须是当前精确源码SHA的干净成功结果，ARM/Rosetta/目标和包本身SHA均匹配；下载路径位于已忽略的reports内，CI源码仍须干净。消费测试不接受ARM/Rosetta冒充原生Intel。实际源码、构建工具来源、消费环境、包摘要与全部运行检查分别记录；物理Intel的PASS只能来自该机器上完整实测成功。现阶段新增验证尚待新SHA CI，本机ARM负向或Rosetta通过不算Intel阳性。
+生产者报告必须是当前精确源码SHA的干净成功结果，ARM/Rosetta/目标和包本身SHA均匹配；下载路径位于已忽略的reports内，CI源码仍须干净。消费测试不接受ARM/Rosetta冒充原生Intel。实际源码、构建工具来源、消费环境、包摘要与全部运行检查分别记录；物理Intel的PASS只能来自该机器上完整实测成功。be27ac67a双事件已完整实测成功，证据见ledger；本机ARM负向或Rosetta通过不算Intel阳性。
+
+## Linux aarch64包内运行时
+
+仅在原生Linux ARM64、对应JDK25.0.5及固定Rust工具链执行。CI使用ubuntu-24.04-arm，安装CMake/libarchive开发库、binutils、Xvfb及实际图形/字体依赖；WebP由Kotlin task从原固定源码/摘要构建。原Android/Intel路径不依赖Linux构建机。
+
+```text
+./gradlew :app:desktop:createDistributable :app:desktop:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g
+./gradlew -p tools/verification check installDist --console=plain --no-daemon
+xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-linux-arm64 --image app/desktop/build/compose/binaries/main/app/EhViewer --output reports/<fresh-linux-report>
+```
+
+验证器检查临时安装后的每个ELF/JAR Native、实际动态依赖、固定Skiko摘要、六份许可证、配置与运行时版本、两次包内JVM/Compose/Rust启动和同库4,170项/13归档样例。临时安装自动删除，报告保留；任何缺库、错误CPU/外部JVM或绘制失败均拒绝。该命令验证应用目录，不是AppImage；Linux阳性尚待本切片新SHA的真实CI。最低OS、完整P0及最终AppImage仍未验收，见ADR0005。

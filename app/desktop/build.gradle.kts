@@ -13,8 +13,10 @@ plugins {
     alias(libs.plugins.spotless)
 }
 
-/** M1 Intel packaging probe. Third-party sources and all outputs stay in the build tree. */
-abstract class BuildIntelNative : DefaultTask() {
+/** M1 desktop runtime probes. Third-party sources and all outputs stay in the build tree. */
+abstract class BuildDesktopNative : DefaultTask() {
+    @get:Input abstract val target: Property<String>
+
     @get:Input abstract val webpCommit: Property<String>
 
     @get:Input abstract val webpSha256: Property<String>
@@ -31,7 +33,14 @@ abstract class BuildIntelNative : DefaultTask() {
 
     @TaskAction
     fun build() {
-        check(System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")) { "Use the real macOS Intel JDK for this packaging spike" }
+        val mac = target.get() == "x86_64-apple-darwin"
+        check(
+            if (mac) {
+                System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")
+            } else {
+                target.get() == "aarch64-unknown-linux-gnu" && System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") == "aarch64"
+            },
+        ) { "Use the matching native Linux ARM64 or macOS Intel JDK for this runtime spike" }
         val repo = repository.get().asFile
         val logs = evidence.get().asFile.also { it.mkdirs() }
         fun run(name: String, directory: File, vararg arguments: String) {
@@ -40,7 +49,7 @@ abstract class BuildIntelNative : DefaultTask() {
                 .redirectErrorStream(true).redirectOutput(log).start()
             if (!process.waitFor(15, TimeUnit.MINUTES)) {
                 process.destroyForcibly().waitFor()
-                error("Intel native command timed out: $name")
+                error("Desktop native command timed out: $name")
             }
             check(process.exitValue() == 0) { "$name failed: ${log.readText()}" }
         }
@@ -59,7 +68,8 @@ abstract class BuildIntelNative : DefaultTask() {
         val webpBuild = temporaryDir.resolve("webp-build")
         run(
             "configure", repo, "cmake", "-S", temporaryDir.resolve("libwebp-${webpCommit.get()}").absolutePath,
-            "-B", webpBuild.absolutePath, "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_OSX_ARCHITECTURES=x86_64",
+            "-B", webpBuild.absolutePath, "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+            *if (mac) arrayOf("-DCMAKE_OSX_ARCHITECTURES=x86_64") else emptyArray(),
             "-DBUILD_SHARED_LIBS=OFF", "-DWEBP_BUILD_ANIM_UTILS=OFF", "-DWEBP_BUILD_CWEBP=OFF",
             "-DWEBP_BUILD_DWEBP=OFF", "-DWEBP_BUILD_VWEBP=OFF", "-DWEBP_BUILD_WEBPINFO=OFF",
             "-DWEBP_BUILD_WEBPMUX=OFF", "-DWEBP_BUILD_EXTRAS=OFF",
@@ -67,12 +77,15 @@ abstract class BuildIntelNative : DefaultTask() {
         run("webp", repo, "cmake", "--build", webpBuild.absolutePath, "--target", "webp", "webpdemux", "--parallel", "4")
         run(
             "rust", repo, "cargo", "rustc", "--manifest-path", repo.resolve("native/rust/Cargo.toml").absolutePath,
-            "--locked", "--lib", "--features", "jvm", "--crate-type", "cdylib", "--target", "x86_64-apple-darwin",
-            "--", "-L", "native=${webpBuild.absolutePath}", "-C", "link-arg=-Wl,-install_name,@rpath/libehviewer_rust.dylib",
+            "--locked", "--lib", "--features", "jvm", "--crate-type", "cdylib", "--target", target.get(),
+            "--", "-L", "native=${webpBuild.absolutePath}", "-C",
+            if (mac) "link-arg=-Wl,-install_name,@rpath/libehviewer_rust.dylib" else "link-arg=-Wl,-soname,libehviewer_rust.so",
         )
-        val destination = resources.get().asFile.resolve("macos-x64/libehviewer_rust.dylib")
+        val platform = if (mac) "macos-x64" else "linux-arm64"
+        val library = "libehviewer_rust.${if (mac) "dylib" else "so"}"
+        val destination = resources.get().asFile.resolve("$platform/$library")
         destination.parentFile.mkdirs()
-        repo.resolve("native/rust/target/x86_64-apple-darwin/debug/libehviewer_rust.dylib").copyTo(destination, overwrite = true)
+        repo.resolve("native/rust/target/${target.get()}/debug/$library").copyTo(destination, overwrite = true)
         // Keep notices in the installed app, independently of the DMG's GPL license prompt.
         val notices = resources.get().asFile.resolve("common/licenses")
         check(!notices.exists() || notices.deleteRecursively()) { "Cannot replace generated notices" }
@@ -141,7 +154,9 @@ val selectIntelSkiko = tasks.register<SelectIntelSkiko>("selectIntelSkiko") {
     destination.set(layout.buildDirectory.file("native-dependencies/skiko-awt-runtime-macos-x64-${libs.versions.skiko.get()}.jar"))
 }
 
-val prepareIntelNative = tasks.register<BuildIntelNative>("prepareIntelNative") {
+val intelMac = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")
+val prepareDesktopNative = tasks.register<BuildDesktopNative>("prepareDesktopNative") {
+    target.set(if (System.getProperty("os.name") == "Linux") "aarch64-unknown-linux-gnu" else "x86_64-apple-darwin")
     webpCommit.set("4fa21912338357f89e4fd51cf2368325b59e9bd9") // Same source as the existing Android build.
     webpSha256.set("923f3382a47a2af185c3240c954cf004428b237bd7317413a95146d01eb4b94b")
     repository.set(rootProject.layout.projectDirectory)
@@ -163,10 +178,10 @@ java {
 }
 dependencies {
     implementation(compose.desktop.currentOs) {
-        exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-x64")
+        if (intelMac) exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-x64")
     }
     add(skikoSource.name, libs.skiko.macos.x64)
-    runtimeOnly(files(selectIntelSkiko.flatMap { it.destination }))
+    if (intelMac) runtimeOnly(files(selectIntelSkiko.flatMap { it.destination }))
 }
 
 val androidBuild = rootProject.layout.projectDirectory.file("app/build.gradle.kts")
@@ -185,7 +200,7 @@ compose.desktop {
             description = "EhViewer M1 desktop runtime spike"
             vendor = "EhViewer"
             modules("java.desktop", "java.logging", "java.management", "jdk.unsupported")
-            appResourcesRootDir.set(prepareIntelNative.flatMap { it.resources })
+            appResourcesRootDir.set(prepareDesktopNative.flatMap { it.resources })
             licenseFile.set(rootProject.layout.projectDirectory.file("LICENSE"))
             macOS { bundleID = "moe.tarsin.ehviewer.m1" }
         }

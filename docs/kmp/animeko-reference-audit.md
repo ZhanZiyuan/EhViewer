@@ -75,3 +75,5 @@ M1-004：读取 `app/desktop/src/test/kotlin/DesktopNativeStartupTest.kt` 全文
 M1-005：入口边界仍参照已审阅的 AniIos / Swift 容器差异，未新增对其 Native 视频实现的复用。Rust C ABI 全部独立实现于 `native/rust/capi`，调用 EhViewer 自己的 hash Core；`app/ios` 用生成头/.def/Kotlin 绑定连接，不引入 Swift/ObjC/C 业务实现。新增第三方工具 cbindgen 的固定版本和 MPL-2.0 build-only 许可证独立核查；无 AGPL 精确代码复用。ABI 所有权、安全契约、生成路径与实测结果见 ADR 0003 / ledger。
 
 M1-006：读取 `app/desktop/build.gradle.kts`、`app/desktop/src/main/kotlin/DesktopNativeStartup.kt` 与 `.github/workflows/build.yml` 的目标相关片段；采用平台 Native/分发资源边界，改造为无视频/JCEF 的独立 EhViewer Kotlin 窗口与真实 Rust JNI。参考 Intel CI 使用 macos-15-intel，不满足本任务 ARM runner 约束，明确拒绝照搬。新 `app/desktop`、Kotlin verifier/CI 的设计差异、许可证处理与实际失败/成功证据见 ADR 0004；不复制 AGPL 实现、资源、脚本或依赖版本树。
+
+M1-011：按需重读本地`app/desktop/build.gradle.kts`的目标选择片段，仅延续平台资源/Native初始化边界。EhViewer在自己的`app/desktop/build.gradle.kts`、`DesktopMain.kt`、`tools/verification/.../DesktopLinux.kt`和`ci.yml`独立扩展Linux aarch64应用目录验证；不用参考项目的视频/JCEF Native或打包脚本，不照搬版本/依赖。只复用EhViewer原JNI/Core/窗口/回归fixtures及已审计的直接Native许可证，未新增AGPL精确复用。官方CMP/Skiko/JDK依据、设计差异和本地/CI结果边界见ADR0005与ledger，Linux运行阳性尚未取得。

@@ -10,6 +10,7 @@ fun main(args: Array<String>) {
         "desktop-native-smoke" -> desktopNativeSmoke(options.path("--output"))
         "desktop-intel-dmg" -> desktopIntelDmg(options.path("--dmg"), options.path("--output"))
         "desktop-intel-native" -> desktopIntelDmg(options.path("--dmg"), options.path("--output"), options.path("--producer-report"))
+        "desktop-linux-arm64" -> desktopLinuxArm64(options.path("--image"), options.path("--output"))
         "bytecode" -> verifyBytecode()
         "native-sources" -> verifyNativeSources()
         "apks" -> {

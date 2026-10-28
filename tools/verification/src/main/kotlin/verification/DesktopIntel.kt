@@ -28,7 +28,7 @@ fun verifyIntelMachO(header: ByteArray) {
 }
 
 /** Check the retained upstream texts in the installed app, after jpackage has copied resources. */
-private fun desktopNativeNotices(contents: Path): List<Map<String, String>> {
+fun desktopNativeNotices(contents: Path): List<Map<String, String>> {
     val notices = contents.resolve("app/resources/licenses")
     val expected = linkedMapOf(
         "EhViewer/LICENSE.txt" to sha256(root.resolve("LICENSE")),
