@@ -1,8 +1,8 @@
 # 现代化路线与阶段门禁
 
-状态：M0 / GATE_PASSED，M1 / IN_PROGRESS，2026-10-28。已交付可审计基线和安全逐提交入口，之后严格 M1 → M8。版本到 M8 冻结提交之前维持 `1.15.10 / 180074`。
+状态：M0 / GATE_PASSED，M1 / GATE_PASSED，M2 / IN_PROGRESS，2026-10-29。2f00e595c双事件各九job/gate与全部实际工件核验齐备；M2首项为独立Kotlin 11目标交付合同与无密钥CI检查，尚未实现M3–M8。版本到 M8 冻结提交之前维持 `1.15.10 / 180074`。
 
-当前技术证明：Kotlin-only iOS/实际C ABI、Linux x64/macOS ARM64 host JNI、ARM→Intel DMG/Rosetta及原生Intel同包消费、Linux aarch64包内JVM/Skiko/Rust实际软件绘制均已通过各自逐SHA门禁。75b36b2ef双事件完整九job/gate与全部实物证据SUCCESS；旧失败均保留。Windows各39项原生Core/C ABI测试、10 DLL/3测试EXE实际ARM64 PE和全部摘要已独立核验；真实原生Microsoft JVM/Unicode路径/C ABI的2,000结果/active0/全部错误释放关闭亦双事件成功，真实应用目录已构建但窗口启动未通过（e84的Unicode原生启动失败及独立进程UTF-8修复见ADR0011），M1未完成。Linux OpenGL/硬件加速另列M5未验收风险，不以CPU软件绘制替代该结论。
+当前技术证明：Kotlin-only iOS/实际C ABI、Linux x64/macOS ARM64 host JNI、ARM→Intel DMG/Rosetta及原生Intel同包消费、Linux aarch64包内JVM/Skiko/Rust实际软件绘制均通过2f00e595c双事件门禁。Windows原Core39/独立MicrosoftARM JVM/Unicode路径/C ABI 2000/live0与真实包内JVM/Skiko/C ABI双窗口也均通过：自有启动器副本只读属性真实修复、SDK语义读回、GetACP65001/UTF-8、SOFTWARE_COMPAT/绘制帧与全部所有权错误释放关闭证据齐备。两事件全部实际Native/许可/八APK/模拟器与同一Intel DMG生产消费证据均已核验，历史失败保留。此为M1技术spike，不等于五平台P0、最终11包、iPad、签名真机、完整SBOM或最低系统已验收。Linux/Windows硬件加速另列M5风险，不以CPU软件绘制替代该结论。
 
 | 顺序 | 现有问题与独立工作包 | 参考 / EhViewer 落点 | 收益与退出准则 | 风险、回滚 |
 |---|---|---|---|---|

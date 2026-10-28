@@ -13,12 +13,15 @@ for prerequisites, scope and evidence. It never substitutes for signed-device te
 ```sh
 ./gradlew -p tools/verification check installDist
 tools/verification/build/install/verification/bin/verification architecture
+tools/verification/build/install/verification/bin/verification release-contract
 tools/verification/build/install/verification/bin/verification native-sources
 tools/verification/build/install/verification/bin/verification bytecode
 tools/verification/build/install/verification/bin/verification apks app/build/outputs/apk/release --sdk "$ANDROID_HOME"
 tools/verification/build/install/verification/bin/verification diagnostics --sdk "$ANDROID_HOME"
 tools/verification/build/install/verification/bin/verification release-input-tests --sdk "$ANDROID_HOME"
 ```
+
+`release-contract` emits the source-bound eleven-target delivery plan without production keys or publication. It explicitly reports `CONTRACT_ONLY` and `artifacts_verified=false`; it is not a successful eleven-package dry-run. An optional `--tag` must match the authoritative source version. Exact runners, names, signing boundaries and unimplemented package checks are documented in [the delivery contract](../../docs/kmp/release-artifacts.md).
 
 Build Debug, androidTest, Release and benchmark outputs before the artifact
 checks. `apks` also accepts `--debug --application-id moe.tarsin.ehviewer.debug`

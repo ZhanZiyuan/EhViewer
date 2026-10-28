@@ -1,6 +1,6 @@
 # ADR 0011：Windows 原生启动器的进程 UTF-8 清单
 
-状态：12f77b504双Windows实际SDK提取/验证通过，嵌入资源时Access is denied，尚未启动；仅修复自有副本可写性，Windows真实阳性须待新SHA指定runner。M1整体IN_PROGRESS，1.15.10 / Android180074。
+状态：2f00e595c双Windows指定runner实际SUCCESS，完整双事件九job/gate及全部实物亦SUCCESS；SDK/Unicode双窗口/真实65001/UTF-8与所有权均核验。M1技术spike GATE_PASSED，1.15.10 / Android180074。12f/e84历史失败保留，不冒称产品P0/最终ZIP已实现。
 
 ## 实际失败与证据边界
 
@@ -34,6 +34,8 @@ e84be9f06已通过固定JMOD输入、包内Native/许可/版本预检，首次�
 仅在新建报告目录的自有启动器副本上读取DOS属性、记录read_only与Files.isWritable，清除read-only，再记录并严格要求可写，之后执行原SDK验证/嵌入/读回。原Gradle镜像、用户文件、ACL、系统设置均不修改；不重试、不忽略失败、不缩短Unicode目录、不放宽原所有权/架构/窗口门禁。成功receipt保留前后标志；失败时保留属性JSON和实际副本，以便区分只读与其他拒绝访问原因。此修改仅Kotlin平台文件API，无新增依赖或Animeko精确复用。
 
 ## 本地验证
+
+2f00e595c远程结案：Push40756676048与PR40756686761均完整SUCCESS。两份实际包各35 Aarch64 PE与九材料逐SHA匹配，Core/JVM证明与独立实物逐字节一致。原DOS只读true/不可写经自有副本修改变false/可写；SDK10.0.26100.0 ARM64嵌入/读回及原语义保持PASS，读回SHA2ea9c580343f8885cc19041832fb12243eb1623e634236e46d4ae30000b815fd。两次Unicode/空格目录真实包内MicrosoftARM JVM25.0.5.0.2/GetACP65001/UTF-8/SOFTWARE_COMPAT/1frame/2000/live0/错误释放关闭均PASS。完整运行链接/工件ID/官方摘要及其他平台证据见ledger；这不覆盖更早失败。
 
 工具全套128项/零失败错误跳过、格式/build/installDist通过；覆盖权限/DPI/身份/兼容配置保留、SDK读回篡改拒绝、命名空间幂等、DOCTYPE/歧义拒绝。对实际CI启动器提取的原清单执行同一Kotlin CLI，新增UTF-8后其余设置通过语义核验，输出SHA ac65a7077e8afa025939788231a2fd2e701ffbd0b630aee7d12b7c58d8507ac5。这不替代Windows SDK嵌入或实际启动。
 

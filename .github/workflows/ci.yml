@@ -111,6 +111,11 @@ jobs:
       - name: Verify Kotlin boundaries and language policy
         if: steps.snapshot.outputs.build == 'true'
         run: tools/verification/build/install/verification/bin/verification architecture
+      - name: Verify eleven-target delivery contract without production keys
+        if: steps.snapshot.outputs.build == 'true'
+        run: |
+          mkdir -p reports
+          tools/verification/build/install/verification/bin/verification release-contract > reports/release-contract.json
       - name: Restore original signing for trusted builds
         if: steps.snapshot.outputs.build == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         env:
