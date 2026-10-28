@@ -1,8 +1,11 @@
-use ehviewer_core::archive::{ArchiveSession, Limits, safe_path, write_zip};
+#[cfg(unix)]
+use ehviewer_core::archive::write_zip;
+use ehviewer_core::archive::{ArchiveSession, Limits, safe_path, write_zip_file};
+#[cfg(unix)]
+use std::os::fd::AsRawFd;
 use std::{
     fs::{self, File},
-    io::{Seek, SeekFrom},
-    os::fd::AsRawFd,
+    io::{Read, Seek, SeekFrom, Write},
     sync::Arc,
 };
 mod support;
@@ -133,10 +136,10 @@ fn readonly_mapping_survives_fd_close_unlink_and_cache_eviction() {
     let payload = directory.join("input");
     File::create(&payload).unwrap().set_len(17 << 20).unwrap();
     let archive = directory.join("pages.zip");
-    let output = File::create(&archive).unwrap();
-    write_zip(
+    let mut output = File::create(&archive).unwrap();
+    write_zip_file(
         &mut [(File::open(&payload).unwrap(), "page.jpg".into())],
-        output.as_raw_fd(),
+        &mut output,
     )
     .unwrap();
     drop(output);
@@ -188,10 +191,10 @@ fn large_stored_mappings_survive_close_and_unlink() {
     let payload = directory.join("input");
     File::create(&payload).unwrap().set_len(17 << 20).unwrap();
     let archive = directory.join("large.zip");
-    let output = File::create(&archive).unwrap();
-    write_zip(
+    let mut output = File::create(&archive).unwrap();
+    write_zip_file(
         &mut [(File::open(&payload).unwrap(), "large.jpg".into())],
-        output.as_raw_fd(),
+        &mut output,
     )
     .unwrap();
     drop(output);
@@ -299,6 +302,7 @@ fn limits_malformed_and_paths() {
     assert!(safe_path("相册/page2.jpg".as_bytes()));
 }
 #[test]
+#[cfg(unix)]
 fn zip_writer_preserves_fds_and_offsets() {
     let dir = std::env::temp_dir().join(format!("ehviewer-rust-write-{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
@@ -324,6 +328,76 @@ fn zip_writer_preserves_fds_and_offsets() {
         .is_err()
     );
     fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn zip_file_writer_preserves_ownership_offsets_and_reports_output_errors() {
+    let directory =
+        std::env::temp_dir().join(format!("ehviewer-file-write-{}", std::process::id()));
+    fs::create_dir_all(&directory).unwrap();
+    let input = directory.join("input");
+    let archive = directory.join("result.zip");
+    fs::write(&input, b"xxxabc").unwrap();
+    {
+        let mut source = File::open(&input).unwrap();
+        source.seek(SeekFrom::Start(3)).unwrap();
+        let mut inputs = [(source, "相册/page1.jpg".into())];
+        let mut output = File::options()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(&archive)
+            .unwrap();
+        output.write_all(b"prefix").unwrap();
+        write_zip_file(&mut inputs, &mut output).unwrap();
+        assert_eq!(inputs[0].0.stream_position().unwrap(), 6);
+        assert_eq!(
+            output.stream_position().unwrap(),
+            output.metadata().unwrap().len()
+        );
+        output.rewind().unwrap();
+        let mut prefix = [0; 6];
+        output.read_exact(&mut prefix).unwrap();
+        assert_eq!(&prefix, b"prefix");
+        let session = unsafe {
+            ArchiveSession::open(
+                File::open(&archive).unwrap(),
+                output.metadata().unwrap().len(),
+                true,
+                Limits::default(),
+            )
+        }
+        .unwrap();
+        assert_eq!(session.len(), 1);
+        assert_eq!(session.extract(0).unwrap().as_mut_slice(), b"abc");
+        let mut readonly = File::open(&archive).unwrap();
+        let error = write_zip_file(
+            &mut [(File::open(&input).unwrap(), "page.jpg".into())],
+            &mut readonly,
+        )
+        .unwrap_err();
+        assert!(
+            error.downcast_ref::<std::io::Error>().is_some(),
+            "{error:#}"
+        );
+        assert_eq!(readonly.stream_position().unwrap(), 0);
+        assert!(readonly.metadata().unwrap().len() > 6);
+        let before = fs::read(&archive).unwrap();
+        output.seek(SeekFrom::End(0)).unwrap();
+        assert!(
+            write_zip_file(
+                &mut [(File::open(&input).unwrap(), "../escape.jpg".into())],
+                &mut output
+            )
+            .is_err()
+        );
+        assert_eq!(fs::read(&archive).unwrap(), before);
+        drop(session);
+        // Both handles are still caller-owned and usable after success and failure.
+        readonly.read_exact(&mut prefix).unwrap();
+        output.write_all(b"owned").unwrap();
+    }
+    fs::remove_dir_all(directory).unwrap();
 }
 
 #[test]

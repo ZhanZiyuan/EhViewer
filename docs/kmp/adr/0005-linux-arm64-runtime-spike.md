@@ -1,6 +1,6 @@
 # ADR 0005：Linux aarch64 包内运行时技术证明
 
-状态：M1 / 初次CI FAILED，修复中，尚无Linux运行阳性。前置be27ac67a的双事件七job、Android候选四包和原生Intel同包消费全部SUCCESS，实际工件核验及同一Draft PR记录完成后才开始本切片。版本继续1.15.10 / 180074。
+状态：Linux应用目录/runtime技术切片 / GATE_PASSED，M1整体仍IN_PROGRESS。c787c570e的双事件全部八job/gate、Android四包与全部实际工件均SUCCESS；初始SDK与WebP失败历史保留。前置be27ac67a的双事件七job、Android候选四包和原生Intel同包消费全部SUCCESS，实际工件核验及同一Draft PR记录完成后才开始本切片。版本继续1.15.10 / 180074。
 
 ## 独立设计与来源
 
@@ -42,3 +42,5 @@ Kotlin验证器复制应用目录到自有临时安装位置，拒绝出界符�
 独立修复将非Android库顺序改为webpdemux→webp，Linux构建启用-z defs，安装验证对Rust实际ldd -r并拒绝未解析重定位；原Android CMake、全部图片/归档模块及所有运行断言保持。不升级/禁用依赖，不据编译通过宣称运行成功；本地与下一SHA双事件实测结果见ledger。
 
 链接修复本地：Core19+14/C ABI6/JNI5、fmt/原三Android target严格Clippy、工具118项测试、原Android319 tasks/四包、Intel实际DMG/32 Native/两次启动与Mac ARM64 host的4,170项+13样例均SUCCESS。Mac重链接结果未变，后续打包任务复用该内容，实际安装/启动仍重新执行。以上为43a798721+dirty源；Linux真实阳性仍未取得，必须另交新SHA并完整CI复验。
+
+c787c570e远程最终：两事件全部八job/gate与实际工件全部SUCCESS。两个Linux报告均为干净head/test-merge、Ubuntu24.04.5/JDK25.0.5/原生AArch64/应用1.15.10，30个ELF Native/依赖、六份许可证、两次包内JVM/Compose各100次Core/实际frame与同库4,170项+13样例PASS；真实ELF已无UND WebP，ldd -r无未解析项。Rust/Skiko/JVM/入口摘要两事件相同。实际工件和run链接均见ledger；这不构成AppImage、最低OS、完整P0或Windows runtime验收。

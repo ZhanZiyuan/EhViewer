@@ -145,6 +145,7 @@ fn query_childs_first_match_attr<'a>(
 }
 
 pub mod archive;
+#[cfg(unix)]
 pub mod fd;
 pub mod gif;
 pub mod hash;

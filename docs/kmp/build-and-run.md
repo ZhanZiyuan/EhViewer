@@ -83,4 +83,14 @@ xvfb-run -a tools/verification/build/install/verification/bin/verification deskt
 
 43a798721随后真实打包成功，但首次加载因静态WebP依赖顺序失败。非Android必须先链接webpdemux再webp，Linux以-z defs拒绝未解析符号；验证器对包内Rust另运行ldd -r。该修复及后续CI证据见ADR0005/ledger，不能把打包成功当作应用已启动。
 
-验证器检查临时安装后的每个ELF/JAR Native、实际动态依赖、固定Skiko摘要、六份许可证、配置与运行时版本、两次包内JVM/Compose/Rust启动和同库4,170项/13归档样例。临时安装自动删除，报告保留；任何缺库、错误CPU/外部JVM或绘制失败均拒绝。该命令验证应用目录，不是AppImage；Linux阳性仍待真实CI。最低OS、完整P0及最终AppImage仍未验收，见ADR0005。
+验证器检查临时安装后的每个ELF/JAR Native、实际动态依赖、固定Skiko摘要、六份许可证、配置与运行时版本、两次包内JVM/Compose/Rust启动和同库4,170项/13归档样例。临时安装自动删除，报告保留；任何缺库、错误CPU/外部JVM或绘制失败均拒绝。c787c570e已通过原生Ubuntu24.04.5/JDK25.0.5双事件实际运行及全部八job/gate，工件已核验。该命令验证应用目录，不是AppImage；最低OS、完整P0及最终AppImage仍未验收，见ADR0005/ledger。
+
+## Windows Core 文件接口前置检查
+
+在 `native/rust` 下执行；需固定 toolchain 及 `aarch64-pc-windows-msvc` 标准库：
+
+```text
+cargo check --locked -p ehviewer_core -p ehviewer_capi --lib --target aarch64-pc-windows-msvc
+```
+
+`write_zip_file` 借用 Rust File，原 Unix fd writer 继续保留。库检查不执行链接或测试；本机 `--all-targets` 已因现有 aws-lc-sys 测试依赖缺 Windows SDK/windows.h 真实失败，未忽略或冒称通过。Windows ARM64 原生测试、包内 JVM/Skiko/Rust、真实窗口和最终 ZIP 仍须后续独立验证，见 ADR0006/ledger。
