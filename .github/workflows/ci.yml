@@ -251,6 +251,9 @@ jobs:
         run: rm -rf .private-signing "$RUNNER_TEMP/private-snapshot" "$RUNNER_TEMP/snapshot-public.pem"
 
   ios:
+    # Limit simultaneous macOS ARM64 jobs; this is a capacity barrier, not a product dependency.
+    needs: rust_host
+    if: always()
     name: ci/ios
     runs-on: macos-latest
     timeout-minutes: 60
