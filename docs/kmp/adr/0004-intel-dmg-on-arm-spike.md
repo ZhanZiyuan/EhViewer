@@ -1,6 +1,6 @@
 # ADR 0004：ARM 主机构建 Intel DMG Spike
 
-状态：IN_PROGRESS / LOCAL_SPIKE。前置 ad68c3c0e 的 push/PR Android、候选四包、iOS C ABI、双 host JNI 与总 gate 全部 SUCCESS 后开始；M1 整体仍未通过。
+状态：ARM_ROSETTA_SPIKE_GATE_PASSED / M1_IN_PROGRESS。b876b67c5两事件全部六job/gate及实际工件均成功，见ledger；M1整体仍未通过。前置ad68c3c0e全绿后才开始本切片，aec6f057f/df31e9133的失败历史保留。
 
 参考路径：只读 Animeko `app/desktop/build.gradle.kts` 的平台资源/独立 JVM 分发边界、`DesktopNativeStartup.kt` 的平台 Native 初始化边界和 `.github/workflows/build.yml` 的目标 runner。其 Intel job 实际使用 macos-15-intel，不能证明本任务的 ARM runner/Rosetta 路径；拒绝直接采用 runner、JBR/JCEF/播放器、Shell/PowerShell 工具和实现/资源/依赖树。目标落点为 EhViewer 独立的 `app/desktop`、Kotlin verification 和相应 CI。没有复制 AGPL 代码。采用官方 Compose native distribution / JDK jpackage 接口，继续使用 EhViewer 已有 Kotlin/CMP/Rust 与 WebP 固定版本。
 
@@ -27,3 +27,13 @@
 提交后只读补查：vtool实际显示Skiko为LC_BUILD_VERSION minos11.0/sdk26.2、包内JVM minos11.0/sdk14.2，Rust为LC_VERSION_MIN_MACOSX10.12/sdk27.0。插件默认plist10.13与Native编译下限不一致，需要后续独立对齐和真实目标OS回归，不能据默认值承诺10.13或11支持。本切片只证明已实测系统上的ARM→Intel构建/启动，物理Intel和最低OS继续未验收。
 
 aec6f057f远程最终：PR40620941911六job/gate全部SUCCESS；Push40620938493因macOS ARM64 host的Cargo15分钟超时及日志丢失而FAILED，gate正确失败。两条ARM→Intel真实DMG job均SUCCESS，PR实际包及源/架构/依赖/两次启动/同库回归工件已下载核验，包SHA=`ccfd68c0b375b70a823c860402446eb20b674ef1cf094452e08b824bc6b48b07`；整个切片不标记GATE_PASSED。后续仅修复超时输出/自有子进程清理并另交新SHA全量复验，不放宽时间或断言。原超时根因因缺Cargo输出仍未知，不能说已经定位。全部job/工件证据见ledger。
+
+## M1-009：将直接Native依赖的许可证材料保留到安装包（验证中）
+
+b876b67c5全量push/PR门禁和实际工件核验成功、写入ledger和同一Draft PR之后，才开始本独立修复。实际检查已安装`.app`及全部依赖JAR，发现WebP静态库材料没有入包，Skiko runtime JAR本身也没有LICENSE/NOTICE；原DMG的GPL提示不等于安装后的应用已保留这些文件。
+
+保留原GPL提示，同时在`appResourcesRootDir`的`common/licenses`中放入项目GPL、WebP COPYING/PATENTS/AUTHORS及Skiko LICENSE/NOTICE和来源元数据。WebP材料来自原固定归档（commit4fa21912、归档SHA923f3382…），不另换来源；Skiko材料来自官方0.144.6的不可变commit`9a5b398bb2044fff7e7a84fbfd6f4b803e4427c0`，独立核对LICENSE/NOTICE Git blob分别为`261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64`/`bc646e35dcbf08a6eb0404c88864cf26b55f9581`。保留原文，未复制任何Animeko/AGPL代码、资源或脚本，没有依赖升级。
+
+Kotlin DSL把上述材料列为构建输入，验证器在真实DMG安装后逐文件检查原文SHA-256并记录结果；没有以EULA提示或文件名代替内容验证。本修复只覆盖已确认遗漏的直接Native材料，不宣称完整Skia/Rust传递依赖许可清单、SBOM或最终M8许可证验收完成，报告显式保留NOT_VERIFIED。原文资源设为路径限定的`-text`以保持跨平台checkout字节，不改变源码语言识别。
+
+最终本地：115项工具测试通过；旧真实DMG按预期拒绝缺失材料，临时镜像已卸载。新包20/20任务强制执行（1m22s）及真实安装/六份摘要/32Native/两次包内runtime/同库4,170项+13样例全部SUCCESS，SHA=`6893a8ff55f9c23f8860cfecb1422b9e3f4e43882e5612301bbf36a6c48bbdde`。原完整Android319 tasks、原四包/Native预检、ARM host及iOS26.5完整生命周期/C ABI回归亦成功。均为b876b67c5+dirty源，下一提交双事件全量CI仍需独立验收；见ledger。

@@ -9,3 +9,6 @@
 docs/** linguist-documentation=true
 **/build/** linguist-generated=true
 **/target/** linguist-generated=true
+
+# Retain the exact audited upstream license bytes on every checkout platform.
+app/desktop/licenses/** -text

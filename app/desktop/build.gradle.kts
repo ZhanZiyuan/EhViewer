@@ -73,6 +73,23 @@ abstract class BuildIntelNative : DefaultTask() {
         val destination = resources.get().asFile.resolve("macos-x64/libehviewer_rust.dylib")
         destination.parentFile.mkdirs()
         repo.resolve("native/rust/target/x86_64-apple-darwin/debug/libehviewer_rust.dylib").copyTo(destination, overwrite = true)
+        // Keep notices in the installed app, independently of the DMG's GPL license prompt.
+        val notices = resources.get().asFile.resolve("common/licenses")
+        check(!notices.exists() || notices.deleteRecursively()) { "Cannot replace generated notices" }
+        check(notices.mkdirs()) { "Cannot create generated notices directory" }
+        repo.resolve("app/desktop/licenses").copyRecursively(notices, overwrite = true)
+        val webpNotices = notices.resolve("libwebp-1.6.0").also { check(it.mkdirs()) }
+        for (name in listOf("COPYING", "PATENTS", "AUTHORS")) {
+            temporaryDir.resolve("libwebp-${webpCommit.get()}/$name").copyTo(webpNotices.resolve(name))
+        }
+        webpNotices.resolve("origin.toml").writeText(
+            "component = \"libwebp\"\nversion = \"1.6.0\"\nlicense = \"BSD-3-Clause\"\n" +
+                "repository = \"https://github.com/webmproject/libwebp\"\n" +
+                "commit = \"${webpCommit.get()}\"\narchive_sha256 = \"${webpSha256.get()}\"\n",
+        )
+        val projectLicense = notices.resolve("EhViewer/LICENSE.txt")
+        check(projectLicense.parentFile.mkdirs())
+        repo.resolve("LICENSE").copyTo(projectLicense)
     }
 }
 
@@ -132,6 +149,8 @@ val prepareIntelNative = tasks.register<BuildIntelNative>("prepareIntelNative") 
         rootProject.file("rust-toolchain.toml"),
         rootProject.fileTree("native/rust") { exclude("target/**") },
         rootProject.file("native/third-party/CMakeLists.txt"),
+        rootProject.file("LICENSE"),
+        rootProject.fileTree("app/desktop/licenses"),
     )
     resources.set(layout.buildDirectory.dir("native-resources"))
     evidence.set(layout.buildDirectory.dir("native-evidence"))

@@ -56,3 +56,5 @@ tools/verification/build/install/verification/bin/verification desktop-intel-dmg
 `--dmg`接受真实DMG文件或恰有一个DMG的目录。打包自动构建同一固定WebP源码和Rust JNI，验证Skiko原始SHA并选取Intel条目；原依赖缓存保持只读。验证器检查真实UDIF/全部包内Native和JAR内架构、临时安装、两次包内JVM/Compose/Rust启动、逐Native动态依赖及同库4,170项/13样例。临时挂载/安装由工具拥有并清理，仓库GPL许可继续保留。运行时是jlink镜像及真正launcher，镜像无需另带java命令；完整JNI测试由同版本Intel测试JDK运行，包内launcher自身独立执行实测Core调用。
 
 这仍是M1探针，不是Desktop P0。物理Intel硬件、最低系统和签名/公证明确未验收；内部DMG名不代表M6最终11包已实现。设计、上游双架构JAR问题与失败/修复见ADR0004和ledger。
+
+安装后的应用应在`Contents/app/resources/licenses/`保留项目GPL、当前固定WebP的COPYING/PATENTS/AUTHORS及Skiko的LICENSE/NOTICE。验证器在挂载/安装后逐一核对六份原文摘要，缺失或被修改即失败；来源见同目录的元数据及ADR0004。这是直接Native材料的入包检查，完整依赖许可证/SBOM仍待M4/M8，不因该检查通过而标记全部完成。

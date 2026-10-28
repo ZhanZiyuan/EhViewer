@@ -27,6 +27,25 @@ fun verifyIntelMachO(header: ByteArray) {
     require(data.getInt(0) == 0xfeedfacf.toInt() && data.getInt(4) == 0x1000007 && data.getInt(12) in setOf(2, 6)) { "Expected thin x86_64 Mach-O executable/library" }
 }
 
+/** Check the retained upstream texts in the installed app, after jpackage has copied resources. */
+private fun desktopNativeNotices(contents: Path): List<Map<String, String>> {
+    val notices = contents.resolve("app/resources/licenses")
+    val expected = linkedMapOf(
+        "EhViewer/LICENSE.txt" to sha256(root.resolve("LICENSE")),
+        "skiko-0.144.6/LICENSE.txt" to "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+        "skiko-0.144.6/NOTICE.txt" to "35dd077c24768b53625101cfcc0ad853ae7e2abc08bd2a111a0267760d1406d8",
+        "libwebp-1.6.0/COPYING" to "5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf",
+        "libwebp-1.6.0/PATENTS" to "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c",
+        "libwebp-1.6.0/AUTHORS" to "f251be89fd442bd9d701360730aea163cc8e2076ff03528f59267dc2c4f8b60a",
+    )
+    return expected.map { (name, digest) ->
+        val file = notices.resolve(name)
+        require(file.isRegularFile()) { "Missing installed Native notice: $name" }
+        require(sha256(file) == digest) { "Installed Native notice differs from pinned upstream text: $name" }
+        mapOf("path" to contents.relativize(file).toString(), "sha256" to digest)
+    }
+}
+
 /** Mount the actual DMG, install to owned temporary storage, and launch its bundled runtime. */
 fun desktopIntelDmg(dmgInput: Path, output: Path): Map<String, Any?> {
     val dmg = if (Files.isDirectory(dmgInput)) dmgInput.listDirectoryEntries("*.dmg").single() else dmgInput
@@ -67,6 +86,7 @@ fun desktopIntelDmg(dmgInput: Path, output: Path): Map<String, Any?> {
             val version = Regex("val releaseVersion = \"([^\"]+)\"").find(root.resolve("app/build.gradle.kts").readText())!!.groupValues[1]
             require(plist.str("CFBundleShortVersionString") == version && plist.str("CFBundleVersion") == version)
             val contents = app.resolve("Contents")
+            val notices = desktopNativeNotices(contents)
             val launcher = contents.resolve("MacOS").resolve(plist.str("CFBundleExecutable"))
             launcher.inputStream().use { verifyIntelMachO(it.readNBytes(32)) }
             val rust = contents.resolve("app/resources/libehviewer_rust.dylib")
@@ -125,6 +145,7 @@ fun desktopIntelDmg(dmgInput: Path, output: Path): Map<String, Any?> {
             val regression = desktopArchiveRegression(output, Path.of(System.getProperty("java.home"), "bin/java"), rust)
             mapOf(
                 "version" to version, "native_files" to nativeFiles, "skiko_sha256" to sha256(skiko), "jar_native_libraries" to jarNatives,
+                "installed_notices" to notices, "complete_dependency_license_audit" to "NOT_VERIFIED",
                 "declared_minimum_os" to plist.str("LSMinimumSystemVersion"), "minimum_os_validation" to "NOT_VERIFIED",
                 "launches" to launchEvidence, "jni_regression_external_test_jdk" to regression,
                 "runtime_jvm_sha256" to sha256(jvm), "rust_sha256" to sha256(rust), "launcher_sha256" to sha256(launcher),
