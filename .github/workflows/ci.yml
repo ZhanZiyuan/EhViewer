@@ -274,14 +274,64 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  rust_host:
+    name: ci/rust-host (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux-x86_64
+          - runner: macos-latest
+            platform: macos-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - name: Linux native dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libarchive-dev libwebp-dev
+      - name: macOS native dependencies
+        if: runner.os == 'macOS'
+        run: brew install libarchive webp
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/rust
+          shared-key: desktop-jni-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'native/rust/Cargo.lock') }}
+          save-if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build and test verification tools
+        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - name: Load Rust JNI and verify archive ownership in a real desktop JVM
+        run: tools/verification/build/install/verification/bin/verification desktop-native-smoke --output reports/desktop-native
+      - name: Retain desktop JNI evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-native-${{ matrix.platform }}-${{ github.sha }}
+          path: reports/desktop-native/
+          if-no-files-found: error
+          retention-days: 14
+
   gate:
     name: ci/gate
     if: always()
-    needs: [android, ios]
+    needs: [android, ios, rust_host]
     runs-on: ubuntu-latest
     steps:
-      - name: Require Android regression, snapshot and real iOS startup
+      - name: Require Android, snapshot, real iOS startup and desktop JNI
         env:
           ANDROID_RESULT: ${{ needs.android.result }}
           IOS_RESULT: ${{ needs.ios.result }}
-        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success
+          RUST_HOST_RESULT: ${{ needs.rust_host.result }}
+        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success

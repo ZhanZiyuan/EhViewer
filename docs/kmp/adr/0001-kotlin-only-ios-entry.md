@@ -1,6 +1,6 @@
 # ADR 0001：Kotlin-only iOS executable 启动 Spike
 
-状态：IMPLEMENTED / LOCAL_VERIFIED / CI_FAILED（8388fb366、5b6745f43，修复中）。前置 M0 提交 `1134f2b1c20740fe0002ee8b48c33482d90f1ad1` 的 push/PR CI 与候选四包预检均 SUCCESS，详见 ledger。
+状态：启动切片 GATE_PASSED（a5a7612a1 的 push/PR 全部 SUCCESS）；M1 整体仍 IN_PROGRESS。8388fb366、5b6745f43 的失败保留。前置 M0 提交 `1134f2b1c20740fe0002ee8b48c33482d90f1ad1` 的 push/PR CI 与候选四包预检均 SUCCESS，详见 ledger。
 
 问题：KMP framework 和 ComposeUIViewController 不是完整 iOS 应用。Animeko 本地快照 `app/shared/application/src/iosMain/kotlin/ios/AniIos.kt` 提供 Kotlin controller，但 `app/ios/Animeko/ContentView.swift` 仍承载 SwiftUI 容器。不能照搬其入口，也不采用其 CocoaPods、视频 Native、C++/Swift 补丁。
 
@@ -29,3 +29,5 @@
 5b6745f43 的新 stderr 确认一个实际启动缺陷：iOS 26.5 / iPhone 17 Pro / Xcode 26.6 上，Compose PlistSanityCheck 报缺少 `CADisableMinimumFrameDurationOnPhone=true`，系统随后记录 SIGABRT。按 [Compose UIKit integration](https://kotlinlang.org/docs/multiplatform/compose-uikit-integration.html) 和 [Apple plist 键定义](https://developer.apple.com/documentation/bundleresources/information-property-list/cadisableminimumframedurationonphone)补充声明式 plist，不设置 enforceStrictPlistSanityCheck=false。验证器启动前预检该字段，并允许通过显式 `--runtime` 复验 runner 系统；默认仍选最新可用系统，指定不可用系统不回退。此为独立 M1-003 修复；本地分别复验 26.5 与 27.0，远程需新 SHA 再全部通过。参考项目的源码、资源、plist 与脚本均未复制。
 
 M1-003 本地结果：111 verifier tests、两 Native target 打包/检查、原完整 Android 回归与四包 dry-run 全部成功。缺失键和 false 两种真实应用副本均在创建 Simulator 前被拒绝。26.5 的完整生命周期 PID=37219 → 37340，27.0 为 38277 → 38370；两者恢复均沿用第一 PID，严格终止后新进程完成 Compose/active，截图已检查、清理成功。新提交的远程全量结果仍待执行，真机和 P0 尚未验证。
+
+M1-003 远程最终结果：a5a7612a1 的 [push CI](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40605938631) 与 [PR CI](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40605947634) 全部 SUCCESS，包含原 Android/Rust/四包 dry-run、两个 iOS executable、111 verifier tests、真实 Simulator smoke 和 gate。两份干净 source 工件与真实画面已下载核验，iOS 26.5 的 cold/foreground/terminate/new cold 全部成功；PR 合成 SHA 与 push SHA 分别记录。仅证明此启动切片，真机、最低 OS、P0、FFI 与发布链仍未验收。

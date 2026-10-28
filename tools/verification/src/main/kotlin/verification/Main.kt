@@ -7,6 +7,7 @@ fun main(args: Array<String>) {
     val result: Any = when (args[0]) {
         "architecture" -> verifyArchitecture()
         "ios-startup" -> iosStartup(options.path("--app"), options.path("--output"), if (options.has("--runtime")) options.get("--runtime") else null)
+        "desktop-native-smoke" -> desktopNativeSmoke(options.path("--output"))
         "bytecode" -> verifyBytecode()
         "native-sources" -> verifyNativeSources()
         "apks" -> {
