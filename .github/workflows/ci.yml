@@ -10,6 +10,10 @@ permissions:
   contents: read
   actions: read
 
+env:
+  # Fetch the same locked Git dependencies/submodules with system Git, avoiding libgit2 SecureTransport failures.
+  CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/feature/kmp' && github.head_ref != 'feature/kmp' }}
