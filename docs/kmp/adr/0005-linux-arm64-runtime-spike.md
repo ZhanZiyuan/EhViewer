@@ -1,6 +1,6 @@
 # ADR 0005：Linux aarch64 包内运行时技术证明
 
-状态：M1 / LOCAL_VALIDATION，尚无Linux运行阳性。前置be27ac67a的双事件七job、Android候选四包和原生Intel同包消费全部SUCCESS，实际工件核验及同一Draft PR记录完成后才开始本切片。版本继续1.15.10 / 180074。
+状态：M1 / 初次CI FAILED，修复中，尚无Linux运行阳性。前置be27ac67a的双事件七job、Android候选四包和原生Intel同包消费全部SUCCESS，实际工件核验及同一Draft PR记录完成后才开始本切片。版本继续1.15.10 / 180074。
 
 ## 独立设计与来源
 
@@ -32,3 +32,7 @@ Kotlin验证器复制应用目录到自有临时安装位置，拒绝出界符�
 最低Linux/glibc基线、AppImage、全P0、完整依赖许可证/SBOM仍NOT_VERIFIED。Windows ARM64原Core已有Unix fd/mode_t真实编译失败，另切片移植；不禁用其归档功能来凑M1绿灯。
 
 本地最终：117项工具测试/0失败错误跳过、Linux错平台拒绝、完整JNI/Core交叉编译、原Intel DMG真实安装/两次启动/32 Native/六份材料/4,170项+13样例、原完整Android319 tasks和精确候选四包全部SUCCESS；源码边界/actionlint/diff检查通过。均为be27ac67a+dirty源；Linux仍无运行阳性，下一SHA两事件全部八job与实际工件须独立成功，详见ledger。
+
+1026cc1d6初次两事件Linux job均真实FAILED：ARM镜像没有Android SDK，根Gradle配置`:app`时直接失败，尚未进入Native/GUI测试。修复使用`app/desktop/settings.gradle.kts`独立入口及同一源码/依赖版本，不配置Android项目；版本/Native/GPL路径改为相对模块实际位置，原根工程与Android全量CI保留。Linux构建日志另存报告，pipefail与实际失败fixture保证tee不会吞掉错误；不放宽任何原断言。旧失败及后续SHA独立验证见ledger。
+
+修复本地：取消Android SDK环境变量后独立projects/packageDmg/lint SUCCESS（19/19执行，只有desktop且无子项目），新DMG完整真实安装/启动/Native/许可证及4,170项+13样例PASS。原根工程Android319 tasks及四包预检、118项工具测试/0失败错误跳过也SUCCESS；0/93实际脚本fixture验证日志与失败传播。均为1026cc1d6+dirty源，Linux阳性仍待新SHA CI，不能反推初始失败为成功。

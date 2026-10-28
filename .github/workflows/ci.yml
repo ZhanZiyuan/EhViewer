@@ -458,7 +458,10 @@ jobs:
           validate-wrappers: true
           cache-read-only: true
       - name: Build real AArch64 JVM, Skiko and Rust application image
-        run: ./gradlew :app:desktop:createDistributable :app:desktop:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          ./gradlew -p app/desktop createDistributable spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g 2>&1 | tee reports/desktop-linux-build.log
       - name: Build and test runtime verifier
         run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
       - name: Install and launch bundled Linux ARM64 runtime twice
@@ -473,6 +476,7 @@ jobs:
           name: linux-arm64-runtime-${{ github.sha }}
           path: |
             reports/desktop-linux-arm64/
+            reports/desktop-linux-build.log
             app/desktop/build/native-evidence/
             app/desktop/build/compose/binaries/main/app/EhViewer/
           if-no-files-found: error

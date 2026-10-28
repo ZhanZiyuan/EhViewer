@@ -74,9 +74,11 @@ tools/verification/build/install/verification/bin/verification desktop-intel-nat
 仅在原生Linux ARM64、对应JDK25.0.5及固定Rust工具链执行。CI使用ubuntu-24.04-arm，安装CMake/libarchive开发库、binutils、Xvfb及实际图形/字体依赖；WebP由Kotlin task从原固定源码/摘要构建。原Android/Intel路径不依赖Linux构建机。
 
 ```text
-./gradlew :app:desktop:createDistributable :app:desktop:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g
+./gradlew -p app/desktop createDistributable spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g
 ./gradlew -p tools/verification check installDist --console=plain --no-daemon
 xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-linux-arm64 --image app/desktop/build/compose/binaries/main/app/EhViewer --output reports/<fresh-linux-report>
 ```
 
-验证器检查临时安装后的每个ELF/JAR Native、实际动态依赖、固定Skiko摘要、六份许可证、配置与运行时版本、两次包内JVM/Compose/Rust启动和同库4,170项/13归档样例。临时安装自动删除，报告保留；任何缺库、错误CPU/外部JVM或绘制失败均拒绝。该命令验证应用目录，不是AppImage；Linux阳性尚待本切片新SHA的真实CI。最低OS、完整P0及最终AppImage仍未验收，见ADR0005。
+独立入口仍使用同一Desktop源码/build文件和仓库version catalog，避免根工程配置Android SDK；原Android CI仍在根工程完整执行，不省略任何验收。1026cc1d6初次Linux CI已因根工程缺SDK失败，修复SHA必须重新真实验证；构建日志即使失败也保留且退出非零。
+
+验证器检查临时安装后的每个ELF/JAR Native、实际动态依赖、固定Skiko摘要、六份许可证、配置与运行时版本、两次包内JVM/Compose/Rust启动和同库4,170项/13归档样例。临时安装自动删除，报告保留；任何缺库、错误CPU/外部JVM或绘制失败均拒绝。该命令验证应用目录，不是AppImage；Linux阳性仍待真实CI。最低OS、完整P0及最终AppImage仍未验收，见ADR0005。

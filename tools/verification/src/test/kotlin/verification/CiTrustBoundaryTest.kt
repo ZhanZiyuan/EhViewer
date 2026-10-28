@@ -98,4 +98,25 @@ class CiTrustBoundaryTest {
             }
         }
     }
+
+    @Test fun linuxBuildLogCapturePreservesGradleFailure() {
+        val script = workflow("ci").substringAfter("      - name: Build real AArch64 JVM, Skiko and Rust application image\n")
+            .substringAfter("        run: |\n").substringBefore("\n      - name:").trimIndent()
+        for (result in listOf(0, 93)) {
+            temporary { temp ->
+                // Generated failure fixture, never used by the actual CI build.
+                val gradle = temp.resolve("gradlew")
+                gradle.writeText("#!/bin/sh\nprintf 'measured-build-output\\n' >&2\nexit $result\n")
+                check(gradle.toFile().setExecutable(true, true))
+                val process = ProcessBuilder("bash", "-c", script).directory(temp.toFile())
+                    .redirectErrorStream(true).redirectOutput(temp.resolve("driver.log").toFile()).start()
+                if (!process.waitFor(10, TimeUnit.SECONDS)) {
+                    process.destroyForcibly().waitFor()
+                    error("Linux build capture regression timed out")
+                }
+                assertEquals(temp.resolve("driver.log").readText(), result, process.exitValue())
+                assertTrue(temp.resolve("reports/desktop-linux-build.log").readText().contains("measured-build-output"))
+            }
+        }
+    }
 }

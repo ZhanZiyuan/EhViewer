@@ -154,18 +154,19 @@ val selectIntelSkiko = tasks.register<SelectIntelSkiko>("selectIntelSkiko") {
     destination.set(layout.buildDirectory.file("native-dependencies/skiko-awt-runtime-macos-x64-${libs.versions.skiko.get()}.jar"))
 }
 
+val repositoryRoot = layout.projectDirectory.dir("../..")
 val intelMac = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")
 val prepareDesktopNative = tasks.register<BuildDesktopNative>("prepareDesktopNative") {
     target.set(if (System.getProperty("os.name") == "Linux") "aarch64-unknown-linux-gnu" else "x86_64-apple-darwin")
     webpCommit.set("4fa21912338357f89e4fd51cf2368325b59e9bd9") // Same source as the existing Android build.
     webpSha256.set("923f3382a47a2af185c3240c954cf004428b237bd7317413a95146d01eb4b94b")
-    repository.set(rootProject.layout.projectDirectory)
+    repository.set(repositoryRoot)
     sources.from(
-        rootProject.file("rust-toolchain.toml"),
-        rootProject.fileTree("native/rust") { exclude("target/**") },
-        rootProject.file("native/third-party/CMakeLists.txt"),
-        rootProject.file("LICENSE"),
-        rootProject.fileTree("app/desktop/licenses"),
+        repositoryRoot.file("rust-toolchain.toml"),
+        fileTree(repositoryRoot.dir("native/rust")) { exclude("target/**") },
+        repositoryRoot.file("native/third-party/CMakeLists.txt"),
+        repositoryRoot.file("LICENSE"),
+        fileTree(repositoryRoot.dir("app/desktop/licenses")),
     )
     resources.set(layout.buildDirectory.dir("native-resources"))
     evidence.set(layout.buildDirectory.dir("native-evidence"))
@@ -184,7 +185,7 @@ dependencies {
     if (intelMac) runtimeOnly(files(selectIntelSkiko.flatMap { it.destination }))
 }
 
-val androidBuild = rootProject.layout.projectDirectory.file("app/build.gradle.kts")
+val androidBuild = repositoryRoot.file("app/build.gradle.kts")
 val releaseVersion = providers.fileContents(androidBuild).asText.map {
     Regex("val releaseVersion = \"([^\"]+)\"").find(it)?.groupValues?.get(1) ?: error("Missing authoritative version")
 }
@@ -201,7 +202,7 @@ compose.desktop {
             vendor = "EhViewer"
             modules("java.desktop", "java.logging", "java.management", "jdk.unsupported")
             appResourcesRootDir.set(prepareDesktopNative.flatMap { it.resources })
-            licenseFile.set(rootProject.layout.projectDirectory.file("LICENSE"))
+            licenseFile.set(repositoryRoot.file("LICENSE"))
             macOS { bundleID = "moe.tarsin.ehviewer.m1" }
         }
     }
