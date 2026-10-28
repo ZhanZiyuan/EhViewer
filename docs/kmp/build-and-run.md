@@ -33,6 +33,12 @@ tools/verification/build/install/verification/bin/verification desktop-native-sm
 
 CLI 实际编译 host cdylib、检查文件格式/CPU，再在独立 JVM 执行既有 JNI 所有权与归档回归。输入只来自 EhViewer 固定 Git 基线及 Kotlin 生成的 ZIP，不依赖 Animeko。报告目录必须全新。此切片仅支持 Linux x86_64 / macOS ARM64 host smoke；其他 CPU/OS、桌面 GUI/打包 runtime、iOS C ABI 明确未验收。见 ADR 0002。
 
+## iOS Rust C ABI Spike
+
+安装固定 Rust toolchain 的 `aarch64-apple-ios` / `aarch64-apple-ios-sim` targets 后，原 `:app:ios:packageSimulatorApp :app:ios:linkDebugExecutableIosArm64` 命令会编译 Rust staticlib，用固定 cbindgen 自动生成头并通过 `.def` 链接；不需要手写 Swift/ObjC/C 入口。Cargo JSON/诊断与生成头在 `app/ios/build/rust/`，CI 单独保留这些构建证据，不上传 staticlib/DWARF。
+
+原 `ios-startup` 命令继续执行完整生命周期，并额外要求每次冷启动的实测 Rust 证据：至少2000个结果复制/释放、live=0。缺失、重复或不完整证据都会失败。只验证缓存身份算法的真实 Core 调用与所有权，完整 Apple 归档/图片、开发签名真机和最终 unsigned IPA 仍未验收。见 ADR 0003。
+
 本地实测为 Xcode 27.1 + iOS 27.0 / iPhone 18 Pro；Info.plist 的 15.0 是声明的编译下限，没有验收 iOS 15 设备。CI 使用 macos-latest ARM64，限制并发和编译内存；逐 SHA 的远程结论见 ledger。
 
-此切片只有启动探针画面。图库、登录、阅读、下载、Rust C ABI、开发签名真机与 11 包分发仍需后续工作，不能把探针当作 iOS 完整产品。
+此切片只有启动探针画面与最小 Rust Core 所有权验证。图库、登录、阅读、下载、完整 Native 归档/图片、开发签名真机与 11 包分发仍需后续工作，不能把探针当作 iOS 完整产品。

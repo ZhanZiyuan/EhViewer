@@ -91,6 +91,7 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo test --locked -p ehviewer_core
+          cargo test --locked -p ehviewer_capi
           cargo test --locked --features jvm --lib
           for target in aarch64-linux-android thumbv7neon-linux-androideabi x86_64-linux-android; do
             cargo clippy --locked --workspace --target "$target" --all-features -- -D warnings
@@ -251,6 +252,8 @@ jobs:
           persist-credentials: false
       - name: Require ARM64 macOS
         run: test "$(uname -m)" = arm64
+      - name: Rust Apple targets
+        run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -271,6 +274,15 @@ jobs:
         with:
           name: ios-startup-${{ github.sha }}
           path: reports/ios-startup/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain Rust Apple build evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-rust-build-${{ github.sha }}
+          path: app/ios/build/rust/
           if-no-files-found: error
           retention-days: 14
 

@@ -27,6 +27,14 @@ fun runtimeIphone(runtime: Map<String, Any?>): Map<String, Any?> = runtime["supp
 fun iosLaunchPid(text: String, bundle: String): Long = Regex("^${Regex.escape(bundle)}: ([1-9][0-9]*)$", RegexOption.MULTILINE)
     .find(text)?.groupValues?.get(1)?.toLong() ?: error("Simulator did not report the launched app PID: $text")
 
+fun rustInteropResults(stderr: String): Int {
+    val marker = Regex("EhViewerM1:rust-ffi-ready completed=([0-9]+) live=([0-9]+)").findAll(stderr).toList().singleOrNull()
+        ?: error("Expected exactly one Rust interop result for this process")
+    val completed = marker.groupValues[1].toInt()
+    require(completed >= 2000 && marker.groupValues[2].toLong() == 0L) { "Rust interop probe did not complete or leaked owned results" }
+    return completed
+}
+
 /** Launch a real app in an owned Simulator. Never boot, erase or reuse a user's device. */
 fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<String, Any?> {
     require(System.getProperty("os.name").startsWith("Mac") && command("uname", "-m").trim() == "arm64") { "M1 requires macOS ARM64" }
@@ -94,7 +102,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         command("xcrun", "simctl", "install", device, app)
         captureDirectory = Path.of(command("xcrun", "simctl", "get_app_container", device, bundle, "data").trim()).resolve("tmp")
         val (firstPid, firstStderr) = launch("first-cold-start")
-        awaitMarkers("first-render", firstPid, firstStderr, "cold-start" to 1, "compose-ready" to 1, "active" to 1)
+        awaitMarkers("first-render", firstPid, firstStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "active" to 1)
         command("xcrun", "simctl", "io", device, "screenshot", output.resolve("startup.png"))
         require(output.resolve("startup.png").fileSize() > 0)
         phase("open-settings")
@@ -112,7 +120,8 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         check(!alive(firstPid)) { "Terminated app PID $firstPid is still alive" }
         val (secondPid, secondStderr) = launch("second-cold-start")
         check(secondPid != firstPid) { "Second cold start reused the terminated PID" }
-        awaitMarkers("second-render", secondPid, secondStderr, "cold-start" to 1, "compose-ready" to 1, "active" to 1)
+        awaitMarkers("second-render", secondPid, secondStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "active" to 1)
+        val rustResults = listOf(rustInteropResults(firstStderr.readText()), rustInteropResults(secondStderr.readText()))
         output.resolve("lifecycle.log").writeText(logs())
         val result = mapOf(
             "source_commit" to command("git", "rev-parse", "HEAD").trim(),
@@ -122,6 +131,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             "executable_sha256" to sha256(executable), "cold_start" to "PASS", "background_foreground" to "PASS",
             "first_pid" to firstPid, "second_pid" to secondPid, "explicit_termination" to "PASS",
             "compose_ready" to "PASS", "development_signed_device" to "NOT_VERIFIED",
+            "rust_c_abi" to "PASS", "rust_completed_results_by_launch" to rustResults, "rust_live_results_after_probe" to 0,
         )
         output.resolve("startup.json").writeText(json(result))
         return result

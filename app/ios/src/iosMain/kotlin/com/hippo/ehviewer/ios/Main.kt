@@ -34,6 +34,8 @@ class EhViewerDelegate : UIResponder, UIApplicationDelegateProtocol {
 
     override fun application(application: UIApplication, didFinishLaunchingWithOptions: Map<Any?, *>?): Boolean {
         NSLog("EhViewerM1:cold-start")
+        val rust = verifyRustInterop()
+        NSLog("EhViewerM1:rust-ffi-ready completed=${rust.completed} live=${rust.live}")
         return true
     }
 }

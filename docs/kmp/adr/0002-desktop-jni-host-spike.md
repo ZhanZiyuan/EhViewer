@@ -1,6 +1,6 @@
 # ADR 0002：真实 Desktop JVM / Rust JNI 所有权 Spike
 
-状态：IMPLEMENTED / MACOS_LOCAL_VERIFIED / CI_NOT_RUN。前置 a5a7612a1 的 push/PR 全部 CI 和四包候选预检 SUCCESS 后才开始；M1 整体仍 IN_PROGRESS。
+状态：Desktop JNI host 切片 GATE_PASSED（8f12b329d）；M1 整体仍 IN_PROGRESS。前置 a5a7612a1 的 push/PR 全部 CI 和四包候选预检 SUCCESS 后才开始。
 
 目标：证明现有 Rust Core/JNI 可以在真实桌面 JVM 加载并执行归档与缓冲区释放。不是 Rust-only 单测，也不是桌面产品、JRE 分发、iOS C ABI 或最终发布包验收。
 
@@ -15,3 +15,5 @@
 本地初步验证：现有 Rust 在 ARM64 Mac 生成真实 dylib（1.37s），既有客户端实际 4,167 项回归成功（尚未包含新增工具所要求的大文件字节预算三项）。最终 CLI 的 4,170 项与 13 样例需重新实测；Linux 只有 CI 实测后才可标记成功。iOS C ABI、Intel DMG、其他 ARM64 runtime 仍未验收。首次 sandbox 中 Cargo tree 下载被 DNS 限制，授权环境下锁定依赖构建成功；未修改依赖、锁文件或下载来源。
 
 最终本地验证：113 verifier tests / 0 failed/error/skipped（1m33s）；实际新 CLI 在 aarch64-apple-darwin / JDK 25.0.3 通过 4,170 项与 13 样例，明确 source_dirty=true，动态库 SHA-256 `7da6c9ed83dbe35ce01f8ed343e4ad00db1a8861e72f03e0f064b130ec7ac1f1`。显式 host target 的 Rust 构建 7.20s，整个 smoke 退出码 0。Android 原完整 tests/lint/build SUCCESS（1m41s，315 tasks），APK/Native/诊断/bytecode/16 KiB 和真实四包预检另按 ledger 记录。新 SHA 的两平台 CI 必须均成功；本地未运行 Linux，不将 ELF 头单测视作 Linux 加载证明。
+
+远程最终结果：8f12b329d 的 [push CI](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40609642826) 与 [PR CI](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40609649180) 全部 SUCCESS。四个 Linux x64/macOS ARM64 host job 均真实构建、加载和完成 4,170 项与 13 样例；四份工件已下载验证正确 source、dirty=false、CPU/JVM、SHA-256 与明确未验收字段。原 Android/Rust/四包 dry-run、iOS 两 target/真实 smoke 与严格 gate 也全部通过。只交付 host JNI 证明，iOS C ABI、Desktop 产品运行时和其他架构仍须独立验证。

@@ -46,4 +46,13 @@ class IosStartupTest {
         assertTrue(runCatching { iosLaunchPid("moe.tarsin.ehviewer: 0\n", "moe.tarsin.ehviewer") }.isFailure)
         assertTrue(runCatching { iosLaunchPid("Application launch failed", "moe.tarsin.ehviewer") }.isFailure)
     }
+
+    @Test fun requiresMeasuredRustOwnershipEvidenceFromEachProcess() {
+        assertEquals(2000, rustInteropResults("EhViewer[123] EhViewerM1:rust-ffi-ready completed=2000 live=0\n"))
+        assertEquals(3000, rustInteropResults("EhViewerM1:rust-ffi-ready completed=3000 live=0"))
+        for (text in listOf("", "EhViewerM1:rust-ffi-ready completed=10 live=0", "EhViewerM1:rust-ffi-ready completed=2000 live=1")) {
+            assertTrue(runCatching { rustInteropResults(text) }.isFailure)
+        }
+        assertTrue(runCatching { rustInteropResults("EhViewerM1:rust-ffi-ready completed=2000 live=0\n".repeat(2)) }.isFailure)
+    }
 }

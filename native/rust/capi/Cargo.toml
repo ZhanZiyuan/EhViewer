@@ -1,0 +1,13 @@
+[package]
+name = "ehviewer_capi"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+ehviewer_core = { path = "../core" }
+
+[build-dependencies]
+cbindgen = { version = "=0.29.4", default-features = false }
