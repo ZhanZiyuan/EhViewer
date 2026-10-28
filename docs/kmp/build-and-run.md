@@ -137,3 +137,11 @@ tools/verification/build/install/verification/bin/verification.bat desktop-windo
 Kotlin工具严格绑定同源码的Core/JVM证明与真实DLL/JDK摘要，准备必要资源，使用固定Microsoft ARM64 JDK执行现有Compose createDistributable。真实EhViewer.exe、jlink JVM、Skiko、C ABI与十个Native依赖保留在`image/EhViewer`。另在含空格/中文的安装目录两次启动包内窗口，每次2,000所有权调用/live0/完整错误释放关闭、包内java.home/库路径/版本、窗口显示与实际绘制帧均必选。报告路径显式UTF-8/Base64，原Unicode库/安装路径保持。
 
 CI显式SOFTWARE_COMPAT并核对实测后端；这只证明CPU绘制，不证明硬件加速、最终ZIP、最低系统或Desktop P0。所有EXE/DLL/JAR Native真实ARM64 PE与摘要、九份许可/来源文件及JDK许可均需核验。工具拒绝覆盖用户目录、嵌套安装与符号链接，不清空既有目录。设计/许可与逐SHA结果见ADR0010/ledger；本机macOS拒绝结果不当作Windows阳性。
+
+5be886a102双Windows在启动前的JVM摘要来源断言失败：实际jlink输出来自固定JDK的`java.base.jmod`，不能误与安装目录另一份DLL比较。独立修复将包内JVM逐字节绑定`lib/server/jvm.dll`的真实jmod负载，并在receipt记录jmod/条目SHA，其他版本/架构/窗口检查保持。可以同一工具复核真实输入：
+
+```text
+tools/verification/build/install/verification/bin/verification.bat jmod-entry --jmod app/desktop/build/windows-jvm-ffi/jdk/jdk-25.0.5.0.2+1/jmods/java.base.jmod --entry lib/server/jvm.dll
+```
+
+当前固定Windows JDK条目SHA为739a6472e254e0edce981f32e8d2d25eb9ae0fb60ac7dea6702c8549966bb574；输入必须先通过原固定vendor ZIP验证。真实失败、旧工件与新SHA验收继续见ledger；尚未运行的Windows窗口不能由该静态比对替代。

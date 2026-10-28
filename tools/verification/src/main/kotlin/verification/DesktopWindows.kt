@@ -123,7 +123,10 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
     val rust = app.resolve("resources/ehviewer_capi.dll")
     val jvm = runtime.resolve("bin/server/jvm.dll")
     require(runtime.resolve("lib/modules").isRegularFile()) { "Missing bundled runtime modules" }
-    require(sha256(jvm) == sha256(jdk.resolve("bin/server/jvm.dll"))) { "Bundled JVM differs from the verified vendor JVM" }
+    val jmod = jdk.resolve("jmods/java.base.jmod")
+    val jvmInput = "lib/server/jvm.dll"
+    val jvmInputSha256 = jmodEntrySha256(jmod, jvmInput)
+    require(sha256(jvm) == jvmInputSha256) { "Bundled JVM differs from the verified vendor JMOD input" }
     for ((name, digest) in expectedLibraries) require(sha256(app.resolve("resources").resolve(name)) == digest) { "Packaged native dependency mismatch: $name" }
     for ((name, digest) in noticeHashes) require(sha256(app.resolve("resources/licenses").resolve(name)) == digest) { "Packaged notice mismatch: $name" }
     require(sha256(runtime.resolve("legal/java.base/LICENSE")) == sha256(jdk.resolve("legal/java.base/LICENSE"))) { "Missing bundled JVM license" }
@@ -169,6 +172,7 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
         "native_files" to natives, "installed_notices" to noticeHashes, "jar_native_libraries" to jarNatives,
         "rust_sha256" to sha256(rust), "skiko_sha256" to sha256(skiko), "launcher_sha256" to sha256(launcher),
         "runtime_jvm_sha256" to sha256(jvm), "launches" to launches, "requested_render_api" to renderApi,
+        "jvm_input" to mapOf("archive" to "java.base.jmod", "archive_sha256" to sha256(jmod), "entry" to jvmInput, "entry_sha256" to jvmInputSha256),
         "hardware_acceleration" to "NOT_VERIFIED", "windows_zip" to "NOT_VERIFIED", "desktop_p0" to "NOT_VERIFIED",
         "minimum_os" to "NOT_VERIFIED", "complete_dependency_license_audit" to "NOT_VERIFIED",
     )

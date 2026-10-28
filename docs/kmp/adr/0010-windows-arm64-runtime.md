@@ -1,6 +1,6 @@
 # ADR 0010：Windows ARM64 包内 JVM / Skiko / Rust 窗口
 
-状态：本地完整验证通过，待独立提交及指定原生runner的Windows实际阳性。前置75b36b2ef双事件全部九job/gate及全部实际工件已核验并同步同一英文Draft PR。M1整体IN_PROGRESS，版本1.15.10 / Android180074。
+状态：5be886a102双Windows job FAILED；实际应用目录构建成功，但错误的JVM输入摘要比对在窗口启动前拒绝。修复仅纠正来源绑定，窗口实际阳性仍须新SHA原生runner验证。前置75b36b2ef双事件完整成功；M1整体IN_PROGRESS，版本1.15.10 / Android180074。
 
 ## 范围、来源与差异
 
@@ -16,7 +16,7 @@
 
 1. Kotlin verifier拒绝非Windows ARM64宿主，核对同一干净源码的Core39/零filtered与真实JVM2000/live0/释放关闭证明；原Core报告须与JVM所测输入逐字节匹配。验证固定JDK原ZIP、java.exe、jlink、jpackage、JVM的身份/ARM64 PE，重用已经实测的C ABI与10个依赖DLL并逐个核验摘要。
 2. 只在新的忽略build目录生成Windows资源与九份许可/来源文件。当前Gradle Windows资源目录仅由这个Kotlin工具准备；Mac/Linux原Native构建任务与路径保持。现有Compose createDistributable产生真实EhViewer.exe与jlink运行时，不生成改扩展名的假包。
-3. 保留完整实际应用目录，再复制到含空格/中文的独立安装目录；复制拒绝符号链接/特殊文件、重叠源目录和已有目标，不清空用户目录。核验所有EXE/DLL的真实ARM64 PE、包内JVM与全部C ABI/依赖/许可摘要、固定Skiko DLL及JAR内Native架构。
+3. 保留完整实际应用目录，再复制到含空格/中文的独立安装目录；复制拒绝符号链接/特殊文件、重叠源目录和已有目标，不清空用户目录。核验所有EXE/DLL的真实ARM64 PE、包内JVM与全部C ABI/依赖/许可摘要、固定Skiko DLL及JAR内Native架构。JVM严格绑定固定JDK的实际java.base.jmod负载lib/server/jvm.dll，报告保留jmod与条目的摘要；不可误与安装目录另一份jvm.dll比较，详见下述实际失败。
 4. 使用包自身EhViewer.exe两次启动。报告路径通过UTF-8/Base64 ASCII传输，实际安装与DLL路径仍含中文。每次沿用同一个Kotlin所有权调用器，实际进行2,000次SHA-1独立比较、过小容量不写入、失效/重复释放拒绝与live0，并确认库关闭后才创建Compose窗口；必须window.isShowing、真实绘制帧、包内java.home/版本/库路径均匹配。
 5. CI显式选择SOFTWARE_COMPAT并要求实测render_api相同；这是首次Windows窗口技术证明的CPU后端，不把它写成Direct3D/OpenGL或硬件加速阳性。每次原两分钟启动上限、窗口等待30秒不放宽。
 6. 同一windows-11-arm job保留旧Native/JVM工件，再保留新的真实应用目录、构建/启动日志及精确源码/摘要报告；任一步失败均非零，失败证据保留。原生产releases.yml/版本/Android验收与单Draft PR保持。
@@ -26,3 +26,7 @@
 ## 验证记录
 
 最终完整验证工具回归123项/0失败错误跳过、格式与installDist在本机通过（42s）；复制回归实际验证Unicode/字节保真、拒绝覆盖用户文件、拒绝嵌套目标和越界链接。工作流actionlint/源码政策通过。原Android完整319任务与原四APK/Native预检、桌面编译及实际Intel DMG两次METAL窗口和4,170项/13样例均通过；本机ARM真实C ABI共享调用器2,000/live0/全部错误与库关闭亦通过。Windows指定runner结果继续写入ci-ledger；本地非Windows拒绝和静态PE检查不能当作Windows窗口阳性。
+
+5be886a102的两组Windows实际Core39/fmt/Clippy和独立JVM2000/live0均SUCCESS，实际应用目录亦构建成功；随后校验器误将jlink输出与JDK安装目录的bin/server/jvm.dll相比较而失败。双实际包JVM SHA均739a6472e254e0edce981f32e8d2d25eb9ae0fb60ac7dea6702c8549966bb574，与固定Windows JDK的java.base.jmod内lib/server/jvm.dll逐字节一致；安装目录副本为967eebf90540aa4fd27b28d9de85ab56cc37e61abe3f538cb805a5d79157e4d1。两份实际JVM为ARM64 PE/25.0.5.0.2；没有窗口启动日志或成功报告，不能记为运行时通过。未确定两个上游副本为何不同，不臆测签名或重写原因。
+
+独立修复用Kotlin读取JM1.0+ZIP条目、限制128MiB且拒绝缺失/重复/非规范路径，核验固定JDK实际jmod负载的SHA并记录输入；不移除JVM摘要/版本/架构/真实窗口检查。首轮新增测试错误地假定本机JBR附带jmods，两项真实失败保留；改为独立格式夹具后完整125项通过，并以真实固定Windows JDK执行同一CLI核验实际输入，不将夹具称作真实Windows运行。
