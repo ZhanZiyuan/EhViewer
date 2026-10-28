@@ -2,6 +2,8 @@
 
 状态：M0 / GATE_PASSED，M1 / GATE_PASSED，M2 / IN_PROGRESS，2026-10-29。2f00e595c双事件各九job/gate与全部实际工件核验齐备；M2首项为独立Kotlin 11目标交付合同与无密钥CI检查，尚未实现M3–M8。版本到 M8 冻结提交之前维持 `1.15.10 / 180074`。
 
+M2进展：3d204d349容量调度修复已双事件九job及全部实物通过；28ab24263独立累计source-policy已双事件十job/gate及全部实物通过，实际清单/索引blob/未跟踪与三直接许可origin摘要已核验。此成功HEAD允许继续下一独立M2改动；阶段check/无密钥dry-run聚合及ci/gate仓库保护仍未完成。完整复制/许可/资源/SBOM与后续产品能力仍不能由本轮源码边界检查代替。
+
 当前技术证明：Kotlin-only iOS/实际C ABI、Linux x64/macOS ARM64 host JNI、ARM→Intel DMG/Rosetta及原生Intel同包消费、Linux aarch64包内JVM/Skiko/Rust实际软件绘制均通过2f00e595c双事件门禁。Windows原Core39/独立MicrosoftARM JVM/Unicode路径/C ABI 2000/live0与真实包内JVM/Skiko/C ABI双窗口也均通过：自有启动器副本只读属性真实修复、SDK语义读回、GetACP65001/UTF-8、SOFTWARE_COMPAT/绘制帧与全部所有权错误释放关闭证据齐备。两事件全部实际Native/许可/八APK/模拟器与同一Intel DMG生产消费证据均已核验，历史失败保留。此为M1技术spike，不等于五平台P0、最终11包、iPad、签名真机、完整SBOM或最低系统已验收。Linux/Windows硬件加速另列M5风险，不以CPU软件绘制替代该结论。
 
 | 顺序 | 现有问题与独立工作包 | 参考 / EhViewer 落点 | 收益与退出准则 | 风险、回滚 |
