@@ -19,6 +19,38 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/feature/kmp' && github.head_ref != 'feature/kmp' }}
 
 jobs:
+  source_policy:
+    name: ci/source-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build and test source policy verifier
+        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - name: Audit cumulative target changes without a reference checkout
+        run: |
+          mkdir -p reports
+          tools/verification/build/install/verification/bin/verification source-policy > reports/source-policy.json
+      - name: Retain source boundary evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: source-policy-${{ github.sha }}
+          path: reports/source-policy.json
+          if-no-files-found: error
+          retention-days: 14
+
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -553,7 +585,7 @@ jobs:
   gate:
     name: ci/gate
     if: always()
-    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core]
+    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core, source_policy]
     runs-on: ubuntu-latest
     steps:
       - name: Require Android, snapshot, iOS, desktop JNI, Intel DMG, Linux ARM64 runtime and Windows native Core
@@ -565,4 +597,5 @@ jobs:
           INTEL_NATIVE_RESULT: ${{ needs.desktop_intel_native.result }}
           LINUX_ARM64_RESULT: ${{ needs.desktop_linux_arm64.result }}
           WINDOWS_CORE_RESULT: ${{ needs.windows_native_core.result }}
-        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success && test "$INTEL_DMG_RESULT" = success && test "$INTEL_NATIVE_RESULT" = success && test "$LINUX_ARM64_RESULT" = success && test "$WINDOWS_CORE_RESULT" = success
+          SOURCE_POLICY_RESULT: ${{ needs.source_policy.result }}
+        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success && test "$INTEL_DMG_RESULT" = success && test "$INTEL_NATIVE_RESULT" = success && test "$LINUX_ARM64_RESULT" = success && test "$WINDOWS_CORE_RESULT" = success && test "$SOURCE_POLICY_RESULT" = success

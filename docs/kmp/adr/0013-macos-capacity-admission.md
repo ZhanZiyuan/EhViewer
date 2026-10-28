@@ -1,6 +1,6 @@
 # ADR 0013: Reduce concurrent hosted ARM macOS requests
 
-Status: isolated repair for actual a7185893d hosted-runner cancellation; local regression passed, new-SHA CI still required. M2 remains incomplete. Keep version 1.15.10 / Android 180074.
+Status: GATE_PASSED at 3d204d349f3cfe5fb1181c4ce4bb7fcab4693547. Push40767487095 and PR40767646278 each completed SUCCESS with all nine jobs/gates and all actual artifacts independently verified. M2 remains incomplete. Keep version 1.15.10 / Android 180074.
 
 PR run 40764558725 canceled macOS ARM64 host job 123085093239 before assignment: runner_id=0, empty runner name and no steps, queued 20:34:55Z through 20:49:56Z. GitHub annotations explicitly identify failure to acquire a hosted runner and ARM64 capacity constraints. The original job and annotations are retained. No agent cancellation or rerun occurred, and the cancellation is not treated as a product-source failure or a successful check.
 
@@ -13,3 +13,5 @@ Validate with actionlint and the full existing verifier suite, including behavio
 Only ci.yml scheduling and its evidence documentation change. Production releases.yml, application sources, Native sources/locks and versions are unchanged. No new language, dependency, reference code/script or Animeko design reuse is introduced.
 
 Local evidence: the full 133-test verifier suite passed without failures/errors/skips (1m05s), including original non-success gate and offline publication regressions. The complete original 319-task Android tests/lint/build passed (1m54s), followed by all Native/diagnostics/Java17/signature/JNI/ABI/16-KiB/four-APK snapshot preflights. Source policy, delivery contract, actionlint and whitespace checks passed. No test limit or acceptance rule changed; actual new-SHA runner allocation and full platform results remain pending.
+
+Final hosted evidence: both events executed host-to-iOS admission on the original ARM runners (PR host completion 21:12:17Z, iOS first step 21:12:25Z; Push 21:17:23Z and 21:22:28Z). Both original iOS log commands completed under the unchanged 30-second limit with complete lifecycle logs and successful receipts. Historical a718 capacity cancellation and independent iOS log-query timeout remain failures; this result does not establish the timeout's deeper cause. All existing Android/eight actual APK, host JNI, Linux/Windows ARM runtime, ARM-produced Rosetta DMG and identical-package native Intel evidence was independently verified. Ledger and the same English Draft PR record exact SHAs, Actions links, artifact IDs and byte hashes. Only after that acceptance did the next isolated M2 source-policy slice begin.

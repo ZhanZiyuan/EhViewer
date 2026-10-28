@@ -1,5 +1,7 @@
 # Platform verification tools
 
+`verification source-policy` audits cumulative source changes and untracked files against the fixed M0 baseline, rejects forbidden implementation/link/reference boundaries and checks retained third-party origin bytes. It needs full target Git history, never a local Animeko checkout. Its explicit scope and limitations are documented in [source-policy.md](../../docs/kmp/source-policy.md); full license/copy/SBOM review is not claimed.
+
 This independent Kotlin/JVM build contains build and regression tools, not another
 application platform. Run it with the repository Gradle Wrapper and JDK 25; its
 bytecode target is Java 17. It uses Gradle's bundled Kotlin DSL and Groovy JSON

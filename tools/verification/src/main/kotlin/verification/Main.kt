@@ -6,6 +6,7 @@ fun main(args: Array<String>) {
     fun tools(): AndroidTools = AndroidTools(options.path("--sdk", System.getenv("ANDROID_HOME")))
     val result: Any = when (args[0]) {
         "architecture" -> verifyArchitecture()
+        "source-policy" -> verifySourcePolicy()
         "release-contract" -> verifyReleaseContract(if (options.has("--tag")) options.get("--tag") else null)
         "ios-startup" -> iosStartup(options.path("--app"), options.path("--output"), if (options.has("--runtime")) options.get("--runtime") else null)
         "desktop-native-smoke" -> desktopNativeSmoke(options.path("--output"))
