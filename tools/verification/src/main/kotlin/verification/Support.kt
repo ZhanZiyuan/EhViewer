@@ -34,8 +34,8 @@ fun sha256(path: Path): String {
     return digest.digest().joinToString("") { "%02x".format(it) }
 }
 
-class CommandFailure(val command: List<String>, val output: String) : IllegalStateException(
-    "Command failed: ${command.joinToString(" ")}\n$output",
+class CommandFailure(val command: List<String>, val output: String, val timedOut: Boolean = false) : IllegalStateException(
+    "Command ${if (timedOut) "timed out" else "failed"}: ${command.joinToString(" ")}\n$output",
 )
 
 fun command(vararg args: Any, input: String? = null, timeout: Duration = Duration.ofMinutes(5), mergeError: Boolean = true): String {
@@ -48,8 +48,11 @@ fun command(vararg args: Any, input: String? = null, timeout: Duration = Duratio
         val process = builder.start()
         process.outputStream.bufferedWriter().use { if (input != null) it.write(input) }
         if (!process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
+            // Cargo/compiler grandchildren must not keep running after the owned command times out.
+            val descendants = process.descendants().use { it.toList() }.asReversed()
+            descendants.forEach { it.destroyForcibly() }
             process.destroyForcibly().waitFor()
-            error("Command timed out: ${arguments.first()}")
+            throw CommandFailure(arguments, "Timeout after $timeout\n${capture.readText()}", timedOut = true)
         }
         val output = capture.readText()
         if (process.exitValue() != 0) throw CommandFailure(arguments, output)

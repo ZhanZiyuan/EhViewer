@@ -23,3 +23,7 @@
 最终本地结果：按CI的2GiB/单worker条件`--rerun-tasks`真实重编译/打包SUCCESS（1m20s，20/20执行），新增真实Intel JDK前置检查后再验SUCCESS（46s，5执行/17复用），产物哈希一致。完整增强smoke最终SUCCESS，报告`reports/intel-dmg-final-installname`，DMG SHA-256=`091f66865e1f8746562e5e60b19474ee35190954dbf4f0a11e4cdf12662fe7c9`；32个薄x86_64 Native逐一核验实际install ID和全部加载依赖，仅包内相对引用或系统库，两次包内runtime/Compose各100次Core调用、同库4,170项+13样例均通过。增强检查一度把otool -L所含LC_ID误作外部加载依赖而FAILED；实际读取otool -D区分install ID后修正分类，外部依赖规则没有放宽。最终114 tests SUCCESS（1m26s，0失败/错误/跳过），原全部APK/Native/diagnostics/bytecode/JNI/ABI/16KiB与精确4包snapshot SUCCESS；原ARM host助手回归4,170项+13样例SUCCESS。原两iOS executable/lint SUCCESS（23s），iOS26.5完整smoke SUCCESS：PID12505→12747，两冷启动各2000、live=0，严格终止/生命周期与清理通过。
 
 环境：本机macOS27.2 / Xcode27.1（27A9275）、Intel Temurin25.0.5、固定Rust nightly（rustc1.100.0-nightly c656540d6 2026-08-21）、CMake4.4.4。Bundle默认声明最低macOS10.13仅是插件元数据，未验收该系统，报告明确NOT_VERIFIED。以上均为提交前dirty源；只在新SHA的push/PR全量适用CI与实际DMG工件真实SUCCESS后，才能标记本切片门禁通过。
+
+提交后只读补查：vtool实际显示Skiko为LC_BUILD_VERSION minos11.0/sdk26.2、包内JVM minos11.0/sdk14.2，Rust为LC_VERSION_MIN_MACOSX10.12/sdk27.0。插件默认plist10.13与Native编译下限不一致，需要后续独立对齐和真实目标OS回归，不能据默认值承诺10.13或11支持。本切片只证明已实测系统上的ARM→Intel构建/启动，物理Intel和最低OS继续未验收。
+
+aec6f057f远程最终：PR40620941911六job/gate全部SUCCESS；Push40620938493因macOS ARM64 host的Cargo15分钟超时及日志丢失而FAILED，gate正确失败。两条ARM→Intel真实DMG job均SUCCESS，PR实际包及源/架构/依赖/两次启动/同库回归工件已下载核验，包SHA=`ccfd68c0b375b70a823c860402446eb20b674ef1cf094452e08b824bc6b48b07`；整个切片不标记GATE_PASSED。后续仅修复超时输出/自有子进程清理并另交新SHA全量复验，不放宽时间或断言。原超时根因因缺Cargo输出仍未知，不能说已经定位。全部job/工件证据见ledger。
