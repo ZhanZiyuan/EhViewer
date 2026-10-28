@@ -1,6 +1,6 @@
 # ADR 0011：Windows 原生启动器的进程 UTF-8 清单
 
-状态：仅修复e84be9f06双Windows真实启动失败，必要本地验收已通过、待独立提交及原生CI；Windows真实阳性须待新SHA指定runner。M1整体IN_PROGRESS，1.15.10 / Android180074。
+状态：12f77b504双Windows实际SDK提取/验证通过，嵌入资源时Access is denied，尚未启动；仅修复自有副本可写性，Windows真实阳性须待新SHA指定runner。M1整体IN_PROGRESS，1.15.10 / Android180074。
 
 ## 实际失败与证据边界
 
@@ -26,6 +26,12 @@ e84be9f06已通过固定JMOD输入、包内Native/许可/版本预检，首次�
 5. 保持SOFTWARE_COMPAT明确测量，不宣称硬件加速/最终ZIP/最低系统/P0/完整SBOM。当前原生Windows测试平台为Windows11 ARM64；上述1903特性说明不构成更低系统实际验收。
 
 不增加ASCII安装目录替代、跳过/重试/continue-on-error、限时放宽或全局代码页设置。原生产releases.yml、Android验收、Rust源码/锁文件、版本与单英文Draft PR不变。
+
+## SDK 写入失败的最小修复
+
+12f77b504双事件实际使用SDK 10.0.26100.0/arm64/mt.exe，提取与验证SUCCESS，写入报告中的EhViewer.exe资源时返回c101008d / Access is denied；无readback或窗口receipt。完整日志和实际失败包保留。Push实际ZIP中的启动器Unix属性为0444，但ZIP不证明原生Windows DOS标志及全部根因；准确结论以新SHA前后属性证据为准。
+
+仅在新建报告目录的自有启动器副本上读取DOS属性、记录read_only与Files.isWritable，清除read-only，再记录并严格要求可写，之后执行原SDK验证/嵌入/读回。原Gradle镜像、用户文件、ACL、系统设置均不修改；不重试、不忽略失败、不缩短Unicode目录、不放宽原所有权/架构/窗口门禁。成功receipt保留前后标志；失败时保留属性JSON和实际副本，以便区分只读与其他拒绝访问原因。此修改仅Kotlin平台文件API，无新增依赖或Animeko精确复用。
 
 ## 本地验证
 

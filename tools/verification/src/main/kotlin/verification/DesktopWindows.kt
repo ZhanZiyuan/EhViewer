@@ -117,6 +117,14 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
     copyDesktopImage(originalImage, image)
     val originalLauncher = image.resolve("EhViewer.exe")
     val originalLauncherSha256 = sha256(originalLauncher)
+    // Windows copies can retain DOS read-only. Only this fresh owned image may be edited.
+    val dos = checkNotNull(Files.getFileAttributeView(originalLauncher, java.nio.file.attribute.DosFileAttributeView::class.java))
+    val readOnlyBefore = dos.readAttributes().isReadOnly
+    output.resolve("launcher-file-before.json").writeText(json(mapOf("read_only" to readOnlyBefore, "writable" to Files.isWritable(originalLauncher))))
+    dos.setReadOnly(false)
+    val readOnlyAfter = dos.readAttributes().isReadOnly
+    output.resolve("launcher-file-after.json").writeText(json(mapOf("read_only" to readOnlyAfter, "writable" to Files.isWritable(originalLauncher))))
+    require(!readOnlyAfter && Files.isWritable(originalLauncher)) { "The owned launcher copy is not writable for SDK resource editing" }
     val mt = windowsManifestTool()
     val originalManifest = output.resolve("launcher-original.manifest.xml")
     capture("manifest-extract.txt", mt, "-nologo", "-inputresource:$originalLauncher;#1", "-out:$originalManifest")
@@ -188,7 +196,7 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
         "rust_sha256" to sha256(rust), "skiko_sha256" to sha256(skiko), "launcher_sha256" to sha256(launcher),
         "runtime_jvm_sha256" to sha256(jvm), "launches" to launches, "requested_render_api" to renderApi,
         "jvm_input" to mapOf("archive" to "java.base.jmod", "archive_sha256" to sha256(jmod), "entry" to jvmInput, "entry_sha256" to jvmInputSha256),
-        "launcher_manifest" to mapOf("original_launcher_sha256" to originalLauncherSha256, "embedded_manifest_sha256" to sha256(embeddedManifest), "sdk_tool" to mt.toString(), "sdk_tool_sha256" to sha256(mt), "settings_preserved" to "PASS"),
+        "launcher_manifest" to mapOf("original_launcher_sha256" to originalLauncherSha256, "embedded_manifest_sha256" to sha256(embeddedManifest), "sdk_tool" to mt.toString(), "sdk_tool_sha256" to sha256(mt), "settings_preserved" to "PASS", "read_only_before" to readOnlyBefore, "read_only_after" to readOnlyAfter),
         "hardware_acceleration" to "NOT_VERIFIED", "windows_zip" to "NOT_VERIFIED", "desktop_p0" to "NOT_VERIFIED",
         "minimum_os" to "NOT_VERIFIED", "complete_dependency_license_audit" to "NOT_VERIFIED",
     )
