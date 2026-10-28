@@ -2,7 +2,7 @@
 
 状态：M0 / GATE_PASSED，M1 / IN_PROGRESS，2026-10-28。已交付可审计基线和安全逐提交入口，之后严格 M1 → M8。版本到 M8 冻结提交之前维持 `1.15.10 / 180074`。
 
-当前技术证明：Kotlin-only iOS/实际C ABI、Linux x64/macOS ARM64 host JNI、ARM→Intel DMG/Rosetta及原生Intel同包消费、Linux aarch64包内JVM/Skiko/Rust实际软件绘制均已通过各自逐SHA门禁。4d6f62cc2双事件完整八job/gate与全部实物证据SUCCESS；旧失败均保留。Windows当前仅Core/C ABI库交叉检查，下一独立切片先做原生Core/C ABI测试，再做实际桌面运行时；M1未完成。Linux OpenGL/硬件加速另列M5未验收风险，不以CPU软件绘制替代该结论。
+当前技术证明：Kotlin-only iOS/实际C ABI、Linux x64/macOS ARM64 host JNI、ARM→Intel DMG/Rosetta及原生Intel同包消费、Linux aarch64包内JVM/Skiko/Rust实际软件绘制均已通过各自逐SHA门禁。4a14bd69d双事件完整九job/gate与全部实物证据SUCCESS；旧失败均保留。Windows双事件各39项原生Core/C ABI测试、10 DLL/3测试EXE实际ARM64 PE和全部摘要已独立核验；实际桌面运行时尚未实现，M1未完成。Linux OpenGL/硬件加速另列M5未验收风险，不以CPU软件绘制替代该结论。
 
 | 顺序 | 现有问题与独立工作包 | 参考 / EhViewer 落点 | 收益与退出准则 | 风险、回滚 |
 |---|---|---|---|---|
@@ -33,3 +33,12 @@
 - Apple code-signature 文档在线入口可访问，但本次文本读取只返回 JavaScript 提示，Markdown 链接读取失败；尚未据此声称完成 Apple 签名规范核验，M1/M7 需补充可读官方证据和实测。
 
 M0 未建立 Release 性能对照；任何“性能提升”或“无回退”均不得由代码审阅代替。设备、签名和非宿主平台测试条件逐项列为阻塞，不能用 Android 编译通过代替五平台验收。
+
+2026-10-28 本机只读条件盘点：沙箱内 `xcrun devicectl list devices --timeout 10` 超时，不能据此认定无设备；在可访问 CoreDevice 服务的权限环境以同一命令成功列出设备，所有记录的 Reality 均为 simulated，没有真实设备。`security find-identity -v -p codesigning` 在两种环境均返回 0 valid identities。未导出密钥、签名或安装应用，未把设备标识写入文档。维护者随后明确没有 Apple 开发者账号或签名，要求继续构建原合同中的 unsigned IPA。缺签名不阻止 unsigned 构建与交付；开发签名真机验收保留 NOT_VERIFIED，不能用模拟器结果冒充。iPhone 与 iPad 必须分别记录模拟器验收。
+
+## 2026-10-28 维护者补充要求
+
+- 四份语言 README（根英文、简体中文、繁体中文、日文）的 Thanks/感谢/感謝列表末尾添加 `[Animeko](https://github.com/open-ani/animeko/)`。已在4a14bd69d完整门禁通过并记录同一Draft PR后独立添加，本地验证通过；该文档提交仍须独立推送/CI门禁。
+- 当前及后续 commit summary/body、PR title/description 全部使用英文。已逐项检查 origin/main..HEAD 的 18 个摘要均为英文，正文为空；无需改写已推送历史。同一 Draft PR 标题/正文已改为英文并读回核对，历史失败及 11 包合同保留。
+- 四个 Android ABI 安装包均须覆盖手机与 Android 平板，iOS unsigned IPA 须覆盖 iPhone/iPad。M5/M7 的自适应布局、窗口/方向、资源和交互矩阵分别验收，暂不增加折叠屏专项适配。
+- 五平台保持同一 EhViewer 图标视觉身份，在 Android 自适应/密度资源、Apple 平台图标资源、macOS ICNS、Windows 多尺寸 ICO、Linux 桌面图标集成中遵循各平台规范；以项目自身资源为来源，不复制 Animeko 图标。M5/M6 分别验证显示与安装包资源。

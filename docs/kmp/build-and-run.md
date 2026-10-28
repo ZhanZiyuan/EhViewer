@@ -95,7 +95,7 @@ SKIKO_RENDER_API=SOFTWARE_COMPAT xvfb-run -a tools/verification/build/install/ve
 cargo check --locked -p ehviewer_core -p ehviewer_capi --lib --target aarch64-pc-windows-msvc
 ```
 
-`write_zip_file` 借用 Rust File，原 Unix fd writer 继续保留。库检查不执行链接或测试；本机 `--all-targets` 已因现有 aws-lc-sys 测试依赖缺 Windows SDK/windows.h 真实失败，未忽略或冒称通过。Windows ARM64 原生测试、包内 JVM/Skiko/Rust、真实窗口和最终 ZIP 仍须后续独立验证，见 ADR0006/ledger。
+`write_zip_file` 借用 Rust File，原 Unix fd writer 继续保留。库检查不执行链接或测试；本机 `--all-targets` 已因现有 aws-lc-sys 测试依赖缺 Windows SDK/windows.h 真实失败，未忽略或冒称通过。其后Windows ARM64原生测试由下述独立CI取得真实阳性；本机交叉检查仍不能代替它。包内 JVM/Skiko/Rust、真实窗口和最终 ZIP 尚待独立验证，见 ADR0006/0007/ledger。
 
 ## Windows ARM64 原生 Core/C ABI 测试
 
@@ -106,4 +106,4 @@ cargo check --locked -p ehviewer_core -p ehviewer_capi --lib --target aarch64-pc
 .\tools\verification\build\install\verification\bin\verification.bat windows-native-core --output reports/<fresh-windows-core>
 ```
 
-Kotlin工具固定vcpkg/Native来源、构建真实依赖、核验JDK/rustc/DLL/测试EXE的ARM64 PE，再执行完整适用Core/C ABI测试、fmt和严格Clippy。EXE/DLL/头/许可证/manifest/status/日志与摘要留在报告目录，任何失败均非零；只管理自建build目录，不删除现有用户目录或重置Git。Linux/macOS原完整工具测试与全部原平台门禁保持必选，Windows新增必选job。该命令不证明Windows包内JVM/Skiko窗口或最终ZIP，当前Windows实际阳性仍待新SHA CI，见ADR0007/ledger。
+Kotlin工具固定vcpkg/Native来源、构建真实依赖、核验JDK/rustc/DLL/测试EXE的ARM64 PE，再执行完整适用Core/C ABI测试、fmt和严格Clippy。EXE/DLL/头/许可证/manifest/status/日志与摘要留在报告目录，任何失败均非零；只管理自建build目录，不删除现有用户目录或重置Git。Linux/macOS原完整工具测试与全部原平台门禁保持必选，Windows新增必选job。4a14bd69d双事件全部九job/gate与实际工件已SUCCESS：Windows各39测试通过、零filtered、仅原3在线ignored，实际10 DLL/3测试EXE均ARM64。该命令不证明Windows包内JVM/Skiko窗口、最终ZIP或完整许可SBOM，见ADR0007/ledger。

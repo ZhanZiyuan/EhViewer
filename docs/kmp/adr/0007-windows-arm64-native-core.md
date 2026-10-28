@@ -1,6 +1,6 @@
 # ADR 0007：Windows ARM64 原生 Core / C ABI 测试
 
-状态：ac7d6fe43双Windows依赖物化步骤FAILED，独立修复中，Windows 原生阳性仍待新 SHA CI。前置4d6f62cc2双事件各八job/gate及全部实际工件SUCCESS已记录ledger和同一Draft PR后开始。M1整体IN_PROGRESS，稳定版本1.15.10 / 180074。
+状态：GATE_PASSED。4a14bd69d双事件全部九job/gate真实SUCCESS，Windows与全部原平台实物证据均已核验。ac7d6fe43双Windows依赖物化失败保留，未重跑覆盖。M1整体IN_PROGRESS，Windows实际包内JVM/Skiko窗口尚未实现，稳定版本1.15.10 / 180074。
 
 ## 独立范围与来源
 
@@ -38,3 +38,7 @@ Kotlin工具给每个子进程显式环境，保持父环境和其他调用不�
 本地最终工具120项/格式/构建、原Android完整tests/lint/build/四包预检、Intel DMG/ARM host真实回归、iOS两target和27.0生命周期/两次2000/live0均PASS。ZIP输出UTF-8名称字节新增断言随完整Core19+15/C ABI6回归通过，宿主真实Cargo元数据确认三测试EXE/生成头结构；上述均不当作Windows阳性。详细本地失败/修正/结果和新SHA门禁见ledger，暂存审查通过才提交。
 
 ac7d6fe43首次两Windows真实失败：工具构建与native Rust安装成功，但vcpkg检出3.8.7历史port时触发partial clone的promisor补抓，子进程Git无法解析github.com；尚未Native构建/测试。失败工件/日志与原blob SHA保留。独立修复去掉blob:none，完整克隆对象并保持固定HEAD；本机把远程设为不可达，真实read-tree/checkout-index仍成功且原patch blob SHA完全一致。该本地证明不等于Windows阳性，新SHA仍须原全部九job/实际工件完整通过。
+
+修复PR job122794111223实际SUCCESS：干净5354238cd、Windows11/native AArch64 JDK21.0.12.1/Rust host aarch64-pc-windows-msvc，39项适用测试（Core19/归档14/C ABI6）全通过、零filtered，三原在线ignored精确匹配；File writer实际执行成功。完整工件12814675211已下载/官方ZIP摘要核验，10 DLL和3测试EXE由独立file工具复核均为PE32+ Aarch64，全部实字节SHA、五份直接/传递版权、manifest及生成头与报告一致。fmt/严格Clippy通过。尚不能以单事件阳性放行整轮，更不代表包内JVM/Skiko窗口或ZIP完成。
+
+Push job122795973597亦实际SUCCESS，完整工件12814695687下载/官方ZIP摘要核验。干净4a14bd69d、39项完整适用测试、fmt/严格Clippy及10 DLL/3测试EXE实际ARM64 PE/逐个摘要、五份版权、manifest/生成头均核验通过。双Windows阳性齐备，须继续等待两事件全部其余job/gate和实际工件成功，才结束本切片门禁。
