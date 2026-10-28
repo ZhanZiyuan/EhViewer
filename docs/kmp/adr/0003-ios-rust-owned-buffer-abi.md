@@ -1,6 +1,6 @@
 # ADR 0003：Kotlin/Native ↔ Rust 所有权 C ABI Spike
 
-状态：IMPLEMENTED / LOCAL_VALIDATION。前置 8f12b329d 的 push/PR 全部 Android、iOS、Linux/macOS JNI、候选四包与 gate 均 SUCCESS 后才开始。M1 整体仍 IN_PROGRESS。
+状态：iOS Rust owned-buffer C ABI 切片 GATE_PASSED（ad68c3c0e）。前置 8f12b329d 的 push/PR 全部 Android、iOS、Linux/macOS JNI、候选四包与 gate 均 SUCCESS 后才开始。M1 整体仍 IN_PROGRESS。
 
 目标：在真实 Kotlin-only iOS 应用里调用同一 EhViewer Rust Core，完成分配、复制和释放，并验证错误边界。不是 iOS 归档/图片/下载 P0，也不是 unsigned IPA、开发签名真机或最低系统验收。
 
@@ -26,3 +26,5 @@ ABI v1：仅借入当前调用期内有效的输入/输出指针。Rust 结果�
 最终 verifier 114 tests、完整 Android 315 tasks、原全部 Native/APK 校验与真实四包测试签名 snapshot、Desktop JNI 4,170 项 + 13 样例均 SUCCESS。最终同一 executable `8b85eb438c2b96b93d82c798a72444ce255aa81a715822dfd55ff6c41f83a027` 在 iOS 26.5 / iPhone 17 Pro 与 iOS 27.0 / iPhone 18 Pro 均完整 smoke SUCCESS；每个系统两次冷启动各完成 2000 个结果，live=0，原生命周期/严格终止、新 PID、截图与清理全部通过。报告路径与 PID 见 ledger。均为提交前 dirty source，新 SHA CI 尚未执行。
 
 边界：保留原 Android/JVM JNI 和 staticlib 方式，没有用空接口替代归档能力。此 ABI 仅证明最小真实 Core 调用与端到端所有权；完整 Apple 归档/WebP 原生依赖仍属 M4，其他平台 runtime/发布与 iOS P0 后续单独验收。版本仍冻结 1.15.10 / 180074。
+
+远程最终结果：ad68c3c0e 的 [push CI](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40615138227) / [PR CI](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40615142625) 全部 SUCCESS，PR test-merge=4963a12dd3ed28cb176fe82c0b9c7a1cc7ee4f03。两个干净源树实际构建/链接 Apple staticlib 与 executable，在 iOS26.5/iPhone17Pro 上分别两次冷启动各完成2000个结果、live=0，原生命周期/终止/Compose画面全通过；自动生成头与 Cargo 证据已下载核验。Android 原完整回归/候选四包、C ABI6/Core19+14/JNI5、三 Android target Clippy、双 host JNI 和两个严格总 gate 亦全部 SUCCESS；逐 job/工件/源 SHA 见 ledger。Simulator 成功不替代开发签名真机、完整 Native 业务或 M1 其他 spike。

@@ -335,15 +335,59 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  desktop_intel:
+    name: ci/desktop (macos-x86_64-rosetta)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require physical ARM64 and Rosetta
+        run: |
+          test "$(uname -m)" = arm64
+          softwareupdate --install-rosetta --agree-to-license
+          test "$(arch -x86_64 /usr/sbin/sysctl -in sysctl.proc_translated)" = 1
+      - name: Rust Intel target
+        run: rustup target add x86_64-apple-darwin
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25.0.5'
+          architecture: x64
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build actual Intel runtime, Skiko, Rust and DMG on ARM
+        run: ./gradlew :app:desktop:packageDmg :app:desktop:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g
+      - name: Build and test distribution verifier
+        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - name: Mount, install and launch the real DMG twice
+        run: tools/verification/build/install/verification/bin/verification desktop-intel-dmg --dmg app/desktop/build/compose/binaries/main/dmg --output reports/desktop-intel
+      - name: Retain Intel package and measured evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: intel-dmg-on-arm-${{ github.sha }}
+          path: |
+            reports/desktop-intel/
+            app/desktop/build/native-evidence/
+            app/desktop/build/compose/binaries/main/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 14
+
   gate:
     name: ci/gate
     if: always()
-    needs: [android, ios, rust_host]
+    needs: [android, ios, rust_host, desktop_intel]
     runs-on: ubuntu-latest
     steps:
-      - name: Require Android, snapshot, real iOS startup and desktop JNI
+      - name: Require Android, snapshot, iOS, desktop JNI and real Intel DMG
         env:
           ANDROID_RESULT: ${{ needs.android.result }}
           IOS_RESULT: ${{ needs.ios.result }}
           RUST_HOST_RESULT: ${{ needs.rust_host.result }}
-        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success
+          INTEL_DMG_RESULT: ${{ needs.desktop_intel.result }}
+        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success && test "$INTEL_DMG_RESULT" = success

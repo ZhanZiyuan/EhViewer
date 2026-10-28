@@ -58,9 +58,27 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
     capture("cargo.log", *cargo.toTypedArray(), timeout = Duration.ofMinutes(15))
     val library = root.resolve("native/rust/target/$target/debug/libehviewer_rust.${if (mac) "dylib" else "so"}")
     library.inputStream().use { verifyDesktopLibrary(it.readNBytes(32), target) }
-    val java = Path.of(System.getProperty("java.home"), "bin", "java")
+    val results = desktopArchiveRegression(output, Path.of(System.getProperty("java.home"), "bin", "java"), library)
+    val result = mapOf(
+        "source_commit" to command("git", "rev-parse", "HEAD").trim(), "source_dirty" to dirty,
+        "target" to target, "jvm_architecture" to System.getProperty("os.arch"), "jvm_version" to System.getProperty("java.version"),
+        "rust" to command("rustc", "--version").trim(), "library_sha256" to sha256(library), "result" to "PASS",
+        "checks" to results, "packaged_runtime" to "NOT_VERIFIED", "ios_c_abi" to "NOT_VERIFIED",
+    )
+    output.resolve("desktop-native.json").writeText(json(result))
+    return result
+}
+
+/** The same immutable fixtures and strict JNI assertions for host and packaged-library probes. */
+fun desktopArchiveRegression(output: Path, java: Path, library: Path): Map<String, Any?> {
+    fun capture(name: String, vararg args: Any): String = try {
+        command(*args).also { output.resolve(name).writeText(it) }
+    } catch (failure: CommandFailure) {
+        output.resolve(name).writeText(failure.output)
+        throw failure
+    }
     val client = listOf(java.toString(), "--enable-native-access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "-cp", System.getProperty("java.class.path"), "verification.MainKt")
-    val results = temporary { fixtures ->
+    return temporary { fixtures ->
         // Reuse only EhViewer's immutable regression data, never an external reference tree.
         val baseline = "8fdfb6c5550fab506759a5587b1c8ee4050f507e"
         command("git", "archive", "--format=tar", "--output=${fixtures.resolve("fixtures.tar")}", baseline, "native/test-fixtures")
@@ -85,12 +103,4 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
         require(differential["archives"].obj().size == 13) { "Incomplete archive regression cases" }
         mapOf("ownership_checks" to regression["checks"], "archive_cases" to 13, "fixture_baseline" to baseline)
     }
-    val result = mapOf(
-        "source_commit" to command("git", "rev-parse", "HEAD").trim(), "source_dirty" to dirty,
-        "target" to target, "jvm_architecture" to System.getProperty("os.arch"), "jvm_version" to System.getProperty("java.version"),
-        "rust" to command("rustc", "--version").trim(), "library_sha256" to sha256(library), "result" to "PASS",
-        "checks" to results, "packaged_runtime" to "NOT_VERIFIED", "ios_c_abi" to "NOT_VERIFIED",
-    )
-    output.resolve("desktop-native.json").writeText(json(result))
-    return result
 }

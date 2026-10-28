@@ -44,6 +44,7 @@ enableFeaturePreview("STABLE_CONFIGURATION_CACHE")
 rootProject.name = "EhViewer"
 include(":app")
 include(":app:ios")
+include(":app:desktop")
 include(":benchmark")
 include(":core:common")
 include(":core:data")

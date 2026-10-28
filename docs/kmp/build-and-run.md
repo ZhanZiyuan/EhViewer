@@ -42,3 +42,17 @@ CLI 实际编译 host cdylib、检查文件格式/CPU，再在独立 JVM 执行�
 本地实测为 Xcode 27.1 + iOS 27.0 / iPhone 18 Pro；Info.plist 的 15.0 是声明的编译下限，没有验收 iOS 15 设备。CI 使用 macos-latest ARM64，限制并发和编译内存；逐 SHA 的远程结论见 ledger。
 
 此切片只有启动探针画面与最小 Rust Core 所有权验证。图库、登录、阅读、下载、完整 Native 归档/图片、开发签名真机与 11 包分发仍需后续工作，不能把探针当作 iOS 完整产品。
+
+## ARM 主机的 Intel DMG Spike
+
+需要 macOS ARM64、可用的 Rosetta、固定 Rust toolchain 的 `x86_64-apple-darwin` target、CMake和真实macOS x86_64 JDK25.0.5。以该JDK设置JAVA_HOME后执行：
+
+```text
+./gradlew :app:desktop:packageDmg :app:desktop:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g
+./gradlew -p tools/verification check installDist --console=plain --no-daemon
+tools/verification/build/install/verification/bin/verification desktop-intel-dmg --dmg app/desktop/build/compose/binaries/main/dmg --output reports/<fresh-intel-report>
+```
+
+`--dmg`接受真实DMG文件或恰有一个DMG的目录。打包自动构建同一固定WebP源码和Rust JNI，验证Skiko原始SHA并选取Intel条目；原依赖缓存保持只读。验证器检查真实UDIF/全部包内Native和JAR内架构、临时安装、两次包内JVM/Compose/Rust启动、逐Native动态依赖及同库4,170项/13样例。临时挂载/安装由工具拥有并清理，仓库GPL许可继续保留。运行时是jlink镜像及真正launcher，镜像无需另带java命令；完整JNI测试由同版本Intel测试JDK运行，包内launcher自身独立执行实测Core调用。
+
+这仍是M1探针，不是Desktop P0。物理Intel硬件、最低系统和签名/公证明确未验收；内部DMG名不代表M6最终11包已实现。设计、上游双架构JAR问题与失败/修复见ADR0004和ledger。
