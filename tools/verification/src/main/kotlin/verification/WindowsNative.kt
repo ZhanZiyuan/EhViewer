@@ -61,7 +61,9 @@ fun windowsNativeCore(output: Path): Map<String, Any?> {
     pe(Path.of(capture("rust-path.txt", "rustup", "which", "--toolchain", toolchain, "rustc").trim()))
 
     val vcpkg = work.resolve("vcpkg")
-    capture("vcpkg-clone.txt", "git", "clone", "--filter=blob:none", "--no-checkout", "https://github.com/microsoft/vcpkg.git", vcpkg)
+    // vcpkg checks out historical ports in a sanitized environment. Keep their blobs local so
+    // checkout-index cannot trigger a promisor fetch that depends on the parent's network setup.
+    capture("vcpkg-clone.txt", "git", "clone", "--no-checkout", "https://github.com/microsoft/vcpkg.git", vcpkg)
     capture("vcpkg-checkout.txt", "git", "-C", vcpkg, "checkout", "--detach", VCPKG_BASELINE)
     require(capture("vcpkg-head.txt", "git", "-C", vcpkg, "rev-parse", "HEAD").trim() == VCPKG_BASELINE)
     val manifest = work.resolve("manifest").createDirectories()

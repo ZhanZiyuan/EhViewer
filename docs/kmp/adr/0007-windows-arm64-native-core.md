@@ -1,6 +1,6 @@
 # ADR 0007：Windows ARM64 原生 Core / C ABI 测试
 
-状态：本地适用验证SUCCESS，Windows 原生阳性待新 SHA CI。前置4d6f62cc2双事件各八job/gate及全部实际工件SUCCESS已记录ledger和同一Draft PR后开始。M1整体IN_PROGRESS，稳定版本1.15.10 / 180074。
+状态：ac7d6fe43双Windows依赖物化步骤FAILED，独立修复中，Windows 原生阳性仍待新 SHA CI。前置4d6f62cc2双事件各八job/gate及全部实际工件SUCCESS已记录ledger和同一Draft PR后开始。M1整体IN_PROGRESS，稳定版本1.15.10 / 180074。
 
 ## 独立范围与来源
 
@@ -36,3 +36,5 @@ Kotlin工具给每个子进程显式环境，保持父环境和其他调用不�
 本机只有macOS ARM64；新Windows入口必须在创建证据/构建目录前明确拒绝本机。该负向、PE格式边界、进程环境用例和原平台回归不能代替Windows阳性。首次本地PE负向fixture错误保留于ledger，修正输入后必须完整重跑；新SHA指定runner实际链接/执行和所有原CI成功前不继续桌面运行时。
 
 本地最终工具120项/格式/构建、原Android完整tests/lint/build/四包预检、Intel DMG/ARM host真实回归、iOS两target和27.0生命周期/两次2000/live0均PASS。ZIP输出UTF-8名称字节新增断言随完整Core19+15/C ABI6回归通过，宿主真实Cargo元数据确认三测试EXE/生成头结构；上述均不当作Windows阳性。详细本地失败/修正/结果和新SHA门禁见ledger，暂存审查通过才提交。
+
+ac7d6fe43首次两Windows真实失败：工具构建与native Rust安装成功，但vcpkg检出3.8.7历史port时触发partial clone的promisor补抓，子进程Git无法解析github.com；尚未Native构建/测试。失败工件/日志与原blob SHA保留。独立修复去掉blob:none，完整克隆对象并保持固定HEAD；本机把远程设为不可达，真实read-tree/checkout-index仍成功且原patch blob SHA完全一致。该本地证明不等于Windows阳性，新SHA仍须原全部九job/实际工件完整通过。

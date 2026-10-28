@@ -314,7 +314,7 @@ Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读
 - Push原生Intel122759536980实际工件12809126458完整下载/官方ZIP SHAa09047217ec5b682ddd3820e5b3cee00f921e7ba1a2b381988a7ad6c08f7bc75核验。干净4d6f62cc2、真实Intel i7-8700B/native-intel且无ARM/Rosetta；DMG/生产报告SHA精确匹配，32 Native逐路径/摘要/依赖、六份材料、两次100Core+1frame及4,170项+13样例与ARM生产者完全一致。两事件全部实际工件均已完整下载/官方摘要/来源/结果核验。
 - 本次环境修复与前置File接口回归的完整双事件门禁**GATE_PASSED**。Linux两次软件绘制是真实阳性；OpenGL/硬件加速未验收，旧失败不改写。先记录同一Draft PR，再进入M1 Windows ARM64原生Core/C ABI测试独立切片；M1整体IN_PROGRESS，Windows runtime、完整P0/Native许可/SBOM、开发签名设备、最终11包和M2–M8仍待验收，稳定版本继续冻结。
 
-## M1-016：Windows ARM64 原生 Core/C ABI 完整测试入口（CI_PENDING）
+## M1-016：Windows ARM64 原生 Core/C ABI 完整测试入口（WINDOWS_FAILED，其余待收集）
 
 前置4d6f62cc2双事件全部八job/gate及所有实际工件SUCCESS先写ledger和同一Draft PR后开始。仅新增指定windows-11-arm原生测试job/Kotlin构建验证器，固定vcpkg及libarchive3.8.7/WebP1.6.0，真实构建依赖并检查JDK/rustc/DLL/三个测试EXE的PE32+/ARM64，然后执行完整Core/C ABI测试、fmt、all-targets严格Clippy，收集真实二进制/头/许可证/日志。保留全部原检查，gate第七依赖/九job；Windows JVM窗口/最终ZIP不是本切片验收。独立来源、必要依赖版本/许可及完整测试范围见ADR0007，无AGPL精确复用。
 
@@ -322,3 +322,14 @@ Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读
 - 本机Windows入口实际按预期拒绝macOS/JVM ARM64，错误明确且报告/构建目录未创建；这个负向不是Windows阳性。原完整Android tests/lint/build SUCCESS（2m2s，319 tasks，44执行/275复用），原Native/diagnostics/Java17/身份/测试签名/JNI/ABI/16KiB和真实四包snapshot全部PASS，冻结1.15.10-SNAPSHOT/180074。
 - 原Intel构建/lint SUCCESS（30s，16 tasks复用，产品源码未改）；新通用进程工具实际重跑DMG安装/32 Native/六份材料/两次各100Core+frame及4,170项+13样例PASS，包SHA7851d12691f84b9a23d3538387fb3d5d64a91ac899485f6a48c163429f874dad。原ARM host同库4,170项+13样例亦PASS。iOS两target构建/打包/lint SUCCESS（10s，26 tasks），真实iOS27.0/iPhone18Pro/1.15.10/180074，PID90386→90664，两次2000/live0、完整生命周期/终止/清理PASS。均为4d6f62cc2+dirty源，不能代替Windows CI阳性；尚未提交/推送本切片。
 - 提交前独立读取固定上游CMake确认MSVC WebP import库必须带lib前缀，修正显式libwebpdemux→libwebp名称并检查实际.lib存在，未改Unix/Android业务链接。最终工具120 tests/0失败错误跳过、格式/check/installDist SUCCESS（1m19s，15 tasks，11执行/4复用）。补充真实ZIP输出UTF-8名称字节断言，完整宿主Core19+15/C ABI6再次PASS（3个既有在线ignored保持）；真实宿主Cargo JSON亦核对恰有Core/archive/C ABI三个测试EXE及唯一生成头out_dir，不能当作Windows阳性。暂存后source-policy/actionlint/diff须通过，再只交一个新commit/单独push，等待新SHA双事件全部九job与真实Windows工件。
+- Commit：`ac7d6fe43b77027a16dceab3ee4c071e6c0e51aa`，`test(native): add Windows ARM64 Core gate`；2026-10-28 19:04 +0800单独push。[Push40677122704](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40677122704) / [PR40677128784](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40677128784)已触发，当前PENDING。PR test-merge=6e19b76ef079203e896405d71c1833ff89ffcfc2、base仍423b8af13632896b55780783b54b5f720ec4c9dd、Draft=true。暂存后的architecture/source-policy、actionlint与diff均PASS。新SHA全部双事件九job/真实候选四包及Windows/其他实际工件通过前不推进桌面runtime，不能把入口/本机负向当作Windows阳性。
+- 双Windows job122778270638/122778292325真实FAILED。Kotlin工具构建/spotless SUCCESS（1m52s/1m39s），已通过原生JVM/PE guard、安装并确认Rust host=aarch64-pc-windows-msvc/1.100.0-nightly，固定vcpkg HEAD精确匹配。随后vcpkg加载libarchive3.8.7历史port，checkout-index触发partial-clone promisor补抓blob2339a2e4dcf2a4d1914d7ae8fcef5d3dbf41e64d，在其子进程报Could not resolve host: github.com，退出128。尚未Native编译/链接/执行，不报告Core或Windows runtime通过。
+- 两失败工件12811068119/12810573847均完整下载/官方ZIP SHA2c72a6d1ee81efa797a5dbaf24ba3a8b53a0f56bc47721f94e00d4c3d57108b0 / 2bd203dc25a1122ef701563be61afb2e0d719bf93ab789555026307b179b399b核验。12份固定输入/安装/克隆/失败日志真实保留，HEAD均15b12b99a227d51e21c86dffd40385439eac87a0。旧其他检查继续收集，不取消/重跑覆盖；仅进入独立输入物化修复。
+
+## M1-017：完整物化 vcpkg 历史 port 对象（CI_PENDING）
+
+只修复上述实际失败：去掉blob:none partial filter，保留完整历史与对象、固定HEAD/版本/参数。让历史port检出只读取本地Git对象，不依赖vcpkg子进程再次联网。无重试/跳测试/改runner/放宽断言/增加原超时，不改业务或依赖版本。
+
+- 本机真实完整克隆到自建/tmp后checkout同一固定SHA，确认非shallow/非promisor；把远程设为不可达offline.invalid，再以独立自建index重现read-tree/checkout-index成功，六个3.8.7 port文件完整取出。原失败fix-deps.patch的git hash-object精确为2339a2e4dcf2a4d1914d7ae8fcef5d3dbf41e64d，manifest版本3.8.7、克隆HEAD均匹配。只证明Git对象物化/离线检出，不当作Windows原生编译或运行通过。
+- 完整工具120 tests/0失败错误跳过、格式/check/installDist SUCCESS（1m18s，15 tasks，10执行/5复用）；原完整Android tests/lint/build正在执行。所有既有检查与新Windows必选job保持，待本地完成后仅交修复commit/单独push，再等待其全部双事件九job与实际工件。
+- 原完整Android tests/lint/build最终SUCCESS（1m32s，319 tasks，44执行/275复用），原Native/diagnostics/Java17/身份/测试签名/JNI/ABI/16KiB与真实候选四包全部再次PASS，1.15.10-SNAPSHOT/180074。源码只改Windows克隆参数，原平台业务/链接/版本/runner/门禁不变。暂存后的source-policy/actionlint/diff必须通过，再独立提交修复；新Windows阳性仍待其CI，旧两失败及所有未完成结果保留。
