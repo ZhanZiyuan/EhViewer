@@ -1,6 +1,8 @@
 # 现代化路线与阶段门禁
 
-状态：M0 / GATE_PASSED，M1 / IN_PROGRESS，2026-10-27。已交付可审计基线和安全逐提交入口，之后严格 M1 → M8。版本到 M8 冻结提交之前维持 `1.15.10 / 180074`。
+状态：M0 / GATE_PASSED，M1 / IN_PROGRESS，2026-10-28。已交付可审计基线和安全逐提交入口，之后严格 M1 → M8。版本到 M8 冻结提交之前维持 `1.15.10 / 180074`。
+
+当前技术证明：Kotlin-only iOS/实际C ABI、Linux x64/macOS ARM64 host JNI、ARM→Intel DMG/Rosetta及原生Intel同包消费、Linux aarch64包内JVM/Skiko/Rust实际软件绘制均已通过各自逐SHA门禁。4d6f62cc2双事件完整八job/gate与全部实物证据SUCCESS；旧失败均保留。Windows当前仅Core/C ABI库交叉检查，下一独立切片先做原生Core/C ABI测试，再做实际桌面运行时；M1未完成。Linux OpenGL/硬件加速另列M5未验收风险，不以CPU软件绘制替代该结论。
 
 | 顺序 | 现有问题与独立工作包 | 参考 / EhViewer 落点 | 收益与退出准则 | 风险、回滚 |
 |---|---|---|---|---|

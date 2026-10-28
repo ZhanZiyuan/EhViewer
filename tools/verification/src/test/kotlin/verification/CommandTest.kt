@@ -5,11 +5,21 @@ import java.nio.file.Path
 import java.time.Duration
 import kotlin.io.path.exists
 import kotlin.io.path.readText
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CommandTest {
+    @Test fun childEnvironmentIsExplicitAndDoesNotLeakToTheNextCommand() {
+        val java = Path.of(System.getProperty("java.home"), "bin", "java")
+        val classpath = listOf(CommandTimeoutProbe::class.java, Unit::class.java)
+            .map { Path.of(it.protectionDomain.codeSource.location.toURI()) }.distinct().joinToString(File.pathSeparator)
+        val arguments = arrayOf(java.toString(), "-cp", classpath, CommandTimeoutProbe::class.java.name, "environment")
+        assertEquals("owned-value", command(*arguments, environment = mapOf("EHVIEWER_COMMAND_TEST" to "owned-value")).trim())
+        assertEquals(System.getenv("EHVIEWER_COMMAND_TEST") ?: "absent", command(*arguments).trim())
+    }
+
     @Test fun timeoutRetainsPartialOutputAndTerminatesOwnedDescendants() = temporary { directory ->
         val marker = directory.resolve("child.pid")
         val java = Path.of(System.getProperty("java.home"), "bin", "java")

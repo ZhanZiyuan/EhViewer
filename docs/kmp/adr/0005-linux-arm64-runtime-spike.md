@@ -1,6 +1,6 @@
 # ADR 0005：Linux aarch64 包内运行时技术证明
 
-状态：c787c570e 的 Linux应用目录/runtime技术切片 GATE_PASSED；后续999418419的PR Linux真实FAILED，当前修复待CI，M1整体仍IN_PROGRESS。c787c570e的双事件全部八job/gate、Android四包与全部实际工件均SUCCESS；初始SDK与WebP失败历史保留。前置be27ac67a的双事件七job、Android候选四包和原生Intel同包消费全部SUCCESS，实际工件核验及同一Draft PR记录完成后才开始本切片。版本继续1.15.10 / 180074。
+状态：4d6f62cc2 的 Linux应用目录/实际软件绘制及双事件完整门禁 GATE_PASSED，M1整体仍IN_PROGRESS。c787c570e此前完整SUCCESS、999418419的PR Linux真实FAILED及初始SDK/WebP失败历史全部保留。前置be27ac67a的双事件七job、Android候选四包和原生Intel同包消费全部SUCCESS，实际工件核验及同一Draft PR记录完成后才开始本切片。版本继续1.15.10 / 180074。
 
 ## 独立设计与来源
 
@@ -48,3 +48,5 @@ c787c570e远程最终：两事件全部八job/gate与实际工件全部SUCCESS�
 后续999418419在PR第二次启动真实FAILED：原Xvfb环境的Skiko输出`Cannot create Linux GL context`后2分钟超时，首启通过；push同库两次启动通过，Rust/Skiko字节相同。旧失败、官方ZIP摘要及完整工件保留于ledger，不能据其他运行成功覆盖。
 
 纠正CI环境选择：独立读取固定 [SkikoProperties.kt](https://github.com/JetBrains/skiko/blob/9a5b398bb2044fff7e7a84fbfd6f4b803e4427c0/skiko/src/jvmMain/kotlin/org/jetbrains/skiko/SkikoProperties.kt) 和 [GraphicsApi.kt](https://github.com/JetBrains/skiko/blob/9a5b398bb2044fff7e7a84fbfd6f4b803e4427c0/skiko/src/commonMain/kotlin/org/jetbrains/skiko/GraphicsApi.kt)，Linux默认OPENGL，官方SOFTWARE_COMPAT用Skia软件绘制/AWT BufferedImage。CI显式选择后者仍实际创建两次窗口、绘制和调用同库，不需要不可保证的GPU context；产品默认配置不变。新增窗口实际renderApi receipt并精确核验请求/实测一致，原断言/超时不减少，不重试或忽略错误。该修复不代表OpenGL路径已修好或验收；M5硬件/OpenGL覆盖单列NOT_VERIFIED。新SHA须完整双事件门禁与真实工件成功后方可继续。
+
+4d6f62cc2最终双事件各八job/gate及所有实际工件均SUCCESS。两个Linux实际窗口receipt各两次SOFTWARE_COMPAT/100Core/1frame/包内AArch64 JVM，30 Native/六份材料/4,170项+13样例PASS；两事件实际Rust/Skiko摘要相同。两份Mac DMG/原生Intel同包消费也全部通过，实测默认METAL。详细SHA/Actions/官方ZIP摘要和旧失败见ledger。本切片只证明所测系统软件后端；OpenGL、最低OS、AppImage、完整P0和SBOM仍NOT_VERIFIED。

@@ -6,6 +6,10 @@ import java.nio.file.Path
 /** A real child process for the command timeout/diagnostic regression, never product code. */
 object CommandTimeoutProbe {
     @JvmStatic fun main(arguments: Array<String>) {
+        if (arguments.single() == "environment") {
+            println(System.getenv("EHVIEWER_COMMAND_TEST") ?: "absent")
+            return
+        }
         if (arguments.single() == "leaf") {
             println("timeout-leaf-ready")
         } else {

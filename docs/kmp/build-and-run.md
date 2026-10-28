@@ -85,7 +85,7 @@ SKIKO_RENDER_API=SOFTWARE_COMPAT xvfb-run -a tools/verification/build/install/ve
 
 验证器检查临时安装后的每个ELF/JAR Native、实际动态依赖、固定Skiko摘要、六份许可证、配置与运行时版本、两次包内JVM/Compose/Rust启动和同库4,170项/13归档样例。临时安装自动删除，报告保留；任何缺库、错误CPU/外部JVM或绘制失败均拒绝。c787c570e已通过原生Ubuntu24.04.5/JDK25.0.5双事件实际运行及全部八job/gate，工件已核验。该命令验证应用目录，不是AppImage；最低OS、完整P0及最终AppImage仍未验收，见ADR0005/ledger。
 
-999418419 的 PR 第二次 GL context 初始化真实失败/超时，旧失败保留。无 GPU 的 Xvfb CI 显式使用 Skiko 官方 SOFTWARE_COMPAT 后端；实际窗口绘制后报告 render_api，验证器要求与请求一致。仍创建两次真实窗口/使用包内 JVM/调用同库，不增加原超时或重试，不将 CPU 绘制称作 OpenGL/硬件加速通过；修复后的阳性须以新 SHA CI 为准。
+999418419 的 PR 第二次 GL context 初始化真实失败/超时，旧失败保留。无 GPU 的 Xvfb CI 显式使用 Skiko 官方 SOFTWARE_COMPAT 后端；实际窗口绘制后报告 render_api，验证器要求与请求一致。仍创建两次真实窗口/使用包内 JVM/调用同库，不增加原超时或重试，不将 CPU 绘制称作 OpenGL/硬件加速通过。4d6f62cc2已取得双事件完整八job/gate和全部实际工件SUCCESS，两份Linux报告每次实际后端均SOFTWARE_COMPAT，原回归全通过；OpenGL仍未验收。
 
 ## Windows Core 文件接口前置检查
 
@@ -96,3 +96,14 @@ cargo check --locked -p ehviewer_core -p ehviewer_capi --lib --target aarch64-pc
 ```
 
 `write_zip_file` 借用 Rust File，原 Unix fd writer 继续保留。库检查不执行链接或测试；本机 `--all-targets` 已因现有 aws-lc-sys 测试依赖缺 Windows SDK/windows.h 真实失败，未忽略或冒称通过。Windows ARM64 原生测试、包内 JVM/Skiko/Rust、真实窗口和最终 ZIP 仍须后续独立验证，见 ADR0006/ledger。
+
+## Windows ARM64 原生 Core/C ABI 测试
+
+在Windows ARM64、原生JDK及Visual Studio/Windows SDK的完整Git历史checkout根目录运行；需新报告目录且`app/desktop/build/windows-native-core`不存在：
+
+```text
+.\gradlew.bat -p tools/verification installDist spotlessCheck --console=plain --no-daemon
+.\tools\verification\build\install\verification\bin\verification.bat windows-native-core --output reports/<fresh-windows-core>
+```
+
+Kotlin工具固定vcpkg/Native来源、构建真实依赖、核验JDK/rustc/DLL/测试EXE的ARM64 PE，再执行完整适用Core/C ABI测试、fmt和严格Clippy。EXE/DLL/头/许可证/manifest/status/日志与摘要留在报告目录，任何失败均非零；只管理自建build目录，不删除现有用户目录或重置Git。Linux/macOS原完整工具测试与全部原平台门禁保持必选，Windows新增必选job。该命令不证明Windows包内JVM/Skiko窗口或最终ZIP，当前Windows实际阳性仍待新SHA CI，见ADR0007/ledger。

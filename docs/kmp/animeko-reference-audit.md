@@ -78,4 +78,6 @@ M1-006：读取 `app/desktop/build.gradle.kts`、`app/desktop/src/main/kotlin/De
 
 M1-011：按需重读本地`app/desktop/build.gradle.kts`的目标选择片段，仅延续平台资源/Native初始化边界。EhViewer在自己的`app/desktop/build.gradle.kts`、`DesktopMain.kt`、`tools/verification/.../DesktopLinux.kt`和`ci.yml`独立扩展Linux aarch64应用目录验证；不用参考项目的视频/JCEF Native或打包脚本，不照搬版本/依赖。只复用EhViewer原JNI/Core/窗口/回归fixtures及已审计的直接Native许可证，未新增AGPL精确复用。SDK配置与静态WebP依赖顺序先后真实失败并独立修复后，c787c570e双事件全部八job/gate及实际工件SUCCESS；仅Linux应用目录/runtime技术证明通过。官方CMP/Skiko/JDK依据、差异与未验收边界见ADR0005/ledger。
 
-M1-014：Windows 前置 File 归档接口直接修正 EhViewer 自身 Core 的 Unix fd/Mode ABI 边界，新增 `write_zip_file`，原 Unix 路径及完整归档/图片功能保留。无新的 Animeko 设计/实现复用；目标文件、固定上游头文件来源、许可处理及真实交叉检查失败/成功边界见 ADR0006，最终本地/逐 SHA 结果见 ledger。Windows 原生运行尚未验收。
+M1-014/015：Windows 前置 File 归档接口直接修正 EhViewer 自身 Core 的 Unix fd/Mode ABI 边界，新增 `write_zip_file`，原 Unix 路径及完整归档/图片功能保留。无新的 Animeko 设计/实现复用；目标文件、固定上游头文件来源、许可处理及真实交叉检查失败/成功边界见 ADR0006。999418419的PR Linux GL失败经独立CI软件后端环境修复，4d6f62cc2双事件完整门禁/实际工件SUCCESS；采用的是Skiko公开配置与真实ComposeWindow后端采证，无AGPL代码复制。Windows原生测试/runtime和Linux OpenGL仍未验收，详细证据见ADR0005/ledger。
+
+M1-016：Windows Native Core测试使用EhViewer自己的Core/C ABI与Kotlin验证器，实际落点为`tools/verification/.../WindowsNative.kt`、进程环境工具/测试及`ci.yml`。只延续M0平台职责边界，无新Animeko实现/脚本/依赖复用。vcpkg及必要Native依赖从独立固定上游核查版本/许可证，生成配置不作为自主C/C++/Shell业务源码维护。设计差异、许可处理和真正Windows结果边界见ADR0007/ledger；本机检查不能替代原生执行，不宣称Windows桌面runtime通过。

@@ -383,6 +383,13 @@ fn zip_file_writer_preserves_ownership_offsets_and_reports_output_errors() {
         assert_eq!(readonly.stream_position().unwrap(), 0);
         assert!(readonly.metadata().unwrap().len() > 6);
         let before = fs::read(&archive).unwrap();
+        let expected_name = "相册/page1.jpg".as_bytes();
+        assert!(
+            before
+                .windows(expected_name.len())
+                .any(|bytes| bytes == expected_name),
+            "ZIP writer did not preserve the UTF-8 entry name"
+        );
         output.seek(SeekFrom::End(0)).unwrap();
         assert!(
             write_zip_file(

@@ -1,6 +1,6 @@
 # ADR 0006：Windows ARM64 前置的可移植归档文件接口
 
-状态：本地验证 SUCCESS，999418419 的 PR Linux 运行门禁 FAILED，独立环境修复进行中，不能放行。M1 整体 IN_PROGRESS；本切片不宣称 Windows 运行时通过。前置 c787c570e 的双事件全部八 job/gate 和实际工件已 SUCCESS，记录同一 Draft PR 后开始。
+状态：File接口前置切片经4d6f62cc2独立环境修复后的完整双事件门禁 GATE_PASSED；999418419的PR Linux失败保留。M1 整体 IN_PROGRESS；本切片不宣称 Windows 原生测试/运行时通过。前置 c787c570e 的双事件全部八 job/gate 和实际工件已 SUCCESS，记录同一 Draft PR 后开始。
 
 ## 范围与独立实现
 
@@ -27,3 +27,5 @@ Windows ARM64 runtime、最终 ZIP、最低 OS、全部 P0 和完整 Native 许�
 本机最终源码：Core19+15、C ABI6、JNI5、fmt/三个 Android 严格 Clippy、完整 Android tests/lint/build/实际四包预检、工具118项测试、Intel DMG 安装/两次真实启动/32 Native/六份材料、Intel与ARM host各4,170项+13样例、iOS两target构建/Simulator27.0完整生命周期及两次2000/live0均SUCCESS。源为c787c570e+dirty；不替代新提交的干净源码双事件CI。详情见ledger。
 
 999418419首次远程：push Linux两次真实启动/完整回归PASS，PR第二次GL context初始化失败并超时，整轮不放行；两者实际Rust/Skiko字节一致。失败属于实际观察，不据此断言File接口或驱动根因。暂停Windows后续功能，先独立修复无GPU CI的显式渲染环境并重跑完整门禁；记录见ADR0005/ledger。
+
+4d6f62cc2最终双事件各八job/gate、实际四包及全部平台工件均SUCCESS，Linux实际软件后端和Mac默认METAL均通过，旧失败未重试/覆盖。先同步ledger和同一Draft PR后继续Windows原生Core/C ABI测试；此处Windows仍只有库源码交叉检查，测试依赖SDK失败和runtime未验收边界保持。

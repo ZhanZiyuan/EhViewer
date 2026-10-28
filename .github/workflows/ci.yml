@@ -485,13 +485,40 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  windows_native_core:
+    name: ci/rust-native (windows-arm64-core)
+    runs-on: windows-11-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build Windows native verifier
+        # Full verifier tests remain mandatory in the existing Linux/macOS jobs (Unix workflow fixtures).
+        run: .\gradlew.bat -p tools/verification installDist spotlessCheck --console=plain --no-daemon
+      - name: Build real ARM64 codecs and run complete Core and C ABI tests
+        run: .\tools\verification\build\install\verification\bin\verification.bat windows-native-core --output reports/windows-native-core
+      - name: Retain Windows ARM64 native evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-arm64-core-${{ github.sha }}
+          path: reports/windows-native-core/
+          if-no-files-found: error
+          retention-days: 14
+
   gate:
     name: ci/gate
     if: always()
-    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64]
+    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core]
     runs-on: ubuntu-latest
     steps:
-      - name: Require Android, snapshot, iOS, desktop JNI, Intel DMG and Linux ARM64 runtime
+      - name: Require Android, snapshot, iOS, desktop JNI, Intel DMG, Linux ARM64 runtime and Windows native Core
         env:
           ANDROID_RESULT: ${{ needs.android.result }}
           IOS_RESULT: ${{ needs.ios.result }}
@@ -499,4 +526,5 @@ jobs:
           INTEL_DMG_RESULT: ${{ needs.desktop_intel.result }}
           INTEL_NATIVE_RESULT: ${{ needs.desktop_intel_native.result }}
           LINUX_ARM64_RESULT: ${{ needs.desktop_linux_arm64.result }}
-        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success && test "$INTEL_DMG_RESULT" = success && test "$INTEL_NATIVE_RESULT" = success && test "$LINUX_ARM64_RESULT" = success
+          WINDOWS_CORE_RESULT: ${{ needs.windows_native_core.result }}
+        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success && test "$INTEL_DMG_RESULT" = success && test "$INTEL_NATIVE_RESULT" = success && test "$LINUX_ARM64_RESULT" = success && test "$WINDOWS_CORE_RESULT" = success
