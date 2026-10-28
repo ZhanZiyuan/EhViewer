@@ -378,7 +378,7 @@ Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读
 - Push原生Intel122855636935实际工件12820857740完整下载/官方ZIP SHA4f354d61ff0c465be48778a69173ef447d31e88f3282e6b73b38618949511bb5核验，真实i7-8700B/native-intel且无ARM/Rosetta；包/生产报告SHA与ARM生产者精确匹配，32 Native逐路径/摘要/依赖、六份材料、两次100Core+frame与4,170项+13样例逐项一致，两窗口METAL。至此本提交全部实际工件均完整下载/官方摘要/来源/结果核验，README独立文档切片GATE_PASSED。
 - 先同步同一英文Draft PR后继续M1 Windows JVM调用既有Rust C ABI的独立技术切片，再接真实窗口/打包；不跳过原九job、不改正式版本或发布。iPad/Android平板/五平台图标要求继续按M5–M7落地，Apple unsigned交付按维护者最新说明执行，签名真机不冒称验证。
 
-## M1-019：Windows ARM64 JVM 到既有 Rust C ABI 的所有权调用（Windows JVM双事件FAILED；完整workflow待结束）
+## M1-019：Windows ARM64 JVM 到既有 Rust C ABI 的所有权调用（双事件FAILED；PR另含cyclic-tag超时）
 
 前置47ebcc959双事件九job/gate和全部实际工件SUCCESS已记录ledger与英文Draft PR并读回确认后开始。本切片只新增Kotlin JVM调用器、固定JDK获取/验证和原Windows必选job内的JVM步骤；原39测试/fmt/Clippy及全部9job保持。Native C ABI/Rust源码/锁文件和应用版本不变，无AGPL实现复用。窗口/ZIP仍是后续切片，不冒称Windows已运行。来源、许可和边界见ADR0008。
 
@@ -401,10 +401,29 @@ Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读
 - 双iOS job122902141474/122902183061均实际SUCCESS；启动12828297076/12828796149与Rust Apple12829180422/12828741217四工件均完整下载/官方ZIP摘要核对。干净7f1afefe7/f0682be22、iOS26.5/iPhone17Pro/arm64/1.15.10/180074，PID28723→29837及27206→28384，两次各2000/live0、完整前后台/严格终止/清理PASS；执行文件SHAd91553f14482db17b3b0f6219f5140069521bfc5ba5e557f8cc1615e0fc9e2e0 / 867b56ad9de3083338c8e2e4badab5a8a54c7f54c87ba0708acb9a5400bebd1c，四生成头均c922f090b75be5774d570b23a2c3bae8429453d5be453a836eaf95a67303345a。本机27.0系统boot失败仍保留，不冒称该runtime已通过。
 - 双Android job122902141294/122902183435均SUCCESS。报告12829246020/12827303656完整下载/官方ZIP SHA5c8a67af6942205a19db5ffcb41e51484702d78d57cfabbbfa466db6057e77ba / 156c2bd44123ca3c98b0ba9775ab191666b28f0eb7e7171b2c7a9599f22cfcb5核对；干净head/test-merge、1.15.10-SNAPSHOT/180074、测试签名/四ABI及snapshot逐包SHA与release预检匹配。两个事件全部八个实际APK亦分别完整下载/官方ZIP摘要与内含APK SHA核验，全部与各自报告匹配。旧双Intel生产/消费与总gate继续收集；不会以Android/iOS成功覆盖Windows失败。
 
-## M1-020：修复Windows Unicode路径的跨JVM参数传输（LOCAL_CHECKS_PASSED；待独立提交及Windows CI）
+- 旧PR40712765243最终completed/FAILED，head_sha=7f1afefe7e194d4a217f789b16bdcc4a64ecb4e3/event=pull_request/attempt=1精确核对。Windows122902183784、Intel producer122902183904与gate122925599517失败；原生Intel122925602033被跳过，其余五job SUCCESS。额外真实失败为原`cyclic-tag`测试在ReleaseWorkflowTest.kt:128的60秒限时触发，121项中1项失败；不能以跳过消费job标绿。完整日志保留，实际PR DMG12828074451已下载/官方ZIP SHA9b114e5c7582058541e14b18856e813ac7588ddae7dd3bf0c4f151a0254e155d核对；包SHA7d05dba5dac3771156d81cc40620c07a2bd691a910f461b8fb9bf8dc9c7e9c8e，仅证明已构建，无成功生产验收报告/原生Intel消费证据。
+- 旧Push40712753842最终completed/FAILED，head/event=push/attempt=1精确核对，Windows122902141211与gate122935340628失败，其余七job SUCCESS。ARM生产与原生Intel消费12831890234实际工件均完整下载/官方ZIP摘要核验；原生Intel ZIP SHA0decdd0f76c96fe22f844dfa506054e50bb7e0c154c6975412e0adcc77372ab9。DMG SHAad6ab33fc664398935ccedf236aabf3f440641dc774f924363e8c66882f361c2、生产报告SHA679d6e3a2a289b59aec3570822a7dd541034b4418e903ce37523fdd1b83bd015在真实i7-8700B/native-intel消费者精确绑定；32 Native逐路径/摘要/依赖、六份材料及4,170项+13样例与生产报告一致，双方各两次100Core/1frame且METAL。旧两运行结案，失败与被跳过状态保留。
+
+## M1-020：修复Windows Unicode路径的跨JVM参数传输（双Windows SUCCESS；整轮门禁未通过）
 
 仅修复7f1afefe7真实失败。Helper到Gradle、Gradle到调用器两次JVM参数边界均传UTF-8/Base64 ASCII，在调用器内严格解码再建立真实Path；仍保留原含中文/空格的目录、LoadLibraryExW/GetModuleFileNameW宽字符验证和全部2,000次所有权/错误检查，不改全局系统编码。普通本地Gradle路径属性保持可用，任务内部编码；Windows helper直接提供编码属性。新增receipt记录transport与native.encoding，必须读回核验。Native/锁文件/版本/CI结构/超时均不变，不新增功能；原失败workflow及其余工件继续收集。
 
 - 本地Desktop编译/格式SUCCESS（55s）；真实Mac ARM64动态库放入含中文/空格的新目录，报告路径亦含中文/空格。预编码属性实际运行SUCCESS（37s，8 tasks），普通属性兼容路径亦SUCCESS（26s，4 tasks）；两次各2,000/live0、全部原错误/释放/关闭检查PASS，读回真实库路径与`path_transport=utf8-base64`，当前Mac native_encoding=UTF-8。此结果不替代新SHA的Windows Cp1252实际验收。
 - verification完整check/spotless/installDist SUCCESS（3m54s，15 tasks），实际121 tests、0失败/错误/跳过。原Android完整tests/lint/build亦SUCCESS（7m19s，319 tasks，48执行/271复用）；原Native/身份/签名/ABI/16KiB与四包预检接续验证中，尚未commit/push。修复期间没有增加产品功能或放宽门禁，不改本机iOS27系统服务或重试已知boot阻塞。
 - 原Native/诊断/Java17/Debug与Release测试签名/JNI/ABI/16KiB及真实四包snapshot全部PASS，1.15.10-SNAPSHOT/180074，逐ABI SHA与预检一致。source-policy实际124 Kotlin文件PASS，actionlint/diff PASS；仅三个Kotlin实现/构建文件与相应证据文档变更。下一步只提交此参数修复并单独push，等待其新SHA全部双事件九job/实际工件；此前失败不改写、不取消或重跑。
+- Commit `72a5ce23a94c717a25328690e2b1170b3c7a29ef`，`fix(desktop): preserve Unicode paths across Windows JVMs`，summary/body均英文；2026-10-28 23:47 +0800单独push，推送后工作区干净。[Push40719365361](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40719365361) / [PR40719379106](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40719379106)均已触发，head_sha/attempt=1精确核对，当前PENDING。PR head/base/test-merge/Draft为72a5ce23a/423b8af13/ce736eb65619549499082e4b78c7ba0eaf1a9ab2/true。旧失败运行继续收集余下Intel证据，新SHA全部适用九job及实物证据通过之前不开始下一功能。
+- [PR Windows122925767710](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40719379106/job/122925767710)真实SUCCESS；JVM实物12831026494已完整下载/官方ZIP SHAc77bd6cc0bff9da52bbd36b869310a606d4dfbe9998c7e550321b786d67b3e16核对。干净ce736eb65、Microsoft ARM64 JVM25.0.5.0.2、WindowsAArch64Linker、native_encoding=Cp1252、path_transport=utf8-base64；真实库路径完整保留“Native JVM 资料”，2,000/live0及长度/过小输出/失效ID/双重释放/关闭均PASS。DLL独立file识别Aarch64 PE、实际SHA50ebbc255e0bbabeebf23d01df892b624b493492fb832ef605b65378c1d73352与报告一致，固定JDK输入摘要一致。Core实物12831127641亦已完整下载/官方摘要一致；全部双事件门禁仍未完成，不提前放行新功能。
+
+- Push Windows122935453849亦实际SUCCESS，双事件调用job均通过。Push JVM12830849425/Core12830799546待实物核验；不能仅据两个Windows成功宣告整轮通过。
+- PR40719379106的原生Intel122945546844实际FAILED于最后artifact上传：CreateArtifact报ENOTFOUND；完整日志显示原测试与实际消费测量已返回PASS，但无成功上传工件，因此job与gate122951713738仍FAIL，不冒称实物验收完成。不忽略上传或将其continue-on-error。
+- Push40719365361的Mac ARM64 host122935453740/iOS122935453997均cancelled，runner_name为空/steps=[]，16:03:03排队记录→16:18:06取消。GitHub check annotations明确为hosted runner多次尝试仍未取得，并提示macOS ARM64容量限制；不是本代理发出取消请求，不据此推断产品源码失败，也不将取消视为成功。原producer等剩余检查继续收集；runner/gate/超时保持，不重跑旧workflow。
+
+## M1-021：保留原60秒限时的离线发布测试进程模型（LOCAL_CHECKS_PASSED；待独立提交及CI）
+
+仅修复旧7f1afefe7真实PR Intel cyclic-tag超时，不开展新产品功能。沿用原Kotlin离线GitHub状态模型，实际workflow Bash不变；每次CLI仍为真实独立Rust标准库子进程，经私有loopback连接复用测试JVM中的模型，保留stdout/stderr/退出码/状态与全部29场景断言。原60秒用例限时和16层标签上限不变；新客户端只供测试，固定Rust工具链fmt/严格Clippy构建，显式跟踪二进制/JVM架构输入。仅producer工件增加JUnit诊断，不改产品构建runner或原消费工件结构。设计/许可/验证边界见ADR0009。
+
+- 本机Intel/Rosetta原定向基线实际通过，单用例18.62s/整Gradle33s，未能重现CI60秒超时；不据此改写旧CI失败或断言底层调度根因。首次新模型全量121项中25失败，原因为相对校验和路径在测试JVM目录解析；失败XML保留，显式传入原Bash临时目录修正后全部121项通过。
+- 首次架构切换仅复用缓存，未当作Intel实测；之后cleanTest强制执行，Intel JDK25.0.5/x86_64完整121/0失败错误跳过，1m42s，cyclic-tag0.958s/19次API调用/原60s上限。ARM/JBR25.0.3亦121/0失败错误跳过，cyclic-tag0.379s。最终加入严格Clippy与二进制/架构输入后的ARM全量再次SUCCESS（1m23s，17 tasks），最终Intel输入切换复验中。
+- 原完整Android tests/lint/build SUCCESS（1m44s，319 tasks，44执行/275复用），原Native/诊断/Java17/签名/JNI/ABI/16KiB及四包snapshot全部PASS，1.15.10-SNAPSHOT/180074。非loopback客户端实际拒绝并返回70，未发出外部连接；生产releases.yml无diff，actionlint PASS。尚未commit/push，不把本地结果冒充新SHA CI。
+- 最终严格Clippy客户端及显式输入版本的Intel复验实际重新执行`:test`并SUCCESS（1m32s，15 tasks）；121/0失败错误跳过，日志x86_64/Java25.0.5、cyclic-tag1.003s/19 API调用/原60s上限。不是缓存结果；既有全部29发布场景及其断言保持。后续只独立提交此测试修复，不进入新功能，等待其新SHA全量门禁。
+- 架构/语言政策实际124 Kotlin文件PASS，原生产releases.yml/Native锁文件/应用版本无diff，actionlint/fmt/diff检查PASS。后续提交只修复已确认的旧cyclic-tag测试负担与诊断，不声称源码改动能解决GitHub容量或DNS；新SHA仍须完整真实SUCCESS，平台取消/上传失败继续保留。

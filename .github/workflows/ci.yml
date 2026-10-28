@@ -379,6 +379,8 @@ jobs:
             reports/desktop-intel/
             app/desktop/build/native-evidence/
             app/desktop/build/compose/binaries/main/dmg/*.dmg
+            tools/verification/build/test-results/test/
+            tools/verification/build/reports/tests/test/
           if-no-files-found: error
           retention-days: 14
 

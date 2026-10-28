@@ -1,6 +1,6 @@
 # ADR 0008：Windows ARM64 JVM 的 Rust C ABI 所有权调用
 
-状态：7f1afefe7的Windows JVM双事件参数传输失败，独立修复本地验证通过、待新SHA CI；Windows FFI阳性尚未取得。本机iOS27系统boot阻塞单独保留。前置47ebcc959双事件全部九job/gate及全部实际工件SUCCESS已记录ledger和同一英文Draft PR后开始。M1整体IN_PROGRESS，应用版本冻结1.15.10 / 180074。
+状态：7f1afefe7的Windows JVM双事件参数传输失败已保留；72a5ce23a双Windows job SUCCESS，PR实际调用与实物已PASS，但完整门禁未通过（PR工件上传DNS失败，Push两个ARM job容量取消）。本机iOS27系统boot阻塞单独保留。前置47ebcc959双事件全部九job/gate及全部实际工件SUCCESS已记录ledger和同一英文Draft PR后开始。M1整体IN_PROGRESS，应用版本冻结1.15.10 / 180074。
 
 ## 独立范围
 

@@ -116,6 +116,12 @@ Kotlin工具固定vcpkg/Native来源、构建真实依赖、核验JDK/rustc/DLL/
 tools\verification\build\install\verification\bin\verification.bat windows-jvm-ffi --core-report reports/windows-native-core/windows-native-core.json --output reports/windows-jvm-ffi
 ```
 
-工具重新下载并校验固定Microsoft ARM64 JDK，构建既有C API动态库，在含空格/Unicode的自建目录中运行真实原生JVM调用器。2,000次不同输入、复制/错误/释放与active0均须实际通过，保留DLL、JDK输入/许可、原生证明、编译/调用日志和receipt。原Core39项/fmt/Clippy及全部原job不减少；新Windows阳性尚待CI。本机Mac的同一通用FFM调用器已真实通过，不替代Windows加载器、窗口或最终ZIP验证，见ADR0008。
+工具重新下载并校验固定Microsoft ARM64 JDK，构建既有C API动态库，在含空格/Unicode的自建目录中运行真实原生JVM调用器。2,000次不同输入、复制/错误/释放与active0均须实际通过，保留DLL、JDK输入/许可、原生证明、编译/调用日志和receipt。原Core39项/fmt/Clippy及全部原job不减少。72a5ce23a的PR Windows调用及实际工件已成功，完整门禁因容量取消/工件上传失败未通过；窗口与最终ZIP未验证，见ADR0008。
 
 7f1afefe7双事件真实失败在Unicode目录通过JVM参数传输时变为`??`，尚未调用Rust；固定JDK原生编码为Cp1252。独立修复以UTF-8/Base64 ASCII在helper→Gradle→调用器传路径，再在调用器内严格解码；真实目录和宽字符加载保持，`path_transport`及实际加载路径须读回核对。普通本地Gradle `ffiLibrary`/`ffiOutput`属性继续支持；Windows helper使用对应Base64属性。失败记录与新SHA完整门禁见ledger。
+
+## 离线发布状态机测试
+
+`tools/verification`的完整`check`还使用仓库固定Rust工具链构建无额外crate的test-only IPC客户端，执行fmt与严格Clippy。实际workflow Bash、29种发布场景、原60秒用例上限和所有断言保持；每个模拟CLI仍是真实子进程，状态由私有loopback上的Kotlin模型处理。该工具不进入产品包，原生Intel仅编译此测试客户端，产品DMG仍只由ARM producer构建。见ADR0009。
+
+Test输入显式包含客户端二进制和JVM架构；本地切换ARM/Intel时须确认`:test`确实执行，不能把缓存结果视为新架构验证。JUnit XML/HTML保留在既有Intel producer证据工件中，以便真实超时可诊断；正式`releases.yml`保持不变。

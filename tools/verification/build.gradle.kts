@@ -26,7 +26,30 @@ tasks.withType<JavaExec>().configureEach {
     workingDir(rootDir.resolve("../.."))
 }
 
+// Only a standard-library test IPC client is compiled here; no product Native library is built.
+val offlineClientSource = layout.projectDirectory.file("src/test/rust/offline_process_client.rs")
+val offlineClient = layout.buildDirectory.file("test-native/offline-process-client${if (System.getProperty("os.name").startsWith("Windows")) ".exe" else ""}")
+val checkOfflineClientFormat = tasks.register<Exec>("checkOfflineClientFormat") {
+    workingDir(rootDir.resolve("../..")) // Honor the existing pinned rust-toolchain.toml.
+    inputs.file(offlineClientSource)
+    inputs.file(rootDir.resolve("../../rust-toolchain.toml"))
+    commandLine("rustfmt", "--edition", "2024", "--check", offlineClientSource.asFile.absolutePath)
+}
+val buildOfflineClient = tasks.register<Exec>("buildOfflineClient") {
+    dependsOn(checkOfflineClientFormat)
+    workingDir(rootDir.resolve("../.."))
+    inputs.file(offlineClientSource)
+    inputs.file(rootDir.resolve("../../rust-toolchain.toml"))
+    outputs.file(offlineClient)
+    doFirst { offlineClient.get().asFile.parentFile.mkdirs() }
+    commandLine("clippy-driver", "--edition=2024", "-Dwarnings", offlineClientSource.asFile.absolutePath, "-o", offlineClient.get().asFile.absolutePath)
+}
+
 tasks.withType<Test>().configureEach {
+    dependsOn(buildOfflineClient)
+    systemProperty("verification.offlineClient", offlineClient.get().asFile.absolutePath)
+    inputs.file(offlineClient).withPropertyName("offlineProcessClient").withPathSensitivity(PathSensitivity.NONE)
+    inputs.property("offlineModelJvmArchitecture", System.getProperty("os.arch"))
     inputs.file(rootDir.resolve("../../.github/workflows/releases.yml"))
         .withPropertyName("releaseWorkflow")
         .withPathSensitivity(PathSensitivity.RELATIVE)
