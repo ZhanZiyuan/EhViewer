@@ -37,3 +37,11 @@ b876b67c5全量push/PR门禁和实际工件核验成功、写入ledger和同一D
 Kotlin DSL把上述材料列为构建输入，验证器在真实DMG安装后逐文件检查原文SHA-256并记录结果；没有以EULA提示或文件名代替内容验证。本修复只覆盖已确认遗漏的直接Native材料，不宣称完整Skia/Rust传递依赖许可清单、SBOM或最终M8许可证验收完成，报告显式保留NOT_VERIFIED。原文资源设为路径限定的`-text`以保持跨平台checkout字节，不改变源码语言识别。
 
 最终本地：115项工具测试通过；旧真实DMG按预期拒绝缺失材料，临时镜像已卸载。新包20/20任务强制执行（1m22s）及真实安装/六份摘要/32Native/两次包内runtime/同库4,170项+13样例全部SUCCESS，SHA=`6893a8ff55f9c23f8860cfecb1422b9e3f4e43882e5612301bbf36a6c48bbdde`。原完整Android319 tasks、原四包/Native预检、ARM host及iOS26.5完整生命周期/C ABI回归亦成功。均为b876b67c5+dirty源，下一提交双事件全量CI仍需独立验收；见ledger。
+
+## M1-010：原生Intel消费同一ARM构建工件（验证中）
+
+前置3c8a2f285的push/PR全部六job/gate、Android四包及双DMG/六份许可证材料/双iOS/四host实际工件全部SUCCESS，证据先写ledger及同一Draft PR。此后新增独立、必选的Intel消费测试；原产品构建仍只在`macos-latest` ARM64/Rosetta运行，原releases矩阵与生产流程不改。新增`macos-26-intel`是测试机，下载同一运行中ARM job上传的DMG和报告；不会构建/替代产品包。[GitHub官方runner规格](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)已核实该标签为Intel，选择与当前ARM runner同一macOS主版本，不据此承诺最低OS。
+
+Kotlin新命令`desktop-intel-native`要求生产者结果PASS、源码精确匹配当前checkout、source_dirty=false、物理ARM/Rosetta=1、x86_64目标和实际DMG SHA相符；再在Intel上复用完整实际挂载/安装、六份许可证、全部Native/依赖、两次包内runtime/Compose与同库4,170项/13样例。源/字节/主机不符均失败。硬件检查同时核对ARM标志、Rosetta标志及Intel CPU品牌；本机实际读取x64 Rosetta进程时仍为1/1/Apple M4，未知OID用`sysctl -i`返回空值，权限/其他命令失败不忽略。报告区分实际消费环境与经校验的ARM生产者构建工具来源，消费机不重编译Rust/App。
+
+Gate增加必选消费结果，失败/取消/跳过/neutral/未完成/空值均拒绝。来源负向测试覆盖错误SHA、脏源、失败生产者、错误构建主机/Rosetta/目标及不同包字节。参考仍为本ADR已记录的Animeko平台边界；此验证设计来自PRD的真实Intel要求和官方runner说明，没有新的AGPL实现/脚本/资源复用。当前只有本机ARM/Rosetta可用；本地需验证拒绝误报Intel及原ARM路径回归，真正Intel阳性必须由新SHA的必选CI实际完成，未完成前保持NOT_VERIFIED。

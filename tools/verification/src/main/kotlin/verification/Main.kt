@@ -9,6 +9,7 @@ fun main(args: Array<String>) {
         "ios-startup" -> iosStartup(options.path("--app"), options.path("--output"), if (options.has("--runtime")) options.get("--runtime") else null)
         "desktop-native-smoke" -> desktopNativeSmoke(options.path("--output"))
         "desktop-intel-dmg" -> desktopIntelDmg(options.path("--dmg"), options.path("--output"))
+        "desktop-intel-native" -> desktopIntelDmg(options.path("--dmg"), options.path("--output"), options.path("--producer-report"))
         "bytecode" -> verifyBytecode()
         "native-sources" -> verifyNativeSources()
         "apks" -> {

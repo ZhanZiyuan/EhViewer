@@ -46,16 +46,35 @@ private fun desktopNativeNotices(contents: Path): List<Map<String, String>> {
     }
 }
 
-/** Mount the actual DMG, install to owned temporary storage, and launch its bundled runtime. */
-fun desktopIntelDmg(dmgInput: Path, output: Path): Map<String, Any?> {
+/** Bind the consumer to the successful ARM receipt and the exact product bytes. */
+fun verifyIntelProducer(proof: Map<String, Any?>, sourceCommit: String, dmgSha256: String) {
+    require(proof.str("result") == "PASS" && proof.str("source_commit") == sourceCommit && proof["source_dirty"] == false) { "Expected a successful clean producer at this exact source SHA" }
+    require(proof.str("physical_host") == "arm64" && proof.str("rosetta_probe") == "1" && proof.str("target") == "x86_64-apple-darwin") { "The DMG must have been built and verified on ARM/Rosetta" }
+    require(proof.str("dmg_sha256") == dmgSha256) { "Consumer DMG differs from the ARM producer's tested bytes" }
+}
+
+/** A producer report selects native Intel consumption of the very same ARM-built DMG. */
+fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null): Map<String, Any?> {
     val dmg = if (Files.isDirectory(dmgInput)) dmgInput.listDirectoryEntries("*.dmg").single() else dmgInput
     require(System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")) { "Run with the real Intel JDK" }
-    require(command("sysctl", "-n", "hw.optional.arm64").trim() == "1") { "This spike must run on physical Apple ARM64" }
+    val nativeIntel = producerReport != null
+    val armHardware = command("sysctl", "-in", "hw.optional.arm64").trim()
     val translated = command("arch", "-x86_64", "/usr/sbin/sysctl", "-in", "sysctl.proc_translated").trim()
-    require(translated == "1") { "Rosetta is unavailable" }
+    val cpuBrand = command("sysctl", "-n", "machdep.cpu.brand_string").trim()
+    if (nativeIntel) {
+        // Intel kernels may omit ARM/Rosetta OIDs. -i ignores an unknown OID, not other failures.
+        require(armHardware in setOf("", "0") && translated in setOf("", "0") && cpuBrand.contains("Intel", ignoreCase = true)) { "Native Intel verification requires Intel hardware without ARM/Rosetta translation" }
+    } else {
+        require(armHardware == "1") { "This packaging spike must run on physical Apple ARM64" }
+        require(translated == "1") { "Rosetta is unavailable" }
+    }
     require(!output.exists()) { "Expected fresh report directory" }
+    val sourceCommit = command("git", "rev-parse", "HEAD").trim()
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
+    val producer = producerReport?.let { path ->
+        readJson(path).also { verifyIntelProducer(it, sourceCommit, sha256(dmg)) }
+    }
     FileChannel.open(dmg).use { channel ->
         require(channel.size() > 512) { "Truncated DMG" }
         val signature = ByteBuffer.allocate(4)
@@ -155,12 +174,15 @@ fun desktopIntelDmg(dmgInput: Path, output: Path): Map<String, Any?> {
         }
     }
     val result = mapOf(
-        "source_commit" to command("git", "rev-parse", "HEAD").trim(), "source_dirty" to dirty,
-        "result" to "PASS", "physical_host" to "arm64", "target" to "x86_64-apple-darwin", "rosetta_probe" to translated,
+        "source_commit" to sourceCommit, "source_dirty" to dirty,
+        "result" to "PASS", "physical_host" to if (nativeIntel) "x86_64" else "arm64", "target" to "x86_64-apple-darwin", "rosetta_probe" to translated,
+        "cpu_brand" to cpuBrand, "arm_hardware_probe" to armHardware, "execution_mode" to if (nativeIntel) "native-intel" else "rosetta",
         "jdk" to System.getProperty("java.version"), "dmg_sha256" to sha256(dmg), "checks" to checks,
         "macos" to command("sw_vers", "-productVersion").trim(), "xcode" to command("xcodebuild", "-version").trim(),
-        "rust" to command("rustc", "--version").trim(), "cmake" to command("cmake", "--version").lineSequence().first(),
-        "physical_intel_hardware" to "NOT_VERIFIED", "signing_notarization" to "NOT_VERIFIED", "desktop_p0" to "NOT_VERIFIED",
+        "rust" to (producer?.str("rust") ?: command("rustc", "--version").trim()), "cmake" to (producer?.str("cmake") ?: command("cmake", "--version").lineSequence().first()),
+        "build_tools_origin" to if (nativeIntel) "validated-arm-producer-report" else "local-arm-build-host",
+        "producer_report_sha256" to producerReport?.let(::sha256), "artifact_build_host" to "arm64",
+        "physical_intel_hardware" to if (nativeIntel) "PASS" else "NOT_VERIFIED", "signing_notarization" to "NOT_VERIFIED", "desktop_p0" to "NOT_VERIFIED",
     )
     output.resolve("intel-dmg.json").writeText(json(result))
     return result

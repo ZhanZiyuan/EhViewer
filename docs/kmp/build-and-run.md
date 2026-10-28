@@ -58,3 +58,13 @@ tools/verification/build/install/verification/bin/verification desktop-intel-dmg
 这仍是M1探针，不是Desktop P0。物理Intel硬件、最低系统和签名/公证明确未验收；内部DMG名不代表M6最终11包已实现。设计、上游双架构JAR问题与失败/修复见ADR0004和ledger。
 
 安装后的应用应在`Contents/app/resources/licenses/`保留项目GPL、当前固定WebP的COPYING/PATENTS/AUTHORS及Skiko的LICENSE/NOTICE。验证器在挂载/安装后逐一核对六份原文摘要，缺失或被修改即失败；来源见同目录的元数据及ADR0004。这是直接Native材料的入包检查，完整依赖许可证/SBOM仍待M4/M8，不因该检查通过而标记全部完成。
+
+## 原生Intel消费验证
+
+`ci/desktop (macos-x86_64-native)`只消费上述ARM job生成的同一DMG，不构建产品。它在`macos-26-intel`核对真实Intel/x64环境，用同版本Intel测试JDK执行：
+
+```text
+tools/verification/build/install/verification/bin/verification desktop-intel-native --dmg <ARM-artifact-dmg-directory> --producer-report <ARM-artifact-intel-dmg.json> --output reports/<fresh-native-report>
+```
+
+生产者报告必须是当前精确源码SHA的干净成功结果，ARM/Rosetta/目标和包本身SHA均匹配；下载路径位于已忽略的reports内，CI源码仍须干净。消费测试不接受ARM/Rosetta冒充原生Intel。实际源码、构建工具来源、消费环境、包摘要与全部运行检查分别记录；物理Intel的PASS只能来自该机器上完整实测成功。现阶段新增验证尚待新SHA CI，本机ARM负向或Rosetta通过不算Intel阳性。

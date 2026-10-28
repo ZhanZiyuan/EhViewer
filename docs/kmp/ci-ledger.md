@@ -187,7 +187,7 @@ Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读
 - Push Intel job122618031378亦已SUCCESS；实际DMG工件12791117743完整下载、官方ZIP摘要/包自身SHA=`bd89eec51c24b0e9a585e0b74ed82bdc3666d06dcfebe653696c0b09b90e16c4`与报告一致。source=b876b67c5、dirty=false、32个x86_64 Native/依赖、两次包内runtime/Compose各100次Core调用、同库4,170项+13样例全部PASS。两事件全部Android/四包、iOS/C ABI、双host、真实Intel DMG与总gate、实际工件均验收后，才允许下一独立改动。
 - 结论：本轮修复及ARM→Intel/Rosetta技术切片 **GATE_PASSED**；M1整体仍IN_PROGRESS。后续需修复已确认的Native许可证材料未入包问题，并继续物理Intel、Linux aarch64/Windows ARM64 runtime证明。最低OS、完整P0、开发签名设备和11包仍未验收；此前失败历史不改写，也不据本轮成功反推旧macOS Cargo超时根因。
 
-## M1-009：将直接Native许可证材料保留到安装后的应用（进行中）
+## M1-009：将直接Native许可证材料保留到安装后的应用（GATE_PASSED）
 
 仅在b876b67c5全量双事件/工件SUCCESS写入本台账和同一Draft PR后开始。实际旧`.app`没有静态WebP材料，Skiko runtime JAR也无LICENSE/NOTICE；独立修复将六份材料及来源元数据放入`Contents/app/resources/licenses`，保留原DMG GPL提示。验证器逐份验证原文摘要，完整依赖许可审计仍显式NOT_VERIFIED；无版本/业务逻辑/runner/工作流变更。
 
@@ -196,3 +196,19 @@ Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读
 - 最终本地工具格式/编译/check/installDist SUCCESS（1m16s），115 tests/0失败错误跳过；真实旧DMG的负向检查按预期拒绝（`Missing installed Native notice: EhViewer/LICENSE.txt`），临时镜像卸载成功。新DMG20/20任务强制执行SUCCESS（1m22s），实际安装后六份材料SHA全部匹配，32个Native/依赖、两次包内JVM/Compose各100次Core调用/1个实测frame、同库4,170项+13归档样例全部PASS。包SHA=`6893a8ff55f9c23f8860cfecb1422b9e3f4e43882e5612301bbf36a6c48bbdde`，报告`reports/notices-intel-dmg`。
 - 原完整Android tests/lint/build SUCCESS（1m24s，319 tasks，44执行/275复用），原Native/诊断/Java17/身份/测试签名/JNI/ABI/16KiB和真实四包snapshot全部SUCCESS，1.15.10-SNAPSHOT/180074。ARM host4,170项+13样例PASS；两iOS target/打包/lint SUCCESS（8s，5执行/21复用），iOS26.5完整smoke PASS，PID61480→61576，各2000/live0、完整生命周期/清理成功。以上均b876b67c5+dirty本地源，不替代下一SHA干净CI。
 - 新资源暂存后source-policy/architecture、diff whitespace与actionlint均SUCCESS；Git index两许可证blob精确匹配官方值。路径限定的`-text`仅保持已审计资源原文字节，不改变源码语言识别或任何Android门槛。workflow/稳定版本/业务源码/依赖版本保持；新SHA仍必须单独全量push/PR CI验收。
+- Commit：`3c8a2f2853d1f9d8806ab6666a15dfaad46e2177`，`fix(desktop): retain native notices in installed app`；2026-10-28 12:26 +0800单独push。[Push CI40632345976](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40632345976)、[PR CI40632352805](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40632352805)已触发，当前IN_PROGRESS/QUEUED，尚不宣告本切片通过。PR test-merge=`d3b422a5bd0ee9046244f4950e3050205225bf92`，base仍423b8af13632896b55780783b54b5f720ec4c9dd，Draft=true。下一功能等待本SHA全部适用CI和真实工件SUCCESS。
+- 本轮四个host job均SUCCESS：push Linux122631394058 / macOS ARM64 122631393011，PR Linux122631416551 / macOS ARM64 122631416434。工件12791953477、12791808072、12791693186、12792645771已全部下载并核对官方ZIP摘要，实际报告source=3c8a2f285/d3b422a5b、dirty=false、JVM/Native CPU相符，4,170项+13样例均PASS。Android/iOS/真实DMG及总gate尚未完成，不据host结果提前判断本轮通过。
+- 本轮两Android job122631394090/122631417073均SUCCESS；实际报告12792224299/12792109370已完整下载、官方ZIP摘要与干净3c8a2f285/d3b422a5b源码/1.15.10-SNAPSHOT/180074/测试签名/精确四ABI及逐包manifest SHA均核对成功。iOS/DMG/总gate仍须完成，未视为整轮通过。
+- 两iOS实际启动工件12792607362/12792828320及Rust Apple构建12792891538/12793155705已下载并核对官方ZIP摘要：干净3c8a2f285/d3b422a5b源、iOS26.5/iPhone17Pro、1.15.10/180074；push PID27246→28418，PR PID26518→27152，均两次2000/live0、完整生命周期及清理PASS。四份生成头SHA均为c922f090b75be5774d570b23a2c3bae8429453d5be453a836eaf95a67303345a。尚待真实DMG/许可证摘要/总gate完成，不将局部成功当作整轮验收。
+- 最终：[Push40632345976](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40632345976) / [PR40632352805](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40632352805)均**SUCCESS**，API status=completed/event=push/pull_request/head_sha=3c8a2f2853d1f9d8806ab6666a15dfaad46e2177全部核对。双事件六job均SUCCESS，gate122638569086/122639290532均真实SUCCESS；base423b8af13632896b55780783b54b5f720ec4c9dd、test-merge d3b422a5bd0ee9046244f4950e3050205225bf92、Draft=true。
+- 两条Intel job122631403116/122631416255亦均SUCCESS。实际完整DMG工件12792697772/12792429857已下载并校验官方ZIP digest、包自身SHA与报告一致：push=`6d1b6ae6a8b8ce80b93653bf7b3a61429432b9e2562286445d55395f219c3d97`，PR=`6719e9f5275d1c9eb6da78ff9ef59d7f1ca159fc0d40de567e1be805b1014529`。各自干净源码精确匹配head/test-merge、1.15.10、真实32个x86_64 Native/依赖、六份安装后许可证原文摘要、两次包内runtime/Compose各100次Core调用、同库4,170项+13样例全部PASS。
+- 本切片**GATE_PASSED**，先将以上证据记录同一PR后才开始下一独立改动。M1整体仍IN_PROGRESS；物理Intel、Linux/Windows ARM64 runtime、最低OS、完整P0/依赖许可证与SBOM、开发签名设备、11包和M2–M8仍未验收，稳定版本继续冻结。
+
+## M1-010：原生Intel消费ARM构建的同一DMG（进行中）
+
+前置3c8a2f285全部双事件门禁/实际工件SUCCESS写ledger和同一Draft PR后，新增独立必选消费job及Kotlin命令。产品仍只在macos-latest ARM64构建；macos-26-intel只下载同一运行的同SHA DMG/生产者报告，验证干净精确源码、ARM/Rosetta生产环境及实际包摘要，再执行完整原安装/许可证/Native/两次包内runtime/同库回归。原releases矩阵/业务/版本不变，CI仍无生产密钥和只读权限。设计与官方标签依据见ADR0004。
+
+- 本机实测x64 Rosetta下硬件标志仍1/1、CPU品牌Apple M4；未知OID用sysctl -i为空且退出0，其他权限/命令失败不忽略。新原生Intel模式对真实ARM/Rosetta按预期拒绝，错误明确且未创建安装报告目录；该负向不算原生Intel通过。
+- 本地工具格式/编译/check/installDist SUCCESS（1m18s），116 tests/0失败错误跳过；新增来源边界用例拒绝错误源码SHA/脏源/失败生产者/错误主机或Rosetta/目标/包摘要。Gate新增第五依赖，35次门禁状态检查均按规则验证，原测试不删减。完整Android和原ARM/Rosetta路径回归正在进行；真正原生Intel阳性尚待新SHA必选CI，未提交/推送该切片。
+- 最终本地原完整Android tests/lint/build SUCCESS（1m29s，319 tasks，44执行/275复用）；原Native/diagnostics/Java17/身份/测试签名/JNI/ABI/16KiB及真实四包snapshot均SUCCESS，1.15.10-SNAPSHOT/180074。原产品DMG构建/lint SUCCESS（27s，20任务复用已验证输出），产品源码未改；新验证器对实际包重跑原ARM路径SUCCESS，明确记录arm64/rosetta/Apple M4/1/1，六份材料、32 Native/依赖、两次包内runtime/Compose各100次Core调用/1个frame、同库4,170项+13样例全部通过。报告source=3c8a2f285+dirty，本机不报告Intel阳性。
+- 新增测试job只下载并校验ARM工件，编译验证工具；没有产品/Rust构建步骤。消费报告将构建工具来源标为已校验的ARM报告，保留真实消费机环境。原release四段/矩阵/生产材料隔离与正式版本未改，actionlint和diff检查SUCCESS。新SHA必须独立push并通过新增必选Intel job及全部原push/PR门禁，才可继续。

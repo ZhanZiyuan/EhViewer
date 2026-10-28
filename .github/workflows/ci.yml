@@ -382,16 +382,62 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  desktop_intel_native:
+    name: ci/desktop (macos-x86_64-native)
+    needs: desktop_intel
+    # Consumption only: the sole product DMG is built above on macos-latest ARM64.
+    runs-on: macos-26-intel
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require native Intel runner
+        run: |
+          test "$RUNNER_ARCH" = X64
+          test "$(uname -m)" = x86_64
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25.0.5'
+          architecture: x64
+      - uses: actions/download-artifact@v8
+        with:
+          name: intel-dmg-on-arm-${{ github.sha }}
+          path: reports/intel-arm-producer
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build and test consumer verification tools
+        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - name: Install and launch the same ARM-produced DMG on Intel
+        run: >-
+          tools/verification/build/install/verification/bin/verification desktop-intel-native
+          --dmg reports/intel-arm-producer/app/desktop/build/compose/binaries/main/dmg
+          --producer-report reports/intel-arm-producer/reports/desktop-intel/intel-dmg.json
+          --output reports/desktop-intel-native
+      - name: Retain native Intel consumption evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: intel-dmg-native-${{ github.sha }}
+          path: reports/desktop-intel-native/
+          if-no-files-found: error
+          retention-days: 14
+
   gate:
     name: ci/gate
     if: always()
-    needs: [android, ios, rust_host, desktop_intel]
+    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native]
     runs-on: ubuntu-latest
     steps:
-      - name: Require Android, snapshot, iOS, desktop JNI and real Intel DMG
+      - name: Require Android, snapshot, iOS, desktop JNI, ARM-built DMG and native Intel
         env:
           ANDROID_RESULT: ${{ needs.android.result }}
           IOS_RESULT: ${{ needs.ios.result }}
           RUST_HOST_RESULT: ${{ needs.rust_host.result }}
           INTEL_DMG_RESULT: ${{ needs.desktop_intel.result }}
-        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success && test "$INTEL_DMG_RESULT" = success
+          INTEL_NATIVE_RESULT: ${{ needs.desktop_intel_native.result }}
+        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success && test "$INTEL_DMG_RESULT" = success && test "$INTEL_NATIVE_RESULT" = success
