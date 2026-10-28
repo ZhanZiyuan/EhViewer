@@ -145,3 +145,13 @@ tools/verification/build/install/verification/bin/verification.bat jmod-entry --
 ```
 
 当前固定Windows JDK条目SHA为739a6472e254e0edce981f32e8d2d25eb9ae0fb60ac7dea6702c8549966bb574；输入必须先通过原固定vendor ZIP验证。真实失败、旧工件与新SHA验收继续见ledger；尚未运行的Windows窗口不能由该静态比对替代。
+
+e84be9f06双Windows随后在首次Unicode安装启动时遇到原生JLI找不到java.dll，尚未到达Compose。独立修复在报告副本的启动器原清单中加入进程UTF-8，SDK mt.exe验证/嵌入/提取后完整比较原身份、权限、DPI和兼容设置；记录工具与清单SHA，原Gradle包保持。Windows SDK优先ARM64工具，其次SDK x64构建工具，产品全部PE仍须ARM64。仅该应用启用UTF-8，不改系统locale/注册表。
+
+原中文/空格安装与两次窗口检查保留，窗口内FFM GetACP须真实65001，JVM native.encoding须UTF-8；原包内JVM/库路径/版本、2,000/live0/错误释放关闭与实际绘制帧均必选。诊断CLI可独立转换提取的真实清单（输出须不存在）：
+
+```text
+tools/verification/build/install/verification/bin/verification windows-manifest --input reports/launcher-original.manifest.xml --output reports/launcher-utf8.manifest.xml
+```
+
+本机静态转换/128项回归不等于Windows SDK嵌入或真实启动；原生结果及失败历史见ADR0011/ledger。

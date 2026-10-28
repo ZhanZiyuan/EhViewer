@@ -156,6 +156,12 @@ private fun probeCapi(symbols: CapiSymbols): Int {
 
 internal data class OwnedCapiResult(val completed: Int, val loadedPath: Path)
 
+/** Measure the launched Windows process; no system locale or global code page is changed. */
+internal fun windowsProcessCodePage(): Int = Arena.ofConfined().use { arena ->
+    val symbol = SymbolLookup.libraryLookup("kernel32.dll", arena).find("GetACP").orElseThrow()
+    Linker.nativeLinker().downcallHandle(symbol, FunctionDescriptor.of(JAVA_INT)).invokeWithArguments() as Int
+}
+
 /** Return only after the real ownership checks and library close have both succeeded. */
 internal fun verifyOwnedCapi(library: Path): OwnedCapiResult = openCapi(library.toRealPath()).use { symbols ->
     OwnedCapiResult(probeCapi(symbols), symbols.loadedPath)

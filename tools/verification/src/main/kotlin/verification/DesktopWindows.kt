@@ -111,9 +111,23 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
         "-p", root.resolve("app/desktop"), "createDistributable", "spotlessCheck", "--console=plain", "--no-daemon", "--max-workers=1",
         "-Dorg.gradle.parallel=false", "-Dorg.gradle.jvmargs=-Xmx2g", "-Dorg.gradle.java.home=$jdk", environment = buildEnvironment,
     )
+    val originalImage = root.resolve("app/desktop/build/compose/binaries/main/app/EhViewer")
     val image = output.resolve("image/EhViewer")
     image.parent.createDirectories()
-    copyDesktopImage(root.resolve("app/desktop/build/compose/binaries/main/app/EhViewer"), image)
+    copyDesktopImage(originalImage, image)
+    val originalLauncher = image.resolve("EhViewer.exe")
+    val originalLauncherSha256 = sha256(originalLauncher)
+    val mt = windowsManifestTool()
+    val originalManifest = output.resolve("launcher-original.manifest.xml")
+    capture("manifest-extract.txt", mt, "-nologo", "-inputresource:$originalLauncher;#1", "-out:$originalManifest")
+    val utf8Manifest = output.resolve("launcher-utf8.manifest.xml")
+    Files.write(utf8Manifest, windowsUtf8Manifest(Files.readAllBytes(originalManifest)))
+    capture("manifest-validate.txt", mt, "-nologo", "-manifest", utf8Manifest, "-validate_manifest")
+    capture("manifest-embed.txt", mt, "-nologo", "-manifest", utf8Manifest, "-outputresource:$originalLauncher;#1")
+    val embeddedManifest = output.resolve("launcher-embedded.manifest.xml")
+    capture("manifest-read-back.txt", mt, "-nologo", "-inputresource:$originalLauncher;#1", "-out:$embeddedManifest")
+    verifyWindowsUtf8Manifest(Files.readAllBytes(originalManifest), Files.readAllBytes(embeddedManifest))
+    pe(originalLauncher)
     val installed = work.resolve("Installed Runtime 资料/EhViewer")
     installed.parent.createDirectories()
     copyDesktopImage(image, installed)
@@ -158,6 +172,7 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
         capture("launch-$attempt.log", launcher, "--m1-smoke-base64", encoded, timeout = Duration.ofMinutes(2), environment = mapOf("SKIKO_RENDER_API" to renderApi))
         val proof = Properties().apply { report.resolve("launcher.properties").inputStream().use(::load) }
         require(proof.getProperty("architecture") == "aarch64" && proof.getProperty("java_version") == "25.0.5.0.2") { "Running JVM identity mismatch" }
+        require(proof.getProperty("windows_code_page") == "65001" && java.nio.charset.Charset.forName(proof.getProperty("native_encoding")) == Charsets.UTF_8) { "Launcher did not activate its per-process UTF-8 manifest" }
         require(Path.of(proof.getProperty("java_home")).toRealPath() == runtime.toRealPath()) { "Launcher used an external JVM" }
         require(Path.of(proof.getProperty("rust_library")).toRealPath() == rust.toRealPath()) { "Caller loaded a different Rust DLL" }
         require(proof.getProperty("application_version") == version && proof.getProperty("rust_hash_results") == "2000" && proof.getProperty("rust_active_results") == "0") { "Incomplete packaged Rust ownership calls" }
@@ -173,6 +188,7 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
         "rust_sha256" to sha256(rust), "skiko_sha256" to sha256(skiko), "launcher_sha256" to sha256(launcher),
         "runtime_jvm_sha256" to sha256(jvm), "launches" to launches, "requested_render_api" to renderApi,
         "jvm_input" to mapOf("archive" to "java.base.jmod", "archive_sha256" to sha256(jmod), "entry" to jvmInput, "entry_sha256" to jvmInputSha256),
+        "launcher_manifest" to mapOf("original_launcher_sha256" to originalLauncherSha256, "embedded_manifest_sha256" to sha256(embeddedManifest), "sdk_tool" to mt.toString(), "sdk_tool_sha256" to sha256(mt), "settings_preserved" to "PASS"),
         "hardware_acceleration" to "NOT_VERIFIED", "windows_zip" to "NOT_VERIFIED", "desktop_p0" to "NOT_VERIFIED",
         "minimum_os" to "NOT_VERIFIED", "complete_dependency_license_audit" to "NOT_VERIFIED",
     )

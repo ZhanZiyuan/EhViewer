@@ -60,6 +60,8 @@ fun main(arguments: Array<String>) {
                         setProperty("application_version", System.getProperty("jpackage.app-version"))
                         setProperty("rust_hash_results", completed.toString())
                         if (owned != null) {
+                            setProperty("windows_code_page", windowsProcessCodePage().toString())
+                            setProperty("native_encoding", System.getProperty("native.encoding"))
                             setProperty("rust_library", owned.loadedPath.toString())
                             setProperty("rust_active_results", "0")
                             setProperty("rust_ownership_errors", "PASS")

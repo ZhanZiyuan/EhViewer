@@ -1,0 +1,34 @@
+# ADR 0011：Windows 原生启动器的进程 UTF-8 清单
+
+状态：仅修复e84be9f06双Windows真实启动失败，必要本地验收已通过、待独立提交及原生CI；Windows真实阳性须待新SHA指定runner。M1整体IN_PROGRESS，1.15.10 / Android180074。
+
+## 实际失败与证据边界
+
+e84be9f06已通过固定JMOD输入、包内Native/许可/版本预检，首次从含中文/空格安装目录执行真实EhViewer.exe时原生JLI启动器报could not find java.dll，随后找不到Java运行环境。尚未进入Kotlin/Compose，没有窗口receipt；不能将JMOD修复称作Windows运行时通过。两事件原Core39/fmt/Clippy与独立原生JVM2000/live0均SUCCESS，原完整job仍因新增启动失败而FAILED。
+
+实际包内java.dll存在且为ARM64 PE；实际jvm.dll与固定java.base.jmod条目SHA739a6472e254e0edce981f32e8d2d25eb9ae0fb60ac7dea6702c8549966bb574一致。固定JDK原生编码为Cp1252；从实际EhViewer.exe资源提取的原清单含身份、asInvoker、DPI和兼容性设置，但没有activeCodePage。提取/转换仅在本地自有reports完成，不把静态XML或原独立FFI阳性当作窗口结果。
+
+## 官方依据与独立设计
+
+- [Microsoft进程UTF-8清单](https://learn.microsoft.com/en-us/windows/apps/design/globalizing/use-utf8-code-page)说明Windows1903起Win32 fusion manifest可为进程声明UTF-8，传统ANSI API按进程代码页处理。只针对本应用，不改变系统locale/注册表。
+- [SDK mt.exe](https://learn.microsoft.com/en-us/windows/win32/sbscs/mt-exe)支持提取、验证与嵌入RT_MANIFEST资源。使用runner已安装SDK，优先ARM64工具、必要时SDK x64工具；记录工具路径和SHA，不把工具CPU冒称产品CPU，不改用户指定windows-11-arm runner。
+- [OpenJDK25基础JLI源码](https://github.com/openjdk/jdk/blob/jdk-25%2B36/src/java.base/windows/native/libjli/java_md.c)的GetJDKInstallRoot经窄字符路径查询java.dll，GetApplicationHomeFromDll使用模块路径；结合真实错误和缺失清单，推断进程ACP是此Unicode启动故障的修复方向。没有将基础源码等同于供应商全部25.0.5补丁，也未在无Windows实测时断言修复已成功。
+- [GetACP](https://learn.microsoft.com/en-us/windows/win32/api/winnls/nf-winnls-getacp)为实际进程读回代码页提供Win32接口。Kotlin FFM调用Kernel32现有函数，不写C/C++/Java/PowerShell实现。
+
+只沿用M0平台边界，无新增Animeko代码/资源/脚本/依赖树采用。目标为EhViewer自己的DesktopMain/RustCapiProbe、Kotlin WindowsManifest/DesktopWindows工具、真实XML回归及诊断入口。项目许可与既有第三方分发材料保持；标准XML命名空间/Win32接口不是AGPL精确复用。
+
+## 必选行为
+
+1. jpackage完成后先复制实际应用目录到报告，再在这个自有副本操作清单；原Gradle输出不变，SDK失败仍保留可审计包。
+2. 提取原清单，以安全Kotlin DOM保留所有原身份、权限、DPI和兼容配置，仅加入ASMV3 application/windowsSettings下的SMI2019 activeCodePage=UTF-8。拒绝DOCTYPE、重复歧义设置及不正确根类型，无网络实体访问。
+3. SDK验证、嵌入并再次提取；按命名空间、属性和内容比较，要求所有原语义与UTF-8新增项完整保持，篡改或遗漏即失败。保留前后清单、日志、原/新启动器摘要和SDK工具摘要；仍独立核验产品ARM64 PE。
+4. 原中文/空格安装路径、UTF-8/Base64报告参数、两次真实窗口、每次2000/live0/全部错误释放关闭与绘制帧均保留。窗口内直接FFM GetACP必须实测65001，JVM native.encoding亦须UTF-8，包内java.home/库路径/版本继续严格匹配。
+5. 保持SOFTWARE_COMPAT明确测量，不宣称硬件加速/最终ZIP/最低系统/P0/完整SBOM。当前原生Windows测试平台为Windows11 ARM64；上述1903特性说明不构成更低系统实际验收。
+
+不增加ASCII安装目录替代、跳过/重试/continue-on-error、限时放宽或全局代码页设置。原生产releases.yml、Android验收、Rust源码/锁文件、版本与单英文Draft PR不变。
+
+## 本地验证
+
+工具全套128项/零失败错误跳过、格式/build/installDist通过；覆盖权限/DPI/身份/兼容配置保留、SDK读回篡改拒绝、命名空间幂等、DOCTYPE/歧义拒绝。对实际CI启动器提取的原清单执行同一Kotlin CLI，新增UTF-8后其余设置通过语义核验，输出SHA ac65a7077e8afa025939788231a2fd2e701ffbd0b630aee7d12b7c58d8507ac5。这不替代Windows SDK嵌入或实际启动。
+
+Intel桌面编译成功（28s）、重建DMG/格式成功（1m21s）、原完整Android319任务成功（1m54s）。最终工具全量在保留包顺序调整后再通过（45s）。原Native/四APK/snapshot预检、真实DMG两次METAL窗口与4,170项/13归档样例均PASS；刚构建实际JAR在本机ARM真实Rust C ABI亦2,000/live0/全部错误释放关闭PASS。新SHA CI结果继续写入ledger；未实测的平台保持未验收。

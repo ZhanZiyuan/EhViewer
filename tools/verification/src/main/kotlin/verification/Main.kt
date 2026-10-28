@@ -15,6 +15,13 @@ fun main(args: Array<String>) {
         "windows-jvm-ffi" -> windowsJvmFfi(options.path("--core-report"), options.path("--output"))
         "desktop-windows-arm64" -> desktopWindowsArm64(options.path("--jvm-report"), options.path("--core-report"), options.path("--output"))
         "jmod-entry" -> mapOf("archive_sha256" to sha256(options.path("--jmod")), "entry" to options.get("--entry"), "entry_sha256" to jmodEntrySha256(options.path("--jmod"), options.get("--entry")))
+        "windows-manifest" -> {
+            val input = java.nio.file.Files.readAllBytes(options.path("--input"))
+            val updated = windowsUtf8Manifest(input)
+            verifyWindowsUtf8Manifest(input, updated)
+            java.nio.file.Files.write(options.path("--output"), updated, java.nio.file.StandardOpenOption.CREATE_NEW)
+            mapOf("manifest_sha256" to sha256(options.path("--output")), "settings_preserved" to "PASS")
+        }
         "bytecode" -> verifyBytecode()
         "native-sources" -> verifyNativeSources()
         "apks" -> {
