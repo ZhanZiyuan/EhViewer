@@ -465,6 +465,9 @@ jobs:
       - name: Build and test runtime verifier
         run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
       - name: Install and launch bundled Linux ARM64 runtime twice
+        env:
+          # Xvfb has no guaranteed GL context. Still draw real Skia frames in both real windows.
+          SKIKO_RENDER_API: SOFTWARE_COMPAT
         run: >-
           xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-linux-arm64
           --image app/desktop/build/compose/binaries/main/app/EhViewer

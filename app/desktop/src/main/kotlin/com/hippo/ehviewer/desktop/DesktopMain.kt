@@ -73,6 +73,7 @@ fun main(arguments: Array<String>) {
                         setProperty("rust_hash_results", completed.toString())
                         setProperty("compose_frames", frames.get().toString())
                         setProperty("window_showing", window.isShowing.toString())
+                        setProperty("render_api", window.renderApi.name)
                     }
                     Files.newOutputStream(report.resolve("launcher.properties")).use { proof.store(it, "Measured M1 packaged launcher evidence") }
                     delay(250)

@@ -271,7 +271,7 @@ Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读
 - 最新双ARM DMG12799868590/12800470435、双原生Intel消费12800771778/12800467572均完整下载、官方ZIP摘要核验。包SHA分别795ce1097f67c47b6f4b03b28dfeef216bb283da8990e9efe2bb937ebeeea594/1528d89add073473f73d0ba131902421226594b7c375dbe5c5bf76127e52d99f，生产报告SHAce2161f1c2dbbca1633dd23d4c21f6f253bfe04e8f2d54c905ef848e908c2f55/a823fc71bc4b05a516ada96e616915dd1b0d1292fa72c553833bde1ff2161dbf与对应消费报告一致。干净head/test-merge、32 Native/依赖/六份材料/两次真实包内runtime/100次Core/实际frame及4,170项+13样例逐项匹配，产品仍只ARM构建。
 - 本轮修复与Linux ARM64应用目录/runtime技术切片**GATE_PASSED**，全部适用CI/四包/实际工件核验后，先同步同一Draft PR，再进入M1 Windows ARM64独立切片。M1整体仍IN_PROGRESS；AppImage、完整P0、最低OS、Windows ARM64、完整Native依赖许可/SBOM、开发签名设备及M2–M8未验收。前两轮真实失败均保留，不据新成功改写旧结论。
 
-## M1-014：Windows 前置的可移植 Core File 归档接口（CI_PENDING）
+## M1-014：Windows 前置的可移植 Core File 归档接口（PR_LINUX_FAILED，整轮待收集）
 
 前置 c787c570e 双事件全部八 job/gate/实际工件 SUCCESS 已记录 ledger 和同一 Draft PR 后，独立修正 Core 的 Unix fd/Mode ABI 边界。新增 File 借用写入回调，共享原 ZIP 校验/存储逻辑，保留原 Unix fd writer 和完整回归。固定 libarchive 3.8.7 头文件确认 Windows Mode=u16、setter=unsigned int，使用 archive_write_open2，不禁用任何归档/图片/解析模块。无 Animeko 新代码/依赖复用，无依赖升级；设计与许可边界见 ADR0006。
 
@@ -280,3 +280,15 @@ Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读
 - 工具 check/installDist/spotless SUCCESS，118 tests/0失败错误跳过（源码未变，复用原结果）。原完整 Android tests/lint/build SUCCESS（2m8s，319 tasks，52执行/267复用），原 Native/diagnostics/Java17/身份/测试签名/JNI/ABI/16KiB 与真实四包 snapshot 全部 PASS，1.15.10-SNAPSHOT/180074。最后回调改用当前 open2 后的实际平台构建/运行正在复验，尚未 commit/push。
 - 最终 open2 源码复验：原完整 Android tests/lint/build SUCCESS（30s，315 tasks，28执行/287复用，配置缓存复用），原全部 Native/四包候选预检再次真实 PASS。Intel native 重链接与 packageDmg/lint SUCCESS（39s）；最终二进制字节未变，打包任务据内容复用，但实际安装/32 Native/六份材料/两次包内JVM-Compose各100次Core与实际frame、同库4,170项+13样例均重跑 PASS，DMG SHA80962d9712959d983c15cfc6fb6b8fc1457a440ad0615d6bcb7c2254256eb9ba。
 - Mac ARM64 host实际JNI 4,170项+13样例 PASS。iOS两target构建/打包/lint SUCCESS（50s，26 tasks），真实iOS27.0/iPhone18Pro/arm64/1.15.10/180074，PID55749→56097，两次2000/live0、前后台同PID、显式终止/清理 PASS。以上均为c787c570e+dirty，不当作新SHA CI；source-policy/architecture、actionlint、diff检查 PASS。随后只提交此独立切片，必须等待其新SHA双事件全部八job及实际工件核验后再推进Windows原生runner。
+- Commit：`99941841952b4cb78cd6b91062d6e21f65b36bbd`，`refactor(native): add portable archive file writer`；2026-10-28 17:02 +0800单独push。[Push40661222198](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40661222198) / [PR40661230477](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40661230477)已触发，当前PENDING。PR test-merge=e2a1416acdf8b503e59bc4b722ecbede104625e4、base仍423b8af13632896b55780783b54b5f720ec4c9dd、Draft=true。全部适用八job/真实候选四包及实际工件核验完成前，不开始下一功能。
+- [PR Linux job122724470583](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40661230477/job/122724470583)真实FAILED：应用目录构建及工具118 tests/check均SUCCESS；第一次包内启动100次Core/1frame/真实窗口PASS，第二次报`Cannot create Linux GL context`并在原2分钟超时退出。失败完整工件12804895816已下载/官方ZIP SHAea4226f39dfcbc757d855a2d01aac8cb70e320a182503052e86731718dd32888核验。没有重试/忽略/取消旧运行，不将此失败归因于尚无证据的File接口问题。
+- Push Linux job122724442699真实SUCCESS；完整工件12803234814已下载/官方ZIP SHAc915fc303a86fa60903826f32100c57c07e8712d1c8d24c8c260b4c3b40458d5核验，干净999418419、两次各100Core/1frame/30 Native/六份材料/4,170项+13样例PASS。失败PR的实际Rust/Skiko摘要与push逐字节相同（6b3391a06bd73c94e4627f17c04df5c8199f52c9faa43e287983ccda42dca168 / d4b06daa856c00707183127e5ff269d082db307f677a72a6076b8cbb7f54121e）。仅能确定第二次GL初始化失败/超时，不能声称GPU驱动根因已实测确认。双Linux x64及push Mac ARM64 host实际工件12804645876/12803658359/12804885430亦已核验干净源码及4,170项+13样例PASS；其余旧检查继续收集。
+
+## M1-015：无 GPU CI 显式软件渲染与实际后端证据（CI_PENDING）
+
+仅修复上述真实Linux门禁失败，不开展新Windows功能。固定Skiko0.144.6的官方`SkikoProperties.kt`/`GraphicsApi.kt`确认`SKIKO_RENDER_API=SOFTWARE_COMPAT`使用Skia软件光栅和AWT BufferedImage；Linux默认OPENGL依赖实际GL context。只在CI的Linux实际运行步骤显式选择该官方后端，产品默认选择不变。实际ComposeWindow.renderApi在绘制后写入receipt，验证器必须与请求精确一致，不能用请求参数冒充实际后端。
+
+原两次真实包内launcher/JVM/Skiko窗口、实际绘制、100Core、所有Native/许可证和4,170项+13样例断言及2分钟上限不变，无重试/降级断言/continue-on-error。CPU软件绘制不是OpenGL修复；无GPU环境的OpenGL路径/硬件加速仍NOT_VERIFIED，列入M5真实桌面覆盖。
+
+- 本地工具格式/check/installDist SUCCESS（1m38s），118 tests/0失败错误跳过；现有所有门禁/归档/超时与实际退出传播用例保留。实际Intel DMG重建/lint SUCCESS（1m5s，18 tasks，7执行/11复用）。同一新包SHA7851d12691f84b9a23d3538387fb3d5d64a91ac899485f6a48c163429f874dad分别在默认与显式软件模式实际安装/启动两次：默认窗口实际METAL，软件窗口实际SOFTWARE_COMPAT，四份绘制后receipt逐项核对。两组均32 Native/六份材料/两次各100Core与1frame、同库4,170项+13样例PASS；不是Linux软件后端阳性。
+- 原完整Android tests/lint/build SUCCESS（2m21s，319 tasks，46执行/273复用）；原Native/diagnostics/Java17/身份/测试签名/JNI/ABI/16KiB、真实精确四包snapshot均再次PASS，冻结1.15.10-SNAPSHOT/180074。Kotlin/Rust语言边界、actionlint和diff检查须暂存后再次通过，再独立提交/单独push等待新SHA全部适用双事件八job。上述本地源为999418419+dirty；Linux阳性与旧运行剩余结果仍需真实收集，不继续Windows功能。

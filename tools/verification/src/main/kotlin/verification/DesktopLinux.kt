@@ -32,6 +32,9 @@ fun verifyLinuxArm64Elf(header: ByteArray) {
 fun desktopLinuxArm64(image: Path, output: Path): Map<String, Any?> {
     require(System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") == "aarch64" && command("uname", "-m").trim() == "aarch64") { "Use the native Linux ARM64 JDK and runner" }
     require(command("rustc", "-vV").lineSequence().any { it == "host: aarch64-unknown-linux-gnu" }) { "Rust host must match Linux ARM64" }
+    val requestedRenderApi = System.getenv("SKIKO_RENDER_API")
+    val linuxRenderApis = setOf("OPENGL", "SOFTWARE_FAST", "SOFTWARE_COMPAT")
+    require(requestedRenderApi == null || requestedRenderApi in linuxRenderApis) { "Unsupported explicit Linux render API" }
     require(image.isDirectory() && !output.exists()) { "Expected an application image and a fresh report directory" }
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
@@ -103,12 +106,14 @@ fun desktopLinuxArm64(image: Path, output: Path): Map<String, Any?> {
             require(Path.of(proof.getProperty("java_home")).toRealPath() == home.toRealPath()) { "Launcher used an external JVM" }
             require(proof.getProperty("java_version") == System.getProperty("java.version")) { "Unexpected bundled JVM version" }
             require(proof.getProperty("rust_hash_results").toInt() == 100 && proof.getProperty("compose_frames").toInt() > 0 && proof.getProperty("window_showing") == "true")
-            mapOf("rust_hash_results" to 100, "compose_frames" to proof.getProperty("compose_frames").toInt(), "bundled_runtime" to "PASS")
+            val renderApi = proof.getProperty("render_api")
+            require(renderApi in linuxRenderApis && (requestedRenderApi == null || renderApi == requestedRenderApi)) { "Measured render API does not match the requested backend: $renderApi / $requestedRenderApi" }
+            mapOf("rust_hash_results" to 100, "compose_frames" to proof.getProperty("compose_frames").toInt(), "bundled_runtime" to "PASS", "render_api" to renderApi)
         }
         val regression = desktopArchiveRegression(output, Path.of(System.getProperty("java.home"), "bin/java"), rust)
         mapOf(
             "version" to version, "native_files" to nativeFiles, "installed_notices" to notices, "skiko_sha256" to sha256(skiko), "jar_native_libraries" to jarNatives,
-            "launches" to launches, "jni_regression_external_test_jdk" to regression, "runtime_jvm_sha256" to sha256(jvm), "rust_sha256" to sha256(rust), "launcher_sha256" to sha256(launcher),
+            "launches" to launches, "requested_render_api" to requestedRenderApi, "jni_regression_external_test_jdk" to regression, "runtime_jvm_sha256" to sha256(jvm), "rust_sha256" to sha256(rust), "launcher_sha256" to sha256(launcher),
         )
     }
     val result = mapOf(
