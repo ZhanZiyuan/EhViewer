@@ -52,6 +52,8 @@ fun desktopLinuxArm64(image: Path, output: Path): Map<String, Any?> {
         val rust = contents.resolve("app/resources/libehviewer_rust.so")
         val home = contents.resolve("runtime")
         val jvm = home.resolve("lib/server/libjvm.so")
+        val relocations = capture("rust-relocations.txt", "ldd", "-r", rust)
+        require(!relocations.contains("undefined symbol:") && !relocations.contains("not found")) { "Rust has unresolved runtime relocations" }
         require(home.resolve("lib/modules").isRegularFile()) { "Missing bundled jlink modules" }
         for (path in listOf(launcher, rust, jvm)) path.inputStream().use { verifyLinuxArm64Elf(it.readNBytes(32)) }
         val nativeFiles = mutableListOf<Map<String, Any?>>()

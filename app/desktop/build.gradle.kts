@@ -80,6 +80,7 @@ abstract class BuildDesktopNative : DefaultTask() {
             "--locked", "--lib", "--features", "jvm", "--crate-type", "cdylib", "--target", target.get(),
             "--", "-L", "native=${webpBuild.absolutePath}", "-C",
             if (mac) "link-arg=-Wl,-install_name,@rpath/libehviewer_rust.dylib" else "link-arg=-Wl,-soname,libehviewer_rust.so",
+            *if (mac) emptyArray() else arrayOf("-C", "link-arg=-Wl,-z,defs"),
         )
         val platform = if (mac) "macos-x64" else "linux-arm64"
         val library = "libehviewer_rust.${if (mac) "dylib" else "so"}"

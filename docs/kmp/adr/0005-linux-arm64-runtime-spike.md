@@ -36,3 +36,9 @@ Kotlin验证器复制应用目录到自有临时安装位置，拒绝出界符�
 1026cc1d6初次两事件Linux job均真实FAILED：ARM镜像没有Android SDK，根Gradle配置`:app`时直接失败，尚未进入Native/GUI测试。修复使用`app/desktop/settings.gradle.kts`独立入口及同一源码/依赖版本，不配置Android项目；版本/Native/GPL路径改为相对模块实际位置，原根工程与Android全量CI保留。Linux构建日志另存报告，pipefail与实际失败fixture保证tee不会吞掉错误；不放宽任何原断言。旧失败及后续SHA独立验证见ledger。
 
 修复本地：取消Android SDK环境变量后独立projects/packageDmg/lint SUCCESS（19/19执行，只有desktop且无子项目），新DMG完整真实安装/启动/Native/许可证及4,170项+13样例PASS。原根工程Android319 tasks及四包预检、118项工具测试/0失败错误跳过也SUCCESS；0/93实际脚本fixture验证日志与失败传播。均为1026cc1d6+dirty源，Linux阳性仍待新SHA CI，不能反推初始失败为成功。
+
+43a798721的SDK修复让两条Linux实际构建和工具测试成功，但首次包内加载均FAILED于WebPInitDecoderConfigInternal缺符号。失败工件12796839940经官方ZIP摘要校验后实读ELF：无动态WebP依赖，UND包含该符号及WebPGetFeaturesInternal，固定源码demux/anim_decode.c确实引用decoder库。根非Androidbuild.rs声明webp先于webpdemux；[GNU ld](https://sourceware.org/binutils/docs/ld/Options.html)单次归档扫描及[Cargo](https://doc.rust-lang.org/cargo/reference/build-scripts.html)参数顺序约定解释这一真实静态依赖缺失。Mac原包nm未见相同缺符号，保留已有实测结论。
+
+独立修复将非Android库顺序改为webpdemux→webp，Linux构建启用-z defs，安装验证对Rust实际ldd -r并拒绝未解析重定位；原Android CMake、全部图片/归档模块及所有运行断言保持。不升级/禁用依赖，不据编译通过宣称运行成功；本地与下一SHA双事件实测结果见ledger。
+
+链接修复本地：Core19+14/C ABI6/JNI5、fmt/原三Android target严格Clippy、工具118项测试、原Android319 tasks/四包、Intel实际DMG/32 Native/两次启动与Mac ARM64 host的4,170项+13样例均SUCCESS。Mac重链接结果未变，后续打包任务复用该内容，实际安装/启动仍重新执行。以上为43a798721+dirty源；Linux真实阳性仍未取得，必须另交新SHA并完整CI复验。

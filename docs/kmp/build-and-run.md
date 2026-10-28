@@ -81,4 +81,6 @@ xvfb-run -a tools/verification/build/install/verification/bin/verification deskt
 
 独立入口仍使用同一Desktop源码/build文件和仓库version catalog，避免根工程配置Android SDK；原Android CI仍在根工程完整执行，不省略任何验收。1026cc1d6初次Linux CI已因根工程缺SDK失败，修复SHA必须重新真实验证；构建日志即使失败也保留且退出非零。
 
+43a798721随后真实打包成功，但首次加载因静态WebP依赖顺序失败。非Android必须先链接webpdemux再webp，Linux以-z defs拒绝未解析符号；验证器对包内Rust另运行ldd -r。该修复及后续CI证据见ADR0005/ledger，不能把打包成功当作应用已启动。
+
 验证器检查临时安装后的每个ELF/JAR Native、实际动态依赖、固定Skiko摘要、六份许可证、配置与运行时版本、两次包内JVM/Compose/Rust启动和同库4,170项/13归档样例。临时安装自动删除，报告保留；任何缺库、错误CPU/外部JVM或绘制失败均拒绝。该命令验证应用目录，不是AppImage；Linux阳性仍待真实CI。最低OS、完整P0及最终AppImage仍未验收，见ADR0005。
