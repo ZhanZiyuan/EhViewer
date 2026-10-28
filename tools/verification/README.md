@@ -1,5 +1,7 @@
 # Platform verification tools
 
+`verification ios-log-evidence --input FILE --first-pid PID --second-pid PID` only validates a retained unified-log trace for both actual process lifecycles and Rust ownership results. It does not launch an app, create startup.json or substitute for the mandatory real `ios-startup` job. The owned time-window collection and unchanged deadlines are documented in ADR0016.
+
 `verification source-policy` audits cumulative source changes and untracked files against the fixed M0 baseline, rejects forbidden implementation/link/reference boundaries and checks retained third-party origin bytes. It needs full target Git history, never a local Animeko checkout. Its explicit scope and limitations are documented in [source-policy.md](../../docs/kmp/source-policy.md); full license/copy/SBOM review is not claimed.
 
 This independent Kotlin/JVM build contains build and regression tools, not another

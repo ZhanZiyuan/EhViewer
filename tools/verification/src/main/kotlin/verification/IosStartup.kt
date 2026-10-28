@@ -4,6 +4,11 @@ import groovy.json.JsonSlurper
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
 import java.util.UUID
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
@@ -35,6 +40,36 @@ fun rustInteropResults(stderr: String): Int {
     return completed
 }
 
+data class IosLogQuery(val start: Instant, val end: Instant) {
+    fun arguments(device: String, bundle: String): List<String> {
+        val format = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ssxx", Locale.ROOT).withZone(ZoneOffset.UTC)
+        return listOf(
+            "xcrun", "simctl", "spawn", device, "log", "show", "--style", "compact",
+            "--start", format.format(start), "--end", format.format(end),
+            "--predicate", "process == \"EhViewer\" OR eventMessage CONTAINS \"$bundle\"",
+        )
+    }
+}
+
+fun iosLogQuery(started: Instant, finished: Instant): IosLogQuery {
+    require(!finished.isBefore(started)) { "Simulator log window ended before it started" }
+    // Include both fractional boundary seconds; exclude unrelated pre-launch boot logging.
+    return IosLogQuery(started.truncatedTo(ChronoUnit.SECONDS).minusSeconds(1), finished.truncatedTo(ChronoUnit.SECONDS).plusSeconds(1))
+}
+
+fun iosUnifiedLifecycle(log: String, firstPid: Long, secondPid: Long): Map<String, Map<String, Int>> {
+    require(firstPid > 0 && secondPid > 0 && firstPid != secondPid) { "Expected two distinct app processes" }
+    fun process(pid: Long, resumed: Boolean): Map<String, Int> {
+        val lines = log.lineSequence().filter { "EhViewer[$pid:" in it && "EhViewerM1:" in it }.toList()
+        val messages = lines.map { it.substringAfter("EhViewerM1:") }
+        val counts = listOf("cold-start", "compose-ready", "background", "active").associateWith { marker -> messages.count { it == marker } }
+        require(counts.getValue("cold-start") == 1 && counts.getValue("compose-ready") >= 1) { "Unified log lacks cold start/Compose evidence for PID $pid" }
+        require(counts.getValue("active") >= (if (resumed) 2 else 1) && (!resumed || counts.getValue("background") >= 1)) { "Unified log lacks lifecycle transitions for PID $pid" }
+        return counts + ("rust_completed_results" to rustInteropResults(lines.joinToString("\n")))
+    }
+    return mapOf("first" to process(firstPid, resumed = true), "second" to process(secondPid, resumed = false))
+}
+
 /** Launch a real app in an owned Simulator. Never boot, erase or reuse a user's device. */
 fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<String, Any?> {
     require(System.getProperty("os.name").startsWith("Mac") && command("uname", "-m").trim() == "arm64") { "M1 requires macOS ARM64" }
@@ -57,8 +92,13 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
     require(Regex("[A-Fa-f0-9-]{36}").matches(device)) { "Invalid Simulator identifier" }
     var captureDirectory: Path? = null
     val captures = mutableListOf<Path>()
+    var logStart = Instant.now()
     fun phase(name: String) = Files.writeString(output.resolve("phases.log"), "${java.time.Instant.now()} $name\n", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND)
-    fun logs() = command("xcrun", "simctl", "spawn", device, "log", "show", "--style", "compact", "--last", "1h", "--predicate", "process == \"EhViewer\" OR eventMessage CONTAINS \"$bundle\"", timeout = Duration.ofSeconds(30))
+    fun logs(name: String): String {
+        val query = iosLogQuery(logStart, Instant.now())
+        output.resolve("$name-query.json").writeText(json(mapOf("start" to query.start.toString(), "end" to query.end.toString(), "timeout_seconds" to 30)))
+        return command(*query.arguments(device, bundle).toTypedArray(), timeout = Duration.ofSeconds(30))
+    }
     fun alive(pid: Long) = ProcessHandle.of(pid).map { it.isAlive }.orElse(false)
     fun awaitMarkers(stage: String, pid: Long, stderr: Path, vararg markers: Pair<String, Int>) {
         phase(stage)
@@ -101,6 +141,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         command("xcrun", "simctl", "bootstatus", device, "-b", timeout = Duration.ofMinutes(5))
         command("xcrun", "simctl", "install", device, app)
         captureDirectory = Path.of(command("xcrun", "simctl", "get_app_container", device, bundle, "data").trim()).resolve("tmp")
+        logStart = Instant.now()
         val (firstPid, firstStderr) = launch("first-cold-start")
         awaitMarkers("first-render", firstPid, firstStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "active" to 1)
         command("xcrun", "simctl", "io", device, "screenshot", output.resolve("startup.png"))
@@ -122,7 +163,10 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         check(secondPid != firstPid) { "Second cold start reused the terminated PID" }
         awaitMarkers("second-render", secondPid, secondStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "active" to 1)
         val rustResults = listOf(rustInteropResults(firstStderr.readText()), rustInteropResults(secondStderr.readText()))
-        output.resolve("lifecycle.log").writeText(logs())
+        val lifecycle = logs("lifecycle")
+        output.resolve("lifecycle.log").writeText(lifecycle)
+        val unified = iosUnifiedLifecycle(lifecycle, firstPid, secondPid)
+        require(listOf("first", "second").map { unified.getValue(it).getValue("rust_completed_results") } == rustResults) { "Unified log and stderr Rust evidence disagree" }
         val result = mapOf(
             "source_commit" to command("git", "rev-parse", "HEAD").trim(),
             "source_dirty" to dirty,
@@ -132,13 +176,14 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             "first_pid" to firstPid, "second_pid" to secondPid, "explicit_termination" to "PASS",
             "compose_ready" to "PASS", "development_signed_device" to "NOT_VERIFIED",
             "rust_c_abi" to "PASS", "rust_completed_results_by_launch" to rustResults, "rust_live_results_after_probe" to 0,
+            "unified_log_lifecycle" to unified,
         )
         output.resolve("startup.json").writeText(json(result))
         return result
     } catch (failure: Throwable) {
         output.resolve("failure.txt").writeText(failure.toString())
         try {
-            output.resolve("failed-lifecycle.log").writeText(logs())
+            output.resolve("failed-lifecycle.log").writeText(logs("failed-lifecycle"))
         } catch (captureFailure: Throwable) {
             failure.addSuppressed(captureFailure)
         }

@@ -1,6 +1,8 @@
 # ADR 0015: Bind main protection to the trusted aggregate check
 
-Status: DECLARED / LOCAL_VERIFIED / CI_PENDING / REMOTE_NOT_APPLIED. Stable version 1.15.10 / Android 180074 is unchanged. M2 remains incomplete.
+Status: DECLARED / NOT_PASSED at 23df6bffe / REPAIR_PENDING / REMOTE_NOT_APPLIED. Stable version 1.15.10 / Android 180074 is unchanged. M2 remains incomplete.
+
+23df6bffe is NOT_ACCEPTED: PR iOS job 123156698196 failed the original 30-second historical log query after real lifecycle execution. The declaration remains unchanged and remotely unapplied. Preserve this failure; only a later fully accepted isolated repair HEAD can supply the successful exact-SHA gate/provider evidence needed for deployment. See ADR0016 and the ledger; do not rerun or relabel the old workflow as passed.
 
 The always-run aggregate check has passed at the previous accepted HEAD, including the new mandatory source policy, but the actual main Ruleset still contains only deletion and non-fast-forward protection. Add an independently reviewable required-check declaration, binding `ci/gate` to the real GitHub Actions provider, strict base freshness and no branch-create exemption. Preserve the existing Ruleset identity, scope, protections and bypass configuration.
 

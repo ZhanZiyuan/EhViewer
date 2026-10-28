@@ -1,6 +1,6 @@
 # Required aggregate gate on main
 
-Status: DECLARED / REMOTE_NOT_APPLIED. Apply only after this configuration commit passes both complete CI events and actual artifact verification. This file and the JSON fragment do not configure GitHub automatically. M2 remains incomplete and version 1.15.10 / Android 180074 is unchanged.
+Status: DECLARED / REMOTE_NOT_APPLIED. Configuration commit 23df6bffe failed its PR iOS log-query gate and is not accepted. Apply only after a subsequent isolated repair HEAD preserving the declaration passes both complete CI events and actual artifact verification; retain the original failure. This file and the JSON fragment do not configure GitHub automatically. M2 remains incomplete and version 1.15.10 / Android 180074 is unchanged.
 
 The active repository Ruleset [24795497](https://github.com/ZhanZiyuan/EhViewer/rules/24795497), `protection of main`, currently targets only `refs/heads/main`, with deletion and non-fast-forward protection, no bypass actors and no required checks. A read-only audit of the real successful Push check run 123151415465 confirms `ci/gate` originates from GitHub Actions app ID **15368**, slug `github-actions`, completed/success at full source `28ab24263afb924edc6cfbb9d217b8ea3b0ba69c`. The new fragment `.github/kmp-main-required-check.json` declares the additional required check with that provider binding and strict up-to-date enforcement; branch creation is not exempted.
 
