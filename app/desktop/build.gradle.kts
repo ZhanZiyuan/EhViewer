@@ -191,6 +191,21 @@ val releaseVersion = providers.fileContents(androidBuild).asText.map {
     Regex("val releaseVersion = \"([^\"]+)\"").find(it)?.groupValues?.get(1) ?: error("Missing authoritative version")
 }
 
+val ffiLibrary = providers.gradleProperty("ffiLibrary")
+val ffiOutput = providers.gradleProperty("ffiOutput")
+tasks.register<JavaExec>("rustCapiProbe") {
+    group = "verification"
+    description = "Call the real Rust C ABI from a native desktop JVM"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.hippo.ehviewer.desktop.RustCapiProbeKt")
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    argumentProviders.add(
+        CommandLineArgumentProvider {
+            listOf("--library", ffiLibrary.get(), "--output", ffiOutput.get())
+        },
+    )
+}
+
 compose.desktop {
     application {
         mainClass = "com.hippo.ehviewer.desktop.DesktopMainKt"

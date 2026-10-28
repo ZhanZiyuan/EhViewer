@@ -38,7 +38,7 @@ M0 未建立 Release 性能对照；任何“性能提升”或“无回退”�
 
 ## 2026-10-28 维护者补充要求
 
-- 四份语言 README（根英文、简体中文、繁体中文、日文）的 Thanks/感谢/感謝列表末尾添加 `[Animeko](https://github.com/open-ani/animeko/)`。已在4a14bd69d完整门禁通过并记录同一Draft PR后独立添加，本地验证通过；该文档提交仍须独立推送/CI门禁。
+- 四份语言 README（根英文、简体中文、繁体中文、日文）的 Thanks/感谢/感謝列表末尾添加 `[Animeko](https://github.com/open-ani/animeko/)`。独立提交47ebcc959已通过双事件全部九job/gate与全部实物核验，GATE_PASSED。
 - 当前及后续 commit summary/body、PR title/description 全部使用英文。已逐项检查 origin/main..HEAD 的 18 个摘要均为英文，正文为空；无需改写已推送历史。同一 Draft PR 标题/正文已改为英文并读回核对，历史失败及 11 包合同保留。
 - 四个 Android ABI 安装包均须覆盖手机与 Android 平板，iOS unsigned IPA 须覆盖 iPhone/iPad。M5/M7 的自适应布局、窗口/方向、资源和交互矩阵分别验收，暂不增加折叠屏专项适配。
 - 五平台保持同一 EhViewer 图标视觉身份，在 Android 自适应/密度资源、Apple 平台图标资源、macOS ICNS、Windows 多尺寸 ICO、Linux 桌面图标集成中遵循各平台规范；以项目自身资源为来源，不复制 Animeko 图标。M5/M6 分别验证显示与安装包资源。

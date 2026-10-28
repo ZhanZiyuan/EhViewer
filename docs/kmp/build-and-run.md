@@ -107,3 +107,13 @@ cargo check --locked -p ehviewer_core -p ehviewer_capi --lib --target aarch64-pc
 ```
 
 Kotlin工具固定vcpkg/Native来源、构建真实依赖、核验JDK/rustc/DLL/测试EXE的ARM64 PE，再执行完整适用Core/C ABI测试、fmt和严格Clippy。EXE/DLL/头/许可证/manifest/status/日志与摘要留在报告目录，任何失败均非零；只管理自建build目录，不删除现有用户目录或重置Git。Linux/macOS原完整工具测试与全部原平台门禁保持必选，Windows新增必选job。4a14bd69d双事件全部九job/gate与实际工件已SUCCESS：Windows各39测试通过、零filtered、仅原3在线ignored，实际10 DLL/3测试EXE均ARM64。该命令不证明Windows包内JVM/Skiko窗口、最终ZIP或完整许可SBOM，见ADR0007/ledger。
+
+## Windows ARM64 JVM / Rust C ABI 调用
+
+先在同一干净checkout完成上节原生Core测试，再使用新目录：
+
+```text
+tools\verification\build\install\verification\bin\verification.bat windows-jvm-ffi --core-report reports/windows-native-core/windows-native-core.json --output reports/windows-jvm-ffi
+```
+
+工具重新下载并校验固定Microsoft ARM64 JDK，构建既有C API动态库，在含空格/Unicode的自建目录中运行真实原生JVM调用器。2,000次不同输入、复制/错误/释放与active0均须实际通过，保留DLL、JDK输入/许可、原生证明、编译/调用日志和receipt。原Core39项/fmt/Clippy及全部原job不减少；新Windows阳性尚待CI。本机Mac的同一通用FFM调用器已真实通过，不替代Windows加载器、窗口或最终ZIP验证，见ADR0008。
