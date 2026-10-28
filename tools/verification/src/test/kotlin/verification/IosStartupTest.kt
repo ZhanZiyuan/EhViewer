@@ -22,6 +22,13 @@ class IosStartupTest {
         assertTrue(runCatching { latestIosRuntime(emptyList()) }.isFailure)
     }
 
+    @Test fun explicitRuntimeMustBeAvailableAndDoesNotSilentlyFallBack() {
+        val runtimes = listOf(runtime("26.5"), runtime("27.0"), runtime("28.0", false))
+        assertEquals("26.5", latestIosRuntime(runtimes, "com.apple.CoreSimulator.SimRuntime.iOS-26-5")["version"])
+        assertTrue(runCatching { latestIosRuntime(runtimes, "com.apple.CoreSimulator.SimRuntime.iOS-28-0") }.isFailure)
+        assertTrue(runCatching { latestIosRuntime(runtimes, "com.apple.CoreSimulator.SimRuntime.iOS-25-0") }.isFailure)
+    }
+
     @Test fun usesOnlyDeviceTypesSupportedByTheSelectedRuntime() {
         val ipad = mapOf("productFamily" to "iPad", "identifier" to "ipad")
         val iphone = mapOf("productFamily" to "iPhone", "identifier" to "supported-iphone")

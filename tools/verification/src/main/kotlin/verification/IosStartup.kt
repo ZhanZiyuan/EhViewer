@@ -11,8 +11,9 @@ import kotlin.io.path.fileSize
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
-fun latestIosRuntime(runtimes: List<Any?>): Map<String, Any?> = runtimes.map(Any?::obj)
+fun latestIosRuntime(runtimes: List<Any?>, identifier: String? = null): Map<String, Any?> = runtimes.map(Any?::obj)
     .filter { it["isAvailable"] == true && it.str("identifier").startsWith("com.apple.CoreSimulator.SimRuntime.iOS-") }
+    .filter { identifier == null || it.str("identifier") == identifier }
     .maxByOrNull {
         val numbers = it.str("version").split('.').map(String::toInt)
         require(numbers.size in 1..3 && numbers.all { number -> number in 0..999 })
@@ -27,7 +28,7 @@ fun iosLaunchPid(text: String, bundle: String): Long = Regex("^${Regex.escape(bu
     .find(text)?.groupValues?.get(1)?.toLong() ?: error("Simulator did not report the launched app PID: $text")
 
 /** Launch a real app in an owned Simulator. Never boot, erase or reuse a user's device. */
-fun iosStartup(app: Path, output: Path): Map<String, Any?> {
+fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<String, Any?> {
     require(System.getProperty("os.name").startsWith("Mac") && command("uname", "-m").trim() == "arm64") { "M1 requires macOS ARM64" }
     require(Files.isDirectory(app) && !output.exists()) { "Expected an app bundle and a fresh report directory" }
     val executable = app.resolve("EhViewer")
@@ -38,9 +39,10 @@ fun iosStartup(app: Path, output: Path): Map<String, Any?> {
     fun plist(key: String) = command("/usr/libexec/PlistBuddy", "-c", "Print :$key", app.resolve("Info.plist")).trim()
     val bundle = plist("CFBundleIdentifier")
     require(bundle == "moe.tarsin.ehviewer")
+    require(plist("CADisableMinimumFrameDurationOnPhone") == "true") { "Compose requires CADisableMinimumFrameDurationOnPhone=true" }
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI startup requires a clean source tree" }
-    val runtime = latestIosRuntime(JsonSlurper().parseText(command("xcrun", "simctl", "list", "runtimes", "-j")).obj()["runtimes"].array())
+    val runtime = latestIosRuntime(JsonSlurper().parseText(command("xcrun", "simctl", "list", "runtimes", "-j")).obj()["runtimes"].array(), runtimeIdentifier)
     val type = runtimeIphone(runtime)
     output.createDirectories()
     val device = command("xcrun", "simctl", "create", "EhViewer-M1-${UUID.randomUUID()}", type.str("identifier"), runtime.str("identifier")).trim()

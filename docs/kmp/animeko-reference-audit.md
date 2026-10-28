@@ -68,4 +68,4 @@ EhViewer `LICENSE` 为 GPLv3；参考 `LICENSE.txt` 和所阅源文件的版权�
 
 后续每个参考设计变更需在本表或 ADR 追加：参考相对路径、EhViewer 实际修改路径、行为差异、许可处理及精确 CI SHA/URL。本地参考目录不是任何 Gradle、Cargo、CI 或打包任务的输入。
 
-M1-001 实际落点：`app/ios/build.gradle.kts`、`app/ios/src/commonMain/kotlin/com/hippo/ehviewer/ios/StartupContent.kt`、`app/ios/src/iosMain/kotlin/com/hippo/ehviewer/ios/Main.kt`、`tools/verification/src/main/kotlin/verification/IosStartup.kt`、`ci.yml`。仅借鉴 AniIos 与 ContentView 所体现的平台入口/共享 controller 边界；本实现直接由 Kotlin UIApplicationMain 和 SceneDelegate 启动，未采用 Swift 容器或搬用源码。初始失败、修复与最终本地生命周期通过记录见 ADR 0001 / ledger；独立切片远程 CI 尚未执行，不能据此宣称 iOS P0 已交付。
+M1-001 实际落点：`app/ios/build.gradle.kts`、`app/ios/src/commonMain/kotlin/com/hippo/ehviewer/ios/StartupContent.kt`、`app/ios/src/iosMain/kotlin/com/hippo/ehviewer/ios/Main.kt`、`tools/verification/src/main/kotlin/verification/IosStartup.kt`、`ci.yml`。仅借鉴 AniIos 与 ContentView 所体现的平台入口/共享 controller 边界；本实现直接由 Kotlin UIApplicationMain 和 SceneDelegate 启动，未采用 Swift 容器或搬用源码。初始失败、修复与本地生命周期通过记录见 ADR 0001 / ledger。8388fb366 与 5b6745f43 的远程启动门禁均失败；后者通过独立 stderr 明确定位 Compose 必需 plist 键遗漏。M1-003 按官方契约独立修复，本地 iOS 26.5 / 27.0 已复验，新 SHA 仍须全部 CI 通过。没有 iOS P0 交付结论。

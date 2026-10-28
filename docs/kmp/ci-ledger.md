@@ -81,3 +81,18 @@ Rust 命令在 `native/rust` 执行；本机测试不启用 `-Prelease`，不读
 - 修复后第一次本地 smoke：FAILED，新的 stdout/stderr 指向 Documents 下仓库报告目录，launchd_sim 在创建进程前返回 EPERM / launch failed；没有执行应用入口。保留 `reports/ios-m1-repair-attempt1` 的环境、阶段与系统日志。改为仅写本次应用自身沙箱 tmp，在 shutdown/delete 前复制诊断到报告；等待重新实测，不据此次失败判断 argv 修复有效性。
 - 最终 Kotlin verifier `spotlessApply check installDist`：SUCCESS（1m06s），110 tests / 0 failure/error/skipped；actionlint 与 diff whitespace 检查 SUCCESS。
 - 第二次本地 smoke：**SUCCESS**，iOS 27.0 / iPhone 18 Pro / ARM64；first/foreground PID=28131、严格 terminate 后 second PID=28247，逐进程 cold/Compose/active 和 background/active 全部通过，截图已人工检查；清理退出码 0。报告 `reports/ios-m1-repair-attempt2`，提交前 source_dirty=true；executable SHA-256 `b36bae647786ec066e8bb8b5a6211c93760cc1e272c2d808cf18a07a802f6b68`。本机通过不证明远程故障已解决，须等待新 SHA 的两条必选 CI。
+- Commit：`5b6745f43587b2a5bdaf08d4a632f6bdd76a22c7`，`fix(ios): preserve UIKit arguments and verify process lifecycle`；2026-10-28 07:37 +0800 单独 push。远程 feature/kmp 仍只包含该单次新增提交；main 未更改，PR #15 仍 Draft。
+- [Push CI 40603368208](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40603368208)、[PR CI 40603374669](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40603374669)：**FAILED（最终）**，两者 API head_sha 为上述修复 SHA。两条 ci/ios 真实 smoke 均 FAILED，其两个 executable 与 110 tests 已 SUCCESS；两条 Android（含四包 dry-run）均 SUCCESS，两条 gate 均 FAILED。不能开始下一功能，仅修复本门禁；未取消任何运行。
+- PR test-merge SHA：`e2cfc8d3696510932d8e47ed5ce1c37bfb4c1742`；base SHA：`423b8af13632896b55780783b54b5f720ec4c9dd`；Draft=true。
+- 新诊断确定 Push 崩溃原因：[iOS job 122536730496](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40603368208/job/122536730496) 的 stderr 为 Compose `PlistSanityCheck` IllegalStateException：缺少 `CADisableMinimumFrameDurationOnPhone=true`，系统记录 SIGABRT；PID=29371。干净 source、iOS 26.5 / iPhone 17 Pro、Xcode 26.6（17F113）。工件 12779892841 已下载并保留。此为本轮直接证据，不能反推缺少 stderr 的每条旧运行根因。
+- PR [iOS job 122536752790](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40603374669/job/122536752790) 也由 stderr 确认相同 PlistSanityCheck 异常；PID=30112。实际 source=e2cfc8d3696510932d8e47ed5ce1c37bfb4c1742、dirty=false；工件 12779654058 已下载保留。
+- 已下载两条 Android verification reports 并核验实际 snapshot 报告：push source=5b6745f43587b2a5bdaf08d4a632f6bdd76a22c7，PR source=e2cfc8d3696510932d8e47ed5ce1c37bfb4c1742，均 dirty=false、1.15.10-SNAPSHOT / 180074、测试签名、4 attachments。Android 成功不覆盖 iOS/gate 失败。
+
+## M1-003：满足 Compose iOS plist 契约
+
+只修复已确认的启动崩溃：补充声明式 Info.plist 必需的高刷新率布尔项，保留 Compose 默认严格检查；验证器在创建设备前检查该项。新增可选 `--runtime` 用于准确复验失败 runner 的 iOS 26.5；不传时 CI 仍选择最新可用 iOS，显式 runtime 缺失时失败，不静默回退。依据为官方 UIKit integration / Apple plist 文档；未复制参考实现、未改依赖、版本或 runner。
+
+- 两个 Native target / Simulator 重新打包 / Spotless：SUCCESS（10s，17 tasks 复用已有成功输出）。
+- Kotlin verifier `spotlessApply check installDist`：SUCCESS（1m34s），111 tests，0 failure/error/skipped，包含显式系统不可用时拒绝回退。真实已编译应用副本删除该 plist 键后，预检非零退出且没有创建 Simulator/报告目录；键为 false 的副本也被拒绝。未关闭 Compose 严格检查。
+- 完整 Android 原 tests/lint/build：SUCCESS（2m52s，315 tasks）；Native/诊断/bytecode/身份/签名/JNI/ABI/16 KiB 与真实四包 snapshot dry-run：SUCCESS，1.15.10-SNAPSHOT / 180074、test signing、source_dirty=true。actionlint、source-policy 与 diff check SUCCESS。
+- iOS 26.5 / iPhone 17 Pro：完整 smoke SUCCESS，first/foreground PID=37219、严格 terminate 后 second PID=37340；iOS 27.0 / iPhone 18 Pro：完整 smoke SUCCESS，PID=38277 → 38370。两次均检查真实 Compose 截图、清理退出码 0、无本次设备残留。报告 `reports/ios-m1-plist-26-5` / `reports/ios-m1-plist-27`，source_dirty=true；相同 executable SHA-256 `cfd35fc1acd6137be526c7cccf0451f53c8c6be8934a76df20e93b83cc10303b`。仍须从新提交树执行 push/PR 全部 CI，不能以本机结果代替。

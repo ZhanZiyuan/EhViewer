@@ -20,6 +20,8 @@ tools/verification/build/install/verification/bin/verification ios-startup --app
 
 `ios-startup` 核对 Mach-O arm64 / IOSSIMULATOR、bundle、签名和 source 状态；只创建并使用本次 UUID 命名的独立 Simulator，不复用、擦除或删除用户已有设备。机型来自 runtime 的 supportedDeviceTypes。实际安装、启动、等待 Compose ready、截图、切入 Settings、回前台、终止与第二次冷启动后，保存 JSON / 生命周期日志 / PNG，再 shutdown/delete 本次设备。每次冷启动单独捕获 stdout/stderr 与 PID；后台/恢复必须保持原 PID，严格终止后原进程必须退出，第二次冷启动 PID 必须不同。环境与阶段记录在失败时也保留，统一日志不再承担滚动计数断言。任何断言或清理失败均使检查失败。输出目录必须不存在；重复运行请选择新的报告目录，工具不会覆盖旧证据。
 
+启动前还检查 `CADisableMinimumFrameDurationOnPhone=true`；[Compose 官方要求](https://kotlinlang.org/docs/multiplatform/compose-uikit-integration.html)缺少该项会在运行时崩溃，不关闭默认严格检查。默认选择最新可用系统；复验某个 runner 时可追加 `--runtime com.apple.CoreSimulator.SimRuntime.iOS-26-5`，指定系统不存在或不可用时直接失败，不回退。每个系统使用不同的报告目录。
+
 本地实测为 Xcode 27.1 + iOS 27.0 / iPhone 18 Pro；Info.plist 的 15.0 是声明的编译下限，没有验收 iOS 15 设备。CI 使用 macos-latest ARM64，限制并发和编译内存；逐 SHA 的远程结论见 ledger。
 
 此切片只有启动探针画面。图库、登录、阅读、下载、Rust C ABI、开发签名真机与 11 包分发仍需后续工作，不能把探针当作 iOS 完整产品。
