@@ -158,6 +158,7 @@ val selectIntelSkiko = tasks.register<SelectIntelSkiko>("selectIntelSkiko") {
 
 val repositoryRoot = layout.projectDirectory.dir("../..")
 val intelMac = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")
+val windowsArm = System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64"
 val prepareDesktopNative = tasks.register<BuildDesktopNative>("prepareDesktopNative") {
     target.set(if (System.getProperty("os.name") == "Linux") "aarch64-unknown-linux-gnu" else "x86_64-apple-darwin")
     webpCommit.set("4fa21912338357f89e4fd51cf2368325b59e9bd9") // Same source as the existing Android build.
@@ -223,7 +224,12 @@ compose.desktop {
             description = "EhViewer M1 desktop runtime spike"
             vendor = "EhViewer"
             modules("java.desktop", "java.logging", "java.management", "jdk.unsupported")
-            appResourcesRootDir.set(prepareDesktopNative.flatMap { it.resources })
+            if (windowsArm) {
+                // The Kotlin Windows verifier stages the exact already-tested DLLs/notices here.
+                appResourcesRootDir.set(layout.buildDirectory.dir("windows-desktop-resources"))
+            } else {
+                appResourcesRootDir.set(prepareDesktopNative.flatMap { it.resources })
+            }
             licenseFile.set(repositoryRoot.file("LICENSE"))
             macOS { bundleID = "moe.tarsin.ehviewer.m1" }
         }

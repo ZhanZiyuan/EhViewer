@@ -1,6 +1,6 @@
 # ADR 0009：保持原限时的离线发布流程进程模型
 
-状态：仅修复真实CI失败，最终ARM/Intel本地完整测试通过、待独立提交及CI；M1整体IN_PROGRESS，版本仍1.15.10 / Android180074。
+状态：GATE_PASSED。75b36b2ef双事件全部九job/gate与全部实际工件核验SUCCESS；原限时/断言保持，旧失败保留。M1整体IN_PROGRESS，版本仍1.15.10 / Android180074。
 
 ## 真实失败与边界
 
@@ -27,5 +27,7 @@
 首次新模型真实失败25项：相对文件名错误地由测试JVM工作目录解析。失败XML已保留；改为显式原临时目录后完整121项通过，没有删改断言。ARM/JBR25.0.3和强制重新执行的Intel25.0.5均121项、0失败/错误/跳过。Intel的cyclic-tag实际0.958s、19次API调用、原60秒上限；这只是本机测量，不替代新SHA CI。最初一次架构切换复用了缓存，未当作Intel实测；之后cleanTest强制运行，并加入架构/二进制输入防止误用缓存。
 
 最终接入严格Clippy和输入跟踪后，ARM全套再次通过（1m23s）；再切回Intel无需clean，`:test`按新架构输入真实重跑并通过（1m32s），121项、0失败/错误/跳过，cyclic-tag1.003s/19次API调用。原Android完整319任务、原四包/Native预检通过。新SHA全部适用CI仍须独立成功。
+
+75b36b2ef最终Push40728019394/PR40728027783均completed/SUCCESS，各九job与gate全部成功，所有实际工件及四APK独立核验。双Rosetta实际JUnit均121/0失败错误跳过，cyclic-tag分别3.898s/3.622s、19次API调用/原60s上限；同包原生Intel消费与精确SHA绑定均通过。测试修复与既有Windows Unicode修复取得完整门禁，不改写旧失败或宣称解决托管容量/DNS。
 
 自主源码只有Kotlin/Rust，继承项目许可；标准库测试二进制不进入交付资产。复用的是EhViewer自己既有的Kotlin状态模型，无新Animeko代码/资源/脚本或依赖树采用；参考审计的AGPL边界不变。完整逐SHA结果、原失败及后续修复门禁见ci-ledger。

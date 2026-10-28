@@ -154,7 +154,14 @@ private fun probeCapi(symbols: CapiSymbols): Int {
     return 2000
 }
 
-/** M1 standalone JVM caller; the packaged Compose window is a separate subsequent slice. */
+internal data class OwnedCapiResult(val completed: Int, val loadedPath: Path)
+
+/** Return only after the real ownership checks and library close have both succeeded. */
+internal fun verifyOwnedCapi(library: Path): OwnedCapiResult = openCapi(library.toRealPath()).use { symbols ->
+    OwnedCapiResult(probeCapi(symbols), symbols.loadedPath)
+}
+
+/** M1 standalone JVM caller, also used by the packaged Windows Compose probe. */
 fun main(arguments: Array<String>) {
     require(arguments.size == 4 && arguments[0] == "--library-base64" && arguments[2] == "--output-base64") { "Expected --library-base64 <UTF-8 path> --output-base64 <UTF-8 path>" }
     require(ADDRESS.byteSize() == 8L) { "This C ABI probe requires a 64-bit JVM" }
@@ -162,7 +169,7 @@ fun main(arguments: Array<String>) {
     val library = path(arguments[1]).toRealPath()
     val output = path(arguments[3]).toAbsolutePath().normalize()
     require(!Files.exists(output)) { "Use a fresh FFI report directory" }
-    val (completed, loaded) = openCapi(library).use { symbols -> probeCapi(symbols) to symbols.loadedPath }
+    val (completed, loaded) = verifyOwnedCapi(library)
     val proof = Properties().apply {
         setProperty("result", "PASS")
         setProperty("architecture", System.getProperty("os.arch"))

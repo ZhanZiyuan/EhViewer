@@ -2,7 +2,7 @@
 
 状态：M0 / GATE_PASSED，M1 / IN_PROGRESS，2026-10-28。已交付可审计基线和安全逐提交入口，之后严格 M1 → M8。版本到 M8 冻结提交之前维持 `1.15.10 / 180074`。
 
-当前技术证明：Kotlin-only iOS/实际C ABI、Linux x64/macOS ARM64 host JNI、ARM→Intel DMG/Rosetta及原生Intel同包消费、Linux aarch64包内JVM/Skiko/Rust实际软件绘制均已通过各自逐SHA门禁。4a14bd69d双事件完整九job/gate与全部实物证据SUCCESS；旧失败均保留。Windows双事件各39项原生Core/C ABI测试、10 DLL/3测试EXE实际ARM64 PE和全部摘要已独立核验；实际桌面运行时尚未实现，M1未完成。Linux OpenGL/硬件加速另列M5未验收风险，不以CPU软件绘制替代该结论。
+当前技术证明：Kotlin-only iOS/实际C ABI、Linux x64/macOS ARM64 host JNI、ARM→Intel DMG/Rosetta及原生Intel同包消费、Linux aarch64包内JVM/Skiko/Rust实际软件绘制均已通过各自逐SHA门禁。75b36b2ef双事件完整九job/gate与全部实物证据SUCCESS；旧失败均保留。Windows各39项原生Core/C ABI测试、10 DLL/3测试EXE实际ARM64 PE和全部摘要已独立核验；真实原生Microsoft JVM/Unicode路径/C ABI的2,000结果/active0/全部错误释放关闭亦双事件成功，实际包内JVM/Skiko窗口尚未实现，M1未完成。Linux OpenGL/硬件加速另列M5未验收风险，不以CPU软件绘制替代该结论。
 
 | 顺序 | 现有问题与独立工作包 | 参考 / EhViewer 落点 | 收益与退出准则 | 风险、回滚 |
 |---|---|---|---|---|
@@ -39,6 +39,6 @@ M0 未建立 Release 性能对照；任何“性能提升”或“无回退”�
 ## 2026-10-28 维护者补充要求
 
 - 四份语言 README（根英文、简体中文、繁体中文、日文）的 Thanks/感谢/感謝列表末尾添加 `[Animeko](https://github.com/open-ani/animeko/)`。独立提交47ebcc959已通过双事件全部九job/gate与全部实物核验，GATE_PASSED。
-- 当前及后续 commit summary/body、PR title/description 全部使用英文。已逐项检查 origin/main..HEAD 的 18 个摘要均为英文，正文为空；无需改写已推送历史。同一 Draft PR 标题/正文已改为英文并读回核对，历史失败及 11 包合同保留。
+- 当前及后续 commit summary/body、PR title/description 全部使用英文。最新复核 origin/main..75b36b2ef 的22个摘要/正文均为英文；早期正文为空，无需改写已推送历史。同一 Draft PR 标题/正文已改为英文并读回核对，历史失败及 11 包合同保留。
 - 四个 Android ABI 安装包均须覆盖手机与 Android 平板，iOS unsigned IPA 须覆盖 iPhone/iPad。M5/M7 的自适应布局、窗口/方向、资源和交互矩阵分别验收，暂不增加折叠屏专项适配。
 - 五平台保持同一 EhViewer 图标视觉身份，在 Android 自适应/密度资源、Apple 平台图标资源、macOS ICNS、Windows 多尺寸 ICO、Linux 桌面图标集成中遵循各平台规范；以项目自身资源为来源，不复制 Animeko 图标。M5/M6 分别验证显示与安装包资源。

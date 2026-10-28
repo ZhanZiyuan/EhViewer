@@ -13,6 +13,7 @@ fun main(args: Array<String>) {
         "desktop-linux-arm64" -> desktopLinuxArm64(options.path("--image"), options.path("--output"))
         "windows-native-core" -> windowsNativeCore(options.path("--output"))
         "windows-jvm-ffi" -> windowsJvmFfi(options.path("--core-report"), options.path("--output"))
+        "desktop-windows-arm64" -> desktopWindowsArm64(options.path("--jvm-report"), options.path("--core-report"), options.path("--output"))
         "bytecode" -> verifyBytecode()
         "native-sources" -> verifyNativeSources()
         "apks" -> {

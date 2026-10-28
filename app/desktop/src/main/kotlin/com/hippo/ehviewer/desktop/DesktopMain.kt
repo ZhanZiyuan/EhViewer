@@ -14,6 +14,7 @@ import java.io.FileDescriptor
 import java.io.FileInputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.Base64
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.delay
@@ -23,30 +24,17 @@ import kotlinx.coroutines.withTimeout
 fun main(arguments: Array<String>) {
     val macIntel = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")
     val linuxArm = System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") == "aarch64"
-    check(macIntel || linuxArm) { "This M1 probe supports macOS Intel and Linux ARM64" }
+    val windowsArm = System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64"
+    check(macIntel || linuxArm || windowsArm) { "This M1 probe supports macOS Intel, Linux ARM64 and Windows ARM64" }
     val report = when {
         arguments.isEmpty() -> null
         arguments.size == 2 && arguments[0] == "--m1-smoke" -> Path.of(arguments[1])
+        arguments.size == 2 && arguments[0] == "--m1-smoke-base64" -> Path.of(Base64.getDecoder().decode(arguments[1]).decodeToString(throwOnInvalidSequence = true))
         else -> error("Expected --m1-smoke <fresh-report-directory>")
     }
     val nativeRoot = Path.of(checkNotNull(System.getProperty("compose.application.resources.dir")))
-    System.load(nativeRoot.resolve("libehviewer_rust.${if (macIntel) "dylib" else "so"}").toAbsolutePath().toString())
-    val sample = Files.createTempFile("ehviewer-m1-core-", ".txt")
-    var completed = 0
-    try {
-        Files.writeString(sample, "abc")
-        FileInputStream(sample.toFile()).use { input ->
-            // M1 reuses the original JNI fd surface; M3 introduces product file interfaces.
-            val field = FileDescriptor::class.java.getDeclaredField("fd").apply { isAccessible = true }
-            repeat(100) {
-                input.channel.position(0)
-                check(sha1(field.getInt(input.fd)) == "a9993e364706816aba3e25717850c26c9cd0d89d")
-                completed++
-            }
-        }
-    } finally {
-        Files.delete(sample)
-    }
+    val owned = if (windowsArm) verifyOwnedCapi(nativeRoot.resolve("ehviewer_capi.dll")) else null
+    val completed = owned?.completed ?: verifyUnixJni(nativeRoot, macIntel)
     val frames = AtomicInteger()
     application {
         Window(onCloseRequest = ::exitApplication, title = "EhViewer · M1 desktop runtime") {
@@ -71,6 +59,12 @@ fun main(arguments: Array<String>) {
                         setProperty("java_home", System.getProperty("java.home"))
                         setProperty("application_version", System.getProperty("jpackage.app-version"))
                         setProperty("rust_hash_results", completed.toString())
+                        if (owned != null) {
+                            setProperty("rust_library", owned.loadedPath.toString())
+                            setProperty("rust_active_results", "0")
+                            setProperty("rust_ownership_errors", "PASS")
+                            setProperty("rust_library_closed", "PASS")
+                        }
                         setProperty("compose_frames", frames.get().toString())
                         setProperty("window_showing", window.isShowing.toString())
                         setProperty("render_api", window.renderApi.name)
@@ -82,4 +76,25 @@ fun main(arguments: Array<String>) {
             }
         }
     }
+}
+
+private fun verifyUnixJni(nativeRoot: Path, macIntel: Boolean): Int {
+    System.load(nativeRoot.resolve("libehviewer_rust.${if (macIntel) "dylib" else "so"}").toAbsolutePath().toString())
+    val sample = Files.createTempFile("ehviewer-m1-core-", ".txt")
+    var completed = 0
+    try {
+        Files.writeString(sample, "abc")
+        FileInputStream(sample.toFile()).use { input ->
+            // M1 reuses the original JNI fd surface; M3 introduces product file interfaces.
+            val field = FileDescriptor::class.java.getDeclaredField("fd").apply { isAccessible = true }
+            repeat(100) {
+                input.channel.position(0)
+                check(sha1(field.getInt(input.fd)) == "a9993e364706816aba3e25717850c26c9cd0d89d")
+                completed++
+            }
+        }
+    } finally {
+        Files.delete(sample)
+    }
+    return completed
 }

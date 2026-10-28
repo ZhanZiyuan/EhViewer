@@ -1,6 +1,6 @@
 # ADR 0008：Windows ARM64 JVM 的 Rust C ABI 所有权调用
 
-状态：7f1afefe7的Windows JVM双事件参数传输失败已保留；72a5ce23a双Windows job SUCCESS，PR实际调用与实物已PASS，但完整门禁未通过（PR工件上传DNS失败，Push两个ARM job容量取消）。本机iOS27系统boot阻塞单独保留。前置47ebcc959双事件全部九job/gate及全部实际工件SUCCESS已记录ledger和同一英文Draft PR后开始。M1整体IN_PROGRESS，应用版本冻结1.15.10 / 180074。
+状态：75b36b2ef双事件全部九job/gate及所有实际工件SUCCESS，Windows原生JVM Unicode/C ABI证明取得完整门禁。7f1afefe7参数传输失败、72a5ce23a完整门禁的容量取消/上传DNS失败及本机iOS27系统boot阻塞均保留。前置47ebcc959的接受证据见ledger。M1整体IN_PROGRESS，应用版本冻结1.15.10 / 180074。
 
 ## 独立范围
 
@@ -28,7 +28,7 @@ FFM源码只在Desktop模块以JDK25编译，Java17字节码目标保留；原�
 
 生成头的实际函数为abi_version、hash_sha1、buffer_copy、buffer_free、active_buffers；int32错误码与64位size_t/u64按已验证头声明映射。2,000次轮换ASCII、空/null输入、二进制与Unicode UTF-8，结果与独立JVM SHA-1计算比较。每次实际验证长度查询、过小容量不写输出、完整复制、释放、双重释放/失效ID拒绝，最后检查active=0。DLL关闭后才写PASS报告；失败没有成功receipt。
 
-本地Mac ARM64/JBR25.0.3真实Rust动态库与FFM调用已PASS：2,000结果、active0、错误/释放检查和库关闭均成功。这只验证通用调用/ABI，Windows宽字符加载、GetLastError捕获及Microsoft原生JVM仍待CI。既有原生Core39通过不等于JVM调用通过，JVM调用通过也不等于Compose窗口/ZIP或完整产品P0通过。
+本地Mac ARM64/JBR25.0.3真实Rust动态库与FFM调用已PASS：2,000结果、active0、错误/释放检查和库关闭均成功。这只验证通用调用/ABI。随后75b36b2ef双事件Windows原生Microsoft ARM64 JVM25.0.5.0.2/Cp1252、真实Unicode路径/宽字符加载/GetLastError捕获、2,000/live0/全部错误释放关闭实际PASS，真实DLL的ARM64 PE与SHA独立核验；全部九job/gate及实际工件成功。既有原生Core39通过不等于JVM调用通过，JVM调用通过也不等于Compose窗口/ZIP或完整产品P0通过。
 
 本地工具121项、原完整Android tests/lint/build/四APK预检、Mac ARM64 JNI与Intel同包真实窗口/归档复验均通过。首次并发GUI检查的DMG超时保留，同字节串行复验通过；iOS两target编译成功，但本机唯一iOS27.0 runtime两次在应用安装前boot超时，第二次证据停在Apple系统数据迁移器。本切片不改iOS源码，不将该本地启动标为成功；原有CI的iOS26.5完整启动/生命周期/FFI仍必选，必须独立通过。完整日志、清理与未确认根因见ledger。
 

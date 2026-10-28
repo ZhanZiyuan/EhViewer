@@ -81,3 +81,5 @@ M1-011：按需重读本地`app/desktop/build.gradle.kts`的目标选择片段�
 M1-014/015：Windows 前置 File 归档接口直接修正 EhViewer 自身 Core 的 Unix fd/Mode ABI 边界，新增 `write_zip_file`，原 Unix 路径及完整归档/图片功能保留。无新的 Animeko 设计/实现复用；目标文件、固定上游头文件来源、许可处理及真实交叉检查失败/成功边界见 ADR0006。999418419的PR Linux GL失败经独立CI软件后端环境修复，4d6f62cc2双事件完整门禁/实际工件SUCCESS；采用的是Skiko公开配置与真实ComposeWindow后端采证，无AGPL代码复制。Windows原生测试/runtime和Linux OpenGL仍未验收，详细证据见ADR0005/ledger。
 
 M1-016：Windows Native Core测试使用EhViewer自己的Core/C ABI与Kotlin验证器，实际落点为`tools/verification/.../WindowsNative.kt`、进程环境工具/测试及`ci.yml`。只延续M0平台职责边界，无新Animeko实现/脚本/依赖复用。vcpkg及必要Native依赖从独立固定上游核查版本/许可证，生成配置不作为自主C/C++/Shell业务源码维护。设计差异、许可处理和真正Windows结果边界见ADR0007/ledger；本机检查不能替代原生执行，不宣称Windows桌面runtime通过。
+
+M1-022：按需只读复核`app/desktop/build.gradle.kts`的Windows Native目标选择片段；只延续平台资源/启动职责边界，拒绝mpv/FFmpeg/JCEF实现和依赖。EhViewer独立以自己的Kotlin C ABI调用器、固定JDK/Skiko及已测Rust DLL在Windows ARM64打包并两次启动真实窗口；目标为`app/desktop/build.gradle.kts`、`DesktopMain.kt`、`RustCapiProbe.kt`、`tools/verification/.../DesktopWindows.kt`及`ci.yml`。未复制或机械改写AGPL源码/资源/脚本/依赖树，精确差异、许可处理与验证边界见ADR0010/ledger；本地工具123项通过不能代替Windows窗口实测。

@@ -116,7 +116,7 @@ Kotlin工具固定vcpkg/Native来源、构建真实依赖、核验JDK/rustc/DLL/
 tools\verification\build\install\verification\bin\verification.bat windows-jvm-ffi --core-report reports/windows-native-core/windows-native-core.json --output reports/windows-jvm-ffi
 ```
 
-工具重新下载并校验固定Microsoft ARM64 JDK，构建既有C API动态库，在含空格/Unicode的自建目录中运行真实原生JVM调用器。2,000次不同输入、复制/错误/释放与active0均须实际通过，保留DLL、JDK输入/许可、原生证明、编译/调用日志和receipt。原Core39项/fmt/Clippy及全部原job不减少。72a5ce23a的PR Windows调用及实际工件已成功，完整门禁因容量取消/工件上传失败未通过；窗口与最终ZIP未验证，见ADR0008。
+工具重新下载并校验固定Microsoft ARM64 JDK，构建既有C API动态库，在含空格/Unicode的自建目录中运行真实原生JVM调用器。2,000次不同输入、复制/错误/释放与active0均须实际通过，保留DLL、JDK输入/许可、原生证明、编译/调用日志和receipt。原Core39项/fmt/Clippy及全部原job不减少。75b36b2ef双事件全部九job/gate、Windows实际调用和所有实物已成功；72a5ce23a容量取消/上传失败保留。窗口与最终ZIP未验证，见ADR0008。
 
 7f1afefe7双事件真实失败在Unicode目录通过JVM参数传输时变为`??`，尚未调用Rust；固定JDK原生编码为Cp1252。独立修复以UTF-8/Base64 ASCII在helper→Gradle→调用器传路径，再在调用器内严格解码；真实目录和宽字符加载保持，`path_transport`及实际加载路径须读回核对。普通本地Gradle `ffiLibrary`/`ffiOutput`属性继续支持；Windows helper使用对应Base64属性。失败记录与新SHA完整门禁见ledger。
 
@@ -125,3 +125,15 @@ tools\verification\build\install\verification\bin\verification.bat windows-jvm-f
 `tools/verification`的完整`check`还使用仓库固定Rust工具链构建无额外crate的test-only IPC客户端，执行fmt与严格Clippy。实际workflow Bash、29种发布场景、原60秒用例上限和所有断言保持；每个模拟CLI仍是真实子进程，状态由私有loopback上的Kotlin模型处理。该工具不进入产品包，原生Intel仅编译此测试客户端，产品DMG仍只由ARM producer构建。见ADR0009。
 
 Test输入显式包含客户端二进制和JVM架构；本地切换ARM/Intel时须确认`:test`确实执行，不能把缓存结果视为新架构验证。JUnit XML/HTML保留在既有Intel producer证据工件中，以便真实超时可诊断；正式`releases.yml`保持不变。
+
+## Windows ARM64 包内运行时与真实窗口
+
+在上述Core39项与独立JVM FFI证明生成后，同一原生Windows ARM64 checkout中运行；构建/资源/输出目录须为全新：
+
+```text
+tools/verification/build/install/verification/bin/verification.bat desktop-windows-arm64 --jvm-report reports/windows-jvm-ffi/windows-jvm-ffi.json --core-report reports/windows-native-core/windows-native-core.json --output reports/desktop-windows-arm64
+```
+
+Kotlin工具严格绑定同源码的Core/JVM证明与真实DLL/JDK摘要，准备必要资源，使用固定Microsoft ARM64 JDK执行现有Compose createDistributable。真实EhViewer.exe、jlink JVM、Skiko、C ABI与十个Native依赖保留在`image/EhViewer`。另在含空格/中文的安装目录两次启动包内窗口，每次2,000所有权调用/live0/完整错误释放关闭、包内java.home/库路径/版本、窗口显示与实际绘制帧均必选。报告路径显式UTF-8/Base64，原Unicode库/安装路径保持。
+
+CI显式SOFTWARE_COMPAT并核对实测后端；这只证明CPU绘制，不证明硬件加速、最终ZIP、最低系统或Desktop P0。所有EXE/DLL/JAR Native真实ARM64 PE与摘要、九份许可/来源文件及JDK许可均需核验。工具拒绝覆盖用户目录、嵌套安装与符号链接，不清空既有目录。设计/许可与逐SHA结果见ADR0010/ledger；本机macOS拒绝结果不当作Windows阳性。
