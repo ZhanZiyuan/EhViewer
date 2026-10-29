@@ -2,7 +2,7 @@ package verification
 
 import kotlin.io.path.readText
 
-private val phaseJobs = setOf("android", "ios", "rust_host", "desktop_intel", "desktop_intel_native", "desktop_linux_arm64", "windows_native_core", "source_policy", "shared_kmp")
+private val phaseJobs = setOf("android", "ios", "rust_host", "desktop_intel", "desktop_intel_native", "desktop_linux_arm64", "windows_native_core", "source_policy", "shared_kmp", "release_dry_run")
 
 /** Reviewed M2 coverage. A declared CI surface is not an executed build or asset receipt. */
 fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String): Map<String, Any?> {
@@ -39,7 +39,7 @@ fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String
         "linux-x64" to "HOST_JNI_ONLY",
         "linux-arm64" to "APPLICATION_IMAGE_SPIKE",
         "windows-x64" to "NOT_INTEGRATED",
-        "windows-arm64" to "APPLICATION_IMAGE_SPIKE",
+        "windows-arm64" to "SOURCE_BOUND_ZIP_AND_EXTRACTED_NATIVE_LAUNCH_SPIKE",
     )
     require(surfaces.keys == releaseTargets.map { it.id }.toSet()) { "Every final delivery target needs explicit phase coverage" }
     return mapOf(
@@ -52,9 +52,9 @@ fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String
         "android_version_code" to delivery["android_version_code"],
         "mandatory_job_ids" to phaseJobs.sorted(),
         "shared_product_core_targets" to listOf("android"),
-        "pending_check_categories" to mapOf(
-            "ci/release-dry-run" to "Actual installed-target secret-free packaging aggregation remains to be integrated in M2; all eleven final assets are required in M6-M8",
-        ),
+        "pending_check_categories" to emptyMap<String, String>(),
+        "staged_candidate_targets" to listOf("android-arm64", "android-armv7", "android-universal", "android-x64", "macos-x64", "windows-arm64"),
+        "remaining_final_package_targets" to listOf("ios-arm64", "macos-arm64", "linux-x64", "linux-arm64", "windows-x64"),
         "target_coverage" to releaseTargets.map {
             mapOf("id" to it.id, "available_ci_surface" to surfaces.getValue(it.id), "final_delivery_acceptance" to "NOT_VERIFIED")
         },

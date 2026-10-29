@@ -106,6 +106,8 @@ jobs:
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      artifact_run_id: ${{ steps.snapshot.outputs.artifact_run_id }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -122,6 +124,7 @@ jobs:
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ && "$GITHUB_RUN_ID" =~ ^[1-9][0-9]*$ && "$GITHUB_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]] || exit 1
           [[ $(git rev-parse HEAD) == "$SOURCE_SHA" ]] || exit 1
           build=true
+          artifact_run_id="$GITHUB_RUN_ID"
           required=$(jq -n --arg sha "$SOURCE_SHA" '["snapshot-diagnostics-" + $sha] + (["arm64-v8a","armeabi-v7a","universal","x86_64"] | map("snapshot-" + $sha + "-" + .))')
           has_snapshot() {
             gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs/$1/artifacts?per_page=100" > "$RUNNER_TEMP/snapshot-artifacts.json" || exit 1
@@ -141,7 +144,7 @@ jobs:
             jq -r --arg sha "$SOURCE_SHA" --arg repo "$GITHUB_REPOSITORY" ".[] | .workflow_runs[] | $valid_run" "$RUNNER_TEMP/snapshot-runs.json" > "$RUNNER_TEMP/snapshot-runs.txt"
             while IFS= read -r run; do
               [[ "$run" =~ ^[1-9][0-9]*$ ]] || exit 1
-              if has_snapshot "$run"; then build=false; break; fi
+              if has_snapshot "$run"; then build=false; artifact_run_id="$run"; break; fi
             done < "$RUNNER_TEMP/snapshot-runs.txt"
             # A rerun changes the current run's status; inspect completed attempts too.
             if [[ "$build" == true && "$GITHUB_EVENT_NAME" == push ]]; then
@@ -154,7 +157,7 @@ jobs:
             fi
           fi
           if [[ "$build" == false ]]; then echo "Snapshot $SOURCE_SHA is already available; skipping duplicate validation, build and upload."; fi
-          printf 'build=%s\n' "$build" >> "$GITHUB_OUTPUT"
+          printf 'build=%s\nartifact_run_id=%s\n' "$build" "$artifact_run_id" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@v5
         if: steps.snapshot.outputs.build == 'true'
@@ -668,10 +671,55 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  release_dry_run:
+    name: ci/release-dry-run
+    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core, source_policy, shared_kmp]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build and test actual staged package verifier
+        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - name: Install the original pinned APK verification tools
+        run: sdkmanager "build-tools;37.0.0" "ndk;29.0.14206865"
+      - name: Verify actual source-bound packages without production keys or publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANDROID_ARTIFACT_RUN_ID: ${{ needs.android.outputs.artifact_run_id }}
+          GODEBUG: http2client=0
+        run: |
+          mkdir -p reports
+          tools/verification/build/install/verification/bin/verification staged-package-dry-run --repository "$GITHUB_REPOSITORY" --run-id "$GITHUB_RUN_ID" --android-run-id "$ANDROID_ARTIFACT_RUN_ID" --sdk "$ANDROID_HOME" --output reports/staged-dry-run > reports/staged-dry-run.json
+      - name: Retain six actual candidates and complete staged evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: staged-dry-run-${{ github.sha }}
+          path: |
+            reports/staged-dry-run.json
+            reports/staged-dry-run/checked/staged-package.json
+            reports/staged-dry-run/checked/candidate/
+            reports/staged-dry-run/checked/transport/
+            reports/staged-dry-run/input/context.json
+            reports/staged-dry-run/input/archives/*.stderr.log
+          if-no-files-found: error
+          retention-days: 14
+
   gate:
     name: ci/gate
     if: always()
-    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core, source_policy, shared_kmp]
+    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core, source_policy, shared_kmp, release_dry_run]
     runs-on: ubuntu-latest
     steps:
       - name: Require Android, snapshot, iOS, desktop JNI, Intel DMG, Linux ARM64 runtime and Windows native Core
@@ -685,4 +733,5 @@ jobs:
           WINDOWS_CORE_RESULT: ${{ needs.windows_native_core.result }}
           SOURCE_POLICY_RESULT: ${{ needs.source_policy.result }}
           SHARED_KMP_RESULT: ${{ needs.shared_kmp.result }}
-        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success && test "$INTEL_DMG_RESULT" = success && test "$INTEL_NATIVE_RESULT" = success && test "$LINUX_ARM64_RESULT" = success && test "$WINDOWS_CORE_RESULT" = success && test "$SOURCE_POLICY_RESULT" = success && test "$SHARED_KMP_RESULT" = success
+          RELEASE_DRY_RUN_RESULT: ${{ needs.release_dry_run.result }}
+        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success && test "$INTEL_DMG_RESULT" = success && test "$INTEL_NATIVE_RESULT" = success && test "$LINUX_ARM64_RESULT" = success && test "$WINDOWS_CORE_RESULT" = success && test "$SOURCE_POLICY_RESULT" = success && test "$SHARED_KMP_RESULT" = success && test "$RELEASE_DRY_RUN_RESULT" = success

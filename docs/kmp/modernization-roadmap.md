@@ -1,5 +1,9 @@
 # 现代化路线与阶段门禁
 
+M2-012：已实现必选ci/release-dry-run及ci/gate接入，聚合四实际APK、同包原生Intel消费的DMG和Windows ARM64 ZIP/解压启动证明；最终五目标、全部P0仍未验。本地最终189工具测试/46秒、原Android319任务与全部适用预检通过。完整认证网络获取→聚合已实际exit0，旧已验收145eb的21官方ZIP/281809427字节、839实际payload/500063010字节与六候选158744617字节均独立逐SHA核验；仍是本地dirty旧输入证据，不能替代新SHA验收。早期JAR替换失败、五分钟下载超时及旧本地副本exit143保留，新下载器十分钟/三次/四线程及新job45分钟有界，原平台期限/检查不变。详见ADR0023/staged-package-dry-run及ledger；完整新SHA双事件各十二job/gate/各22真实工件结束前不进入M3。
+
+M2-011：`145eb1f49087175d3e9690d6854501b35eb62ae4` 的官方工件ZIP传输核验组件已双事件各十一job/gate及各21实物 GATE_PASSED（Push40820871137 / PR40820876949）。本提交同一CLI对42新实际归档的官方身份/大小SHA/CRC/路径/全部1678文件1000160088字节解压读回通过，独立字节与全部原生平台证明亦齐备；两个实际DMG只读挂载核验并卸载、同包原生Intel消费及180测试保持。只承诺传输scope，执行权限不保留、产品包/原生执行NOT_EXECUTED，原CI图不改；M2真实无密钥产品包聚合仍待下一独立改动，不能用本组件冒充最终11包/P0。稳定1.15.10/180074保持；格式失败和额外稳定生产命令在SNAPSHOT上的错误调用如实保留，原发布校验不变。详见ADR0022/artifact-archive-intake及ledger；以下历史条目保留各时点边界。
+
 M2-010：`50d1e12690aaeccdad16cedf072fa80b78347d0b` 的Windows ARM64实际ZIP解压后原生双启动已双事件各十一job/gate及各21实际工件 GATE_PASSED（Push40816308738 / PR40816312011）。每次原镜像2次+新ZIP2次共四次真实启动，177完整文件/35 ARM64 PE/内嵌source及ZIP/package/runtime哈希链、解压Unicode目录内JVM/Rust真实路径、UTF8/GetACP65001/2000/live0/所有权/绘制均通过。完整171工具测试、原Android及全部Native/共享/模拟器/同包Intel消费保障保持；M2只剩已接入目标实际无密钥打包聚合待完成，最终11包/P0/签名真机/最低系统/硬件加速/完整SBOM未验。详见ADR0021/windows-zip-launch及ledger；以下历史条目保留各时点边界。
 
 M2-009：`3e75b63a89680e134197fb22cedc3d75c3827d33` 的Windows ARM64真实staging ZIP已双事件各十一job/gate及各20实际工件 GATE_PASSED（Push40811237292 / PR40811242170）。各新ZIP177完整payload文件/35 ARM64 PE/内嵌source及runtime-proof/全部大小SHA与CRC独立核验，实际保留原目录工件遗漏的隐藏app/.jpackage.xml；原Core39/独立JVM/两次窗口及全部原生验收保持。完整168工具测试和原Android回归通过，两次本地test-first大小写/真实路径别名失败及修复保留。Windows ZIP解压后真实启动和跨平台已接入目标无生产密钥聚合仍待独立完成，不能将本字节组件或旧目录镜像当作M2/最终11包/P0验收；稳定1.15.10/180074保持。详见ADR0020/windows-stage-zip及ledger；以下条目保留各时点边界。

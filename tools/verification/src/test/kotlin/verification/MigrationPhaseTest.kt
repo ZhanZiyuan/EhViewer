@@ -18,7 +18,9 @@ class MigrationPhaseTest {
         assertEquals("M2", report["milestone"])
         for (key in listOf("milestone_complete", "artifacts_verified", "product_p0_verified", "publish_enabled")) assertEquals(key, false, report[key])
         assertEquals(listOf("android"), report["shared_product_core_targets"])
-        assertEquals(setOf("ci/release-dry-run"), report["pending_check_categories"].obj().keys)
+        assertEquals(emptySet<String>(), report["pending_check_categories"].obj().keys)
+        assertEquals(6, report["staged_candidate_targets"].array().size)
+        assertEquals(5, report["remaining_final_package_targets"].array().size)
         val targets = report["target_coverage"].array().map { it.obj() }
         assertEquals(11, targets.size)
         assertEquals(releaseTargets.map { it.id }.toSet(), targets.map { it.str("id") }.toSet())
@@ -34,7 +36,7 @@ class MigrationPhaseTest {
     }
 
     @Test fun eachMissingOrDuplicateDependencyAndConditionalGateFails() {
-        val dependencies = listOf("android", "ios", "rust_host", "desktop_intel", "desktop_intel_native", "desktop_linux_arm64", "windows_native_core", "source_policy", "shared_kmp")
+        val dependencies = listOf("android", "ios", "rust_host", "desktop_intel", "desktop_intel_native", "desktop_linux_arm64", "windows_native_core", "source_policy", "shared_kmp", "release_dry_run")
         val original = "needs: [${dependencies.joinToString(", ")}]"
         for (removed in dependencies) {
             val changed = workflow.replace(original, "needs: [${dependencies.filter { it != removed }.joinToString(", ")}]")

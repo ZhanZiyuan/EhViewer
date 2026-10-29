@@ -1,5 +1,7 @@
 # Eleven-target delivery contract
 
+The separately implemented [current-stage package job](staged-package-dry-run.md) validates six actual candidate files with canonical names, SNAPSHOT APK package versions and source-bound native receipts. Its new-SHA hosted acceptance is still pending. That staged evidence does not change the eleven-target final contract or make its declaration-only command an artifact validator; five final target formats and full product acceptance remain outstanding.
+
 M2 / IN_PROGRESS. M1 passed on `2f00e595ca74cd89b1d8d860077884b8306fdf54`, with both complete CI events and actual artifacts verified. The production `releases.yml` remains unchanged in this slice. Its prepare → build(matrix) → package → publish chain and original Android signing, diagnostics and publication protections remain authoritative.
 
 `tools/verification` now has one Kotlin target contract, `ReleaseContract.kt`. The `release-contract` command reads the current local Git SHA and the single `releaseVersion` / Android `versionCode` declarations. A requested tag must match that source version. It emits a **plan**, with `verification_scope=CONTRACT_ONLY`, `artifacts_verified=false`, and `publish_enabled=false`. It creates no tag, Release or installation package and reads no production credentials.

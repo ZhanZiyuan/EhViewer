@@ -20,14 +20,14 @@ The generated JSON binds the actual source SHA and dirty state, rejects dirty CI
 | linux-x64 | Host JNI only; application AppImage not integrated | NOT_VERIFIED |
 | linux-arm64 | Application image spike; AppImage not integrated | NOT_VERIFIED |
 | windows-x64 | Application/runtime not integrated | NOT_VERIFIED |
-| windows-arm64 | Application image spike; final ZIP not integrated | NOT_VERIFIED |
+| windows-arm64 | Source-bound ZIP and actual extracted native launch spike | NOT_VERIFIED |
 
 The existing Android production release baseline is retained. Feature APK checks use temporary test certificates; they do not establish the future eleven-target production delivery contract. The current Intel spike's DMG name is not the final release name. Directory images on Linux/Windows are not AppImage/ZIP acceptance. iOS device compilation is not a signed-device test or final unsigned IPA structure proof. iPad, full product P0, minimum systems, hardware acceleration and complete license/SBOM acceptance remain explicit outstanding work.
 
-The required shared category is now implemented as `ci/shared-kmp` with actual current-stage AAR/compiler/resource/test evidence; new-SHA CI acceptance is still mandatory. See [shared-core-check.md](shared-core-check.md). Desktop/iOS shared targets remain unintegrated. One required category is still **pending integration**, not an optional/skipped success:
+The required shared category is implemented as `ci/shared-kmp` with actual current-stage AAR/compiler/resource/test evidence. Desktop/iOS shared targets remain unintegrated until a separately verified M3 migration. See [shared-core-check.md](shared-core-check.md).
 
-- `ci/release-dry-run`: real installed-target secret-free packaging aggregation, extended to all eleven final files in M6-M8, with publish disabled.
+The new mandatory `ci/release-dry-run` implementation depends on all original logical jobs and is required by the always-run gate. It verifies authenticated actual archive/source ownership and stages six actual candidates: four original APKs, the ARM-produced/native-Intel-consumed DMG and the Windows ARM64 ZIP with extracted native startup proof. The declaration report lists those six targets and five remaining final package targets, with no missing check category declared. This is implementation coverage, not hosted acceptance: milestone_complete/artifacts_verified/product_p0/publish remain false in the declaration-only report. Both new-SHA workflows, the real package job and every actual artifact are still required before M2 acceptance. See [staged-package-dry-run.md](staged-package-dry-run.md).
 
-M2 stays incomplete while these categories are pending. This slice makes the limitation machine-readable; it does not claim their checks have run. No platform build, timeout, runner, original production workflow, dependency, license or source-language boundary changes.
+The production release workflow, original platform jobs, runners, deadlines, dependencies, licenses, source-language guard and stable metadata are retained. The original main snapshot cache policy is retained with its selected producer run exposed to the new verifier. The final eleven-package chain remains M6-M8 work; no missing format is represented by a renamed archive or parser receipt.
 
 This contract is independently derived from the user's PRD and actual EhViewer CI/module audit. No additional Animeko source, resource, script or dependency is reused. CI reads only EhViewer. Validate locally with the full verifier suite and `verification migration-phase`, then use both exact-SHA hosted workflows and their real retained JSON/other platform artifacts before accepting the commit.
