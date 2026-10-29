@@ -692,7 +692,7 @@ jobs:
       - name: Build and test actual staged package verifier
         run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
       - name: Install the original pinned APK verification tools
-        run: sdkmanager "build-tools;37.0.0" "ndk;29.0.14206865"
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" "build-tools;37.0.0" "ndk;29.0.14206865"'
       - name: Verify actual source-bound packages without production keys or publication
         env:
           GH_TOKEN: ${{ github.token }}
