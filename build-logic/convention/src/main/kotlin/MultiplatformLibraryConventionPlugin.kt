@@ -26,7 +26,7 @@ class MultiplatformLibraryConventionPlugin : Plugin<Project> {
             val javaVersion = libs.versions.java.get().toInt()
             jvmToolchain(javaVersion)
             compilerOptions {
-                configureKotlin(includeKotlinX = path != ":core:i18n")
+                configureKotlin(includeKotlinX = path !in setOf(":core:i18n", ":core:domain"))
             }
 
             applyHierarchyTemplate {

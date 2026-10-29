@@ -1,5 +1,9 @@
 # 现代化路线与阶段门禁
 
+M3首个小步正在实现/尚未提交：提取原已用GalleryTitles/ArchiveCatalog到core/domain，原包名/签名/行为及common API重导出保持，只启用Android/JVM，其他旧模块仍Android-only。原型26秒、196工具测试46秒、原Android全清单加domain产物测试367任务/3m12秒实际成功；真实五AAR/Java17/JVM JAR/Android及JVM各3领域测试/原common3消费测试、七标题调用与四接口签名探针通过。新SHA双CI/22工件/聚合JAR绑定仍待验收，iOS domain/完整数据迁移/产品UI未做。本阶段参考路径/采用改造拒绝及AGPL隔离见ADR0024，只读本地参考无复制或构建；稳定版本、生产Release和单英文Draft PR保持。
+
+M2已完成当前阶段门禁：17a17e282beaadeb21687a12aaeeb4314c25e255的Push40840065517/PR40840070582双完整十二job/gate及各22真实工件全部验收。SDK显式路径在真实Ubuntu成功，21原输入与六包聚合均真实执行；独立44归档/844178444字节、1788原payload/1318424670字节、每组六实际候选与原APK/DMG/ZIP逐SHA匹配，五最终目标及P0/11包/publish=false保持。所有原平台证明、逐PID iOS、同DMG原生Intel消费及双DMG只读挂载核验/卸载齐备，189真实测试与原期限保持。640ffe双失败及本地截断下载/过早审计失败保留，重取成功后才接纳。main仍423b8af、稳定1.15.10/180074、单英文Draft PR不变；先关闭同PR与文档并读回，再进入M3首个小步领域核心迁移，M3–M8和最终11成品未完成。以下是历史时点记录。
+
 M2-013修复准备：640ffe455的双事件原十个上游job全部SUCCESS，但新dry-run裸sdkmanager命令不在PATH，exit127，聚合未执行/无第22份工件，双gate真实FAILURE，M2-012明确NOT_PASSED。当前只独立修复为SDK根目录下的显式工具路径及--sdk_root；本地真实SDK listing/189工具测试40秒/原Android319任务1m42秒均通过。runner清单ref404不声称已阅，实际托管路径与完整聚合必须由修复SHA新CI证明。单英文Draft PR第38行已如实记录失败并GET读回，原37行保留；不重跑/取消CI或进入M3，原发布/版本/期限/验收不变。以下保留各时点证据。
 
 M2-012：已实现必选ci/release-dry-run及ci/gate接入，聚合四实际APK、同包原生Intel消费的DMG和Windows ARM64 ZIP/解压启动证明；最终五目标、全部P0仍未验。本地最终189工具测试/46秒、原Android319任务与全部适用预检通过。完整认证网络获取→聚合已实际exit0，旧已验收145eb的21官方ZIP/281809427字节、839实际payload/500063010字节与六候选158744617字节均独立逐SHA核验；仍是本地dirty旧输入证据，不能替代新SHA验收。早期JAR替换失败、五分钟下载超时及旧本地副本exit143保留，新下载器十分钟/三次/四线程及新job45分钟有界，原平台期限/检查不变。详见ADR0023/staged-package-dry-run及ledger；完整新SHA双事件各十二job/gate/各22真实工件结束前不进入M3。

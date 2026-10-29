@@ -1,5 +1,7 @@
 # Platform verification tools
 
+M3 first slice: `verification shared-core --output NEW_DIRECTORY` checks five actual Android AARs and the portable domain JVM JAR against their compiler outputs and real test XML. It loads that exact JAR, exercises seven production title cases and verifies the four existing ArchiveCatalog methods. Stage aggregation repeats the actual JAR probe; iOS domain and direct desktop product integration remain NOT_INTEGRATED. See [domain migration](../../docs/kmp/domain-core-migration.md).
+
 `verification staged-package-dry-run --repository ZhanZiyuan/EhViewer --run-id ID --android-run-id ID --sdk SDK --output NEW_DIRECTORY` fetches authenticated real CI artifacts and validates six current-stage candidate packages plus source-bound original native receipts. `staged-package-check --input DIRECTORY --sdk SDK --output NEW_DIRECTORY` uses previously authenticated context/archives offline. Both retain actual source/version/size/SHA, five unintegrated final targets and false P0/all-eleven/publish acceptance; neither emits AppImage/IPA stand-ins or executes other native OSes. See [staged package dry run](../../docs/kmp/staged-package-dry-run.md).
 
 `verification artifact-archive --catalog FILE --archive FILE --artifact-id ID --run-id ID --head-sha SHA --output NEW_DIRECTORY` verifies an actual GitHub artifact archive against its complete official catalog before safe byte extraction. It binds run/head identity, official ZIP size/SHA, canonical paths, CRC and every extracted file's read-back SHA; existing user data is never overwritten. This component reports transport inspection only, with package validation/native execution NOT_EXECUTED and executable permissions not preserved. It does not complete staged package aggregation. See [artifact archive intake](../../docs/kmp/artifact-archive-intake.md).
@@ -8,7 +10,7 @@
 
 `verification source-policy` audits cumulative source changes and untracked files against the fixed M0 baseline, rejects forbidden implementation/link/reference boundaries and checks retained third-party origin bytes. It needs full target Git history, never a local Animeko checkout. Its explicit scope and limitations are documented in [source-policy.md](../../docs/kmp/source-policy.md); full license/copy/SBOM review is not claimed.
 
-`verification migration-phase` validates the reviewed M2 job/dependency list, retained original Android-only architecture and frozen M2 metadata. Its source-bound JSON lists all eleven targets' current coverage, six staged candidates and five outstanding final packages; declaration validation does not mark M2, product P0 or final delivery accepted. See [migration-phase.md](../../docs/kmp/migration-phase.md).
+`verification migration-phase` validates the reviewed M3 job/dependency list, frozen metadata and module-specific targets. Only domain gains Android/JVM support; common/data/i18n/ui retain their Android boundary. Its source-bound JSON lists all eleven product targets, six staged candidates and five outstanding final packages; declarations cannot mark M3, product P0 or final delivery accepted. See [migration-phase.md](../../docs/kmp/migration-phase.md).
 
 This independent Kotlin/JVM build contains build and regression tools, not another
 application platform. Run it with the repository Gradle Wrapper and JDK 25; its

@@ -1,5 +1,15 @@
 # Actual shared-core checks for the current stage
 
+## Current M3 change: portable domain, CI_PENDING
+
+M2 closed at17a17e with both full twelve-job gates and all22 actual artifacts per event. The first M3 slice preserves all four legacy Android libraries and adds the real domain AAR, desktop-named JVM JAR and tests. Core/common reexports the moved production title/archive API. Common/data/i18n/ui retain Android-only targets; domain alone declares the reviewed JVM target. iOS domain and direct desktop UI integration remain NOT_INTEGRATED.
+
+`shared-core` now reports ANDROID_CORE_AND_PORTABLE_DOMAIN_JVM/schema2. Five AARs are matched to actual compiler bytes at Java17; domain-jvm.jar is likewise checked against every real JVM class, loaded from its own code source, and called for seven title cases/four original archive-interface methods. Actual observed Android class counts are common65/domain2/data160/i18n3/ui171; domain JVM contains two Java17 classes. Common Android tests3, domain Android tests3 and domain JVM tests3 execute; the three modules without tests remain NO_TEST_SOURCES. Test source sets/target declarations are never substitute execution receipts. Both the original Android checklist and forced shared builds gain domain tests without losing any previous task.
+
+Local prototype26s/38 tasks, full196 tools tests/46s and full Android367 tasks/3m12s passed. Actual five-AAR/JAR/test/API inspection passed; the link probe ran on the local aarch64 JVM25.0.3, separately from bytecode17 compatibility. These are local dirty-tree/source17a17e development results, not new-SHA hosted proof. Full next-SHA dual workflows, all native artifacts and actual staged JAR binding are still mandatory. No Native/iOS domain, full data/UI migration or final P0 is claimed. See ADR0024 and domain-core-migration.
+
+## Historical M2 Android-only baseline
+
 Accepted at `b6e4d3ec687d91531c866b6e67abe4bb4cc5094e` after both complete eleven-job workflows ([Push](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40805794104) / [PR](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40805800099)), their gates and all actual artifacts passed. Each shared job executed all 97 tasks; all eight downloaded AARs, packaged Java-17 classes/resources and actual host XMLs were independently verified against their own source-bound reports. Generated MR content hashes differ between events and are not assumed reproducible. M2 remains incomplete; this accepts the bounded library slice only.
 
 `ci/shared-kmp` is a required Ubuntu x64 job. It compiles the four currently integrated Android core libraries, generates their real AARs/resources and executes their available Android host tests with `--rerun-tasks`. It does not reuse a prior task result as a new test execution. The original full Android regression job remains intact. The always-run aggregate gate accepts only the actual success of this additional job; failure, cancellation, skipped, neutral, pending and missing results remain fatal.

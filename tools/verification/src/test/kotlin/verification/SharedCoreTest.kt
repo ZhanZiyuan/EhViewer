@@ -75,6 +75,36 @@ class SharedCoreTest {
         rejects { sharedAarEvidence(aar, classes, "fixture.library", true) }
     }
 
+    @Test fun actualJvmJarMustMatchEveryRealCompilerClass() = temporary { directory ->
+        val (_, classes) = fixture(directory)
+        val jar = directory.resolve("library.jar").also { it.writeBytes(archive(mapOf(className to compiledBytes))) }
+        val evidence = sharedJvmEvidence(jar, classes)
+        assertEquals("PASS", evidence["result"])
+        assertEquals(61, evidence["class_major"])
+        assertEquals(1, evidence["compiled_class_count"])
+        val altered = compiledBytes.copyOf().also { it[it.lastIndex] = (it.last().toInt() xor 1).toByte() }
+        jar.writeBytes(archive(mapOf(className to altered)))
+        rejects { sharedJvmEvidence(jar, classes) }
+    }
+
+    @Test fun missingExtraAndNonJava17JvmClassesCannotPass() = temporary { directory ->
+        val (_, classes) = fixture(directory)
+        val jar = directory.resolve("library.jar")
+        for (entries in listOf(emptyMap(), mapOf("extra.class" to compiledBytes), mapOf(className to compiledBytes, "extra.class" to compiledBytes))) {
+            jar.writeBytes(archive(entries))
+            rejects { sharedJvmEvidence(jar, classes) }
+        }
+        val wrongVersion = compiledBytes.copyOf().also { it[7] = 69 }
+        classes.resolve(className).writeBytes(wrongVersion)
+        jar.writeBytes(archive(mapOf(className to wrongVersion)))
+        rejects { sharedJvmEvidence(jar, classes) }
+    }
+
+    @Test fun unrelatedActualJvmJarCannotImpersonateTheProductionDomainApi() = temporary { directory ->
+        val jar = directory.resolve("unrelated.jar").also { it.writeBytes(archive(mapOf(className to compiledBytes))) }
+        rejects { domainJvmLinkProbe(jar) }
+    }
+
     private fun receipt(tests: Int = 1, skipped: Int = 0, body: String = "<testcase name=\"actual\"/>") = "<testsuite name=\"fixture.Tests\" tests=\"$tests\" failures=\"0\" errors=\"0\" skipped=\"$skipped\">$body</testsuite>".toByteArray()
 
     @Test fun executedHostTestsRemainDistinctFromNoTestSources() {

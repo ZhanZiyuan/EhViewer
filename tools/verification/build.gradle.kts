@@ -56,6 +56,9 @@ tasks.withType<Test>().configureEach {
     inputs.file(rootDir.resolve("../../.github/workflows/ci.yml"))
         .withPropertyName("ciWorkflow")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootDir.resolve("../../core/domain/build.gradle.kts"))
+        .withPropertyName("reviewedDomainTargets")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 spotless {

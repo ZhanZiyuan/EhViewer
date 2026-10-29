@@ -85,8 +85,10 @@ jobs:
         run: >-
           ./gradlew :core:common:bundleAndroidMainAar :core:data:bundleAndroidMainAar
           :core:i18n:bundleAndroidMainAar :core:ui:bundleAndroidMainAar
+          :core:domain:bundleAndroidMainAar :core:domain:desktopJar
           :core:common:testAndroidHostTest :core:data:testAndroidHostTest
           :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest
+          :core:domain:testAndroidHostTest :core:domain:desktopTest
           --rerun-tasks --console=plain --no-daemon
       - name: Verify actual library bytes, Java 17, localization and host receipts
         run: |
@@ -225,6 +227,7 @@ jobs:
           ./gradlew :build-logic:convention:check spotlessCheck
           :app:testDebugUnitTest
           :core:common:testAndroidHostTest :core:data:testAndroidHostTest
+          :core:domain:testAndroidHostTest
           :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest
           :app:lintRelease :app:assembleDebug
           :app:assembleRelease :benchmark:assembleNonMinifiedRelease

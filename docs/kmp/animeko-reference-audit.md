@@ -1,5 +1,7 @@
 # Animeko → EhViewer 只读参考审计
 
+M3首个小步对照：只读参考build-logic/src/main/kotlin/ani.kmp-library.gradle.kts及settings.gradle.kts中的app/shared模块组织；独立扩展EhViewer现有convention，将自身已用GalleryTitles/ArchiveCatalog移至core/domain并保留包名/API重导出。采用通用Android/JVM层次思路，拒绝复制AGPL插件/资源/脚本/依赖及JUnit5/TV/视频配置；iOS domain尚未接入。实际目标文件、设计差异、许可证处理与验证见[ADR0024](adr/0024-portable-domain-android-jvm.md)。本地原型Android/JVM与原common消费测试已真实通过，完整新SHA门禁未结束，不声称M3完成。以下保留M0原审计。
+
 审计日期：2026-10-27（Asia/Shanghai）。M0 审计提交与门禁已通过，后续参考项按阶段追加。执行依据为用户要求及 PRD v2.2；PRD §2.2 中“本次只编写 PRD”是附件的编写背景，不替代用户本次明确授权的真实实施。
 
 ## 来源与可信度

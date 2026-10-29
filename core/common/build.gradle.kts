@@ -12,6 +12,7 @@ kotlin {
         }
         commonMain {
             dependencies {
+                api(projects.core.domain)
                 api(libs.kotlinx.coroutines.core)
                 api(libs.kotlinx.datetime)
                 api(libs.kotlinx.io)

@@ -13,11 +13,15 @@ class MigrationPhaseTest {
     private val source = "eab4c8b53845438d66b7f37f93b57458a11a6fb9"
     private val settings = "val releaseVersion = \"1.15.10\"\nversionCode = 180074\n"
 
-    @Test fun currentCoverageCannotClaimM2OrFinalAssetsAccepted() {
+    @Test fun currentCoverageCannotClaimM3OrFinalAssetsAccepted() {
         val report = migrationPhaseContract(workflow, source, settings)
-        assertEquals("M2", report["milestone"])
+        assertEquals("M3", report["milestone"])
         for (key in listOf("milestone_complete", "artifacts_verified", "product_p0_verified", "publish_enabled")) assertEquals(key, false, report[key])
-        assertEquals(listOf("android"), report["shared_product_core_targets"])
+        assertEquals(listOf("android", "jvm"), report["shared_product_core_targets"])
+        assertEquals(listOf("android", "jvm"), report["shared_module_targets"].obj()["domain"])
+        for (module in listOf("common", "data", "i18n", "ui")) assertEquals(listOf("android"), report["shared_module_targets"].obj()[module])
+        assertEquals("NOT_INTEGRATED", report["domain_ios_targets"])
+        assertEquals("NOT_INTEGRATED", report["desktop_product_domain_integration"])
         assertEquals(emptySet<String>(), report["pending_check_categories"].obj().keys)
         assertEquals(6, report["staged_candidate_targets"].array().size)
         assertEquals(5, report["remaining_final_package_targets"].array().size)

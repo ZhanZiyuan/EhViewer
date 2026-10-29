@@ -4,11 +4,11 @@ import kotlin.io.path.readText
 
 private val phaseJobs = setOf("android", "ios", "rust_host", "desktop_intel", "desktop_intel_native", "desktop_linux_arm64", "windows_native_core", "source_policy", "shared_kmp", "release_dry_run")
 
-/** Reviewed M2 coverage. A declared CI surface is not an executed build or asset receipt. */
+/** Reviewed first M3 migration. A declared surface is not an executed artifact receipt. */
 fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String): Map<String, Any?> {
     require(Regex("[0-9a-f]{40}").matches(sourceSha) && sourceSha != "0".repeat(40)) { "Expected a nonzero full source SHA" }
     val delivery = releaseContract(settings, sourceSha)
-    require(delivery["version"] == "1.15.10" && delivery["android_version_code"] == 180074) { "The reviewed M2 version remains 1.15.10 / 180074; an M8 release freeze requires separate acceptance" }
+    require(delivery["version"] == "1.15.10" && delivery["android_version_code"] == 180074) { "The reviewed M3 version remains 1.15.10 / 180074; an M8 release freeze requires separate acceptance" }
     val roots = Regex("(?m)^jobs:[ \\t]*(?:#.*)?$").findAll(workflow).toList()
     require(roots.size == 1) { "Expected one explicit workflow jobs mapping" }
     val body = workflow.substring(roots.single().range.last + 1)
@@ -17,17 +17,17 @@ fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String
         it.startsWith("  ") && !it.startsWith("   ") && it.isNotBlank() && !it.trimStart().startsWith('#')
     }.map { line ->
         val match = headerPattern.matchEntire(line)
-        require(match != null) { "Unsupported M2 job header; retain canonical declarations or review the parser independently" }
+        require(match != null) { "Unsupported M3 job header; retain canonical declarations or review the parser independently" }
         match.groupValues[1] to line
     }.toList()
     val jobs = headers.map { it.first }
-    require(jobs.size == jobs.toSet().size && jobs.toSet() == phaseJobs + "gate") { "CI jobs differ from the reviewed M2 phase; update coverage and validation independently" }
+    require(jobs.size == jobs.toSet().size && jobs.toSet() == phaseJobs + "gate") { "CI jobs differ from the reviewed M3 phase; update coverage and validation independently" }
     val gate = body.substringAfter(headers.single { it.first == "gate" }.second + "\n", "")
     require(Regex("(?m)^    if: always\\(\\)[ \\t]*$").containsMatchIn(gate)) { "The phase gate must always run" }
     val needs = Regex("(?m)^    needs: \\[([^]\\n]+)]$").findAll(gate).toList()
     require(needs.size == 1) { "Expected one explicit aggregate dependency list" }
     val required = needs.single().groupValues[1].split(',').map(String::trim)
-    require(required.size == required.toSet().size && required.toSet() == phaseJobs) { "Every declared M2 job must remain mandatory" }
+    require(required.size == required.toSet().size && required.toSet() == phaseJobs) { "Every declared M3 job must remain mandatory" }
     val surfaces = mapOf(
         "android-arm64" to "TEST_SIGNED_APK_PREFLIGHT",
         "android-armv7" to "TEST_SIGNED_APK_PREFLIGHT",
@@ -44,14 +44,17 @@ fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String
     require(surfaces.keys == releaseTargets.map { it.id }.toSet()) { "Every final delivery target needs explicit phase coverage" }
     return mapOf(
         "schema_version" to 1,
-        "milestone" to "M2",
+        "milestone" to "M3",
         "milestone_complete" to false,
         "verification_scope" to "PHASE_DECLARATIONS_ONLY",
         "source_commit" to sourceSha,
         "version" to delivery["version"],
         "android_version_code" to delivery["android_version_code"],
         "mandatory_job_ids" to phaseJobs.sorted(),
-        "shared_product_core_targets" to listOf("android"),
+        "shared_product_core_targets" to listOf("android", "jvm"),
+        "shared_module_targets" to mapOf("domain" to listOf("android", "jvm"), "common" to listOf("android"), "data" to listOf("android"), "i18n" to listOf("android"), "ui" to listOf("android")),
+        "domain_ios_targets" to "NOT_INTEGRATED",
+        "desktop_product_domain_integration" to "NOT_INTEGRATED",
         "pending_check_categories" to emptyMap<String, String>(),
         "staged_candidate_targets" to listOf("android-arm64", "android-armv7", "android-universal", "android-x64", "macos-x64", "windows-arm64"),
         "remaining_final_package_targets" to listOf("ios-arm64", "macos-arm64", "linux-x64", "linux-arm64", "windows-x64"),
@@ -68,9 +71,9 @@ fun verifyMigrationPhase(): Map<String, Any?> {
     val source = command("git", "rev-parse", "HEAD").trim()
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
-    // Keep the original strict Android-only core guard until a separately verified M3 migration.
+    // Only the reviewed domain component gains JVM support; retain every legacy module boundary.
     val architecture = verifyArchitecture()
-    require(architecture["shared_core_android_only"] == true && architecture["result"] == "PASS")
+    require(architecture["legacy_shared_core_android_only"] == true && architecture["portable_domain_targets"] == listOf("android", "jvm") && architecture["result"] == "PASS")
     return migrationPhaseContract(root.resolve(".github/workflows/ci.yml").readText(), source, root.resolve("app/build.gradle.kts").readText()) + mapOf(
         "source_dirty" to dirty,
         "retained_architecture_checks" to architecture,

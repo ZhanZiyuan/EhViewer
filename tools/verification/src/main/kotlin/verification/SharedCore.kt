@@ -1,6 +1,7 @@
 package verification
 
 import java.io.ByteArrayInputStream
+import java.net.URLClassLoader
 import java.nio.ByteBuffer
 import java.nio.file.Files
 import java.nio.file.Path
@@ -81,6 +82,44 @@ fun sharedAarEvidence(aar: Path, compiled: Path, namespace: String, resourcesReq
     )
 }
 
+/** Match the complete Java 17 class set to the actual JVM compiler output. */
+fun sharedJvmEvidence(jar: Path, compiled: Path): Map<String, Any?> {
+    val classes = filesBelow(compiled, ".class").sorted().associate { file ->
+        val bytes = file.readBytes()
+        require(bytes.size <= CORE_ENTRY_LIMIT)
+        coreClass(bytes)
+        compiled.relativize(file).joinToString("/") to coreDigest(bytes)
+    }
+    require(classes.isNotEmpty() && Files.size(jar) <= 64 * 1024 * 1024) { "Missing actual JVM library/compiler output" }
+    val packaged = coreArchive(jar.readBytes()).filterKeys { it.endsWith(".class") }.mapValues { (_, bytes) ->
+        coreClass(bytes)
+        coreDigest(bytes)
+    }
+    require(packaged == classes) { "JVM JAR class set or bytes differ from actual compiler output" }
+    return mapOf("jar_sha256" to sha256(jar), "class_major" to 61, "compiled_class_files" to classes, "compiled_class_count" to classes.size, "result" to "PASS")
+}
+
+/** Load the real production JAR and exercise its public API, preserving the Android reader port. */
+fun domainJvmLinkProbe(jar: Path): Map<String, Any?> = URLClassLoader(arrayOf(jar.toUri().toURL()), ClassLoader.getSystemClassLoader()).use { loader ->
+    val titles = loader.loadClass("com.ehviewer.core.domain.GalleryTitlesKt")
+    val catalog = loader.loadClass("com.ehviewer.core.domain.reader.ArchiveCatalog")
+    for (type in listOf(titles, catalog)) require(Path.of(type.protectionDomain.codeSource.location.toURI()).toRealPath() == jar.toRealPath()) { "Domain API was not loaded from the actual packaged JAR" }
+    val select = titles.getMethod("selectGalleryTitle", String::class.java, String::class.java, Boolean::class.javaPrimitiveType)
+    val cases = listOf(
+        listOf("English", "日本語 📚", false, "English"),
+        listOf("English", "日本語 📚", true, "日本語 📚"),
+        listOf(null, "日本語", false, "日本語"),
+        listOf("English", "", true, "English"),
+        listOf(null, null, false, ""),
+        listOf("\t", "日本語", false, "\t"),
+        listOf("Cafe\u0301", null, false, "Cafe\u0301"),
+    )
+    cases.forEach { row -> require(select.invoke(null, row[0], row[1], row[2]) == row[3]) { "Packaged domain title behavior changed" } }
+    val methods = catalog.declaredMethods.map { method -> method.name + "(" + method.parameterTypes.joinToString(",") { it.name } + "):" + method.returnType.name }.toSet()
+    require(catalog.isInterface && methods == setOf("getPageCount():int", "getNeedsPassword():boolean", "extension(int):java.lang.String", "providePassword(java.lang.String):boolean")) { "Existing archive catalog API changed" }
+    mapOf("result" to "PASS", "title_cases" to cases.size, "archive_methods" to methods.sorted(), "jvm_version" to System.getProperty("java.version"), "jvm_architecture" to System.getProperty("os.arch"))
+}
+
 /** NO_TEST_SOURCES is recorded distinctly; zero, failed, skipped or inconsistent tests cannot pass. */
 fun sharedHostTestEvidence(xml: List<ByteArray>, sourceFiles: Int): Map<String, Any?> {
     require(sourceFiles >= 0)
@@ -111,11 +150,11 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
     val architecture = verifyArchitecture()
-    require(architecture["shared_core_android_only"] == true)
+    require(architecture["legacy_shared_core_android_only"] == true && architecture["portable_domain_targets"] == listOf("android", "jvm"))
     val delivery = releaseContract(root.resolve("app/build.gradle.kts").readText(), source)
     require(!output.exists()) { "Refusing to overwrite shared evidence" }
     Files.createDirectories(output)
-    val modules = listOf("common", "data", "i18n", "ui").associateWith { module ->
+    val modules = listOf("common", "domain", "data", "i18n", "ui").associateWith { module ->
         val directory = root.resolve("core/$module")
         val aar = filesBelow(directory.resolve("build/outputs/aar"), ".aar").single()
         val evidence = sharedAarEvidence(aar, directory.resolve("build/classes/kotlin/android/main"), "com.ehviewer.core.$module", module == "i18n")
@@ -131,10 +170,25 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         }
         evidence + mapOf("artifact" to "$module.aar", "host_tests" to tests)
     }
+    val domain = root.resolve("core/domain")
+    val jar = domain.resolve("build/libs/domain-jvm.jar")
+    val jvm = sharedJvmEvidence(jar, domain.resolve("build/classes/kotlin/desktop/main"))
+    val jvmTests = filesBelow(domain.resolve("build/test-results/desktopTest"), ".xml")
+    val jvmEvidence = sharedHostTestEvidence(jvmTests.map { it.readBytes() }, filesBelow(domain.resolve("src/commonTest"), ".kt").size)
+    require(jvmEvidence["status"] == "PASS")
+    val probe = domainJvmLinkProbe(jar)
+    Files.copy(jar, output.resolve("domain-jvm.jar"))
+    jvmTests.forEach { file ->
+        val target = output.resolve("tests/domain-jvm/${file.fileName}")
+        Files.createDirectories(target.parent)
+        Files.copy(file, target)
+    }
     return mapOf(
-        "schema_version" to 1, "verification_scope" to "CURRENT_ANDROID_SHARED_CORE", "source_commit" to source, "source_dirty" to dirty,
+        "schema_version" to 2, "verification_scope" to "ANDROID_CORE_AND_PORTABLE_DOMAIN_JVM", "source_commit" to source, "source_dirty" to dirty,
         "version" to delivery["version"], "android_version_code" to delivery["android_version_code"], "targets" to listOf("android"),
         "modules" to modules, "retained_architecture_checks" to architecture, "shared_library_artifacts_verified" to true,
-        "desktop_ios_shared_targets" to "NOT_INTEGRATED", "final_delivery_assets_verified" to false, "product_p0_verified" to false, "publish_enabled" to false,
+        "domain_jvm" to jvm + mapOf("artifact" to "domain-jvm.jar", "host_tests" to jvmEvidence, "link_probe" to probe),
+        "portable_domain_targets" to listOf("android", "jvm"), "domain_ios_targets" to "NOT_INTEGRATED", "desktop_product_domain_integration" to "NOT_INTEGRATED",
+        "legacy_desktop_ios_shared_targets" to "NOT_INTEGRATED", "final_delivery_assets_verified" to false, "product_p0_verified" to false, "publish_enabled" to false,
     )
 }
