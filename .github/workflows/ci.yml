@@ -62,6 +62,47 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  shared_kmp:
+    name: ci/shared-kmp
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build and test shared verification tools
+        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - name: Compile current shared targets, resources and host tests without reusing task results
+        run: >-
+          ./gradlew :core:common:bundleAndroidMainAar :core:data:bundleAndroidMainAar
+          :core:i18n:bundleAndroidMainAar :core:ui:bundleAndroidMainAar
+          :core:common:testAndroidHostTest :core:data:testAndroidHostTest
+          :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest
+          --rerun-tasks --console=plain --no-daemon
+      - name: Verify actual library bytes, Java 17, localization and host receipts
+        run: |
+          mkdir -p reports
+          tools/verification/build/install/verification/bin/verification shared-core --output reports/shared-core > reports/shared-core.json
+      - name: Retain shared libraries and actual test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: shared-core-${{ github.sha }}
+          path: |
+            reports/shared-core.json
+            reports/shared-core/
+          if-no-files-found: error
+          retention-days: 14
+
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -596,7 +637,7 @@ jobs:
   gate:
     name: ci/gate
     if: always()
-    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core, source_policy]
+    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core, source_policy, shared_kmp]
     runs-on: ubuntu-latest
     steps:
       - name: Require Android, snapshot, iOS, desktop JNI, Intel DMG, Linux ARM64 runtime and Windows native Core
@@ -609,4 +650,5 @@ jobs:
           LINUX_ARM64_RESULT: ${{ needs.desktop_linux_arm64.result }}
           WINDOWS_CORE_RESULT: ${{ needs.windows_native_core.result }}
           SOURCE_POLICY_RESULT: ${{ needs.source_policy.result }}
-        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success && test "$INTEL_DMG_RESULT" = success && test "$INTEL_NATIVE_RESULT" = success && test "$LINUX_ARM64_RESULT" = success && test "$WINDOWS_CORE_RESULT" = success && test "$SOURCE_POLICY_RESULT" = success
+          SHARED_KMP_RESULT: ${{ needs.shared_kmp.result }}
+        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success && test "$INTEL_DMG_RESULT" = success && test "$INTEL_NATIVE_RESULT" = success && test "$LINUX_ARM64_RESULT" = success && test "$WINDOWS_CORE_RESULT" = success && test "$SOURCE_POLICY_RESULT" = success && test "$SHARED_KMP_RESULT" = success

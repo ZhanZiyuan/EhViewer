@@ -8,6 +8,7 @@ fun main(args: Array<String>) {
         "architecture" -> verifyArchitecture()
         "source-policy" -> verifySourcePolicy()
         "migration-phase" -> verifyMigrationPhase()
+        "shared-core" -> verifySharedCore(options.path("--output"))
         "release-contract" -> verifyReleaseContract(if (options.has("--tag")) options.get("--tag") else null)
         "ios-startup" -> iosStartup(options.path("--app"), options.path("--output"), if (options.has("--runtime")) options.get("--runtime") else null)
         "ios-log-evidence" -> iosUnifiedLifecycle(java.nio.file.Files.readString(options.path("--input")), options.get("--first-pid").toLong(), options.get("--second-pid").toLong())

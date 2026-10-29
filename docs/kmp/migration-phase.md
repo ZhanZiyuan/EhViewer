@@ -24,9 +24,8 @@ The generated JSON binds the actual source SHA and dirty state, rejects dirty CI
 
 The existing Android production release baseline is retained. Feature APK checks use temporary test certificates; they do not establish the future eleven-target production delivery contract. The current Intel spike's DMG name is not the final release name. Directory images on Linux/Windows are not AppImage/ZIP acceptance. iOS device compilation is not a signed-device test or final unsigned IPA structure proof. iPad, full product P0, minimum systems, hardware acceleration and complete license/SBOM acceptance remain explicit outstanding work.
 
-Two required categories are still **pending integration**, not optional/skipped successes:
+The required shared category is now implemented as `ci/shared-kmp` with actual current-stage AAR/compiler/resource/test evidence; new-SHA CI acceptance is still mandatory. See [shared-core-check.md](shared-core-check.md). Desktop/iOS shared targets remain unintegrated. One required category is still **pending integration**, not an optional/skipped success:
 
-- `ci/shared-kmp`: dedicated phase-aware shared compilation, tests and resource checks, before M3 enables Desktop/iOS shared-core targets.
 - `ci/release-dry-run`: real installed-target secret-free packaging aggregation, extended to all eleven final files in M6-M8, with publish disabled.
 
 M2 stays incomplete while these categories are pending. This slice makes the limitation machine-readable; it does not claim their checks have run. No platform build, timeout, runner, original production workflow, dependency, license or source-language boundary changes.

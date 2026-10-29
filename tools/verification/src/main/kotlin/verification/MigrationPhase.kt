@@ -2,7 +2,7 @@ package verification
 
 import kotlin.io.path.readText
 
-private val phaseJobs = setOf("android", "ios", "rust_host", "desktop_intel", "desktop_intel_native", "desktop_linux_arm64", "windows_native_core", "source_policy")
+private val phaseJobs = setOf("android", "ios", "rust_host", "desktop_intel", "desktop_intel_native", "desktop_linux_arm64", "windows_native_core", "source_policy", "shared_kmp")
 
 /** Reviewed M2 coverage. A declared CI surface is not an executed build or asset receipt. */
 fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String): Map<String, Any?> {
@@ -53,7 +53,6 @@ fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String
         "mandatory_job_ids" to phaseJobs.sorted(),
         "shared_product_core_targets" to listOf("android"),
         "pending_check_categories" to mapOf(
-            "ci/shared-kmp" to "Dedicated phase-aware shared compilation/resource checks remain to be integrated in M2 before M3",
             "ci/release-dry-run" to "Actual installed-target secret-free packaging aggregation remains to be integrated in M2; all eleven final assets are required in M6-M8",
         ),
         "target_coverage" to releaseTargets.map {
