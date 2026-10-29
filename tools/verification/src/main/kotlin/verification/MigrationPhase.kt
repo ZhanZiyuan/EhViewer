@@ -22,6 +22,18 @@ fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String
     }.toList()
     val jobs = headers.map { it.first }
     require(jobs.size == jobs.toSet().size && jobs.toSet() == phaseJobs + "gate") { "CI jobs differ from the reviewed M3 phase; update coverage and validation independently" }
+    val commonConsumers = mapOf(
+        "rust_host" to listOf("shared_kmp"),
+        "desktop_linux_arm64" to listOf("shared_kmp"),
+        "windows_native_core" to listOf("shared_kmp"),
+        "desktop_intel_native" to listOf("desktop_intel", "shared_kmp"),
+    )
+    commonConsumers.forEach { (job, expected) ->
+        val index = headers.indexOfFirst { it.first == job }
+        val section = body.substringAfter(headers[index].second + "\n").let { if (index + 1 < headers.size) it.substringBefore(headers[index + 1].second + "\n") else it }
+        val dependencies = Regex("(?m)^    needs: \\[([^]\\n]+)]$").findAll(section).toList()
+        require(dependencies.size == 1 && dependencies.single().groupValues[1].split(',').map(String::trim) == expected) { "Every actual common JVM consumer must wait for its same-source producer: $job" }
+    }
     val gate = body.substringAfter(headers.single { it.first == "gate" }.second + "\n", "")
     require(Regex("(?m)^    if: always\\(\\)[ \\t]*$").containsMatchIn(gate)) { "The phase gate must always run" }
     val needs = Regex("(?m)^    needs: \\[([^]\\n]+)]$").findAll(gate).toList()
@@ -52,7 +64,8 @@ fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String
         "android_version_code" to delivery["android_version_code"],
         "mandatory_job_ids" to phaseJobs.sorted(),
         "shared_product_core_targets" to portableDomainTargets,
-        "shared_module_targets" to mapOf("domain" to portableDomainTargets, "common" to listOf("android"), "data" to listOf("android"), "i18n" to listOf("android"), "ui" to listOf("android")),
+        "shared_module_targets" to mapOf("domain" to portableDomainTargets, "common" to portableCommonTargets, "data" to listOf("android"), "i18n" to listOf("android"), "ui" to listOf("android")),
+        "common_jvm_evidence_jobs" to commonConsumers.keys.sorted(),
         "domain_ios_targets" to domainIosTargets,
         "domain_ios_evidence_job" to "ios",
         "ios_product_domain_integration" to "NOT_INTEGRATED",
@@ -73,9 +86,10 @@ fun verifyMigrationPhase(): Map<String, Any?> {
     val source = command("git", "rev-parse", "HEAD").trim()
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
-    // Only the reviewed domain component gains JVM/iOS support; retain every legacy module boundary.
+    // Common gains only JVM; domain retains its reviewed JVM/iOS targets.
     val architecture = verifyArchitecture()
     require(architecture["legacy_shared_core_android_only"] == true && architecture["portable_domain_targets"] == portableDomainTargets && architecture["result"] == "PASS")
+    require(architecture["portable_common_targets"] == portableCommonTargets && architecture["legacy_shared_modules"] == listOf("data", "i18n", "ui"))
     return migrationPhaseContract(root.resolve(".github/workflows/ci.yml").readText(), source, root.resolve("app/build.gradle.kts").readText()) + mapOf(
         "source_dirty" to dirty,
         "retained_architecture_checks" to architecture,

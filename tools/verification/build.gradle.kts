@@ -9,6 +9,8 @@ repositories { mavenCentral() }
 dependencies {
     implementation(kotlin("stdlib"))
     implementation(localGroovy())
+    implementation(libs.kotlinx.io)
+    implementation(libs.okio)
     testImplementation("junit:junit:4.13.2")
 }
 
@@ -58,6 +60,9 @@ tasks.withType<Test>().configureEach {
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file(rootDir.resolve("../../core/domain/build.gradle.kts"))
         .withPropertyName("reviewedDomainTargets")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootDir.resolve("../../core/common/build.gradle.kts"))
+        .withPropertyName("reviewedCommonTargets")
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 

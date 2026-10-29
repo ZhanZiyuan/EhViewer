@@ -56,13 +56,16 @@ fun verifyNativeSources(): List<Map<String, Any?>> = listOf("Debug", "RelWithDeb
     }
 }
 
-/** Only the independently migrated domain module may declare the reviewed JVM/iOS targets. */
+/** Only independently migrated modules may declare their exact reviewed portable targets. */
 fun verifyCoreTargetBoundary(configurations: Map<String, String>) {
     val domain = configurations.getValue("core/domain/build.gradle.kts")
     val target = Regex("\\b(ios\\w*|macos\\w*|linuxX64|linuxArm64|mingwX64|js|wasmJs|jvm)\\s*\\(")
     require(target.findAll(domain).map { it.groupValues[1] }.toList() == listOf("jvm", "iosArm64", "iosSimulatorArm64") && Regex("\\bjvm\\(\\s*\"desktop\"\\s*\\)").containsMatchIn(domain)) { "Domain targets must be exactly Android, desktop JVM and the two reviewed iOS targets" }
     require("alias(libs.plugins.ehviewer.multiplatform.library)" in domain) { "Domain must retain the existing Android library convention" }
-    configurations.filterKeys { it != "core/domain/build.gradle.kts" }.forEach { (path, text) ->
+    val common = configurations.getValue("core/common/build.gradle.kts")
+    require(target.findAll(common).map { it.groupValues[1] }.toList() == listOf("jvm") && Regex("\\bjvm\\(\\s*\"desktop\"\\s*\\)").containsMatchIn(common)) { "Common targets must be exactly Android and the reviewed desktop JVM" }
+    require("alias(libs.plugins.ehviewer.multiplatform.library)" in common) { "Common must retain the existing Android library convention" }
+    configurations.filterKeys { it !in setOf("core/domain/build.gradle.kts", "core/common/build.gradle.kts") }.forEach { (path, text) ->
         require(!target.containsMatchIn(text)) { "$path: non-Android target outside the reviewed domain migration" }
     }
 }
@@ -125,6 +128,8 @@ fun verifyArchitecture(): Map<String, Any?> {
         "language_policy" to languages.sorted(),
         "shared_core_android_only" to false,
         "legacy_shared_core_android_only" to true,
+        "legacy_shared_modules" to listOf("data", "i18n", "ui"),
+        "portable_common_targets" to portableCommonTargets,
         "portable_domain_targets" to portableDomainTargets,
         "archive_loader_uses_port" to true,
         "bundled_github_credentials" to false,

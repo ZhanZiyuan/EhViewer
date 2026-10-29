@@ -1,6 +1,8 @@
 # 现代化路线与阶段门禁
 
-M3-003正在迁移EhViewer自身九个模型文件，源码字节不变，先在原Android模块执行五项协议基线，再固定原CBOR字节；Android/JVM/Native各八项领域测试和完整模型编译产物成为本轮门禁，见[ADR0026](adr/0026-portable-gallery-models.md)。会话、持久化、网络、共享产品UI及完整P0后续独立迁移，不据模型可编译宣称完成。
+M3-004当前迁移common的JVM真实文件流，为后续持久化提供平台基础；Android文档URI实现字节不变，暂不启用common Native目标。原三标题+五真实文件/失败/协程取消测试及打包JAR独立八场景本机通过，CI在五个已接入桌面JVM环境消费同一实际JAR、聚合逐源/字节/真实回执验证，仍待完整新SHA门禁。见[ADR0027](adr/0027-common-jvm-filesystem.md)；M4下载/归档没有提前修改。
+
+M3-003已于d3d2e47d1 GATE_PASSED：双完整12job/gate、各23实际工件验收完成，46官方归档/846911161字节及1844原payload/1327691738字节全量重哈希。九自有模型字节不变、原CBOR金值、Android/JVM/Native各八领域测试、两29文件Native KLIB和schema4实际聚合均通过；同一英文Draft PR第42行已独立回读，之后才开始common。见[ADR0026](adr/0026-portable-gallery-models.md)。完整M3和P0仍未完成。
 
 M3-002已于4cdb47f76 GATE_PASSED：Push40862905445及PR40862912967全部12job/gate实际SUCCESS，各23实物独立验收；46官方ZIP/845637022字节、1836原始payload/1323643940字节全部复核。两真实Native流程强制16任务/93秒与186秒，两个20文件KLIB/API及三Native测试、编译执行二进制一致、新鲜度及自有清理通过。双schema3聚合22原输入、独立Native消费者、原JVM探针及六真实候选一致；同一英文Draft PR第41行已验收并回读，之后才进入本轮模型。完整M3/产品集成/P0/最终11包仍未完成。以下保留已验收M3-001与M2证据。
 

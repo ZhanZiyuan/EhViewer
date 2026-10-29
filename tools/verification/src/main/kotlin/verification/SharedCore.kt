@@ -100,13 +100,18 @@ fun sharedJvmEvidence(jar: Path, compiled: Path): Map<String, Any?> {
 }
 
 /** Recheck all packaged JVM bytes and model identities from the independently retained compiler inventory. */
-fun checkedDomainJvmArtifact(jar: Path, evidence: Map<String, Any?>) {
+fun checkedJvmInventory(jar: Path, evidence: Map<String, Any?>): Map<String, String> {
     require(evidence["result"] == "PASS" && evidence["class_major"] == 61 && sha256(jar) == evidence["jar_sha256"])
     val classes = coreArchive(jar.readBytes()).filterKeys { it.endsWith(".class") }.mapValues { (_, bytes) ->
         coreClass(bytes)
         coreDigest(bytes)
     }
     require(classes == evidence["compiled_class_files"] && classes.size == evidence["compiled_class_count"]) { "Actual domain JAR differs from complete compiler inventory" }
+    return classes
+}
+
+fun checkedDomainJvmArtifact(jar: Path, evidence: Map<String, Any?>) {
+    val classes = checkedJvmInventory(jar, evidence)
     require(domainModelTypes.all { "com/ehviewer/core/model/$it.class" in classes }) { "Actual domain JAR omits a gallery model" }
     require(listOf("com/ehviewer/core/domain/GalleryTitlesKt.class", "com/ehviewer/core/domain/reader/ArchiveCatalog.class").all(classes::containsKey))
 }
@@ -163,6 +168,7 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
     val architecture = verifyArchitecture()
     require(architecture["legacy_shared_core_android_only"] == true && architecture["portable_domain_targets"] == portableDomainTargets)
+    require(architecture["portable_common_targets"] == portableCommonTargets && architecture["legacy_shared_modules"] == listOf("data", "i18n", "ui"))
     val delivery = releaseContract(root.resolve("app/build.gradle.kts").readText(), source)
     require(!output.exists()) { "Refusing to overwrite shared evidence" }
     Files.createDirectories(output)
@@ -171,9 +177,10 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         val aar = filesBelow(directory.resolve("build/outputs/aar"), ".aar").single()
         val evidence = sharedAarEvidence(aar, directory.resolve("build/classes/kotlin/android/main"), "com.ehviewer.core.$module", module == "i18n")
         val testSources = filesBelow(directory.resolve("src"), ".kt").filter { directory.resolve("src").relativize(it).getName(0).toString().endsWith("Test") }
-        require(testSources.all { directory.resolve("src").relativize(it).getName(0).toString() in setOf("commonTest", "jvmTest", "androidHostTest") }) { "A new shared test source set needs explicit stage integration" }
+        require(testSources.all { directory.resolve("src").relativize(it).getName(0).toString() in setOf("commonTest", "jvmTest", "androidHostTest") || module == "common" && directory.resolve("src").relativize(it).getName(0).toString() == "desktopTest" }) { "A new shared test source set needs explicit stage integration" }
         val testFiles = filesBelow(directory.resolve("build/test-results/testAndroidHostTest"), ".xml")
-        val tests = sharedHostTestEvidence(testFiles.map { it.readBytes() }, testSources.size)
+        val androidSources = testSources.filter { directory.resolve("src").relativize(it).getName(0).toString() != "desktopTest" }
+        val tests = sharedHostTestEvidence(testFiles.map { it.readBytes() }, androidSources.size)
         if (module == "domain") verifyDomainTests(tests)
         Files.copy(aar, output.resolve("$module.aar"))
         testFiles.forEach { file ->
@@ -197,11 +204,28 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         Files.createDirectories(target.parent)
         Files.copy(file, target)
     }
+    val common = root.resolve("core/common")
+    val commonJar = common.resolve("build/libs/common-jvm.jar")
+    val commonJvm = sharedJvmEvidence(commonJar, common.resolve("build/classes/kotlin/desktop/main"))
+    checkedCommonJvmArtifact(commonJar, commonJvm)
+    val commonXml = filesBelow(common.resolve("build/test-results/desktopTest"), ".xml")
+    val commonTests = sharedHostTestEvidence(commonXml.map(Path::readBytes), filesBelow(common.resolve("src/commonTest"), ".kt").size + filesBelow(common.resolve("src/desktopTest"), ".kt").size)
+    verifyCommonJvmTests(commonTests)
+    val commonProbe = commonJvmLinkProbe(commonJar)
+    Files.copy(commonJar, output.resolve("common-jvm.jar"))
+    commonXml.forEach { file ->
+        val target = output.resolve("tests/common-jvm/${file.fileName}")
+        Files.createDirectories(target.parent)
+        Files.copy(file, target)
+    }
     return mapOf(
-        "schema_version" to 3, "verification_scope" to "ANDROID_CORE_AND_PORTABLE_DOMAIN_JVM", "source_commit" to source, "source_dirty" to dirty,
+        "schema_version" to 4, "verification_scope" to "ANDROID_CORE_AND_PORTABLE_COMMON_DOMAIN_JVM", "source_commit" to source, "source_dirty" to dirty,
         "version" to delivery["version"], "android_version_code" to delivery["android_version_code"], "targets" to listOf("android"),
         "modules" to modules, "retained_architecture_checks" to architecture, "shared_library_artifacts_verified" to true,
         "domain_jvm" to jvm + mapOf("artifact" to "domain-jvm.jar", "host_tests" to jvmEvidence, "link_probe" to probe),
+        "common_jvm" to commonJvm + mapOf("artifact" to "common-jvm.jar", "host_tests" to commonTests, "link_probe" to commonProbe),
+        "portable_common_targets" to portableCommonTargets,
+        "legacy_shared_modules" to listOf("data", "i18n", "ui"),
         "portable_domain_targets" to listOf("android", "jvm"), "domain_ios_targets" to domainIosTargets,
         "domain_ios_evidence" to "SEPARATE_REQUIRED_CI_IOS_JOB", "ios_product_domain_integration" to "NOT_INTEGRATED",
         "desktop_product_domain_integration" to "NOT_INTEGRATED",

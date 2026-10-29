@@ -1,9 +1,14 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.ehviewer.multiplatform.library)
     alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
+    jvm("desktop") {
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
+    }
     sourceSets {
         commonTest {
             dependencies {
@@ -31,4 +36,8 @@ kotlin {
             }
         }
     }
+}
+
+tasks.named<Jar>("desktopJar") {
+    archiveFileName.set("common-jvm.jar")
 }

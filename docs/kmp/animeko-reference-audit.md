@@ -1,5 +1,9 @@
 # Animeko → EhViewer 只读参考审计
 
+M3-004仅采用已只读审阅的settings.gradle.kts/ani.kmp-library中通用平台源集与actual边界思路；目标是EhViewer自身common的JVM真实文件流，保留Android源文件字节与公共路径操作，不复制参考文件系统/插件/依赖实现。依据既有固定Okio3.18.1、kotlinx.io0.9.1公开API独立编写Kotlin actual、磁盘测试和实际JAR消费者；参考→目标/差异/许可/验证见[ADR0027](adr/0027-common-jvm-filesystem.md)。参考目录仍无写入或构建。
+
+M3-003已在d3d2e47d1双完整12job/gate、各23实物及同英文Draft PR第42行回读后GATE_PASSED；46归档/1844原payload全重哈希。以下模型/Native记录保留各时点范围。
+
 M3-003只读复核settings.gradle.kts的共享模块划分与同一ani.kmp-library的通用跨平台边界；实际迁移的是EhViewer自身九个模型文件，源码字节和协议不变。原Android协议基线、目标路径、设计差异、许可和实测见[ADR0026](adr/0026-portable-gallery-models.md)。不复制参考模型、插件实现或依赖集，拒绝无关视频/BT/弹幕模块；参考目录没有构建或写入。
 
 M3-002于4cdb47f76双完整12job/gate、各23实际工件验收后GATE_PASSED；真实两KLIB/20文件、公开API、三Native XML测试/编译执行二进制/清理和独立消费者均通过，原NO-SOURCE及Documents路径失败记录保留。参考路径→目标/差异/许可见[ADR0025](adr/0025-ios-domain-native.md)。完整M3/产品集成仍未完成。

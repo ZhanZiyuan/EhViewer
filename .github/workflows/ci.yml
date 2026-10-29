@@ -86,6 +86,7 @@ jobs:
           ./gradlew :core:common:bundleAndroidMainAar :core:data:bundleAndroidMainAar
           :core:i18n:bundleAndroidMainAar :core:ui:bundleAndroidMainAar
           :core:domain:bundleAndroidMainAar :core:domain:desktopJar
+          :core:common:desktopJar :core:common:desktopTest
           :core:common:testAndroidHostTest :core:data:testAndroidHostTest
           :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest
           :core:domain:testAndroidHostTest :core:domain:desktopTest
@@ -400,6 +401,7 @@ jobs:
 
   rust_host:
     name: ci/rust-host (${{ matrix.platform }})
+    needs: [shared_kmp]
     strategy:
       fail-fast: false
       matrix:
@@ -438,6 +440,14 @@ jobs:
         run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
       - name: Load Rust JNI and verify archive ownership in a real desktop JVM
         run: tools/verification/build/install/verification/bin/verification desktop-native-smoke --output reports/desktop-native
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-core-${{ github.sha }}
+          path: ${{ runner.temp }}/shared-common
+      - name: Exercise the actual shared common JAR on this native JVM
+        run: >-
+          tools/verification/build/install/verification/bin/verification common-jvm
+          --input "$RUNNER_TEMP/shared-common" --output reports/desktop-native/common-jvm.json
       - name: Retain desktop JNI evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -494,7 +504,7 @@ jobs:
 
   desktop_intel_native:
     name: ci/desktop (macos-x86_64-native)
-    needs: desktop_intel
+    needs: [desktop_intel, shared_kmp]
     # Consumption only: the sole product DMG is built above on macos-latest ARM64.
     runs-on: macos-26-intel
     timeout-minutes: 30
@@ -528,6 +538,14 @@ jobs:
           --dmg reports/intel-arm-producer/app/desktop/build/compose/binaries/main/dmg
           --producer-report reports/intel-arm-producer/reports/desktop-intel/intel-dmg.json
           --output reports/desktop-intel-native
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-core-${{ github.sha }}
+          path: ${{ runner.temp }}/shared-common
+      - name: Exercise the actual common JAR on the native Intel JVM
+        run: >-
+          tools/verification/build/install/verification/bin/verification common-jvm
+          --input "$RUNNER_TEMP/shared-common" --output reports/desktop-intel-native/common-jvm.json
       - name: Retain native Intel consumption evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -539,6 +557,7 @@ jobs:
 
   desktop_linux_arm64:
     name: ci/desktop (linux-aarch64-runtime)
+    needs: [shared_kmp]
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
     steps:
@@ -582,6 +601,14 @@ jobs:
           xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-linux-arm64
           --image app/desktop/build/compose/binaries/main/app/EhViewer
           --output reports/desktop-linux-arm64
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-core-${{ github.sha }}
+          path: ${{ runner.temp }}/shared-common
+      - name: Exercise the actual common JAR on the native Linux ARM64 JVM
+        run: >-
+          tools/verification/build/install/verification/bin/verification common-jvm
+          --input "$RUNNER_TEMP/shared-common" --output reports/desktop-linux-arm64/common-jvm.json
       - name: Retain application image and measured runtime evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -597,6 +624,7 @@ jobs:
 
   windows_native_core:
     name: ci/rust-native (windows-arm64-core)
+    needs: [shared_kmp]
     runs-on: windows-11-arm
     timeout-minutes: 60
     steps:
@@ -637,6 +665,14 @@ jobs:
           --package-report reports/windows-arm64-package/windows-arm64-package.json
           --runtime-report reports/desktop-windows-arm64/windows-arm64-runtime.json
           --output reports/windows-arm64-zip-launch
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-core-${{ github.sha }}
+          path: ${{ runner.temp }}/shared-common
+      - name: Exercise the actual common JAR on the native Windows ARM64 JVM
+        run: >-
+          .\tools\verification\build\install\verification\bin\verification.bat common-jvm
+          --input "$env:RUNNER_TEMP/shared-common" --output reports/windows-native-core/common-jvm.json
       - name: Retain Windows ARM64 native evidence
         if: always()
         uses: actions/upload-artifact@v7

@@ -19,7 +19,9 @@ class MigrationPhaseTest {
         for (key in listOf("milestone_complete", "artifacts_verified", "product_p0_verified", "publish_enabled")) assertEquals(key, false, report[key])
         assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_product_core_targets"])
         assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_module_targets"].obj()["domain"])
-        for (module in listOf("common", "data", "i18n", "ui")) assertEquals(listOf("android"), report["shared_module_targets"].obj()[module])
+        assertEquals(listOf("android", "jvm"), report["shared_module_targets"].obj()["common"])
+        for (module in listOf("data", "i18n", "ui")) assertEquals(listOf("android"), report["shared_module_targets"].obj()[module])
+        assertEquals(listOf("desktop_intel_native", "desktop_linux_arm64", "rust_host", "windows_native_core"), report["common_jvm_evidence_jobs"])
         assertEquals(listOf("iosArm64", "iosSimulatorArm64"), report["domain_ios_targets"])
         assertEquals("ios", report["domain_ios_evidence_job"])
         assertEquals("NOT_INTEGRATED", report["ios_product_domain_integration"])
@@ -76,6 +78,15 @@ class MigrationPhaseTest {
     @Test fun prematureVersionChangesAndAmbiguousAuthorityFail() {
         for (changed in listOf(settings.replace("1.15.10", "1.16.0"), settings.replace("180074", "180075"), settings.replace("180074", "0"), settings + settings, "")) {
             assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(workflow, source, changed) }
+        }
+    }
+
+    @Test fun missingActualCommonProducerBarriersCannotPassThePhase() {
+        for (job in listOf("rust_host", "desktop_linux_arm64", "windows_native_core", "desktop_intel_native")) {
+            val before = workflow.substringBefore("  $job:\n")
+            val section = workflow.substringAfter("  $job:\n")
+            val changed = before + "  $job:\n" + section.replaceFirst(Regex("(?m)^    needs: \\[[^\\n]+]$"), "    needs: []")
+            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(changed, source, settings) }
         }
     }
 }

@@ -1,6 +1,8 @@
 # Reviewed migration phase
 
-M3-003 / IN_PROGRESS adds the nine existing gallery models and original protocol regression tests to the already accepted domain targets. It does not expand the platform/job/runner scope or complete product integration. Android/JVM/Native must each execute all eight domain tests; actual compiler/class/API/XML and original package proofs remain mandatory. See ADR0026; M3-002 is accepted at4cdb47f76, full M3 remains incomplete.
+M3-004 / IN_PROGRESS: common now declares Android/JVM, domain retains Android/JVM/two iOS targets, data/i18n/ui stay Android-only. Phase checks preserve all12 actual jobs and require source-producer barriers for the five real common JVM consumers in four existing job declarations. These declarations do not certify execution; each new SHA still needs the full dual workflows and actual shared/host/Native/package evidence. M3-003 is GATE_PASSED at d3d2e47d1; complete M3 remains unfinished. See ADR0027.
+
+M3-003 / GATE_PASSED at d3d2e47d1 (historical slice) adds the nine existing gallery models and original protocol regression tests to the already accepted domain targets. It does not expand the platform/job/runner scope or complete product integration. Android/JVM/Native must each execute all eight domain tests; actual compiler/class/API/XML and original package proofs remain mandatory. See ADR0026; M3-002 is accepted at4cdb47f76, full M3 remains incomplete.
 
 M3-002 / GATE_PASSED at4cdb47f76 after both full twelve-job gates/all23 actual artifacts per event. Actual production-domain iosArm64/iosSimulatorArm64 compilation and three common Native tests execute in mandatory ci/ios. Aggregation requires the separate domain-native artifact among22 original inputs. Phase declarations do not certify execution; every later SHA still requires dual complete workflows and every actual artifact. M3 is IN_PROGRESS.
 

@@ -9,6 +9,8 @@ fun main(args: Array<String>) {
         "source-policy" -> verifySourcePolicy()
         "migration-phase" -> verifyMigrationPhase()
         "shared-core" -> verifySharedCore(options.path("--output"))
+        "common-jvm" -> commonJvmArtifact(options.path("--input"), options.path("--output"))
+        "common-jvm-probe" -> commonJvmLinkProbe(options.path("--jar"))
         "release-contract" -> verifyReleaseContract(if (options.has("--tag")) options.get("--tag") else null)
         "ios-startup" -> iosStartup(options.path("--app"), options.path("--output"), if (options.has("--runtime")) options.get("--runtime") else null)
         "ios-domain" -> iosDomainNative(options.path("--output"))

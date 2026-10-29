@@ -9,7 +9,9 @@ import org.junit.Test
 class CoreTargetBoundaryTest {
     private val domain = generateSequence(Path.of("").toAbsolutePath()) { it.parent }
         .map { it.resolve("core/domain/build.gradle.kts") }.first(Files::isRegularFile).readText()
-    private val configuration = mapOf("core/domain/build.gradle.kts" to domain, "core/data/build.gradle.kts" to "android library")
+    private val common = generateSequence(Path.of("").toAbsolutePath()) { it.parent }
+        .map { it.resolve("core/common/build.gradle.kts") }.first(Files::isRegularFile).readText()
+    private val configuration = mapOf("core/domain/build.gradle.kts" to domain, "core/common/build.gradle.kts" to common, "core/data/build.gradle.kts" to "android library")
 
     @Test fun actualReviewedDomainConfigurationPasses() = verifyCoreTargetBoundary(configuration)
 
@@ -37,5 +39,11 @@ class CoreTargetBoundaryTest {
                 assertThrows(IllegalArgumentException::class.java) { verifyCoreTargetBoundary(configuration + (path to extra)) }
             }
         }
+    }
+
+    @Test fun commonJvmCannotBeRemovedRenamedDuplicatedOrPromotedToNative() {
+        val variants = listOf(common.replace("jvm(\"desktop\")", ""), common.replace("jvm(\"desktop\")", "jvm(\"other\")"), common.replace("alias(libs.plugins.ehviewer.multiplatform.library)", "")) +
+            listOf("jvm(\"desktop\")", "iosArm64()", "iosSimulatorArm64()", "linuxX64()", "wasmJs()").map { common + "\n" + it }
+        variants.forEach { changed -> assertThrows(IllegalArgumentException::class.java) { verifyCoreTargetBoundary(configuration + ("core/common/build.gradle.kts" to changed)) } }
     }
 }
