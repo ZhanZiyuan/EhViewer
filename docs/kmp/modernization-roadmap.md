@@ -68,3 +68,5 @@ M0 未建立 Release 性能对照；任何“性能提升”或“无回退”�
 - 五平台保持同一 EhViewer 图标视觉身份，在 Android 自适应/密度资源、Apple 平台图标资源、macOS ICNS、Windows 多尺寸 ICO、Linux 桌面图标集成中遵循各平台规范；以项目自身资源为来源，不复制 Animeko 图标。M5/M6 分别验证显示与安装包资源。
 
 M3-005优先完成common真实Native文件系统基础，再进入会话/网络/持久化；不扩大到UI/发布或升级版本。98c1f12双完整门禁/实物/英文Draft PR回读已验收。新层次隔离Android文档URI与JVM日志，仅复用自己的真实磁盘actual/测试，原领域Native八项与原应用启动均保留，增加独立common Native八项和严格字节证据。首次缺IO扩展导入编译失败已保留并修复，不切换调度器规避问题。精确参考路径/落点/许可证及待验风险见ADR0028。数据库风险仍是EhDB v23两个打开路径的同17→18迁移及独立SearchDB v2，禁止破坏式fallback；全M3/后续M4–M8和11成品尚未完成。
+
+M3-005实际生产common Native在PR b7ad24/iOS26.5通过八项/23强制任务及完整KLIB/执行binary/API/清理，Push becdcd4因ARM托管容量未分配runner而取消，严格gate失败，故整体NOT_PASSED。M3-006仅独立修复ios对rust_host与desktop_intel的调度屏障及守卫，全部原测试/runner/期限保留，211工具及371 Android任务本机通过，等待独立提交及双完整门禁。持久化/会话等新增功能暂停到修复验收后。数据后续真实官方sqlite-bundled-jvm2.6.2审计确认仅Linux/Mac双架构和Windows x64，WARM原生资源缺失；不能以声明代验。固定Intel JDK libjvm LC_BUILD_VERSION声明minos11.0，只作结构下限，不是最低系统实测。未改依赖/数据库/runner或版本。

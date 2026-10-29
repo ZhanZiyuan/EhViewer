@@ -24,6 +24,7 @@ class MigrationPhaseTest {
         assertEquals(listOf("desktop_intel_native", "desktop_linux_arm64", "rust_host", "windows_native_core"), report["common_jvm_evidence_jobs"])
         assertEquals(listOf("iosArm64", "iosSimulatorArm64"), report["domain_ios_targets"])
         assertEquals("ios", report["domain_ios_evidence_job"])
+        assertEquals(listOf("rust_host", "desktop_intel"), report["ios_admission_dependencies"])
         assertEquals("NOT_INTEGRATED", report["ios_product_domain_integration"])
         assertEquals("NOT_INTEGRATED", report["desktop_product_domain_integration"])
         assertEquals(emptySet<String>(), report["pending_check_categories"].obj().keys)
@@ -86,6 +87,19 @@ class MigrationPhaseTest {
             val before = workflow.substringBefore("  $job:\n")
             val section = workflow.substringAfter("  $job:\n")
             val changed = before + "  $job:\n" + section.replaceFirst(Regex("(?m)^    needs: \\[[^\\n]+]$"), "    needs: []")
+            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(changed, source, settings) }
+        }
+    }
+
+    @Test fun iosAdmissionMustWaitForBothHostAndLongRunningArmProducer() {
+        val before = workflow.substringBefore("  ios:\n")
+        val after = workflow.substringAfter("  ios:\n")
+        for (needs in listOf("rust_host", "[]", "[rust_host]", "[desktop_intel]", "[rust_host, rust_host, desktop_intel]", "[rust_host, desktop_intel, desktop_intel]", "[rust_host, desktop_intel_native]")) {
+            val changed = before + "  ios:\n" + after.replaceFirst(Regex("(?m)^    needs: [^\\n]+$"), "    needs: $needs")
+            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(changed, source, settings) }
+        }
+        for (condition in listOf("", "    if: success()", "    if: false")) {
+            val changed = before + "  ios:\n" + after.replaceFirst("    if: always()", condition)
             assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(changed, source, settings) }
         }
     }
