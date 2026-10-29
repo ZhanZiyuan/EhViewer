@@ -48,7 +48,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val policy = receipt("policy", "source-policy.json")
     require(policy["baseline_commit"] == "423b8af13632896b55780783b54b5f720ec4c9dd" && policy["untracked_files"].array().isEmpty()) { "Source boundary receipt changed" }
     val phase = receipt("phase", "migration-phase.json", false)
-    require(phase["milestone"] == "M3" && phase["version"] == version && phase["android_version_code"] == code && phase["retained_architecture_checks"].obj()["result"] == "PASS" && phase["shared_module_targets"].obj()["domain"].array() == listOf("android", "jvm")) { "Expected the reviewed M3 domain/retained architecture/version checks" }
+    require(phase["milestone"] == "M3" && phase["version"] == version && phase["android_version_code"] == code && phase["retained_architecture_checks"].obj()["result"] == "PASS" && phase["shared_module_targets"].obj()["domain"].array() == portableDomainTargets) { "Expected the reviewed M3 domain/retained architecture/version checks" }
     val shared = receipt("shared", "shared-core.json", false)
     require(shared["shared_library_artifacts_verified"] == true && shared["version"] == version && shared["android_version_code"] == code && shared["targets"].array() == listOf("android")) { "Shared artifact scope changed" }
     require(shared["modules"].obj().keys == setOf("common", "domain", "data", "i18n", "ui") && shared["verification_scope"] == "ANDROID_CORE_AND_PORTABLE_DOMAIN_JVM") { "Unexpected shared module inventory" }
@@ -63,6 +63,8 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     require(sha256(domainJar) == domain["jar_sha256"]) { "Actual domain JAR bytes changed" }
     val domainProbe = domainJvmLinkProbe(domainJar)
     require(listOf("result", "title_cases", "archive_methods").all { domainProbe[it] == domain["link_probe"].obj()[it] }) { "Packaged domain API differs from the shared producer" }
+    receipt("domain-native", "domain-native.json")
+    val nativeDomain = checkedDomainNativeArtifact(unpacked.getValue("domain-native"))
     for (role in listOf("linux-host", "macos-host")) {
         val host = receipt(role, "desktop-native.json")
         require(host["target"] == if (role == "linux-host") "x86_64-unknown-linux-gnu" else "aarch64-apple-darwin") { "Host JNI target differs" }
@@ -219,12 +221,14 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     retain("windows-arm64", archive)
     require(assets.size == 6 && candidate.toFile().listFiles()!!.map { it.name }.toSet() == assets.map { it.str("file") }.toSet()) { "Expected exactly six current-stage candidate files" }
     val result = mapOf(
-        "schema_version" to 2, "verification_scope" to "M3_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
+        "schema_version" to 3, "verification_scope" to "M3_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
         "version" to version, "android_version_code" to code, "run_id" to run["id"], "run_head_sha" to run["head_sha"], "android_artifact_run_id" to context["android_run"].obj()["id"],
         "upstream_jobs" to stagedUpstreamJobs.sorted(), "artifact_inputs" to plan.map { mapOf("role" to it.role, "artifact_id" to it.id, "run_id" to it.runId, "run_head_sha" to it.run["head_sha"], "digest" to it.metadata["digest"]) },
         "candidate_assets" to assets, "staged_package_bytes_verified" to true, "candidate_android_version_name" to "$version-SNAPSHOT", "android_production_certificate_required" to trustedMain, "android_apk_checks" to verifiedApks,
         "native_execution_in_this_job" to "NOT_EXECUTED", "same_source_native_receipts_verified" to true,
-        "domain_jvm_link_probe" to domainProbe, "domain_jvm_link_probe_executed_here" to true, "domain_ios_targets" to "NOT_INTEGRATED",
+        "domain_jvm_link_probe" to domainProbe, "domain_jvm_link_probe_executed_here" to true,
+        "domain_native" to nativeDomain, "domain_native_receipt_verified" to true, "domain_ios_targets" to domainIosTargets,
+        "ios_product_domain_integration" to "NOT_INTEGRATED",
         "remaining_final_targets" to releaseTargets.filter { target -> assets.none { it["target"] == target.id } }.map { mapOf("target" to it.id, "file" to it.fileName(version), "final_package" to "NOT_INTEGRATED") },
         "linux_arm64_transport_permissions" to "NOT_PRESERVED; ORIGINAL_RUNNER_EXECUTION_VERIFIED_SEPARATELY", "ios_unsigned_ipa" to "NOT_INTEGRATED", "development_signed_device" to "NOT_VERIFIED",
         "minimum_systems" to "NOT_VERIFIED", "hardware_acceleration" to "NOT_VERIFIED", "complete_license_sbom" to "NOT_VERIFIED", "product_p0_verified" to false, "all_eleven_assets_verified" to false, "publish_enabled" to false,

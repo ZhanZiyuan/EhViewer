@@ -1,6 +1,8 @@
 # Animeko → EhViewer 只读参考审计
 
-M3首个小步对照：只读参考build-logic/src/main/kotlin/ani.kmp-library.gradle.kts及settings.gradle.kts中的app/shared模块组织；独立扩展EhViewer现有convention，将自身已用GalleryTitles/ArchiveCatalog移至core/domain并保留包名/API重导出。采用通用Android/JVM层次思路，拒绝复制AGPL插件/资源/脚本/依赖及JUnit5/TV/视频配置；iOS domain尚未接入。实际目标文件、设计差异、许可证处理与验证见[ADR0024](adr/0024-portable-domain-android-jvm.md)。本地原型Android/JVM与原common消费测试已真实通过，完整新SHA门禁未结束，不声称M3完成。以下保留M0原审计。
+M3-002当前本地已真实编译/测试领域iOS目标，CI_PENDING。按需只读参考同一ani.kmp-library的通用iOS源集组织，并以官方Kotlin层次文档及本地固定KGP2.4.10 API独立扩展EhViewer原自定义层次，Native仅启用domain；拒绝参考插件实现、移动/skiko复杂分组、JUnit5、依赖与视频/TV配置。原NO-SOURCE及Documents路径原型失败保留，真实两KLIB/20文件、公开API、三Native XML测试/二进制/清理和独立实物消费者已通过；路径→目标/差异/许可见[ADR0025](adr/0025-ios-domain-native.md)。未复制AGPL实现、构建或写入参考，完整M3/产品集成仍未完成。
+
+M3-001对照：只读参考build-logic/src/main/kotlin/ani.kmp-library.gradle.kts及settings.gradle.kts中的app/shared模块组织；独立扩展EhViewer现有convention，将自身已用GalleryTitles/ArchiveCatalog移至core/domain并保留包名/API重导出。采用通用Android/JVM层次思路，拒绝复制AGPL插件/资源/脚本/依赖及JUnit5/TV/视频配置；该时点iOS domain尚未接入。实际目标文件、设计差异、许可证处理与验证见[ADR0024](adr/0024-portable-domain-android-jvm.md)。e5ed5350b已通过双完整十二job/gate与各22真实工件独立验收，真实五AAR/JVM及Android-JVM测试、原消费测试和聚合实际JAR调用通过；44官方归档/1810原payload逐SHA复核。M3整体仍IN_PROGRESS，以下保留M0原审计。
 
 审计日期：2026-10-27（Asia/Shanghai）。M0 审计提交与门禁已通过，后续参考项按阶段追加。执行依据为用户要求及 PRD v2.2；PRD §2.2 中“本次只编写 PRD”是附件的编写背景，不替代用户本次明确授权的真实实施。
 

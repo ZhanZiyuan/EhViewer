@@ -35,6 +35,11 @@ class MultiplatformLibraryConventionPlugin : Plugin<Project> {
                         withCompilations { it.target is KotlinMultiplatformAndroidLibraryTarget }
                         withJvm()
                     }
+                    if (path == ":core:domain") {
+                        group("ios") {
+                            withIos()
+                        }
+                    }
                 }
             }
 

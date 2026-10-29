@@ -56,11 +56,11 @@ fun verifyNativeSources(): List<Map<String, Any?>> = listOf("Debug", "RelWithDeb
     }
 }
 
-/** Only the independently migrated domain module may declare a desktop JVM target. */
+/** Only the independently migrated domain module may declare the reviewed JVM/iOS targets. */
 fun verifyCoreTargetBoundary(configurations: Map<String, String>) {
     val domain = configurations.getValue("core/domain/build.gradle.kts")
     val target = Regex("\\b(ios\\w*|macos\\w*|linuxX64|linuxArm64|mingwX64|js|wasmJs|jvm)\\s*\\(")
-    require(target.findAll(domain).map { it.groupValues[1] }.toList() == listOf("jvm") && Regex("\\bjvm\\(\\s*\"desktop\"\\s*\\)").containsMatchIn(domain)) { "Domain targets must be exactly Android and desktop JVM in this migration" }
+    require(target.findAll(domain).map { it.groupValues[1] }.toList() == listOf("jvm", "iosArm64", "iosSimulatorArm64") && Regex("\\bjvm\\(\\s*\"desktop\"\\s*\\)").containsMatchIn(domain)) { "Domain targets must be exactly Android, desktop JVM and the two reviewed iOS targets" }
     require("alias(libs.plugins.ehviewer.multiplatform.library)" in domain) { "Domain must retain the existing Android library convention" }
     configurations.filterKeys { it != "core/domain/build.gradle.kts" }.forEach { (path, text) ->
         require(!target.containsMatchIn(text)) { "$path: non-Android target outside the reviewed domain migration" }
@@ -125,7 +125,7 @@ fun verifyArchitecture(): Map<String, Any?> {
         "language_policy" to languages.sorted(),
         "shared_core_android_only" to false,
         "legacy_shared_core_android_only" to true,
-        "portable_domain_targets" to listOf("android", "jvm"),
+        "portable_domain_targets" to portableDomainTargets,
         "archive_loader_uses_port" to true,
         "bundled_github_credentials" to false,
         "result" to "PASS",

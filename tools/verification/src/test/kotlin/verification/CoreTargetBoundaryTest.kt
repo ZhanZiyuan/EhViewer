@@ -25,6 +25,12 @@ class CoreTargetBoundaryTest {
         }
     }
 
+    @Test fun missingOrRenamedNativeTargetsCannotClaimIosCoverage() {
+        for (changed in listOf(domain.replace("iosArm64()", ""), domain.replace("iosSimulatorArm64()", ""), domain.replace("iosSimulatorArm64()", "iosX64()"))) {
+            assertThrows(IllegalArgumentException::class.java) { verifyCoreTargetBoundary(configuration + ("core/domain/build.gradle.kts" to changed)) }
+        }
+    }
+
     @Test fun legacyModulesAndConventionsCannotAcquireUnreviewedTargets() {
         for (path in listOf("core/common/build.gradle.kts", "core/data/build.gradle.kts", "core/i18n/build.gradle.kts", "core/ui/build.gradle.kts", "build-logic/convention/src/main/kotlin/Plugin.kt")) {
             for (extra in listOf("jvm(\"desktop\")", "iosArm64()")) {

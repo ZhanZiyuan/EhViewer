@@ -16,7 +16,7 @@ import kotlin.io.path.readText
 private const val CORE_ENTRY_LIMIT = 8 * 1024 * 1024
 private fun coreDigest(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
-private fun coreArchive(bytes: ByteArray): Map<String, ByteArray> {
+internal fun coreArchive(bytes: ByteArray): Map<String, ByteArray> {
     require(bytes.size <= 64 * 1024 * 1024) { "Shared archive exceeds the inspection limit" }
     val entries = linkedMapOf<String, ByteArray>()
     var total = 0L
@@ -150,7 +150,7 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
     val architecture = verifyArchitecture()
-    require(architecture["legacy_shared_core_android_only"] == true && architecture["portable_domain_targets"] == listOf("android", "jvm"))
+    require(architecture["legacy_shared_core_android_only"] == true && architecture["portable_domain_targets"] == portableDomainTargets)
     val delivery = releaseContract(root.resolve("app/build.gradle.kts").readText(), source)
     require(!output.exists()) { "Refusing to overwrite shared evidence" }
     Files.createDirectories(output)
@@ -188,7 +188,9 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         "version" to delivery["version"], "android_version_code" to delivery["android_version_code"], "targets" to listOf("android"),
         "modules" to modules, "retained_architecture_checks" to architecture, "shared_library_artifacts_verified" to true,
         "domain_jvm" to jvm + mapOf("artifact" to "domain-jvm.jar", "host_tests" to jvmEvidence, "link_probe" to probe),
-        "portable_domain_targets" to listOf("android", "jvm"), "domain_ios_targets" to "NOT_INTEGRATED", "desktop_product_domain_integration" to "NOT_INTEGRATED",
+        "portable_domain_targets" to listOf("android", "jvm"), "domain_ios_targets" to domainIosTargets,
+        "domain_ios_evidence" to "SEPARATE_REQUIRED_CI_IOS_JOB", "ios_product_domain_integration" to "NOT_INTEGRATED",
+        "desktop_product_domain_integration" to "NOT_INTEGRATED",
         "legacy_desktop_ios_shared_targets" to "NOT_INTEGRATED", "final_delivery_assets_verified" to false, "product_p0_verified" to false, "publish_enabled" to false,
     )
 }

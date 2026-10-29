@@ -370,6 +370,16 @@ jobs:
         run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
       - name: Launch, render and exercise the real Simulator app
         run: tools/verification/build/install/verification/bin/verification ios-startup --app app/ios/build/simulator/EhViewer.app --output reports/ios-startup
+      - name: Compile and execute the production domain on an owned iOS Simulator
+        run: tools/verification/build/install/verification/bin/verification ios-domain --output reports/domain-native
+      - name: Retain actual iOS domain compiler, API and test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: domain-native-${{ github.sha }}
+          path: reports/domain-native/
+          if-no-files-found: error
+          retention-days: 14
       - name: Retain startup evidence
         if: always()
         uses: actions/upload-artifact@v7

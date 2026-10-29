@@ -1,6 +1,8 @@
 # 现代化路线与阶段门禁
 
-M3首个小步正在实现/尚未提交：提取原已用GalleryTitles/ArchiveCatalog到core/domain，原包名/签名/行为及common API重导出保持，只启用Android/JVM，其他旧模块仍Android-only。原型26秒、196工具测试46秒、原Android全清单加domain产物测试367任务/3m12秒实际成功；真实五AAR/Java17/JVM JAR/Android及JVM各3领域测试/原common3消费测试、七标题调用与四接口签名探针通过。新SHA双CI/22工件/聚合JAR绑定仍待验收，iOS domain/完整数据迁移/产品UI未做。本阶段参考路径/采用改造拒绝及AGPL隔离见ADR0024，只读本地参考无复制或构建；稳定版本、生产Release和单英文Draft PR保持。
+M3-002当前LOCAL_VERIFIED / CI_PENDING：仅domain加入两个iOS目标，修复原自定义层次NO-SOURCE，真实两KLIB/公开API及三个Native测试完成；后链接按SHA暂存执行、环境/mtime守卫和自有模拟器清理均实测通过。最终201工具测试/96秒零失败错误跳过、原Android367任务/2分6秒及全部原APK/Native/ABI/诊断预检通过，实际Native整流程16任务强制全执行/99秒和独立消费者及两篡改反例通过。CI保持原12job/gate并强制新Native步骤，22原输入/每事件23实物；必须等待新SHA双全绿/全部实物后再迁移模型/会话/持久化。完整M3/共享产品UI/P0/最终11包仍未完成；见ADR0025和feature-matrix。以下保留已验收M3-001与M2证据。
+
+M3-001已GATE_PASSED：e5ed5350b47ad753dffd95ba72d46059a8d73751的Push40851262709/PR40851270786双完整十二job/gate及各22真实工件全部独立验收。原已用GalleryTitles/ArchiveCatalog原样迁入domain、common重导出，其他旧模块保持Android-only；各五AAR/401Java17 class、真实两class JVM JAR、domain Android/JVM各3及原common3测试、聚合再次七标题/四接口探针全部通过。共享123任务全执行、原Android353任务/347执行6缓存、双producer196测试、同包Intel及原平台证明保持；44官方ZIP/844214195字节、1810原payload/1318582654字节全量重新核验。M3仍IN_PROGRESS，下一步独立接入/测试iOS领域目标，再迁移实际模型/会话/持久化；不以本步代替完整数据/共享UI/最终11包P0验收。参考路径/差异/AGPL隔离见ADR0024，本地Animeko仍只读无复制构建；稳定1.15.10/180074、生产Release和同一英文Draft PR保持，原39行保留及第40行GATE_PASSED已独立GET读回。
 
 M2已完成当前阶段门禁：17a17e282beaadeb21687a12aaeeb4314c25e255的Push40840065517/PR40840070582双完整十二job/gate及各22真实工件全部验收。SDK显式路径在真实Ubuntu成功，21原输入与六包聚合均真实执行；独立44归档/844178444字节、1788原payload/1318424670字节、每组六实际候选与原APK/DMG/ZIP逐SHA匹配，五最终目标及P0/11包/publish=false保持。所有原平台证明、逐PID iOS、同DMG原生Intel消费及双DMG只读挂载核验/卸载齐备，189真实测试与原期限保持。640ffe双失败及本地截断下载/过早审计失败保留，重取成功后才接纳。main仍423b8af、稳定1.15.10/180074、单英文Draft PR不变；先关闭同PR与文档并读回，再进入M3首个小步领域核心迁移，M3–M8和最终11成品未完成。以下是历史时点记录。
 

@@ -1,0 +1,24 @@
+# Product acceptance matrix
+
+M3 / IN_PROGRESS. This matrix separates existing Android implementation, measured library/runtime probes and full product acceptance. No F01–F10 five-platform P0 row has yet completed all required success/failure/cancellation paths and a real interaction record. Compilation, fixtures and a rendered startup window do not establish product equivalence.
+
+| Requirement | Existing Android implementation anchors | Shared migration | macOS | Linux | Windows | iOS |
+|---|---|---|---|---|---|---|
+| F01 identity/session | client/EhEngine.kt; core/data network/EhCookieStore.kt | Session interfaces/persistence/expiry still pending | Product not implemented | Product not implemented | Product not implemented | Product not implemented |
+| F02 discovery/search/paging | client/EhEngine.kt; Android gallery UI | Protocol/repository migration pending | Product not implemented | Product not implemented | Product not implemented | Product not implemented |
+| F03 gallery details/favorites | client/EhEngine.kt; Android detail UI | Domain models/repositories pending | Product not implemented | Product not implemented | Product not implemented | Product not implemented |
+| F04 online reading | ui/reader/ReaderScreen.kt; gallery loaders | Production title/archive API portable; reading UI/state pending | Product not implemented | Product not implemented | Product not implemented | Product not implemented |
+| F05 downloads/recovery | download/DownloadManager.kt; spider/SpiderQueen.kt | State machine/storage/recovery migration pending | Product not implemented | Product not implemented | Product not implemented | Product not implemented |
+| F06 local/archive/export | Android ArchiveReader/PageLoader; Rust core | Real archive/FFI probes exist; full import/directory/export workflow pending | Native/runtime probe only | Native/runtime probe only | Native/runtime probe only | C ABI/startup probe only |
+| F07 settings | Settings.kt; SettingsCollector.kt; ui/settings | DataStore/platform storage migration pending | Product not implemented | Product not implemented | Product not implemented | Product not implemented |
+| F08 data safety | EhDB.kt; core/data database/DatabaseMigrations.kt | Preserve both17-to18 migrations; real migration/recovery acceptance pending | Product not implemented | Product not implemented | Product not implemented | Product not implemented |
+| F09 platform behavior | ui/MainActivity.kt and Android integrations | Platform interfaces/shared UI pending | Two runtime windows only | Two runtime windows only | Original/extracted runtime windows only | Simulator lifecycle only |
+| F10 recoverable errors | Existing Android engine/loaders | Unified errors/bounded retry/cancellation migration pending | Product not implemented | Product not implemented | Product not implemented | Product not implemented |
+
+Android anchors are relative to app/src/main/kotlin/com/hippo/ehviewer unless prefixed core/. Existing Android behavior and the full tests/lint/build checklist remain mandatory at every SHA, but full P0 interaction/performance acceptance is still NOT_VERIFIED. Desktop probes cover only the architecture explicitly recorded in the ledger; they do not establish both architectures or all OS versions. iOS device compilation/library tests do not establish signed-device execution or an installable unsigned IPA.
+
+For each row/platform, acceptance still requires actual success, failure and cancellation tests; implementation/test paths; a real interaction record; source SHA/Actions evidence; and any external blocker. Add those results as the actual feature migrates. Do not convert the statuses from declarations or invented data. Domain Android/JVM acceptance is recorded at e5ed5350b; the separate Native-domain slice remains CI_PENDING.
+
+Required form factors remain Android phones/tablets across all four APKs and iPhone/iPad for the unsigned IPA. Current iOS plist device-family declarations are not iPad layout/interaction acceptance. Folding-device-specific work is outside this request. Five-platform icons must retain EhViewer's own visual identity in platform-appropriate resources; final integration/inspection is pending. The maintainer has no Apple signing account: continue unsigned compilation, keep real signed-device results NOT_VERIFIED, and never describe the unsigned IPA as directly installable.
+
+See the [roadmap](modernization-roadmap.md), [reference audit](animeko-reference-audit.md), [domain migration](domain-core-migration.md), [release contract](release-artifacts.md) and [evidence ledger](ci-ledger.md). Full M3–M8, all eleven final assets, product P0, performance, minimum systems and complete license/SBOM validation remain incomplete.

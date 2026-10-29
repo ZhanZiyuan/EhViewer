@@ -51,9 +51,11 @@ fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String
         "version" to delivery["version"],
         "android_version_code" to delivery["android_version_code"],
         "mandatory_job_ids" to phaseJobs.sorted(),
-        "shared_product_core_targets" to listOf("android", "jvm"),
-        "shared_module_targets" to mapOf("domain" to listOf("android", "jvm"), "common" to listOf("android"), "data" to listOf("android"), "i18n" to listOf("android"), "ui" to listOf("android")),
-        "domain_ios_targets" to "NOT_INTEGRATED",
+        "shared_product_core_targets" to portableDomainTargets,
+        "shared_module_targets" to mapOf("domain" to portableDomainTargets, "common" to listOf("android"), "data" to listOf("android"), "i18n" to listOf("android"), "ui" to listOf("android")),
+        "domain_ios_targets" to domainIosTargets,
+        "domain_ios_evidence_job" to "ios",
+        "ios_product_domain_integration" to "NOT_INTEGRATED",
         "desktop_product_domain_integration" to "NOT_INTEGRATED",
         "pending_check_categories" to emptyMap<String, String>(),
         "staged_candidate_targets" to listOf("android-arm64", "android-armv7", "android-universal", "android-x64", "macos-x64", "windows-arm64"),
@@ -71,9 +73,9 @@ fun verifyMigrationPhase(): Map<String, Any?> {
     val source = command("git", "rev-parse", "HEAD").trim()
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
-    // Only the reviewed domain component gains JVM support; retain every legacy module boundary.
+    // Only the reviewed domain component gains JVM/iOS support; retain every legacy module boundary.
     val architecture = verifyArchitecture()
-    require(architecture["legacy_shared_core_android_only"] == true && architecture["portable_domain_targets"] == listOf("android", "jvm") && architecture["result"] == "PASS")
+    require(architecture["legacy_shared_core_android_only"] == true && architecture["portable_domain_targets"] == portableDomainTargets && architecture["result"] == "PASS")
     return migrationPhaseContract(root.resolve(".github/workflows/ci.yml").readText(), source, root.resolve("app/build.gradle.kts").readText()) + mapOf(
         "source_dirty" to dirty,
         "retained_architecture_checks" to architecture,

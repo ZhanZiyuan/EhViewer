@@ -14,7 +14,7 @@ class StagedArtifactInputsTest {
     private fun fixture(branch: String = "feature/kmp", event: String = "push"): Map<String, Any?> {
         val head = if (event == "pull_request") "2".repeat(40) else source
         val run = mapOf("id" to 100, "head_sha" to head, "head_branch" to branch, "event" to event, "status" to "completed", "conclusion" to "success", "path" to ".github/workflows/ci.yml", "repository" to mapOf("full_name" to repository), "head_repository" to mapOf("full_name" to repository))
-        val prefixes = listOf("source-policy", "migration-phase", "shared-core", "desktop-native-linux-x86_64", "desktop-native-macos-arm64", "linux-arm64-runtime", "ios-startup", "ios-rust-build", "intel-dmg-on-arm", "intel-dmg-native", "windows-arm64-core", "windows-arm64-jvm", "windows-arm64-runtime", "windows-arm64-package", "windows-arm64-zip-launch")
+        val prefixes = listOf("source-policy", "migration-phase", "shared-core", "desktop-native-linux-x86_64", "desktop-native-macos-arm64", "linux-arm64-runtime", "ios-startup", "ios-rust-build", "intel-dmg-on-arm", "intel-dmg-native", "windows-arm64-core", "windows-arm64-jvm", "windows-arm64-runtime", "windows-arm64-package", "windows-arm64-zip-launch", "domain-native")
         var id = 200
         fun artifact(name: String): Map<String, Any?> = mapOf("id" to ++id, "name" to name, "expired" to false, "workflow_run" to mapOf("id" to 100, "head_sha" to head))
         val artifacts = prefixes.map { artifact("$it-$source") }.toMutableList()
@@ -28,13 +28,13 @@ class StagedArtifactInputsTest {
         return mapOf("repository" to repository, "run" to run, "android_run" to run, "catalog" to catalog, "android_catalog" to catalog, "jobs" to mapOf("total_count" to jobs.size, "jobs" to jobs))
     }
 
-    @Test fun featureAndPrSelectExactly21CurrentRunArtifactsWithoutConfusingMergeSource() {
+    @Test fun featureAndPrSelectExactly22CurrentRunArtifactsWithoutConfusingMergeSource() {
         assertEquals(setOf("android", "ci/ios", "ci/source-policy", "ci/shared-kmp", "ci/rust-host (linux-x86_64)", "ci/rust-host (macos-arm64)", "ci/desktop (macos-x86_64-rosetta)", "ci/desktop (macos-x86_64-native)", "ci/desktop (linux-aarch64-runtime)", "ci/rust-native (windows-arm64-core)"), stagedUpstreamJobs)
         for (event in listOf("push", "pull_request")) {
             val context = fixture(event = event)
             val plan = stagedArtifactPlan(context, source, repository)
-            assertEquals(21, plan.size)
-            assertEquals(21, plan.map { it.id }.toSet().size)
+            assertEquals(22, plan.size)
+            assertEquals(22, plan.map { it.id }.toSet().size)
             assertTrue(plan.all { it.runId == 100L })
             assertEquals(4, plan.count { it.role.startsWith("apk-") })
             assertFalse(plan.any { it.role == "encrypted-diagnostics" })
@@ -89,8 +89,8 @@ class StagedArtifactInputsTest {
 
     @Test fun successfulSameShaMainSnapshotReuseDoesNotDependOnExpiredOldBuildReports() {
         val plan = stagedArtifactPlan(reused(), source, repository)
-        assertEquals(21, plan.size)
-        assertEquals(15, plan.count { it.runId == 100L })
+        assertEquals(22, plan.size)
+        assertEquals(16, plan.count { it.runId == 100L })
         assertEquals(6, plan.count { it.runId == 99L })
         assertFalse(plan.any { it.role == "android-reports" })
         assertTrue(plan.any { it.role == "encrypted-diagnostics" && it.runId == 99L })

@@ -1,6 +1,10 @@
 # Actual shared-core checks for the current stage
 
-## Current M3 change: portable domain, CI_PENDING
+## Current M3 slice: portable domain, GATE_PASSED; M3 IN_PROGRESS
+
+M3-002 / LOCAL_VERIFIED / CI_PENDING: Native domain compilation and three real common tests execute in the mandatory ci/ios job on ARM64. Its separate domain-native artifact is now a required original input to aggregation. Ubuntu shared-core continues to report only its actual Android/JVM artifacts/tests, with the Native evidence job explicitly identified; it does not pretend to execute iOS there. Stage schema3 independently checks both actual KLIBs, complete compiler file inventories/API dumps, the executed test binary/platform and positive XML. All original checks remain;23 actual artifacts per event are required for new-SHA acceptance. See ADR0025; full M3/product integration is incomplete.
+
+At e5ed5350b both complete twelve-job gates and all22 actual artifacts per event passed independent acceptance. Each forced shared build executes123 tasks. Five actual AARs/401 Java17 classes, real two-class domain JVM JAR, Android/JVM domain3 tests each and common consumer3 tests match complete compiler/file/XML evidence. Both real six-package aggregators independently execute that exact JAR's seven title/four-method API probe. All44 official archives/844214195 bytes and1810 original payload files/1318582654 bytes were independently rehashed. No Native/iOS domain or direct desktop product integration is inferred. The following local-development and earlier M2 descriptions retain their historical provenance; full evidence is in the ledger/ADR0024.
 
 M2 closed at17a17e with both full twelve-job gates and all22 actual artifacts per event. The first M3 slice preserves all four legacy Android libraries and adds the real domain AAR, desktop-named JVM JAR and tests. Core/common reexports the moved production title/archive API. Common/data/i18n/ui retain Android-only targets; domain alone declares the reviewed JVM target. iOS domain and direct desktop UI integration remain NOT_INTEGRATED.
 
