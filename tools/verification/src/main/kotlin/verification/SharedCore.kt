@@ -99,6 +99,18 @@ fun sharedJvmEvidence(jar: Path, compiled: Path): Map<String, Any?> {
     return mapOf("jar_sha256" to sha256(jar), "class_major" to 61, "compiled_class_files" to classes, "compiled_class_count" to classes.size, "result" to "PASS")
 }
 
+/** Recheck all packaged JVM bytes and model identities from the independently retained compiler inventory. */
+fun checkedDomainJvmArtifact(jar: Path, evidence: Map<String, Any?>) {
+    require(evidence["result"] == "PASS" && evidence["class_major"] == 61 && sha256(jar) == evidence["jar_sha256"])
+    val classes = coreArchive(jar.readBytes()).filterKeys { it.endsWith(".class") }.mapValues { (_, bytes) ->
+        coreClass(bytes)
+        coreDigest(bytes)
+    }
+    require(classes == evidence["compiled_class_files"] && classes.size == evidence["compiled_class_count"]) { "Actual domain JAR differs from complete compiler inventory" }
+    require(domainModelTypes.all { "com/ehviewer/core/model/$it.class" in classes }) { "Actual domain JAR omits a gallery model" }
+    require(listOf("com/ehviewer/core/domain/GalleryTitlesKt.class", "com/ehviewer/core/domain/reader/ArchiveCatalog.class").all(classes::containsKey))
+}
+
 /** Load the real production JAR and exercise its public API, preserving the Android reader port. */
 fun domainJvmLinkProbe(jar: Path): Map<String, Any?> = URLClassLoader(arrayOf(jar.toUri().toURL()), ClassLoader.getSystemClassLoader()).use { loader ->
     val titles = loader.loadClass("com.ehviewer.core.domain.GalleryTitlesKt")
@@ -162,6 +174,7 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         require(testSources.all { directory.resolve("src").relativize(it).getName(0).toString() in setOf("commonTest", "jvmTest", "androidHostTest") }) { "A new shared test source set needs explicit stage integration" }
         val testFiles = filesBelow(directory.resolve("build/test-results/testAndroidHostTest"), ".xml")
         val tests = sharedHostTestEvidence(testFiles.map { it.readBytes() }, testSources.size)
+        if (module == "domain") verifyDomainTests(tests)
         Files.copy(aar, output.resolve("$module.aar"))
         testFiles.forEach { file ->
             val target = output.resolve("tests/$module/${file.fileName}")
@@ -175,7 +188,8 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
     val jvm = sharedJvmEvidence(jar, domain.resolve("build/classes/kotlin/desktop/main"))
     val jvmTests = filesBelow(domain.resolve("build/test-results/desktopTest"), ".xml")
     val jvmEvidence = sharedHostTestEvidence(jvmTests.map { it.readBytes() }, filesBelow(domain.resolve("src/commonTest"), ".kt").size)
-    require(jvmEvidence["status"] == "PASS")
+    verifyDomainTests(jvmEvidence, jvm = true)
+    checkedDomainJvmArtifact(jar, jvm)
     val probe = domainJvmLinkProbe(jar)
     Files.copy(jar, output.resolve("domain-jvm.jar"))
     jvmTests.forEach { file ->
@@ -184,7 +198,7 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         Files.copy(file, target)
     }
     return mapOf(
-        "schema_version" to 2, "verification_scope" to "ANDROID_CORE_AND_PORTABLE_DOMAIN_JVM", "source_commit" to source, "source_dirty" to dirty,
+        "schema_version" to 3, "verification_scope" to "ANDROID_CORE_AND_PORTABLE_DOMAIN_JVM", "source_commit" to source, "source_dirty" to dirty,
         "version" to delivery["version"], "android_version_code" to delivery["android_version_code"], "targets" to listOf("android"),
         "modules" to modules, "retained_architecture_checks" to architecture, "shared_library_artifacts_verified" to true,
         "domain_jvm" to jvm + mapOf("artifact" to "domain-jvm.jar", "host_tests" to jvmEvidence, "link_probe" to probe),

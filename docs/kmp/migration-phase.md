@@ -1,6 +1,8 @@
 # Reviewed migration phase
 
-Current M3-002 / LOCAL_VERIFIED / CI_PENDING adds actual production-domain iosArm64/iosSimulatorArm64 compilation and three real common Native tests in the mandatory ci/ios job. A separate domain-native artifact is required by aggregation, raising the original inputs to22 and total actual artifacts to23 per event. Phase declarations do not certify execution; full new-SHA dual gates and every actual artifact remain mandatory. M3 is IN_PROGRESS.
+M3-003 / IN_PROGRESS adds the nine existing gallery models and original protocol regression tests to the already accepted domain targets. It does not expand the platform/job/runner scope or complete product integration. Android/JVM/Native must each execute all eight domain tests; actual compiler/class/API/XML and original package proofs remain mandatory. See ADR0026; M3-002 is accepted at4cdb47f76, full M3 remains incomplete.
+
+M3-002 / GATE_PASSED at4cdb47f76 after both full twelve-job gates/all23 actual artifacts per event. Actual production-domain iosArm64/iosSimulatorArm64 compilation and three common Native tests execute in mandatory ci/ios. Aggregation requires the separate domain-native artifact among22 original inputs. Phase declarations do not certify execution; every later SHA still requires dual complete workflows and every actual artifact. M3 is IN_PROGRESS.
 
 Actual M2 acceptance completed at17a17e. M3-001 at e5ed5350b is GATE_PASSED after both full twelve-job workflows and all22 actual artifacts per event: domain gains Android/JVM library compiles/tests, while four legacy modules retain Android-only targets. Actual aggregators repeat the same uploaded domain JAR's API probe. M3 remains IN_PROGRESS; declarations still cannot certify execution or milestone completion. Five final packages, full product P0 and later migrations remain incomplete.
 

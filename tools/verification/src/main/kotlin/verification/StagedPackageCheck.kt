@@ -12,6 +12,7 @@ import java.util.zip.ZipFile
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
 import kotlin.io.path.isRegularFile
+import kotlin.io.path.readBytes
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
@@ -50,7 +51,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val phase = receipt("phase", "migration-phase.json", false)
     require(phase["milestone"] == "M3" && phase["version"] == version && phase["android_version_code"] == code && phase["retained_architecture_checks"].obj()["result"] == "PASS" && phase["shared_module_targets"].obj()["domain"].array() == portableDomainTargets) { "Expected the reviewed M3 domain/retained architecture/version checks" }
     val shared = receipt("shared", "shared-core.json", false)
-    require(shared["shared_library_artifacts_verified"] == true && shared["version"] == version && shared["android_version_code"] == code && shared["targets"].array() == listOf("android")) { "Shared artifact scope changed" }
+    require(shared["schema_version"] == 3 && shared["shared_library_artifacts_verified"] == true && shared["version"] == version && shared["android_version_code"] == code && shared["targets"].array() == listOf("android")) { "Shared artifact scope changed" }
     require(shared["modules"].obj().keys == setOf("common", "domain", "data", "i18n", "ui") && shared["verification_scope"] == "ANDROID_CORE_AND_PORTABLE_DOMAIN_JVM") { "Unexpected shared module inventory" }
     shared["modules"].obj().forEach { (name, value) ->
         val module = value.obj()
@@ -58,9 +59,18 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         require(sha256(path("shared", "shared-core/${module.str("artifact")}")) == module["aar_sha256"]) { "Actual shared AAR bytes changed" }
     }
     val domain = shared["domain_jvm"].obj()
-    require(domain["artifact"] == "domain-jvm.jar" && domain["result"] == "PASS" && domain["class_major"] == 61 && domain["compiled_class_count"] == 2 && domain["host_tests"].obj()["status"] == "PASS") { "Missing actual portable domain JAR/test evidence" }
+    require(domain["artifact"] == "domain-jvm.jar") { "Missing actual portable domain JAR" }
+    verifyDomainTests(domain["host_tests"].obj(), jvm = true)
+    verifyDomainTests(shared["modules"].obj().getValue("domain").obj()["host_tests"].obj())
+    for ((name, expected) in listOf(
+        "domain" to shared["modules"].obj().getValue("domain").obj()["host_tests"].obj(),
+        "domain-jvm" to domain["host_tests"].obj(),
+    )) {
+        val actual = sharedHostTestEvidence(filesBelow(path("shared", "shared-core/tests/$name"), ".xml").map(Path::readBytes), 2)
+        require(actual == expected) { "Actual domain test XML differs from shared producer: $name" }
+    }
     val domainJar = path("shared", "shared-core/domain-jvm.jar")
-    require(sha256(domainJar) == domain["jar_sha256"]) { "Actual domain JAR bytes changed" }
+    checkedDomainJvmArtifact(domainJar, domain)
     val domainProbe = domainJvmLinkProbe(domainJar)
     require(listOf("result", "title_cases", "archive_methods").all { domainProbe[it] == domain["link_probe"].obj()[it] }) { "Packaged domain API differs from the shared producer" }
     receipt("domain-native", "domain-native.json")
@@ -221,7 +231,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     retain("windows-arm64", archive)
     require(assets.size == 6 && candidate.toFile().listFiles()!!.map { it.name }.toSet() == assets.map { it.str("file") }.toSet()) { "Expected exactly six current-stage candidate files" }
     val result = mapOf(
-        "schema_version" to 3, "verification_scope" to "M3_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
+        "schema_version" to 4, "verification_scope" to "M3_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
         "version" to version, "android_version_code" to code, "run_id" to run["id"], "run_head_sha" to run["head_sha"], "android_artifact_run_id" to context["android_run"].obj()["id"],
         "upstream_jobs" to stagedUpstreamJobs.sorted(), "artifact_inputs" to plan.map { mapOf("role" to it.role, "artifact_id" to it.id, "run_id" to it.runId, "run_head_sha" to it.run["head_sha"], "digest" to it.metadata["digest"]) },
         "candidate_assets" to assets, "staged_package_bytes_verified" to true, "candidate_android_version_name" to "$version-SNAPSHOT", "android_production_certificate_required" to trustedMain, "android_apk_checks" to verifiedApks,

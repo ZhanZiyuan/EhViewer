@@ -23,6 +23,36 @@ import kotlin.io.path.writeText
 
 val domainIosTargets = listOf("iosArm64", "iosSimulatorArm64")
 val portableDomainTargets = listOf("android", "jvm") + domainIosTargets
+val domainNativeDependencies = setOf("stdlib", "org.jetbrains.kotlinx:kotlinx-serialization-cbor", "org.jetbrains.kotlinx:kotlinx-serialization-core")
+val domainModelTypes = listOf(
+    "BaseGalleryInfo", "GalleryInfo", "GalleryDetail", "GalleryPreview", "V1GalleryPreview", "V2GalleryPreview",
+    "GalleryPreviewList", "GalleryComment", "GalleryCommentList", "GalleryTag", "GalleryTagGroup",
+    "PowerStatus", "VoteStatus", "TagNamespace", "TagNamespaceSerializer",
+)
+
+fun verifyDomainNativeDependencies(value: String?) {
+    val dependencies = value?.split(' ') ?: emptyList()
+    require(dependencies.size == domainNativeDependencies.size && dependencies.toSet() == domainNativeDependencies) {
+        "Native domain dependencies differ from the reviewed existing serialization runtime"
+    }
+}
+
+fun verifyDomainTests(tests: Map<String, Any?>, native: Boolean = false, jvm: Boolean = false) {
+    require(!native || !jvm)
+    val prefix = if (native) "iosSimulatorArm64Test." else ""
+    val suites = if (jvm) {
+        mapOf("GalleryDomainTitlesTest[desktop]" to 3, "GalleryModelWireTest[desktop]" to 5)
+    } else {
+        mapOf(
+            "${prefix}com.ehviewer.core.domain.GalleryDomainTitlesTest" to 3,
+            "${prefix}com.ehviewer.core.model.GalleryModelWireTest" to 5,
+        )
+    }
+    require(
+        tests["status"] == "PASS" && tests["executed"] == true && tests["source_files"] == 2 && tests["tests"] == 8 &&
+            tests["suites"].obj() == suites,
+    ) { "Every original title and model wire test must execute" }
+}
 
 fun domainKotlinVersion(): String = Regex("(?m)^kotlin = \"([^\"]+)\"$")
     .findAll(root.resolve("gradle/libs.versions.toml").readText()).single().groupValues[1]
@@ -41,15 +71,16 @@ fun domainNativeKlibEvidence(bytes: ByteArray, target: String, compiler: String)
     require(
         manifest["builtins_platform"] == "NATIVE" && manifest["native_targets"] == target &&
             manifest["compiler_version"] == compiler && manifest["short_name"] == "domain" &&
-            manifest["unique_name"] == "EhViewer.core:domain" && manifest["depends"] == "stdlib",
+            manifest["unique_name"] == "EhViewer.core:domain",
     ) { "Native domain compiler, target or module identity differs" }
+    verifyDomainNativeDependencies(manifest["depends"])
     val required = listOf(
         "default/linkdata/module",
         "default/linkdata/package_com.ehviewer.core.domain/0_domain.knm",
         "default/linkdata/package_com.ehviewer.core.domain.reader/0_reader.knm",
         "default/ir/files.knf", "default/ir/irDeclarations.knd", "default/ir/bodies.knb",
         "default/ir/strings.knt", "default/ir/signatures.knt", "default/ir/types.knt",
-    )
+    ) + (0..8).map { "default/linkdata/package_com.ehviewer.core.model/${it}_model.knm" }
     require(required.all { entries[it]?.isNotEmpty() == true }) { "Empty/missing real production metadata or IR; NO-SOURCE is not acceptance" }
     return mapOf(
         "result" to "PASS",
@@ -102,6 +133,16 @@ fun verifyDomainNativeApiDump(text: String) {
             "public abstract val needsPassword: kotlin/Boolean",
         ).all(text::contains),
     ) { "Actual Native KLIB lost the original production title/archive API" }
+    require(
+        domainModelTypes.all { type ->
+            Regex("(?m)^    public [^\\n]+ com/ehviewer/core/model/$type :").containsMatchIn(text)
+        },
+    ) { "Actual Native KLIB lost a production gallery model API" }
+    for (type in listOf("BaseGalleryInfo", "GalleryDetail", "GalleryPreviewList", "GalleryComment", "GalleryCommentList", "GalleryTag", "GalleryTagGroup", "V1GalleryPreview", "V2GalleryPreview")) {
+        require(text.contains("public final fun serializer(): kotlinx/serialization/KSerializer<com/ehviewer/core/model/$type>")) {
+            "Actual Native KLIB lost a generated production serializer"
+        }
+    }
 }
 
 private fun packageDomainKlib(directory: Path, archive: Path, target: String, compiler: String): Map<String, Any?> {
@@ -166,12 +207,9 @@ fun iosDomainNative(output: Path): Map<String, Any?> {
             val machine = executed.inputStream().use { verifyDomainSimulatorMachO(it.readNBytes(1024 * 1024)) }
             Files.copy(executed, output.resolve("test.kexe"))
             val xml = filesBelow(domain.resolve("test-results/iosSimulatorArm64Test"), ".xml")
-            require(xml.size == 1 && xml.all { Files.getLastModifiedTime(it).toInstant() >= started.minusSeconds(1) }) { "Missing/stale actual Native JUnit XML" }
+            require(xml.size == 2 && xml.all { Files.getLastModifiedTime(it).toInstant() >= started.minusSeconds(1) }) { "Missing/stale actual Native JUnit XML" }
             val tests = sharedHostTestEvidence(xml.map(Path::readBytes), filesBelow(root.resolve("core/domain/src/commonTest"), ".kt").size)
-            require(
-                tests["tests"] == 3 && tests["suites"].obj() ==
-                    mapOf("iosSimulatorArm64Test.com.ehviewer.core.domain.GalleryDomainTitlesTest" to 3),
-            ) { "Every existing common domain test must execute in Native" }
+            verifyDomainTests(tests, native = true)
             xml.forEach { Files.copy(it, output.resolve(it.fileName)) }
             val libraries = linkedMapOf<String, Any?>()
             for ((target, triple) in listOf("iosArm64" to "ios_arm64", "iosSimulatorArm64" to "ios_simulator_arm64")) {
@@ -186,7 +224,7 @@ fun iosDomainNative(output: Path): Map<String, Any?> {
             }
             require(command("git", "rev-parse", "HEAD").trim() == source && command("git", "status", "--porcelain", "--untracked-files=all") == originalStatus) { "Source changed during Native execution" }
             mapOf(
-                "schema_version" to 1, "verification_scope" to "ACTUAL_IOS_DOMAIN_COMPILE_AND_TEST",
+                "schema_version" to 2, "verification_scope" to "ACTUAL_IOS_DOMAIN_COMPILE_AND_TEST",
                 "source_commit" to source, "source_dirty" to dirty, "result" to "PASS",
                 "domain_targets" to portableDomainTargets, "libraries" to libraries, "host_tests" to tests,
                 "test_executable" to "test.kexe", "test_executable_sha256" to sha256(executed),
@@ -217,7 +255,7 @@ fun iosDomainNative(output: Path): Map<String, Any?> {
 fun checkedDomainNativeArtifact(directory: Path): Map<String, Any?> {
     val proof = readJson(directory.resolve("domain-native.json"))
     require(
-        proof["schema_version"] == 1 && proof["result"] == "PASS" && proof["verification_scope"] == "ACTUAL_IOS_DOMAIN_COMPILE_AND_TEST" &&
+        proof["schema_version"] == 2 && proof["result"] == "PASS" && proof["verification_scope"] == "ACTUAL_IOS_DOMAIN_COMPILE_AND_TEST" &&
             proof["domain_targets"].array() == portableDomainTargets && proof["compiled_outputs_fresh"] == true &&
             proof["test_execution"] == "BOOTED_OWNED_SIMULATOR" && proof["test_task_timeout_seconds"] == 300 &&
             proof["owned_simulator_cleanup"] == "PASS",
@@ -256,12 +294,10 @@ fun checkedDomainNativeArtifact(directory: Path): Map<String, Any?> {
     val machine = executable.inputStream().use { verifyDomainSimulatorMachO(it.readNBytes(1024 * 1024)) }
     require(machine == proof["test_machine"])
     val xml = filesBelow(directory, ".xml")
-    require(xml.size == 1)
-    val tests = sharedHostTestEvidence(xml.map(Path::readBytes), 1)
-    require(
-        tests == proof["host_tests"] && tests["tests"] == 3 && tests["suites"].obj() ==
-            mapOf("iosSimulatorArm64Test.com.ehviewer.core.domain.GalleryDomainTitlesTest" to 3),
-    ) { "Actual Native test XML differs or omits an existing domain test" }
+    require(xml.size == 2)
+    val tests = sharedHostTestEvidence(xml.map(Path::readBytes), 2)
+    verifyDomainTests(tests, native = true)
+    require(tests == proof["host_tests"]) { "Actual Native test XML differs from its receipt" }
     return mapOf(
         "verification_scope" to "IOS_DOMAIN_ARTIFACT_BYTES_AND_TEST_RECEIPT",
         "source_commit" to proof["source_commit"], "source_dirty" to proof["source_dirty"],

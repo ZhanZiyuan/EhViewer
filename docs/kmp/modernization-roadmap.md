@@ -1,6 +1,8 @@
 # 现代化路线与阶段门禁
 
-M3-002当前LOCAL_VERIFIED / CI_PENDING：仅domain加入两个iOS目标，修复原自定义层次NO-SOURCE，真实两KLIB/公开API及三个Native测试完成；后链接按SHA暂存执行、环境/mtime守卫和自有模拟器清理均实测通过。最终201工具测试/96秒零失败错误跳过、原Android367任务/2分6秒及全部原APK/Native/ABI/诊断预检通过，实际Native整流程16任务强制全执行/99秒和独立消费者及两篡改反例通过。CI保持原12job/gate并强制新Native步骤，22原输入/每事件23实物；必须等待新SHA双全绿/全部实物后再迁移模型/会话/持久化。完整M3/共享产品UI/P0/最终11包仍未完成；见ADR0025和feature-matrix。以下保留已验收M3-001与M2证据。
+M3-003正在迁移EhViewer自身九个模型文件，源码字节不变，先在原Android模块执行五项协议基线，再固定原CBOR字节；Android/JVM/Native各八项领域测试和完整模型编译产物成为本轮门禁，见[ADR0026](adr/0026-portable-gallery-models.md)。会话、持久化、网络、共享产品UI及完整P0后续独立迁移，不据模型可编译宣称完成。
+
+M3-002已于4cdb47f76 GATE_PASSED：Push40862905445及PR40862912967全部12job/gate实际SUCCESS，各23实物独立验收；46官方ZIP/845637022字节、1836原始payload/1323643940字节全部复核。两真实Native流程强制16任务/93秒与186秒，两个20文件KLIB/API及三Native测试、编译执行二进制一致、新鲜度及自有清理通过。双schema3聚合22原输入、独立Native消费者、原JVM探针及六真实候选一致；同一英文Draft PR第41行已验收并回读，之后才进入本轮模型。完整M3/产品集成/P0/最终11包仍未完成。以下保留已验收M3-001与M2证据。
 
 M3-001已GATE_PASSED：e5ed5350b47ad753dffd95ba72d46059a8d73751的Push40851262709/PR40851270786双完整十二job/gate及各22真实工件全部独立验收。原已用GalleryTitles/ArchiveCatalog原样迁入domain、common重导出，其他旧模块保持Android-only；各五AAR/401Java17 class、真实两class JVM JAR、domain Android/JVM各3及原common3测试、聚合再次七标题/四接口探针全部通过。共享123任务全执行、原Android353任务/347执行6缓存、双producer196测试、同包Intel及原平台证明保持；44官方ZIP/844214195字节、1810原payload/1318582654字节全量重新核验。M3仍IN_PROGRESS，下一步独立接入/测试iOS领域目标，再迁移实际模型/会话/持久化；不以本步代替完整数据/共享UI/最终11包P0验收。参考路径/差异/AGPL隔离见ADR0024，本地Animeko仍只读无复制构建；稳定1.15.10/180074、生产Release和同一英文Draft PR保持，原39行保留及第40行GATE_PASSED已独立GET读回。
 

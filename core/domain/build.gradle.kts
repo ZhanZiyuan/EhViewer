@@ -4,9 +4,11 @@ import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTes
 
 plugins {
     alias(libs.plugins.ehviewer.multiplatform.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
+    compilerOptions.optIn.add("kotlinx.serialization.ExperimentalSerializationApi")
     jvm("desktop") {
         compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
     }
@@ -14,6 +16,9 @@ kotlin {
     iosSimulatorArm64()
     sourceSets.commonTest.dependencies {
         implementation(kotlin("test"))
+    }
+    sourceSets.commonMain.dependencies {
+        api(libs.serialization.cbor)
     }
 }
 

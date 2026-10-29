@@ -52,7 +52,7 @@ class NativeDomainTest {
             zip.write(
                 (
                     "builtins_platform=NATIVE\nnative_targets=$target\ncompiler_version=$compiler\n" +
-                        "short_name=domain\nunique_name=EhViewer.core\\:domain\ndepends=stdlib\n"
+                        "short_name=domain\nunique_name=EhViewer.core\\:domain\ndepends=org.jetbrains.kotlinx\\:kotlinx-serialization-cbor org.jetbrains.kotlinx\\:kotlinx-serialization-core stdlib\n"
                     ).toByteArray(),
             )
             zip.closeEntry()
@@ -72,5 +72,26 @@ class NativeDomainTest {
         for (text in listOf("", "public final fun selectGalleryTitle", "public abstract interface ArchiveCatalog")) {
             assertThrows(IllegalArgumentException::class.java) { verifyDomainNativeApiDump(text) }
         }
+    }
+
+    @Test fun missingDuplicateOrUnreviewedNativeRuntimeDependencyFails() {
+        val valid = domainNativeDependencies.joinToString(" ")
+        verifyDomainNativeDependencies(valid)
+        for (value in listOf(null, "stdlib", "$valid stdlib", "$valid unreviewed:runtime", valid.replace("kotlinx-serialization-cbor", "unreviewed"))) {
+            assertThrows(IllegalArgumentException::class.java) { verifyDomainNativeDependencies(value) }
+        }
+    }
+
+    @Test fun titleOnlyOrMissingModelTestReceiptCannotCertifyDomain() {
+        val titlesOnly = mapOf(
+            "status" to "PASS",
+            "executed" to true,
+            "source_files" to 1,
+            "tests" to 3,
+            "suites" to mapOf("iosSimulatorArm64Test.com.ehviewer.core.domain.GalleryDomainTitlesTest" to 3),
+        )
+        assertThrows(IllegalArgumentException::class.java) { verifyDomainTests(titlesOnly, native = true) }
+        val wrongSuite = titlesOnly + mapOf("source_files" to 2, "tests" to 8)
+        assertThrows(IllegalArgumentException::class.java) { verifyDomainTests(wrongSuite, native = true) }
     }
 }
