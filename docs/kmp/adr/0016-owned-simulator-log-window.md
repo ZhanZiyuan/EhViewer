@@ -1,6 +1,6 @@
 # ADR 0016: Collect the complete owned test interval within the original deadline
 
-Status: isolated failure repair / LOCAL_VERIFIED / CI_PENDING. Version 1.15.10 / Android 180074 is unchanged. M2 and remote main protection remain incomplete.
+Status: isolated failure repair / GATE_PASSED at eab4c8b53845438d66b7f37f93b57458a11a6fb9. Both complete ten-job Push/PR workflows and all actual artifacts passed; see the ledger for runs 40789375847 / 40789383717 and strict per-PID query evidence. Version 1.15.10 / Android 180074 is unchanged. Main required-gate protection was subsequently deployed and read back independently under ADR0015; M2 remains incomplete.
 
 PR job 123156698196 at 23df6bffe failed when the original `simctl log show --last 1h` command exceeded its original 30-second deadline. Both real app PIDs had emitted cold-start, Rust 2,000/zero-live, Compose and active markers; the first background/foreground/explicit termination and second-render phases completed. There is no successful lifecycle.log or startup receipt. The failure-path capture subsequently retained 532,014 bytes with both actual process traces, but that cannot turn the first failed command into success. A similar failure was recorded at a7185893d; intervening successes did not establish a deeper fix. The rule declaration is not applied while this gate fails.
 

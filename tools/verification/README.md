@@ -4,6 +4,8 @@
 
 `verification source-policy` audits cumulative source changes and untracked files against the fixed M0 baseline, rejects forbidden implementation/link/reference boundaries and checks retained third-party origin bytes. It needs full target Git history, never a local Animeko checkout. Its explicit scope and limitations are documented in [source-policy.md](../../docs/kmp/source-policy.md); full license/copy/SBOM review is not claimed.
 
+`verification migration-phase` validates the reviewed M2 job/dependency list, retained original Android-only architecture and frozen M2 metadata. Its source-bound JSON explicitly lists all eleven targets' current coverage and pending shared/dry-run categories; declaration validation does not mark M2, product P0 or final delivery accepted. See [migration-phase.md](../../docs/kmp/migration-phase.md).
+
 This independent Kotlin/JVM build contains build and regression tools, not another
 application platform. Run it with the repository Gradle Wrapper and JDK 25; its
 bytecode target is Java 17. It uses Gradle's bundled Kotlin DSL and Groovy JSON
@@ -18,6 +20,7 @@ for prerequisites, scope and evidence. It never substitutes for signed-device te
 ./gradlew -p tools/verification check installDist
 tools/verification/build/install/verification/bin/verification architecture
 tools/verification/build/install/verification/bin/verification release-contract
+tools/verification/build/install/verification/bin/verification migration-phase
 tools/verification/build/install/verification/bin/verification native-sources
 tools/verification/build/install/verification/bin/verification bytecode
 tools/verification/build/install/verification/bin/verification apks app/build/outputs/apk/release --sdk "$ANDROID_HOME"

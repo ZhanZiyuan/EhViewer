@@ -42,12 +42,23 @@ jobs:
         run: |
           mkdir -p reports
           tools/verification/build/install/verification/bin/verification source-policy > reports/source-policy.json
+      - name: Validate the current migration phase and retained architecture
+        run: tools/verification/build/install/verification/bin/verification migration-phase > reports/migration-phase.json
       - name: Retain source boundary evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: source-policy-${{ github.sha }}
           path: reports/source-policy.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain explicit phase coverage and unfinished categories
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: migration-phase-${{ github.sha }}
+          path: reports/migration-phase.json
           if-no-files-found: error
           retention-days: 14
 
