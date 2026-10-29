@@ -9,9 +9,20 @@ fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String
     require(Regex("[0-9a-f]{40}").matches(sourceSha) && sourceSha != "0".repeat(40)) { "Expected a nonzero full source SHA" }
     val delivery = releaseContract(settings, sourceSha)
     require(delivery["version"] == "1.15.10" && delivery["android_version_code"] == 180074) { "The reviewed M2 version remains 1.15.10 / 180074; an M8 release freeze requires separate acceptance" }
-    val jobs = Regex("(?m)^  ([a-z_][a-z0-9_]*):[ \\t]*$").findAll(workflow.substringAfter("jobs:\n", "")).map { it.groupValues[1] }.toList()
+    val roots = Regex("(?m)^jobs:[ \\t]*(?:#.*)?$").findAll(workflow).toList()
+    require(roots.size == 1) { "Expected one explicit workflow jobs mapping" }
+    val body = workflow.substring(roots.single().range.last + 1)
+    val headerPattern = Regex("^  ([A-Za-z_][A-Za-z0-9_-]*):[ \\t]*(?:#.*)?$")
+    val headers = body.lineSequence().filter {
+        it.startsWith("  ") && !it.startsWith("   ") && it.isNotBlank() && !it.trimStart().startsWith('#')
+    }.map { line ->
+        val match = headerPattern.matchEntire(line)
+        require(match != null) { "Unsupported M2 job header; retain canonical declarations or review the parser independently" }
+        match.groupValues[1] to line
+    }.toList()
+    val jobs = headers.map { it.first }
     require(jobs.size == jobs.toSet().size && jobs.toSet() == phaseJobs + "gate") { "CI jobs differ from the reviewed M2 phase; update coverage and validation independently" }
-    val gate = workflow.substringAfter("  gate:\n", "")
+    val gate = body.substringAfter(headers.single { it.first == "gate" }.second + "\n", "")
     require(Regex("(?m)^    if: always\\(\\)[ \\t]*$").containsMatchIn(gate)) { "The phase gate must always run" }
     val needs = Regex("(?m)^    needs: \\[([^]\\n]+)]$").findAll(gate).toList()
     require(needs.size == 1) { "Expected one explicit aggregate dependency list" }

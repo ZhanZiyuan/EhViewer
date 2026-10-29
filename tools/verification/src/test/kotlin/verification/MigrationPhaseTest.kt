@@ -51,6 +51,20 @@ class MigrationPhaseTest {
         }
     }
 
+    @Test fun extraValidOrQuotedJobHeadersCannotHideFromPhase() {
+        for (header in listOf("future-target:", "FutureTarget:", "\"future_target\":", "'future_target':", "future_target: # undeclared platform")) {
+            val added = "\n  $header\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo phase-contract-fixture\n"
+            assertThrows(header, IllegalArgumentException::class.java) { migrationPhaseContract(workflow + added, source, settings) }
+        }
+    }
+
+    @Test fun commentsOnReviewedJobHeadersPreserveCoverage() {
+        val changed = workflow.replace("jobs:\n", "jobs: # current phase\n  # Reviewed mandatory jobs\n")
+            .replace("  source_policy:\n", "  source_policy: # source and phase evidence\n")
+            .replace("  gate:\n", "  gate: # always required\n")
+        assertEquals(migrationPhaseContract(workflow, source, settings), migrationPhaseContract(changed, source, settings))
+    }
+
     @Test fun prematureVersionChangesAndAmbiguousAuthorityFail() {
         for (changed in listOf(settings.replace("1.15.10", "1.16.0"), settings.replace("180074", "180075"), settings.replace("180074", "0"), settings + settings, "")) {
             assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(workflow, source, changed) }
