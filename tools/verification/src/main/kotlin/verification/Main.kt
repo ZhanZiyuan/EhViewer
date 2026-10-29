@@ -22,6 +22,7 @@ fun main(args: Array<String>) {
         "windows-stage-zip" -> windowsStageZip(options.path("--runtime-report"), options.path("--image"), options.path("--output"))
         "windows-zip-launch" -> windowsZipLaunch(options.path("--package-report"), options.path("--runtime-report"), options.path("--output"))
         "stage-zip-extract" -> stageZipExtractionEvidence(options.path("--package-report"), options.path("--output"))
+        "artifact-archive" -> inspectArtifactArchive(readJson(options.path("--catalog")), options.path("--archive"), options.get("--artifact-id").toLong(), options.get("--run-id").toLong(), options.get("--head-sha"), options.path("--output"))
         "jmod-entry" -> mapOf("archive_sha256" to sha256(options.path("--jmod")), "entry" to options.get("--entry"), "entry_sha256" to jmodEntrySha256(options.path("--jmod"), options.get("--entry")))
         "windows-manifest" -> {
             val input = java.nio.file.Files.readAllBytes(options.path("--input"))
