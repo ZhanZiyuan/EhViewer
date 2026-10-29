@@ -1,6 +1,6 @@
 # ADR 0019: Require actual shared-library compilation and honest test coverage
 
-Status: IMPLEMENTED / LOCAL_VERIFIED / CI_PENDING. M2 remains incomplete. Version 1.15.10 / Android 180074 is unchanged.
+Status: IMPLEMENTED / LOCAL_VERIFIED / GATE_PASSED at `b6e4d3ec687d91531c866b6e67abe4bb4cc5094e`. Both complete eleven-job events ([Push40805794104](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40805794104) / [PR40805800099](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40805800099)), both gates and every actual artifact passed. The actual shared jobs each executed all 97 tasks; independent downloads verified all eight AARs, 401 Java-17 classes and 12 localization XMLs per event, three positive common tests and honest NO_TEST_SOURCES elsewhere. The actual PR merge is `2522875eb129358d1ca5edd386e8406428966a5b`; full artifact IDs/hashes and all platform evidence are in the ledger. M2 remains incomplete while actual staged secret-free packaging aggregation is pending. Version 1.15.10 / Android 180074 is unchanged.
 
 Accepted 2e3c passed both complete ten-job workflows and all actual artifacts before this slice began. The phase contract explicitly left dedicated shared compilation/resource checks pending. The existing core modules are Android-only despite their common/jvm source hierarchy; only common has existing host business tests. A common source directory or an empty test task cannot prove Desktop/iOS integration or executed tests.
 

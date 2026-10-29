@@ -19,6 +19,7 @@ fun main(args: Array<String>) {
         "windows-native-core" -> windowsNativeCore(options.path("--output"))
         "windows-jvm-ffi" -> windowsJvmFfi(options.path("--core-report"), options.path("--output"))
         "desktop-windows-arm64" -> desktopWindowsArm64(options.path("--jvm-report"), options.path("--core-report"), options.path("--output"))
+        "windows-stage-zip" -> windowsStageZip(options.path("--runtime-report"), options.path("--image"), options.path("--output"))
         "jmod-entry" -> mapOf("archive_sha256" to sha256(options.path("--jmod")), "entry" to options.get("--entry"), "entry_sha256" to jmodEntrySha256(options.path("--jmod"), options.get("--entry")))
         "windows-manifest" -> {
             val input = java.nio.file.Files.readAllBytes(options.path("--input"))

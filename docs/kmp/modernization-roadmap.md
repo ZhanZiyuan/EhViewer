@@ -1,5 +1,7 @@
 # 现代化路线与阶段门禁
 
+M2-008：`b6e4d3ec687d91531c866b6e67abe4bb4cc5094e` 的独立 `ci/shared-kmp` 已双事件各十一job/gate及各19份实际工件 GATE_PASSED（Push40805794104 / PR40805800099）。各97任务全部执行，四AAR/401个Java17 class/12资源XML逐字节绑定真实编译输出，common真实三个测试，其余模块明确NO_TEST_SOURCES；完整161工具测试与原Android回归通过，原架构/Native/生产Release/版本冻结不变。生成MR contentHash跨运行存在差异，实物按各自报告验哈希，不承诺bit-reproducible。Desktop/iOS共享目标仍由M3独立迁移；M2只剩已接入目标实际无生产密钥打包/聚合门禁待接入，不能将当前合同或目录镜像作为最终11包/P0验收。完整证据见ADR0019/shared-core-check及ledger；以下早期进展条目保留各时点真实范围。
+
 状态：M0 / GATE_PASSED，M1 / GATE_PASSED，M2 / IN_PROGRESS，2026-10-29。2f00e595c双事件各九job/gate与全部实际工件核验齐备；M2首项为独立Kotlin 11目标交付合同与无密钥CI检查，尚未实现M3–M8。版本到 M8 冻结提交之前维持 `1.15.10 / 180074`。
 
 M2进展：3d204d349容量调度修复已双事件九job及全部实物通过；28ab24263独立累计source-policy已双事件十job/gate及全部实物通过，实际清单/索引blob/未跟踪与三直接许可origin摘要已核验。23df原PR iOS日志超时失败保留；后继独立修复eab4c8b53已双事件各十job/gate及全部实物通过，真实逐PID完整日志与原30秒上限验证。随后main Ruleset24795497实际追加可信ci/gate/app15368/严格基线规则，保留原禁止删除/强推/范围/空bypass，Ruleset及effective-main双读回确认REMOTE_ENFORCED。此成功HEAD允许继续下一独立M2改动；阶段check/shared-kmp/已接入无密钥dry-run聚合仍未完成。完整复制/许可/资源/SBOM与后续产品能力仍不能由本轮源码边界检查代替。 76a8ac951显式M2阶段契约亦已双事件各十job及所有实际工件GATE_PASSED，source/phase实际JSON与独立657文件/52源码变更本地报告匹配；两个待接入类别继续明确，未把声明校验当作构建/P0/最终11包验收。 后继2e3c533a1独立枚举器边界修复已双事件各十job及全部实物GATE_PASSED；五份真实合法YAML反例/修复前失败保留，完整155测试与原Android回归通过。阶段依赖类别仍待实际接入，不将本修复等同M2完成。

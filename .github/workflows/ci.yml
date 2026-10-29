@@ -608,6 +608,12 @@ jobs:
           .\tools\verification\build\install\verification\bin\verification.bat desktop-windows-arm64
           --jvm-report reports/windows-jvm-ffi/windows-jvm-ffi.json
           --core-report reports/windows-native-core/windows-native-core.json --output reports/desktop-windows-arm64
+      - name: Create and verify the real source-bound Windows ARM64 staging ZIP
+        id: windows_package
+        run: >-
+          .\tools\verification\build\install\verification\bin\verification.bat windows-stage-zip
+          --runtime-report reports/desktop-windows-arm64/windows-arm64-runtime.json
+          --image reports/desktop-windows-arm64/image/EhViewer --output reports/windows-arm64-package
       - name: Retain Windows ARM64 native evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -631,6 +637,15 @@ jobs:
         with:
           name: windows-arm64-runtime-${{ github.sha }}
           path: reports/desktop-windows-arm64/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain actual Windows ARM64 ZIP and complete byte inventory
+        if: always() && steps.windows_package.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-arm64-package-${{ github.sha }}
+          path: reports/windows-arm64-package/
           if-no-files-found: error
           retention-days: 14
 
