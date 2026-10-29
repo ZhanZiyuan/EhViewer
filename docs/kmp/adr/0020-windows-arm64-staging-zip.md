@@ -1,6 +1,6 @@
 # ADR 0020: Produce an actual source-bound Windows ARM64 staging ZIP
 
-Status: IMPLEMENTED / LOCAL_VERIFIED / CI_PENDING. M2 remains incomplete; 1.15.10 / Android 180074 is unchanged.
+Status: IMPLEMENTED / LOCAL_VERIFIED / GATE_PASSED at `3e75b63a89680e134197fb22cedc3d75c3827d33`. Both complete eleven-job workflows ([Push40811237292](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40811237292) / [PR40811242170](https://github.com/ZhanZiyuan/EhViewer/actions/runs/40811242170)), both gates and all20 actual artifacts per event passed. Both native Windows jobs produced the actual ZIP; each has177 payload files/35 ARM64 PE images, complete CRC/size/hash/source/runtime-proof matches and the previously omitted hidden app/.jpackage.xml. Independent downloads/extraction confirmed every packaged byte and all176 files present in the same event's directory artifact; no Windows ZIP-extracted launch is claimed. Full IDs/digests/platform evidence remain in the ledger. M2 remains incomplete; 1.15.10 / Android 180074 is unchanged.
 
 Both complete eleven-job workflows and all actual artifacts of b6e4d passed before this slice began. M2's remaining packaging aggregation needs actual installation containers as inputs. The current Windows ARM64 technical spike only retained an application directory in an Actions artifact; that transport ZIP did not establish the release container, complete payload inventory or embedded source metadata.
 

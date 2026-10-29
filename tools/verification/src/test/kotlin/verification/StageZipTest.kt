@@ -89,6 +89,9 @@ class StageZipTest {
             val modified = root.resolve("unsafe-$index.zip")
             rewrite(modified, contents(file) + (name to byteArrayOf(1)))
             rejects { verifyStageZip(modified, manifest) }
+            val destination = root.resolve("unsafe-extraction-$index")
+            rejects { extractStageZip(modified, manifest, destination) }
+            assertTrue(!Files.exists(destination))
         }
         assertTrue(!Files.exists(root.resolve("outside")))
     }
@@ -120,5 +123,39 @@ class StageZipTest {
         val alias = Files.createSymbolicLink(root.resolve("alias"), image)
         rejects { writeStageZip(image, alias.resolve("nested.zip"), metadata) }
         assertTrue(!Files.exists(image.resolve("nested.zip")))
+    }
+
+    @Test fun realClassAndUnicodeResourcesAreVerifiedAgainAfterExtraction() = temporary { root ->
+        val image = fixture(root)
+        val archive = root.resolve("stage.zip")
+        val manifest = writeStageZip(image, archive, metadata)
+        val digest = sha256(archive)
+        val extracted = extractStageZip(archive, manifest, root.resolve("ZIP 安装目录"))
+        assertTrue(extracted.resolve("compiled.class").readBytes().contentEquals(image.resolve("compiled.class").readBytes()))
+        assertTrue(extracted.resolve("resources/资料.txt").readBytes().contentEquals(image.resolve("resources/资料.txt").readBytes()))
+        assertTrue(Files.isRegularFile(extracted.resolve("ehviewer-stage-source.json")))
+        assertEquals(digest, sha256(archive))
+    }
+
+    @Test fun changedZipCannotCreateAnyExtractionEvidence() = temporary { root ->
+        val archive = root.resolve("stage.zip")
+        val manifest = writeStageZip(fixture(root), archive, metadata)
+        rewrite(archive, contents(archive) + ("EhViewer/resources/资料.txt" to "Changed".toByteArray()))
+        val output = root.resolve("extracted")
+        rejects { extractStageZip(archive, manifest, output) }
+        assertTrue(!Files.exists(output))
+    }
+
+    @Test fun existingExtractionRootAndItsAliasAreNeverOverwritten() = temporary { root ->
+        val archive = root.resolve("stage.zip")
+        val manifest = writeStageZip(fixture(root), archive, metadata)
+        val output = Files.createDirectory(root.resolve("existing"))
+        val sentinel = output.resolve("user.txt").also { it.writeText("Keep this existing file") }
+        val digest = sha256(sentinel)
+        rejects { extractStageZip(archive, manifest, output) }
+        val alias = Files.createSymbolicLink(root.resolve("alias"), output)
+        rejects { extractStageZip(archive, manifest, alias) }
+        assertEquals(digest, sha256(sentinel))
+        assertEquals(1, Files.list(output).use { it.count() }.toInt())
     }
 }

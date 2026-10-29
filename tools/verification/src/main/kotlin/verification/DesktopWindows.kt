@@ -4,8 +4,6 @@ import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.Path
 import java.time.Duration
-import java.util.Base64
-import java.util.Properties
 import java.util.zip.ZipFile
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
@@ -174,20 +172,7 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
     val version = Regex("val releaseVersion = \"([^\"]+)\"").find(root.resolve("app/build.gradle.kts").readText())!!.groupValues[1]
     require(app.resolve("EhViewer.cfg").readText().lineSequence().any { it == "java-options=-Djpackage.app-version=$version" }) { "Image version mismatch" }
     val renderApi = "SOFTWARE_COMPAT"
-    val launches = (1..2).map { attempt ->
-        val report = output.resolve("launch-$attempt")
-        val encoded = Base64.getEncoder().encodeToString(report.toString().toByteArray(Charsets.UTF_8))
-        capture("launch-$attempt.log", launcher, "--m1-smoke-base64", encoded, timeout = Duration.ofMinutes(2), environment = mapOf("SKIKO_RENDER_API" to renderApi))
-        val proof = Properties().apply { report.resolve("launcher.properties").inputStream().use(::load) }
-        require(proof.getProperty("architecture") == "aarch64" && proof.getProperty("java_version") == "25.0.5.0.2") { "Running JVM identity mismatch" }
-        require(proof.getProperty("windows_code_page") == "65001" && java.nio.charset.Charset.forName(proof.getProperty("native_encoding")) == Charsets.UTF_8) { "Launcher did not activate its per-process UTF-8 manifest" }
-        require(Path.of(proof.getProperty("java_home")).toRealPath() == runtime.toRealPath()) { "Launcher used an external JVM" }
-        require(Path.of(proof.getProperty("rust_library")).toRealPath() == rust.toRealPath()) { "Caller loaded a different Rust DLL" }
-        require(proof.getProperty("application_version") == version && proof.getProperty("rust_hash_results") == "2000" && proof.getProperty("rust_active_results") == "0") { "Incomplete packaged Rust ownership calls" }
-        for (name in listOf("rust_ownership_errors", "rust_library_closed")) require(proof.getProperty(name) == "PASS") { "Missing ownership check: $name" }
-        require(proof.getProperty("window_showing") == "true" && proof.getProperty("compose_frames").toInt() > 0 && proof.getProperty("render_api") == renderApi) { "Window did not render with the requested backend" }
-        proof.stringPropertyNames().sorted().associateWith { proof.getProperty(it) }
-    }
+    val launches = windowsPackagedLaunches(installed, output, version)
     val result = mapOf(
         "source_commit" to source, "source_dirty" to dirty, "result" to "PASS", "target" to "aarch64-pc-windows-msvc",
         "version" to version, "os" to System.getProperty("os.name"), "os_version" to System.getProperty("os.version"),

@@ -614,6 +614,13 @@ jobs:
           .\tools\verification\build\install\verification\bin\verification.bat windows-stage-zip
           --runtime-report reports/desktop-windows-arm64/windows-arm64-runtime.json
           --image reports/desktop-windows-arm64/image/EhViewer --output reports/windows-arm64-package
+      - name: Extract the actual ZIP and launch its bundled Windows ARM64 runtime twice
+        id: windows_zip_launch
+        run: >-
+          .\tools\verification\build\install\verification\bin\verification.bat windows-zip-launch
+          --package-report reports/windows-arm64-package/windows-arm64-package.json
+          --runtime-report reports/desktop-windows-arm64/windows-arm64-runtime.json
+          --output reports/windows-arm64-zip-launch
       - name: Retain Windows ARM64 native evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -646,6 +653,18 @@ jobs:
         with:
           name: windows-arm64-package-${{ github.sha }}
           path: reports/windows-arm64-package/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain actual ZIP extraction and native Windows launch evidence
+        if: always() && steps.windows_zip_launch.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-arm64-zip-launch-${{ github.sha }}
+          path: |
+            reports/windows-arm64-zip-launch/windows-arm64-zip-launch.json
+            reports/windows-arm64-zip-launch/launch-*/
+            reports/windows-arm64-zip-launch/launch-*.log
           if-no-files-found: error
           retention-days: 14
 

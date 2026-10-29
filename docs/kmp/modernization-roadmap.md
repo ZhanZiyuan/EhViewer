@@ -1,5 +1,7 @@
 # 现代化路线与阶段门禁
 
+M2-009：`3e75b63a89680e134197fb22cedc3d75c3827d33` 的Windows ARM64真实staging ZIP已双事件各十一job/gate及各20实际工件 GATE_PASSED（Push40811237292 / PR40811242170）。各新ZIP177完整payload文件/35 ARM64 PE/内嵌source及runtime-proof/全部大小SHA与CRC独立核验，实际保留原目录工件遗漏的隐藏app/.jpackage.xml；原Core39/独立JVM/两次窗口及全部原生验收保持。完整168工具测试和原Android回归通过，两次本地test-first大小写/真实路径别名失败及修复保留。Windows ZIP解压后真实启动和跨平台已接入目标无生产密钥聚合仍待独立完成，不能将本字节组件或旧目录镜像当作M2/最终11包/P0验收；稳定1.15.10/180074保持。详见ADR0020/windows-stage-zip及ledger；以下条目保留各时点边界。
+
 M2-008：`b6e4d3ec687d91531c866b6e67abe4bb4cc5094e` 的独立 `ci/shared-kmp` 已双事件各十一job/gate及各19份实际工件 GATE_PASSED（Push40805794104 / PR40805800099）。各97任务全部执行，四AAR/401个Java17 class/12资源XML逐字节绑定真实编译输出，common真实三个测试，其余模块明确NO_TEST_SOURCES；完整161工具测试与原Android回归通过，原架构/Native/生产Release/版本冻结不变。生成MR contentHash跨运行存在差异，实物按各自报告验哈希，不承诺bit-reproducible。Desktop/iOS共享目标仍由M3独立迁移；M2只剩已接入目标实际无生产密钥打包/聚合门禁待接入，不能将当前合同或目录镜像作为最终11包/P0验收。完整证据见ADR0019/shared-core-check及ledger；以下早期进展条目保留各时点真实范围。
 
 状态：M0 / GATE_PASSED，M1 / GATE_PASSED，M2 / IN_PROGRESS，2026-10-29。2f00e595c双事件各九job/gate与全部实际工件核验齐备；M2首项为独立Kotlin 11目标交付合同与无密钥CI检查，尚未实现M3–M8。版本到 M8 冻结提交之前维持 `1.15.10 / 180074`。

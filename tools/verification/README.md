@@ -23,6 +23,8 @@ tools/verification/build/install/verification/bin/verification release-contract
 tools/verification/build/install/verification/bin/verification migration-phase
 tools/verification/build/install/verification/bin/verification shared-core --output reports/shared-core
 tools/verification/build/install/verification/bin/verification windows-stage-zip --runtime-report reports/desktop-windows-arm64/windows-arm64-runtime.json --image reports/desktop-windows-arm64/image/EhViewer --output reports/windows-arm64-package
+tools/verification/build/install/verification/bin/verification stage-zip-extract --package-report reports/windows-arm64-package/windows-arm64-package.json --output reports/windows-zip-byte-extraction
+tools/verification/build/install/verification/bin/verification windows-zip-launch --package-report reports/windows-arm64-package/windows-arm64-package.json --runtime-report reports/desktop-windows-arm64/windows-arm64-runtime.json --output reports/windows-arm64-zip-launch
 tools/verification/build/install/verification/bin/verification native-sources
 tools/verification/build/install/verification/bin/verification bytecode
 tools/verification/build/install/verification/bin/verification apks app/build/outputs/apk/release --sdk "$ANDROID_HOME"
