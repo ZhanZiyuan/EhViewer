@@ -177,9 +177,9 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         val aar = filesBelow(directory.resolve("build/outputs/aar"), ".aar").single()
         val evidence = sharedAarEvidence(aar, directory.resolve("build/classes/kotlin/android/main"), "com.ehviewer.core.$module", module == "i18n")
         val testSources = filesBelow(directory.resolve("src"), ".kt").filter { directory.resolve("src").relativize(it).getName(0).toString().endsWith("Test") }
-        require(testSources.all { directory.resolve("src").relativize(it).getName(0).toString() in setOf("commonTest", "jvmTest", "androidHostTest") || module == "common" && directory.resolve("src").relativize(it).getName(0).toString() == "desktopTest" }) { "A new shared test source set needs explicit stage integration" }
+        require(testSources.all { directory.resolve("src").relativize(it).getName(0).toString() in setOf("commonTest", "jvmTest", "androidHostTest") || module == "common" && directory.resolve("src").relativize(it).getName(0).toString() == "nonAndroidTest" }) { "A new shared test source set needs explicit stage integration" }
         val testFiles = filesBelow(directory.resolve("build/test-results/testAndroidHostTest"), ".xml")
-        val androidSources = testSources.filter { directory.resolve("src").relativize(it).getName(0).toString() != "desktopTest" }
+        val androidSources = testSources.filter { directory.resolve("src").relativize(it).getName(0).toString() != "nonAndroidTest" }
         val tests = sharedHostTestEvidence(testFiles.map { it.readBytes() }, androidSources.size)
         if (module == "domain") verifyDomainTests(tests)
         Files.copy(aar, output.resolve("$module.aar"))
@@ -209,7 +209,7 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
     val commonJvm = sharedJvmEvidence(commonJar, common.resolve("build/classes/kotlin/desktop/main"))
     checkedCommonJvmArtifact(commonJar, commonJvm)
     val commonXml = filesBelow(common.resolve("build/test-results/desktopTest"), ".xml")
-    val commonTests = sharedHostTestEvidence(commonXml.map(Path::readBytes), filesBelow(common.resolve("src/commonTest"), ".kt").size + filesBelow(common.resolve("src/desktopTest"), ".kt").size)
+    val commonTests = sharedHostTestEvidence(commonXml.map(Path::readBytes), filesBelow(common.resolve("src/commonTest"), ".kt").size + filesBelow(common.resolve("src/nonAndroidTest"), ".kt").size)
     verifyCommonJvmTests(commonTests)
     val commonProbe = commonJvmLinkProbe(commonJar)
     Files.copy(commonJar, output.resolve("common-jvm.jar"))

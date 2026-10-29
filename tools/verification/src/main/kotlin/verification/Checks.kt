@@ -63,7 +63,7 @@ fun verifyCoreTargetBoundary(configurations: Map<String, String>) {
     require(target.findAll(domain).map { it.groupValues[1] }.toList() == listOf("jvm", "iosArm64", "iosSimulatorArm64") && Regex("\\bjvm\\(\\s*\"desktop\"\\s*\\)").containsMatchIn(domain)) { "Domain targets must be exactly Android, desktop JVM and the two reviewed iOS targets" }
     require("alias(libs.plugins.ehviewer.multiplatform.library)" in domain) { "Domain must retain the existing Android library convention" }
     val common = configurations.getValue("core/common/build.gradle.kts")
-    require(target.findAll(common).map { it.groupValues[1] }.toList() == listOf("jvm") && Regex("\\bjvm\\(\\s*\"desktop\"\\s*\\)").containsMatchIn(common)) { "Common targets must be exactly Android and the reviewed desktop JVM" }
+    require(target.findAll(common).map { it.groupValues[1] }.toList() == listOf("jvm", "iosArm64", "iosSimulatorArm64") && Regex("\\bjvm\\(\\s*\"desktop\"\\s*\\)").containsMatchIn(common)) { "Common targets must be exactly Android, desktop JVM and the two reviewed iOS targets" }
     require("alias(libs.plugins.ehviewer.multiplatform.library)" in common) { "Common must retain the existing Android library convention" }
     configurations.filterKeys { it !in setOf("core/domain/build.gradle.kts", "core/common/build.gradle.kts") }.forEach { (path, text) ->
         require(!target.containsMatchIn(text)) { "$path: non-Android target outside the reviewed domain migration" }
@@ -85,7 +85,7 @@ fun verifyArchitecture(): Map<String, Any?> {
                 else -> emptyList()
             }
             imports.filter { imported -> forbidden.any(imported::startsWith) }.forEach { violations += "${root.relativize(path)}: upward import $it" }
-            if (module in setOf("common", "domain") && path.any { it.toString() == "commonMain" } && imports.any { imported ->
+            if (module in setOf("common", "domain") && path.any { it.toString() in setOf("commonMain", "nonAndroidMain") } && imports.any { imported ->
                     listOf("android.", "java.", "javax.", "androidx.compose.").any(imported::startsWith)
                 }
             ) {

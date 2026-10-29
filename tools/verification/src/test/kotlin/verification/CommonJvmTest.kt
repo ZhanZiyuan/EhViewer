@@ -13,7 +13,7 @@ class CommonJvmTest {
             "schema_version" to 4,
             "verification_scope" to "ANDROID_CORE_AND_PORTABLE_COMMON_DOMAIN_JVM",
             "shared_library_artifacts_verified" to true,
-            "portable_common_targets" to listOf("android", "jvm"),
+            "portable_common_targets" to portableCommonTargets,
         )
         for (changed in listOf(emptyMap(), identity + ("source_commit" to "2".repeat(40)), identity + ("source_dirty" to true), identity + ("schema_version" to 3), identity + ("shared_library_artifacts_verified" to false), identity + ("portable_common_targets" to listOf("android")))) {
             assertThrows(IllegalArgumentException::class.java) { verifyCommonJvmProducerIdentity(changed, source) }

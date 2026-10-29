@@ -1,6 +1,6 @@
 # ADR 0027: Execute the real common filesystem on desktop JVMs
 
-Status: M3-004 / IN_PROGRESS. Parent d3d2e47d1b325d8006c99150e3329953500d36f3 closed the model/protocol slice only after both twelve-job gates/all23 artifacts per event and the English Draft PR readback. Full M3 remains incomplete.
+Status: M3-004 / GATE_PASSED at98c1f12d4cdb91386e8a8b40111185598f4b5406. Both Push40883456967 and PR40883467178 passed all twelve jobs/gates; all23 actual artifacts per event and46 official archives/1864 original payload files were independently accepted. The same English Draft PR's43rd row/full body/head/merge/Draft readback passed before the next implementation. Full M3 remains incomplete.
 
 Add only a Java17 desktop JVM target to core/common. Keep its Android document/URI filesystem, source files, imports and behavior unchanged. The new JVM actual exposes Okio's real system filesystem and opens real buffered kotlinx.io sources/sinks with use-based closure. Existing path operations, title APIs and domain reexport remain in use. No in-memory substitute, no Native-common declaration and no database/session/network replacement is introduced. The current logcat0.4 publication has Android/JVM variants only; scope that legacy dependency/wrapper independently when introducing Native later.
 

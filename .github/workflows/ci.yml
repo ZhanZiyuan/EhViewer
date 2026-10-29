@@ -381,6 +381,16 @@ jobs:
           path: reports/domain-native/
           if-no-files-found: error
           retention-days: 14
+      - name: Compile and execute the production filesystem on an owned iOS Simulator
+        run: tools/verification/build/install/verification/bin/verification ios-common --output reports/common-native
+      - name: Retain actual common filesystem compiler, API and test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: common-native-${{ github.sha }}
+          path: reports/common-native/
+          if-no-files-found: error
+          retention-days: 14
       - name: Retain startup evidence
         if: always()
         uses: actions/upload-artifact@v7

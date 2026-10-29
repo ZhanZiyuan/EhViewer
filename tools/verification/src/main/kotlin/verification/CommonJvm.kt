@@ -17,7 +17,7 @@ import okio.FileSystem
 import okio.Path as OkioPath
 import okio.Path.Companion.toPath
 
-val portableCommonTargets = listOf("android", "jvm")
+val portableCommonTargets = listOf("android", "jvm") + domainIosTargets
 val commonJvmCases = listOf(
     "actual_jar_and_system_filesystem",
     "unicode_exact_bytes_and_truncation",
@@ -174,7 +174,7 @@ fun commonJvmArtifact(input: Path, output: Path): Map<String, Any?> {
         "schema_version" to 1, "source_commit" to source, "source_dirty" to false, "result" to "PASS",
         "verification_scope" to "ACTUAL_COMMON_JVM_ARTIFACT_CONSUMPTION", "jar_sha256" to sha256(jar),
         "complete_compiler_inventory_verified" to true, "original_jvm_tests" to tests, "probe" to probe,
-        "native_common_targets" to "NOT_INTEGRATED", "product_p0_verified" to false, "all_eleven_assets_verified" to false, "publish_enabled" to false,
+        "native_common_targets" to domainIosTargets, "native_common_execution_here" to "NOT_EXECUTED", "product_p0_verified" to false, "all_eleven_assets_verified" to false, "publish_enabled" to false,
     ).also { Files.writeString(output, json(it), CREATE_NEW) }
 }
 
@@ -184,7 +184,7 @@ fun verifyCommonJvmReceipt(proof: Map<String, Any?>, source: String, shared: Map
         proof["schema_version"] == 1 && proof["result"] == "PASS" && proof["source_commit"] == source && proof["source_dirty"] == false &&
             proof["verification_scope"] == "ACTUAL_COMMON_JVM_ARTIFACT_CONSUMPTION" && proof["jar_sha256"] == jvm["jar_sha256"] &&
             proof["complete_compiler_inventory_verified"] == true && proof["original_jvm_tests"] == jvm["host_tests"] &&
-            proof["native_common_targets"] == "NOT_INTEGRATED",
+            proof["native_common_targets"].array() == domainIosTargets && proof["native_common_execution_here"] == "NOT_EXECUTED",
     ) { "Missing actual same-source common JVM consumer" }
     val probe = proof["probe"].obj()
     require(

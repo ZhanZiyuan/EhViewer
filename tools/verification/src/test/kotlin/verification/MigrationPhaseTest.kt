@@ -19,7 +19,7 @@ class MigrationPhaseTest {
         for (key in listOf("milestone_complete", "artifacts_verified", "product_p0_verified", "publish_enabled")) assertEquals(key, false, report[key])
         assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_product_core_targets"])
         assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_module_targets"].obj()["domain"])
-        assertEquals(listOf("android", "jvm"), report["shared_module_targets"].obj()["common"])
+        assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_module_targets"].obj()["common"])
         for (module in listOf("data", "i18n", "ui")) assertEquals(listOf("android"), report["shared_module_targets"].obj()[module])
         assertEquals(listOf("desktop_intel_native", "desktop_linux_arm64", "rust_host", "windows_native_core"), report["common_jvm_evidence_jobs"])
         assertEquals(listOf("iosArm64", "iosSimulatorArm64"), report["domain_ios_targets"])

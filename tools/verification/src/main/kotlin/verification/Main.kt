@@ -15,6 +15,8 @@ fun main(args: Array<String>) {
         "ios-startup" -> iosStartup(options.path("--app"), options.path("--output"), if (options.has("--runtime")) options.get("--runtime") else null)
         "ios-domain" -> iosDomainNative(options.path("--output"))
         "ios-domain-artifact" -> checkedDomainNativeArtifact(options.path("--input"))
+        "ios-common" -> iosNativeLibrary(options.path("--output"), commonNativeSpec)
+        "ios-common-artifact" -> checkedNativeLibraryArtifact(options.path("--input"), commonNativeSpec)
         "ios-log-evidence" -> iosUnifiedLifecycle(java.nio.file.Files.readString(options.path("--input")), options.get("--first-pid").toLong(), options.get("--second-pid").toLong())
         "desktop-native-smoke" -> desktopNativeSmoke(options.path("--output"))
         "desktop-intel-dmg" -> desktopIntelDmg(options.path("--dmg"), options.path("--output"))

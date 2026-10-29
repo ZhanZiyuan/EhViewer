@@ -1,6 +1,6 @@
 # Actual common JVM filesystem acceptance
 
-M3-004 is IN_PROGRESS. Core/common adds only a Java17 JVM target; domain retains Android/JVM/two iOS targets, and data/i18n/ui remain Android-only. Existing Android filesystem implementations are unchanged. See [ADR0027](adr/0027-common-jvm-filesystem.md) for source/reference/license choices and limits.
+M3-004 is GATE_PASSED at98c1f12d4 after both twelve-job gates/all23 actual artifacts per event and the same English Draft PR readback. The following describes that accepted slice; M3-005 now extends common to Native, sharing these real actuals/tests through nonAndroidMain/nonAndroidTest. See [ADR0028](adr/0028-common-native-filesystem.md). Core/common adds only a Java17 JVM target; domain retains Android/JVM/two iOS targets, and data/i18n/ui remain Android-only. Existing Android filesystem implementations are unchanged. See [ADR0027](adr/0027-common-jvm-filesystem.md) for source/reference/license choices and limits.
 
 Build the actual library and execute its tests:
 

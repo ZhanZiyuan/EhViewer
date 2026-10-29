@@ -66,3 +66,5 @@ M0 未建立 Release 性能对照；任何“性能提升”或“无回退”�
 - 当前及后续 commit summary/body、PR title/description 全部使用英文。最新复核 origin/main..75b36b2ef 的22个摘要/正文均为英文；早期正文为空，无需改写已推送历史。同一 Draft PR 标题/正文已改为英文并读回核对，历史失败及 11 包合同保留。
 - 四个 Android ABI 安装包均须覆盖手机与 Android 平板，iOS unsigned IPA 须覆盖 iPhone/iPad。M5/M7 的自适应布局、窗口/方向、资源和交互矩阵分别验收，暂不增加折叠屏专项适配。
 - 五平台保持同一 EhViewer 图标视觉身份，在 Android 自适应/密度资源、Apple 平台图标资源、macOS ICNS、Windows 多尺寸 ICO、Linux 桌面图标集成中遵循各平台规范；以项目自身资源为来源，不复制 Animeko 图标。M5/M6 分别验证显示与安装包资源。
+
+M3-005优先完成common真实Native文件系统基础，再进入会话/网络/持久化；不扩大到UI/发布或升级版本。98c1f12双完整门禁/实物/英文Draft PR回读已验收。新层次隔离Android文档URI与JVM日志，仅复用自己的真实磁盘actual/测试，原领域Native八项与原应用启动均保留，增加独立common Native八项和严格字节证据。首次缺IO扩展导入编译失败已保留并修复，不切换调度器规避问题。精确参考路径/落点/许可证及待验风险见ADR0028。数据库风险仍是EhDB v23两个打开路径的同17→18迁移及独立SearchDB v2，禁止破坏式fallback；全M3/后续M4–M8和11成品尚未完成。

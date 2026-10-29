@@ -60,8 +60,37 @@ fun domainKotlinVersion(): String = Regex("(?m)^kotlin = \"([^\"]+)\"$")
 private fun nativeDomainDigest(bytes: ByteArray) = MessageDigest.getInstance("SHA-256")
     .digest(bytes).joinToString("") { "%02x".format(it) }
 
+data class NativeLibrarySpec(
+    val module: String,
+    val schema: Int,
+    val targets: List<String>,
+    val dependencies: Set<String>,
+    val metadata: List<String>,
+    val verifyApi: (String) -> Unit,
+    val verifyTests: (Map<String, Any?>) -> Unit,
+    val testSourceSets: List<String> = listOf("commonTest"),
+) {
+    val scope get() = "ACTUAL_IOS_${module.uppercase()}_COMPILE_AND_TEST"
+    val integration get() = "ios_product_${module}_integration"
+}
+
+val domainNativeSpec = NativeLibrarySpec(
+    "domain",
+    2,
+    portableDomainTargets,
+    domainNativeDependencies,
+    listOf(
+        "default/linkdata/package_com.ehviewer.core.domain/0_domain.knm",
+        "default/linkdata/package_com.ehviewer.core.domain.reader/0_reader.knm",
+    ) + (0..8).map { "default/linkdata/package_com.ehviewer.core.model/${it}_model.knm" },
+    ::verifyDomainNativeApiDump,
+    { verifyDomainTests(it, native = true) },
+)
+
+fun domainNativeKlibEvidence(bytes: ByteArray, target: String, compiler: String): Map<String, Any?> = nativeLibraryKlibEvidence(bytes, target, compiler, domainNativeSpec)
+
 /** Check actual compiler KLIB bytes, independently of a target declaration or file extension. */
-fun domainNativeKlibEvidence(bytes: ByteArray, target: String, compiler: String): Map<String, Any?> {
+fun nativeLibraryKlibEvidence(bytes: ByteArray, target: String, compiler: String, spec: NativeLibrarySpec): Map<String, Any?> {
     require(target in setOf("ios_arm64", "ios_simulator_arm64"))
     val entries = coreArchive(bytes)
     require(entries.keys.all { it.startsWith("default/") }) { "Unexpected KLIB root" }
@@ -70,17 +99,22 @@ fun domainNativeKlibEvidence(bytes: ByteArray, target: String, compiler: String)
     }.let { p -> p.stringPropertyNames().sorted().associateWith(p::getProperty) }
     require(
         manifest["builtins_platform"] == "NATIVE" && manifest["native_targets"] == target &&
-            manifest["compiler_version"] == compiler && manifest["short_name"] == "domain" &&
-            manifest["unique_name"] == "EhViewer.core:domain",
+            manifest["compiler_version"] == compiler && manifest["short_name"] == spec.module &&
+            manifest["unique_name"] == "EhViewer.core:${spec.module}",
     ) { "Native domain compiler, target or module identity differs" }
-    verifyDomainNativeDependencies(manifest["depends"])
+    val dependencies = manifest["depends"]?.split(' ') ?: emptyList()
+    require(dependencies.size == spec.dependencies.size && dependencies.toSet() == spec.dependencies) {
+        "Native ${spec.module} dependencies differ from the reviewed runtime"
+    }
     val required = listOf(
         "default/linkdata/module",
-        "default/linkdata/package_com.ehviewer.core.domain/0_domain.knm",
-        "default/linkdata/package_com.ehviewer.core.domain.reader/0_reader.knm",
-        "default/ir/files.knf", "default/ir/irDeclarations.knd", "default/ir/bodies.knb",
-        "default/ir/strings.knt", "default/ir/signatures.knt", "default/ir/types.knt",
-    ) + (0..8).map { "default/linkdata/package_com.ehviewer.core.model/${it}_model.knm" }
+        "default/ir/files.knf",
+        "default/ir/irDeclarations.knd",
+        "default/ir/bodies.knb",
+        "default/ir/strings.knt",
+        "default/ir/signatures.knt",
+        "default/ir/types.knt",
+    ) + spec.metadata
     require(required.all { entries[it]?.isNotEmpty() == true }) { "Empty/missing real production metadata or IR; NO-SOURCE is not acceptance" }
     return mapOf(
         "result" to "PASS",
@@ -145,7 +179,7 @@ fun verifyDomainNativeApiDump(text: String) {
     }
 }
 
-private fun packageDomainKlib(directory: Path, archive: Path, target: String, compiler: String): Map<String, Any?> {
+private fun packageNativeKlib(directory: Path, archive: Path, target: String, compiler: String, spec: NativeLibrarySpec): Map<String, Any?> {
     val paths = Files.walk(directory).use { it.sorted().toList() }
     require(paths.none(Files::isSymbolicLink)) { "Compiler output must not contain symbolic links" }
     val files = paths.filter { Files.isRegularFile(it, NOFOLLOW_LINKS) }
@@ -157,13 +191,15 @@ private fun packageDomainKlib(directory: Path, archive: Path, target: String, co
             zip.closeEntry()
         }
     }
-    val evidence = domainNativeKlibEvidence(archive.readBytes(), target, compiler)
+    val evidence = nativeLibraryKlibEvidence(archive.readBytes(), target, compiler, spec)
     require(evidence["compiler_files"] == files.associate { directory.relativize(it).joinToString("/") to sha256(it) }) { "Packaged KLIB differs from complete compiler output" }
     return evidence + mapOf("artifact" to archive.fileName.toString(), "sha256" to sha256(archive))
 }
 
 /** Force real shared Native compilation/tests on a new owned device; never use a user's Simulator. */
-fun iosDomainNative(output: Path): Map<String, Any?> {
+fun iosDomainNative(output: Path): Map<String, Any?> = iosNativeLibrary(output, domainNativeSpec)
+
+fun iosNativeLibrary(output: Path, spec: NativeLibrarySpec): Map<String, Any?> {
     require(System.getProperty("os.name").startsWith("Mac") && command("uname", "-m").trim() == "arm64")
     require(!output.exists()) { "Use fresh Native domain evidence" }
     output.createDirectories()
@@ -178,7 +214,7 @@ fun iosDomainNative(output: Path): Map<String, Any?> {
     require(Files.isExecutable(klib)) { "Missing the actual pinned Kotlin/Native inspection tool" }
     val runtime = latestIosRuntime(groovy.json.JsonSlurper().parseText(command("xcrun", "simctl", "list", "-j", "runtimes")).obj()["runtimes"].array())
     val type = runtimeIphone(runtime)
-    val device = command("xcrun", "simctl", "create", "EhViewer-M3-Domain-${UUID.randomUUID()}", type.str("identifier"), runtime.str("identifier")).trim()
+    val device = command("xcrun", "simctl", "create", "EhViewer-M3-${spec.module}-${UUID.randomUUID()}", type.str("identifier"), runtime.str("identifier")).trim()
     require(Regex("[A-Fa-f0-9-]{36}").matches(device))
     output.resolve("environment.json").writeText(json(mapOf("source_commit" to source, "source_dirty" to dirty, "owned_simulator" to device, "runtime" to runtime, "device_type" to type)))
     val result = try {
@@ -188,8 +224,8 @@ fun iosDomainNative(output: Path): Map<String, Any?> {
             val started = Instant.now()
             try {
                 val log = command(
-                    root.resolve("gradlew"), ":core:domain:compileKotlinIosArm64", ":core:domain:iosSimulatorArm64Test",
-                    "-Pehviewer.domain.testSimulator=$device", "-Pehviewer.domain.testDirectory=$staged",
+                    root.resolve("gradlew"), ":core:${spec.module}:compileKotlinIosArm64", ":core:${spec.module}:iosSimulatorArm64Test",
+                    "-Pehviewer.${spec.module}.testSimulator=$device", "-Pehviewer.${spec.module}.testDirectory=$staged",
                     "--rerun-tasks", "--console=plain", "--no-daemon", "--max-workers=1", "-Dorg.gradle.parallel=false",
                     "-Dorg.gradle.jvmargs=-Xmx2g", "-Pkotlin.native.jvmArgs=-Xmx3g",
                     timeout = Duration.ofMinutes(10),
@@ -199,7 +235,7 @@ fun iosDomainNative(output: Path): Map<String, Any?> {
                 output.resolve("gradle-tests.log").writeText(failure.output)
                 throw failure
             }
-            val domain = root.resolve("core/domain/build")
+            val domain = root.resolve("core/${spec.module}/build")
             val compiled = domain.resolve("bin/iosSimulatorArm64/debugTest/test.kexe")
             val executed = staged.resolve("test.kexe")
             require(Files.getLastModifiedTime(compiled).toInstant() >= started.minusSeconds(1)) { "Stale Native executable cannot satisfy a NO-SOURCE compile" }
@@ -208,32 +244,33 @@ fun iosDomainNative(output: Path): Map<String, Any?> {
             Files.copy(executed, output.resolve("test.kexe"))
             val xml = filesBelow(domain.resolve("test-results/iosSimulatorArm64Test"), ".xml")
             require(xml.size == 2 && xml.all { Files.getLastModifiedTime(it).toInstant() >= started.minusSeconds(1) }) { "Missing/stale actual Native JUnit XML" }
-            val tests = sharedHostTestEvidence(xml.map(Path::readBytes), filesBelow(root.resolve("core/domain/src/commonTest"), ".kt").size)
-            verifyDomainTests(tests, native = true)
+            val sourceFiles = spec.testSourceSets.sumOf { filesBelow(root.resolve("core/${spec.module}/src/$it"), ".kt").size }
+            val tests = sharedHostTestEvidence(xml.map(Path::readBytes), sourceFiles)
+            spec.verifyTests(tests)
             xml.forEach { Files.copy(it, output.resolve(it.fileName)) }
             val libraries = linkedMapOf<String, Any?>()
             for ((target, triple) in listOf("iosArm64" to "ios_arm64", "iosSimulatorArm64" to "ios_simulator_arm64")) {
-                val archive = output.resolve("domain-$target.klib")
-                val directory = domain.resolve("classes/kotlin/$target/main/klib/domain")
+                val archive = output.resolve("${spec.module}-$target.klib")
+                val directory = domain.resolve("classes/kotlin/$target/main/klib/${spec.module}")
                 require(Files.getLastModifiedTime(directory.resolve("default/manifest")).toInstant() >= started.minusSeconds(1)) { "Stale Native KLIB cannot satisfy a NO-SOURCE compile" }
-                val evidence = packageDomainKlib(directory, archive, triple, compiler)
+                val evidence = packageNativeKlib(directory, archive, triple, compiler, spec)
                 val dump = command(klib, "dump-metadata", archive)
-                verifyDomainNativeApiDump(dump)
+                spec.verifyApi(dump)
                 val apiFile = output.resolve("api-$target.txt").also { it.writeText(dump) }
                 libraries[target] = evidence + mapOf("api_dump" to apiFile.fileName.toString(), "api_sha256" to sha256(apiFile))
             }
             require(command("git", "rev-parse", "HEAD").trim() == source && command("git", "status", "--porcelain", "--untracked-files=all") == originalStatus) { "Source changed during Native execution" }
             mapOf(
-                "schema_version" to 2, "verification_scope" to "ACTUAL_IOS_DOMAIN_COMPILE_AND_TEST",
+                "schema_version" to spec.schema, "verification_scope" to spec.scope,
                 "source_commit" to source, "source_dirty" to dirty, "result" to "PASS",
-                "domain_targets" to portableDomainTargets, "libraries" to libraries, "host_tests" to tests,
+                "${spec.module}_targets" to spec.targets, "libraries" to libraries, "host_tests" to tests,
                 "test_executable" to "test.kexe", "test_executable_sha256" to sha256(executed),
                 "compiler_test_executable_sha256" to sha256(compiled), "test_machine" to machine,
                 "test_execution" to "BOOTED_OWNED_SIMULATOR", "test_task_timeout_seconds" to 300,
                 "compiled_outputs_fresh" to true,
                 "runtime" to runtime.str("name"), "device_type" to type.str("name"),
                 "klib_tool_sha256" to sha256(klib), "device_execution" to "NOT_VERIFIED",
-                "ios_product_domain_integration" to "NOT_INTEGRATED", "unsigned_ipa" to "NOT_INTEGRATED",
+                spec.integration to "NOT_INTEGRATED", "unsigned_ipa" to "NOT_INTEGRATED",
                 "minimum_systems" to "NOT_VERIFIED", "product_p0_verified" to false,
                 "all_eleven_assets_verified" to false, "publish_enabled" to false,
             )
@@ -248,20 +285,22 @@ fun iosDomainNative(output: Path): Map<String, Any?> {
             command("xcrun", "simctl", "delete", device)
         }
     }
-    return (result + ("owned_simulator_cleanup" to "PASS")).also { output.resolve("domain-native.json").writeText(json(it)) }
+    return (result + ("owned_simulator_cleanup" to "PASS")).also { output.resolve("${spec.module}-native.json").writeText(json(it)) }
 }
 
 /** Inspect the separately executed Native evidence using the actual uploaded bytes on any host. */
-fun checkedDomainNativeArtifact(directory: Path): Map<String, Any?> {
-    val proof = readJson(directory.resolve("domain-native.json"))
+fun checkedDomainNativeArtifact(directory: Path): Map<String, Any?> = checkedNativeLibraryArtifact(directory, domainNativeSpec)
+
+fun checkedNativeLibraryArtifact(directory: Path, spec: NativeLibrarySpec): Map<String, Any?> {
+    val proof = readJson(directory.resolve("${spec.module}-native.json"))
     require(
-        proof["schema_version"] == 2 && proof["result"] == "PASS" && proof["verification_scope"] == "ACTUAL_IOS_DOMAIN_COMPILE_AND_TEST" &&
-            proof["domain_targets"].array() == portableDomainTargets && proof["compiled_outputs_fresh"] == true &&
+        proof["schema_version"] == spec.schema && proof["result"] == "PASS" && proof["verification_scope"] == spec.scope &&
+            proof["${spec.module}_targets"].array() == spec.targets && proof["compiled_outputs_fresh"] == true &&
             proof["test_execution"] == "BOOTED_OWNED_SIMULATOR" && proof["test_task_timeout_seconds"] == 300 &&
             proof["owned_simulator_cleanup"] == "PASS",
     ) { "Missing actual compiled/tested/cleaned Native domain evidence" }
     require(
-        proof["device_execution"] == "NOT_VERIFIED" && proof["ios_product_domain_integration"] == "NOT_INTEGRATED" &&
+        proof["device_execution"] == "NOT_VERIFIED" && proof[spec.integration] == "NOT_INTEGRATED" &&
             proof["unsigned_ipa"] == "NOT_INTEGRATED" && proof["minimum_systems"] == "NOT_VERIFIED" &&
             listOf("product_p0_verified", "all_eleven_assets_verified", "publish_enabled").all { proof[it] == false },
     ) { "Native library tests must not certify device/product delivery" }
@@ -276,14 +315,14 @@ fun checkedDomainNativeArtifact(directory: Path): Map<String, Any?> {
     require(libraries.keys == domainIosTargets.toSet())
     for ((target, triple) in listOf("iosArm64" to "ios_arm64", "iosSimulatorArm64" to "ios_simulator_arm64")) {
         val row = libraries.getValue(target).obj()
-        require(row["artifact"] == "domain-$target.klib" && row["api_dump"] == "api-$target.txt")
+        require(row["artifact"] == "${spec.module}-$target.klib" && row["api_dump"] == "api-$target.txt")
         val archive = directory.resolve(row.str("artifact"))
         require(sha256(archive) == row["sha256"]) { "Actual Native KLIB bytes changed" }
-        val evidence = domainNativeKlibEvidence(archive.readBytes(), triple, domainKotlinVersion())
+        val evidence = nativeLibraryKlibEvidence(archive.readBytes(), triple, domainKotlinVersion(), spec)
         require(evidence.all { (key, value) -> row[key] == value }) { "Native compiler file/manifest inventory changed" }
         val api = directory.resolve(row.str("api_dump"))
         require(sha256(api) == row["api_sha256"])
-        verifyDomainNativeApiDump(api.readText())
+        spec.verifyApi(api.readText())
     }
     require(proof["test_executable"] == "test.kexe")
     val executable = directory.resolve("test.kexe")
@@ -296,10 +335,10 @@ fun checkedDomainNativeArtifact(directory: Path): Map<String, Any?> {
     val xml = filesBelow(directory, ".xml")
     require(xml.size == 2)
     val tests = sharedHostTestEvidence(xml.map(Path::readBytes), 2)
-    verifyDomainTests(tests, native = true)
+    spec.verifyTests(tests)
     require(tests == proof["host_tests"]) { "Actual Native test XML differs from its receipt" }
     return mapOf(
-        "verification_scope" to "IOS_DOMAIN_ARTIFACT_BYTES_AND_TEST_RECEIPT",
+        "verification_scope" to "IOS_${spec.module.uppercase()}_ARTIFACT_BYTES_AND_TEST_RECEIPT",
         "source_commit" to proof["source_commit"], "source_dirty" to proof["source_dirty"],
         "result" to "PASS",
         "targets" to domainIosTargets,
@@ -308,7 +347,7 @@ fun checkedDomainNativeArtifact(directory: Path): Map<String, Any?> {
         "test_machine" to machine,
         "original_native_execution" to "BOOTED_OWNED_SIMULATOR",
         "native_execution_here" to "NOT_EXECUTED",
-        "ios_product_domain_integration" to "NOT_INTEGRATED",
+        spec.integration to "NOT_INTEGRATED",
         "product_p0_verified" to false, "all_eleven_assets_verified" to false, "publish_enabled" to false,
     )
 }

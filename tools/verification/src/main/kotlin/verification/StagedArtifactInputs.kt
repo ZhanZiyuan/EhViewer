@@ -82,6 +82,7 @@ fun stagedArtifactPlan(context: Map<String, Any?>, source: String, repository: S
         "policy" to "source-policy", "phase" to "migration-phase", "shared" to "shared-core", "linux-host" to "desktop-native-linux-x86_64", "macos-host" to "desktop-native-macos-arm64",
         "linux-runtime" to "linux-arm64-runtime", "ios" to "ios-startup", "apple-rust" to "ios-rust-build", "intel-producer" to "intel-dmg-on-arm", "intel-consumer" to "intel-dmg-native",
         "domain-native" to "domain-native",
+        "common-native" to "common-native",
         "windows-core" to "windows-arm64-core", "windows-jvm" to "windows-arm64-jvm", "windows-runtime" to "windows-arm64-runtime", "windows-package" to "windows-arm64-package", "windows-launch" to "windows-arm64-zip-launch",
     )
     val result = native.map { (role, prefix) -> StagedArtifact(role, available.single { it["name"] == "$prefix-$source" }, currentCatalog, current) }.toMutableList()

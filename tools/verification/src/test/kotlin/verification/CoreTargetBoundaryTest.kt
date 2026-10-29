@@ -41,8 +41,8 @@ class CoreTargetBoundaryTest {
         }
     }
 
-    @Test fun commonJvmCannotBeRemovedRenamedDuplicatedOrPromotedToNative() {
-        val variants = listOf(common.replace("jvm(\"desktop\")", ""), common.replace("jvm(\"desktop\")", "jvm(\"other\")"), common.replace("alias(libs.plugins.ehviewer.multiplatform.library)", "")) +
+    @Test fun commonReviewedTargetsCannotBeRemovedRenamedOrDuplicated() {
+        val variants = listOf(common.replace("jvm(\"desktop\")", ""), common.replace("jvm(\"desktop\")", "jvm(\"other\")"), common.replace("alias(libs.plugins.ehviewer.multiplatform.library)", ""), common.replace("iosArm64()", ""), common.replace("iosSimulatorArm64()", "")) +
             listOf("jvm(\"desktop\")", "iosArm64()", "iosSimulatorArm64()", "linuxX64()", "wasmJs()").map { common + "\n" + it }
         variants.forEach { changed -> assertThrows(IllegalArgumentException::class.java) { verifyCoreTargetBoundary(configuration + ("core/common/build.gradle.kts" to changed)) } }
     }

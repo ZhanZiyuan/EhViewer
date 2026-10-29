@@ -75,6 +75,8 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     require(listOf("result", "title_cases", "archive_methods").all { domainProbe[it] == domain["link_probe"].obj()[it] }) { "Packaged domain API differs from the shared producer" }
     receipt("domain-native", "domain-native.json")
     val nativeDomain = checkedDomainNativeArtifact(unpacked.getValue("domain-native"))
+    receipt("common-native", "common-native.json")
+    val nativeCommon = checkedNativeLibraryArtifact(unpacked.getValue("common-native"), commonNativeSpec)
     val common = shared["common_jvm"].obj()
     require(common["artifact"] == "common-jvm.jar")
     val commonJar = path("shared", "shared-core/common-jvm.jar")
@@ -250,7 +252,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     retain("windows-arm64", archive)
     require(assets.size == 6 && candidate.toFile().listFiles()!!.map { it.name }.toSet() == assets.map { it.str("file") }.toSet()) { "Expected exactly six current-stage candidate files" }
     val result = mapOf(
-        "schema_version" to 5, "verification_scope" to "M3_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
+        "schema_version" to 6, "verification_scope" to "M3_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
         "version" to version, "android_version_code" to code, "run_id" to run["id"], "run_head_sha" to run["head_sha"], "android_artifact_run_id" to context["android_run"].obj()["id"],
         "upstream_jobs" to stagedUpstreamJobs.sorted(), "artifact_inputs" to plan.map { mapOf("role" to it.role, "artifact_id" to it.id, "run_id" to it.runId, "run_head_sha" to it.run["head_sha"], "digest" to it.metadata["digest"]) },
         "candidate_assets" to assets, "staged_package_bytes_verified" to true, "candidate_android_version_name" to "$version-SNAPSHOT", "android_production_certificate_required" to trustedMain, "android_apk_checks" to verifiedApks,
@@ -258,6 +260,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         "domain_jvm_link_probe" to domainProbe, "domain_jvm_link_probe_executed_here" to true,
         "common_jvm_link_probe" to commonProbe, "common_jvm_link_probe_executed_here" to true, "common_jvm_consumers" to commonConsumers,
         "domain_native" to nativeDomain, "domain_native_receipt_verified" to true, "domain_ios_targets" to domainIosTargets,
+        "common_native" to nativeCommon, "common_native_receipt_verified" to true, "common_ios_targets" to domainIosTargets,
         "ios_product_domain_integration" to "NOT_INTEGRATED",
         "remaining_final_targets" to releaseTargets.filter { target -> assets.none { it["target"] == target.id } }.map { mapOf("target" to it.id, "file" to it.fileName(version), "final_package" to "NOT_INTEGRATED") },
         "linux_arm64_transport_permissions" to "NOT_PRESERVED; ORIGINAL_RUNNER_EXECUTION_VERIFIED_SEPARATELY", "ios_unsigned_ipa" to "NOT_INTEGRATED", "development_signed_device" to "NOT_VERIFIED",
