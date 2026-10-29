@@ -224,9 +224,13 @@ fun iosNativeLibrary(output: Path, spec: NativeLibrarySpec): Map<String, Any?> {
             val started = Instant.now()
             try {
                 val log = command(
-                    root.resolve("gradlew"), ":core:${spec.module}:compileKotlinIosArm64", ":core:${spec.module}:iosSimulatorArm64Test",
+                    root.resolve("gradlew"),
+                    ":core:${spec.module}:compileKotlinIosArm64", "--rerun",
+                    ":core:${spec.module}:compileKotlinIosSimulatorArm64", "--rerun",
+                    ":core:${spec.module}:linkDebugTestIosSimulatorArm64", "--rerun",
+                    ":core:${spec.module}:iosSimulatorArm64Test", "--rerun",
                     "-Pehviewer.${spec.module}.testSimulator=$device", "-Pehviewer.${spec.module}.testDirectory=$staged",
-                    "--rerun-tasks", "--console=plain", "--no-daemon", "--max-workers=1", "-Dorg.gradle.parallel=false",
+                    "--console=plain", "--no-daemon", "--max-workers=1", "-Dorg.gradle.parallel=false",
                     "-Dorg.gradle.jvmargs=-Xmx2g", "-Pkotlin.native.jvmArgs=-Xmx3g",
                     timeout = Duration.ofMinutes(10),
                 )

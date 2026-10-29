@@ -2,48 +2,11 @@ package verification
 
 import kotlin.io.path.readText
 
-private val phaseJobs = setOf("android", "ios", "rust_host", "desktop_intel", "desktop_intel_native", "desktop_linux_arm64", "windows_native_core", "source_policy", "shared_kmp", "release_dry_run")
-
 /** Reviewed first M3 migration. A declared surface is not an executed artifact receipt. */
-fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String): Map<String, Any?> {
+fun migrationPhaseContract(sourceSha: String, settings: String): Map<String, Any?> {
     require(Regex("[0-9a-f]{40}").matches(sourceSha) && sourceSha != "0".repeat(40)) { "Expected a nonzero full source SHA" }
     val delivery = releaseContract(settings, sourceSha)
     require(delivery["version"] == "1.15.10" && delivery["android_version_code"] == 180074) { "The reviewed M3 version remains 1.15.10 / 180074; an M8 release freeze requires separate acceptance" }
-    val roots = Regex("(?m)^jobs:[ \\t]*(?:#.*)?$").findAll(workflow).toList()
-    require(roots.size == 1) { "Expected one explicit workflow jobs mapping" }
-    val body = workflow.substring(roots.single().range.last + 1)
-    val headerPattern = Regex("^  ([A-Za-z_][A-Za-z0-9_-]*):[ \\t]*(?:#.*)?$")
-    val headers = body.lineSequence().filter {
-        it.startsWith("  ") && !it.startsWith("   ") && it.isNotBlank() && !it.trimStart().startsWith('#')
-    }.map { line ->
-        val match = headerPattern.matchEntire(line)
-        require(match != null) { "Unsupported M3 job header; retain canonical declarations or review the parser independently" }
-        match.groupValues[1] to line
-    }.toList()
-    val jobs = headers.map { it.first }
-    require(jobs.size == jobs.toSet().size && jobs.toSet() == phaseJobs + "gate") { "CI jobs differ from the reviewed M3 phase; update coverage and validation independently" }
-    val commonConsumers = mapOf(
-        "rust_host" to listOf("shared_kmp"),
-        "desktop_linux_arm64" to listOf("shared_kmp"),
-        "windows_native_core" to listOf("shared_kmp"),
-        "desktop_intel_native" to listOf("desktop_intel", "shared_kmp"),
-    )
-    val admissionBarriers = mapOf("ios" to listOf("rust_host", "desktop_intel"))
-    (commonConsumers + admissionBarriers).forEach { (job, expected) ->
-        val index = headers.indexOfFirst { it.first == job }
-        val section = body.substringAfter(headers[index].second + "\n").let { if (index + 1 < headers.size) it.substringBefore(headers[index + 1].second + "\n") else it }
-        val dependencies = Regex("(?m)^    needs: \\[([^]\\n]+)]$").findAll(section).toList()
-        require(dependencies.size == 1 && dependencies.single().groupValues[1].split(',').map(String::trim) == expected) { "Every reviewed producer and admission barrier must remain explicit: $job" }
-        if (job in admissionBarriers) {
-            require(Regex("(?m)^    if: always\\(\\)$").findAll(section).count() == 1) { "Admission ordering must not skip original iOS checks after a dependency failure" }
-        }
-    }
-    val gate = body.substringAfter(headers.single { it.first == "gate" }.second + "\n", "")
-    require(Regex("(?m)^    if: always\\(\\)[ \\t]*$").containsMatchIn(gate)) { "The phase gate must always run" }
-    val needs = Regex("(?m)^    needs: \\[([^]\\n]+)]$").findAll(gate).toList()
-    require(needs.size == 1) { "Expected one explicit aggregate dependency list" }
-    val required = needs.single().groupValues[1].split(',').map(String::trim)
-    require(required.size == required.toSet().size && required.toSet() == phaseJobs) { "Every declared M3 job must remain mandatory" }
     val surfaces = mapOf(
         "android-arm64" to "TEST_SIGNED_APK_PREFLIGHT",
         "android-armv7" to "TEST_SIGNED_APK_PREFLIGHT",
@@ -66,11 +29,11 @@ fun migrationPhaseContract(workflow: String, sourceSha: String, settings: String
         "source_commit" to sourceSha,
         "version" to delivery["version"],
         "android_version_code" to delivery["android_version_code"],
-        "mandatory_job_ids" to phaseJobs.sorted(),
+        "ci_policy" to ".github/ci-plan.json",
+        "always_required_jobs" to listOf("android", "shared_kmp", "source_policy"),
         "shared_product_core_targets" to portableDomainTargets,
         "shared_module_targets" to mapOf("domain" to portableDomainTargets, "common" to portableCommonTargets, "data" to listOf("android"), "i18n" to listOf("android"), "ui" to listOf("android")),
-        "common_jvm_evidence_jobs" to commonConsumers.keys.sorted(),
-        "ios_admission_dependencies" to admissionBarriers.getValue("ios"),
+        "common_jvm_evidence_jobs" to listOf("desktop_intel_native", "desktop_linux_arm64", "rust_host", "windows_native_core"),
         "domain_ios_targets" to domainIosTargets,
         "domain_ios_evidence_job" to "ios",
         "ios_product_domain_integration" to "NOT_INTEGRATED",
@@ -95,7 +58,7 @@ fun verifyMigrationPhase(): Map<String, Any?> {
     val architecture = verifyArchitecture()
     require(architecture["legacy_shared_core_android_only"] == true && architecture["portable_domain_targets"] == portableDomainTargets && architecture["result"] == "PASS")
     require(architecture["portable_common_targets"] == portableCommonTargets && architecture["legacy_shared_modules"] == listOf("data", "i18n", "ui"))
-    return migrationPhaseContract(root.resolve(".github/workflows/ci.yml").readText(), source, root.resolve("app/build.gradle.kts").readText()) + mapOf(
+    return migrationPhaseContract(source, root.resolve("app/build.gradle.kts").readText()) + mapOf(
         "source_dirty" to dirty,
         "retained_architecture_checks" to architecture,
     )

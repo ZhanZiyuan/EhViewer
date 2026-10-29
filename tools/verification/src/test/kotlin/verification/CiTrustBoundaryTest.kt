@@ -16,7 +16,7 @@ class CiTrustBoundaryTest {
 
     @Test fun featureAndPrSnapshotsNeedNoProductionKey() {
         val script = workflow("ci").substringAfter("      - name: Prepare snapshot APKs\n")
-            .substringAfter("        run: |\n").substringBefore("\n      - name:").trimIndent()
+            .substringAfter("        run: |\n").substringBefore("\n      - ").trimIndent()
         val events = listOf(
             "refs/heads/feature/kmp" to "push",
             "refs/heads/feature/kmp" to "workflow_dispatch",
@@ -73,39 +73,29 @@ class CiTrustBoundaryTest {
         }
         assertTrue(workflow("releases").contains("(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||"))
         assertTrue(ci.contains("cancel-in-progress: ${'$'}{{ github.ref != 'refs/heads/feature/kmp' && github.head_ref != 'feature/kmp' }}"))
-        assertTrue(ci.contains("name: ci/gate\n    if: always()\n    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core, source_policy, shared_kmp, release_dry_run]"))
-        assertTrue(ci.contains("run: test \"${'$'}ANDROID_RESULT\" = success"))
+        val gate = ci.substringAfter("  gate:\n")
+        assertTrue(gate.contains("name: ci/gate"))
+        assertTrue(gate.contains("if: always()"))
+        assertTrue(ci.contains("verification/bin/verification ci-gate"))
     }
 
     @Test fun gateRejectsSkippedFailedAndIncompleteChecks() {
-        val script = workflow("ci").substringAfter("  gate:\n").substringAfter("        run: ").trim()
-        for (target in listOf("ANDROID_RESULT", "IOS_RESULT", "RUST_HOST_RESULT", "INTEL_DMG_RESULT", "INTEL_NATIVE_RESULT", "LINUX_ARM64_RESULT", "WINDOWS_CORE_RESULT", "SOURCE_POLICY_RESULT", "SHARED_KMP_RESULT", "RELEASE_DRY_RUN_RESULT")) {
-            for (result in listOf("success", "failure", "cancelled", "skipped", "neutral", "pending", "")) {
-                val process = ProcessBuilder("bash", "-c", script).apply {
-                    environment()["ANDROID_RESULT"] = "success"
-                    environment()["IOS_RESULT"] = "success"
-                    environment()["RUST_HOST_RESULT"] = "success"
-                    environment()["INTEL_DMG_RESULT"] = "success"
-                    environment()["INTEL_NATIVE_RESULT"] = "success"
-                    environment()["LINUX_ARM64_RESULT"] = "success"
-                    environment()["WINDOWS_CORE_RESULT"] = "success"
-                    environment()["SOURCE_POLICY_RESULT"] = "success"
-                    environment()["SHARED_KMP_RESULT"] = "success"
-                    environment()["RELEASE_DRY_RUN_RESULT"] = "success"
-                    environment()[target] = result
-                }.start()
-                if (!process.waitFor(10, TimeUnit.SECONDS)) {
-                    process.destroyForcibly().waitFor()
-                    error("Gate regression timed out: $result")
-                }
-                assertEquals(result, result == "success", process.exitValue() == 0)
+        val policy = readJson(generateSequence(Path.of("").toAbsolutePath()) { it.parent }.map { it.resolve(".github/ci-plan.json") }.first(Files::isRegularFile))
+        val sha = "1".repeat(40)
+        val plan = ciPlan(policy, listOf(".github/workflows/ci.yml"), sha, sha, sha, true)
+        val actual = plan["jobs"].obj().mapValues { mapOf("result" to "success") }
+        assertEquals("PASS", ciGate(plan, actual, sha)["result"])
+        for (target in actual.keys) {
+            for (result in listOf("failure", "cancelled", "skipped", "neutral", "pending", "")) {
+                assertTrue("$target/$result", runCatching { ciGate(plan, actual + (target to mapOf("result" to result)), sha) }.isFailure)
             }
+            assertTrue(runCatching { ciGate(plan, actual - target, sha) }.isFailure)
         }
     }
 
     @Test fun linuxBuildLogCapturePreservesGradleFailure() {
         val script = workflow("ci").substringAfter("      - name: Build real AArch64 JVM, Skiko and Rust application image\n")
-            .substringAfter("        run: |\n").substringBefore("\n      - name:").trimIndent()
+            .substringAfter("        run: |\n").substringBefore("\n      - ").trimIndent()
         for (result in listOf(0, 93)) {
             temporary { temp ->
                 // Generated failure fixture, never used by the actual CI build.

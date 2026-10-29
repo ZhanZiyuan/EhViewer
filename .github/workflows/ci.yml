@@ -2,9 +2,14 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      full:
+        description: Run all platform regressions and the release dry run
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -23,6 +28,9 @@ jobs:
     name: ci/source-policy
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      plan: ${{ steps.plan.outputs.plan }}
+      tier: ${{ steps.plan.outputs.tier }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -38,6 +46,22 @@ jobs:
           cache-read-only: true
       - name: Build and test source policy verifier
         run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - name: Plan affected checks from the last successful PR run
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: tools/verification/build/install/verification/bin/verification ci-plan
+      - name: Retain the tested verifier and source-bound check plan once
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: |
+            tools/verification/build/install/
+            tools/verification/build/test-results/
+            tools/verification/build/reports/tests/
+            tools/verification/build/ci-plan.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Audit cumulative target changes without a reference checkout
         run: |
           mkdir -p reports
@@ -63,6 +87,7 @@ jobs:
           retention-days: 14
 
   shared_kmp:
+    needs: [source_policy]
     name: ci/shared-kmp
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -79,9 +104,13 @@ jobs:
         with:
           validate-wrappers: true
           cache-read-only: true
-      - name: Build and test shared verification tools
-        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
-      - name: Compile current shared targets, resources and host tests without reusing task results
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
+      - name: Compile affected shared targets, resources and host tests
         run: >-
           ./gradlew :core:common:bundleAndroidMainAar :core:data:bundleAndroidMainAar
           :core:i18n:bundleAndroidMainAar :core:ui:bundleAndroidMainAar
@@ -90,7 +119,7 @@ jobs:
           :core:common:testAndroidHostTest :core:data:testAndroidHostTest
           :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest
           :core:domain:testAndroidHostTest :core:domain:desktopTest
-          --rerun-tasks --console=plain --no-daemon
+          --console=plain --no-daemon
       - name: Verify actual library bytes, Java 17, localization and host receipts
         run: |
           mkdir -p reports
@@ -107,6 +136,7 @@ jobs:
           retention-days: 14
 
   android:
+    needs: [source_policy]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     outputs:
@@ -195,9 +225,12 @@ jobs:
         with:
           validate-wrappers: true
           cache-read-only: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
-      - name: Build and test Kotlin verification tools
-        if: steps.snapshot.outputs.build == 'true'
-        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
       - name: Verify Kotlin boundaries and language policy
         if: steps.snapshot.outputs.build == 'true'
         run: tools/verification/build/install/verification/bin/verification architecture
@@ -343,8 +376,8 @@ jobs:
 
   ios:
     # Admit iOS after both ARM producers finish; this only limits hosted runner demand.
-    needs: [rust_host, desktop_intel]
-    if: always()
+    needs: [source_policy, rust_host, desktop_intel]
+    if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.ios.required
     name: ci/ios
     runs-on: macos-latest
     timeout-minutes: 60
@@ -367,8 +400,12 @@ jobs:
           cache-read-only: true
       - name: Build Kotlin-only Simulator application
         run: ./gradlew :app:ios:packageSimulatorApp :app:ios:linkDebugExecutableIosArm64 :app:ios:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g -Pkotlin.native.jvmArgs=-Xmx3g
-      - name: Build and test lifecycle verifier
-        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
       - name: Launch, render and exercise the real Simulator app
         run: tools/verification/build/install/verification/bin/verification ios-startup --app app/ios/build/simulator/EhViewer.app --output reports/ios-startup
       - name: Compile and execute the production domain on an owned iOS Simulator
@@ -411,7 +448,8 @@ jobs:
 
   rust_host:
     name: ci/rust-host (${{ matrix.platform }})
-    needs: [shared_kmp]
+    needs: [source_policy, shared_kmp]
+    if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.rust_host.required
     strategy:
       fail-fast: false
       matrix:
@@ -446,8 +484,12 @@ jobs:
         with:
           validate-wrappers: true
           cache-read-only: true
-      - name: Build and test verification tools
-        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
       - name: Load Rust JNI and verify archive ownership in a real desktop JVM
         run: tools/verification/build/install/verification/bin/verification desktop-native-smoke --output reports/desktop-native
       - uses: actions/download-artifact@v8
@@ -468,6 +510,8 @@ jobs:
           retention-days: 14
 
   desktop_intel:
+    needs: [source_policy]
+    if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.desktop_intel.required
     name: ci/desktop (macos-x86_64-rosetta)
     runs-on: macos-latest
     timeout-minutes: 60
@@ -494,8 +538,12 @@ jobs:
           cache-read-only: true
       - name: Build actual Intel runtime, Skiko, Rust and DMG on ARM
         run: ./gradlew :app:desktop:packageDmg :app:desktop:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g
-      - name: Build and test distribution verifier
-        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
       - name: Mount, install and launch the real DMG twice
         run: tools/verification/build/install/verification/bin/verification desktop-intel-dmg --dmg app/desktop/build/compose/binaries/main/dmg --output reports/desktop-intel
       - name: Retain Intel package and measured evidence
@@ -514,7 +562,8 @@ jobs:
 
   desktop_intel_native:
     name: ci/desktop (macos-x86_64-native)
-    needs: [desktop_intel, shared_kmp]
+    needs: [source_policy, desktop_intel, shared_kmp]
+    if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.desktop_intel_native.required
     # Consumption only: the sole product DMG is built above on macos-latest ARM64.
     runs-on: macos-26-intel
     timeout-minutes: 30
@@ -540,8 +589,12 @@ jobs:
         with:
           validate-wrappers: true
           cache-read-only: true
-      - name: Build and test consumer verification tools
-        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
       - name: Install and launch the same ARM-produced DMG on Intel
         run: >-
           tools/verification/build/install/verification/bin/verification desktop-intel-native
@@ -567,7 +620,8 @@ jobs:
 
   desktop_linux_arm64:
     name: ci/desktop (linux-aarch64-runtime)
-    needs: [shared_kmp]
+    needs: [source_policy, shared_kmp]
+    if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.desktop_linux_arm64.required
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
     steps:
@@ -601,8 +655,12 @@ jobs:
           set -euo pipefail
           mkdir -p reports
           ./gradlew -p app/desktop createDistributable spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g 2>&1 | tee reports/desktop-linux-build.log
-      - name: Build and test runtime verifier
-        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
       - name: Install and launch bundled Linux ARM64 runtime twice
         env:
           # Xvfb has no guaranteed GL context. Still draw real Skia frames in both real windows.
@@ -634,7 +692,8 @@ jobs:
 
   windows_native_core:
     name: ci/rust-native (windows-arm64-core)
-    needs: [shared_kmp]
+    needs: [source_policy, shared_kmp]
+    if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.windows_native_core.required
     runs-on: windows-11-arm
     timeout-minutes: 60
     steps:
@@ -646,9 +705,10 @@ jobs:
         with:
           validate-wrappers: true
           cache-read-only: true
-      - name: Build Windows native verifier
-        # Full verifier tests remain mandatory in the existing Linux/macOS jobs (Unix workflow fixtures).
-        run: .\gradlew.bat -p tools/verification installDist spotlessCheck --console=plain --no-daemon
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
       - name: Build real ARM64 codecs and run complete Core and C ABI tests
         run: .\tools\verification\build\install\verification\bin\verification.bat windows-native-core --output reports/windows-native-core
       - name: Call real Rust owned results from native Windows ARM64 JVM
@@ -733,6 +793,7 @@ jobs:
   release_dry_run:
     name: ci/release-dry-run
     needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core, source_policy, shared_kmp]
+    if: needs.source_policy.outputs.tier == 'full'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -748,8 +809,12 @@ jobs:
         with:
           validate-wrappers: true
           cache-read-only: true
-      - name: Build and test actual staged package verifier
-        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
       - name: Install the original pinned APK verification tools
         run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" "build-tools;37.0.0" "ndk;29.0.14206865"'
       - name: Verify actual source-bound packages without production keys or publication
@@ -781,16 +846,34 @@ jobs:
     needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core, source_policy, shared_kmp, release_dry_run]
     runs-on: ubuntu-latest
     steps:
-      - name: Require Android, snapshot, iOS, desktop JNI, Intel DMG, Linux ARM64 runtime and Windows native Core
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Require every check selected by the source-bound plan
         env:
-          ANDROID_RESULT: ${{ needs.android.result }}
-          IOS_RESULT: ${{ needs.ios.result }}
-          RUST_HOST_RESULT: ${{ needs.rust_host.result }}
-          INTEL_DMG_RESULT: ${{ needs.desktop_intel.result }}
-          INTEL_NATIVE_RESULT: ${{ needs.desktop_intel_native.result }}
-          LINUX_ARM64_RESULT: ${{ needs.desktop_linux_arm64.result }}
-          WINDOWS_CORE_RESULT: ${{ needs.windows_native_core.result }}
-          SOURCE_POLICY_RESULT: ${{ needs.source_policy.result }}
-          SHARED_KMP_RESULT: ${{ needs.shared_kmp.result }}
-          RELEASE_DRY_RUN_RESULT: ${{ needs.release_dry_run.result }}
-        run: test "$ANDROID_RESULT" = success && test "$IOS_RESULT" = success && test "$RUST_HOST_RESULT" = success && test "$INTEL_DMG_RESULT" = success && test "$INTEL_NATIVE_RESULT" = success && test "$LINUX_ARM64_RESULT" = success && test "$WINDOWS_CORE_RESULT" = success && test "$SOURCE_POLICY_RESULT" = success && test "$SHARED_KMP_RESULT" = success && test "$RELEASE_DRY_RUN_RESULT" = success
+          CI_PLAN: ${{ needs.source_policy.outputs.plan }}
+          CI_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          chmod +x tools/verification/build/install/verification/bin/verification
+          tools/verification/build/install/verification/bin/verification ci-gate
+      - name: Record every actual result, including failures
+        if: always()
+        env:
+          CI_RESULTS: ${{ toJSON(needs) }}
+          CI_TIER: ${{ needs.source_policy.outputs.tier }}
+        run: |
+          {
+            # Backticks below are Markdown literals, not command substitutions.
+            # shellcheck disable=SC2016
+            printf '### Actual job results (%s)\n\nSource: `%s`\n\n| Job | Result |\n| --- | --- |\n' "$CI_TIER" "$GITHUB_SHA"
+            jq -r 'to_entries[] | "| \(.key) | \(.value.result) |"' <<< "$CI_RESULTS"
+            printf '\n[Actions run](https://github.com/%s/actions/runs/%s)\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+          } >> "$GITHUB_STEP_SUMMARY"

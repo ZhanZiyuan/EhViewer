@@ -42,6 +42,22 @@ class StagedArtifactInputsTest {
         }
     }
 
+    @Test fun onlySameRunSourceBoundSharedVerifierMayAccompanyActualPackageInputs() {
+        val context = fixture(event = "pull_request")
+        val catalog = context["catalog"].obj()
+        val entries = catalog["artifacts"].array()
+        val tool = entries.first().obj() + mapOf("id" to 999, "name" to "verification-tools-$source")
+        fun changed(value: Map<String, Any?>): Map<String, Any?> {
+            val updated = catalog + mapOf("total_count" to entries.size + 1, "artifacts" to (entries + value))
+            return context + mapOf("catalog" to updated, "android_catalog" to updated)
+        }
+        assertEquals(23, stagedArtifactPlan(changed(tool), source, repository).size)
+        rejects { stagedArtifactPlan(changed(tool + ("expired" to true)), source, repository) }
+        rejects { stagedArtifactPlan(changed(tool + ("workflow_run" to mapOf("id" to 99, "head_sha" to "2".repeat(40)))), source, repository) }
+        rejects { stagedArtifactPlan(changed(tool + ("workflow_run" to mapOf("id" to 100, "head_sha" to "3".repeat(40)))), source, repository) }
+        rejects { stagedArtifactPlan(changed(tool + ("name" to "verification-tools-undeclared")), source, repository) }
+    }
+
     @Test fun everyMissingFailedCancelledSkippedNeutralOrPendingUpstreamIsRejected() {
         val context = fixture()
         val jobs = context["jobs"].obj()["jobs"].array().map(Any?::obj)

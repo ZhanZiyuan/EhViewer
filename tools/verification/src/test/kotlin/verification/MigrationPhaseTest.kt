@@ -1,36 +1,40 @@
 package verification
 
-import java.nio.file.Files
-import java.nio.file.Path
-import kotlin.io.path.readText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
+/** Phase coverage is independent of YAML layout; execution requirements live in CiPlanTest. */
 class MigrationPhaseTest {
-    private val workflow = generateSequence(Path.of("").toAbsolutePath()) { it.parent }
-        .map { it.resolve(".github/workflows/ci.yml") }.first(Files::isRegularFile).readText()
     private val source = "eab4c8b53845438d66b7f37f93b57458a11a6fb9"
     private val settings = "val releaseVersion = \"1.15.10\"\nversionCode = 180074\n"
+    private fun report() = migrationPhaseContract(source, settings)
 
     @Test fun currentCoverageCannotClaimM3OrFinalAssetsAccepted() {
-        val report = migrationPhaseContract(workflow, source, settings)
+        val report = report()
         assertEquals("M3", report["milestone"])
         for (key in listOf("milestone_complete", "artifacts_verified", "product_p0_verified", "publish_enabled")) assertEquals(key, false, report[key])
-        assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_product_core_targets"])
-        assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_module_targets"].obj()["domain"])
-        assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_module_targets"].obj()["common"])
+    }
+
+    @Test fun retainedModuleCoverageIsExplicit() {
+        val report = report()
+        for (module in listOf("domain", "common")) assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_module_targets"].obj()[module])
         for (module in listOf("data", "i18n", "ui")) assertEquals(listOf("android"), report["shared_module_targets"].obj()[module])
+    }
+
+    @Test fun nativeAndJvmExecutionSurfacesRemainRecorded() {
+        val report = report()
         assertEquals(listOf("desktop_intel_native", "desktop_linux_arm64", "rust_host", "windows_native_core"), report["common_jvm_evidence_jobs"])
         assertEquals(listOf("iosArm64", "iosSimulatorArm64"), report["domain_ios_targets"])
         assertEquals("ios", report["domain_ios_evidence_job"])
-        assertEquals(listOf("rust_host", "desktop_intel"), report["ios_admission_dependencies"])
-        assertEquals("NOT_INTEGRATED", report["ios_product_domain_integration"])
-        assertEquals("NOT_INTEGRATED", report["desktop_product_domain_integration"])
-        assertEquals(emptySet<String>(), report["pending_check_categories"].obj().keys)
-        assertEquals(6, report["staged_candidate_targets"].array().size)
-        assertEquals(5, report["remaining_final_package_targets"].array().size)
-        val targets = report["target_coverage"].array().map { it.obj() }
+    }
+
+    @Test fun productIntegrationCannotBeInferredFromProbes() {
+        for (key in listOf("ios_product_domain_integration", "desktop_product_domain_integration")) assertEquals("NOT_INTEGRATED", report()[key])
+    }
+
+    @Test fun everyDeliveryTargetRetainsItsActualCurrentScope() {
+        val targets = report()["target_coverage"].array().map(Any?::obj)
         assertEquals(11, targets.size)
         assertEquals(releaseTargets.map { it.id }.toSet(), targets.map { it.str("id") }.toSet())
         targets.forEach { assertEquals("NOT_VERIFIED", it["final_delivery_acceptance"]) }
@@ -38,69 +42,25 @@ class MigrationPhaseTest {
         for (id in listOf("macos-arm64", "linux-x64")) assertEquals("HOST_JNI_ONLY", targets.single { it["id"] == id }["available_ci_surface"])
     }
 
-    @Test fun missingExtraOrDuplicatedJobsCannotSilentlyChangePhase() {
-        for (changed in listOf(workflow.replace("  ios:\n", "  hidden_ios:\n"), workflow + "\n  future_target:\n", workflow + "\n  source_policy:\n", workflow.substringBefore("jobs:\n"))) {
-            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(changed, source, settings) }
-        }
-    }
-
-    @Test fun eachMissingOrDuplicateDependencyAndConditionalGateFails() {
-        val dependencies = listOf("android", "ios", "rust_host", "desktop_intel", "desktop_intel_native", "desktop_linux_arm64", "windows_native_core", "source_policy", "shared_kmp", "release_dry_run")
-        val original = "needs: [${dependencies.joinToString(", ")}]"
-        for (removed in dependencies) {
-            val changed = workflow.replace(original, "needs: [${dependencies.filter { it != removed }.joinToString(", ")}]")
-            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(changed, source, settings) }
-        }
-        for (changed in listOf(workflow.replace(original, "needs: [${(dependencies + "ios").joinToString(", ")}]"), workflow.replace("name: ci/gate\n    if: always()", "name: ci/gate\n    if: success()"))) {
-            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(changed, source, settings) }
-        }
+    @Test fun onlySixCandidatesAreCurrentlyIntegrated() {
+        assertEquals(6, report()["staged_candidate_targets"].array().size)
+        assertEquals(5, report()["remaining_final_package_targets"].array().size)
     }
 
     @Test fun invalidSourceCannotProducePhaseEvidence() {
         for (sha in listOf("0".repeat(40), "eab4c8b53", "F".repeat(40), "1".repeat(39))) {
-            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(workflow, sha, settings) }
+            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(sha, settings) }
         }
-    }
-
-    @Test fun extraValidOrQuotedJobHeadersCannotHideFromPhase() {
-        for (header in listOf("future-target:", "FutureTarget:", "\"future_target\":", "'future_target':", "future_target: # undeclared platform")) {
-            val added = "\n  $header\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo phase-contract-fixture\n"
-            assertThrows(header, IllegalArgumentException::class.java) { migrationPhaseContract(workflow + added, source, settings) }
-        }
-    }
-
-    @Test fun commentsOnReviewedJobHeadersPreserveCoverage() {
-        val changed = workflow.replace("jobs:\n", "jobs: # current phase\n  # Reviewed mandatory jobs\n")
-            .replace("  source_policy:\n", "  source_policy: # source and phase evidence\n")
-            .replace("  gate:\n", "  gate: # always required\n")
-        assertEquals(migrationPhaseContract(workflow, source, settings), migrationPhaseContract(changed, source, settings))
     }
 
     @Test fun prematureVersionChangesAndAmbiguousAuthorityFail() {
         for (changed in listOf(settings.replace("1.15.10", "1.16.0"), settings.replace("180074", "180075"), settings.replace("180074", "0"), settings + settings, "")) {
-            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(workflow, source, changed) }
+            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(source, changed) }
         }
     }
 
-    @Test fun missingActualCommonProducerBarriersCannotPassThePhase() {
-        for (job in listOf("rust_host", "desktop_linux_arm64", "windows_native_core", "desktop_intel_native")) {
-            val before = workflow.substringBefore("  $job:\n")
-            val section = workflow.substringAfter("  $job:\n")
-            val changed = before + "  $job:\n" + section.replaceFirst(Regex("(?m)^    needs: \\[[^\\n]+]$"), "    needs: []")
-            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(changed, source, settings) }
-        }
-    }
-
-    @Test fun iosAdmissionMustWaitForBothHostAndLongRunningArmProducer() {
-        val before = workflow.substringBefore("  ios:\n")
-        val after = workflow.substringAfter("  ios:\n")
-        for (needs in listOf("rust_host", "[]", "[rust_host]", "[desktop_intel]", "[rust_host, rust_host, desktop_intel]", "[rust_host, desktop_intel, desktop_intel]", "[rust_host, desktop_intel_native]")) {
-            val changed = before + "  ios:\n" + after.replaceFirst(Regex("(?m)^    needs: [^\\n]+$"), "    needs: $needs")
-            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(changed, source, settings) }
-        }
-        for (condition in listOf("", "    if: success()", "    if: false")) {
-            val changed = before + "  ios:\n" + after.replaceFirst("    if: always()", condition)
-            assertThrows(IllegalArgumentException::class.java) { migrationPhaseContract(changed, source, settings) }
-        }
+    @Test fun stableAndroidRegressionsAreDeclaredWithoutDependingOnJobOrder() {
+        assertEquals(".github/ci-plan.json", report()["ci_policy"])
+        assertEquals(listOf("android", "shared_kmp", "source_policy"), report()["always_required_jobs"])
     }
 }

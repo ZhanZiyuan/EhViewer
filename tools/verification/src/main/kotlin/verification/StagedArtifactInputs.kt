@@ -94,7 +94,14 @@ fun stagedArtifactPlan(context: Map<String, Any?>, source: String, repository: S
     if (!reused) result += StagedArtifact("android-reports", available.single { it["name"] == "verification-reports" }, currentCatalog, current)
     if (diagnostics != null) result += diagnostics
     val selectedCurrentNames = result.filter { it.runId == (current["id"] as Number).toLong() }.map { it.metadata.str("name") }.toSet()
-    require(available.map { it.str("name") }.toSet() - setOf("staged-dry-run-$source") == selectedCurrentNames) { "Missing or unexpected current-run artifact" }
+    // The tested verifier is shared by jobs; it is tooling, not a release candidate input.
+    require(available.map { it.str("name") }.toSet() - setOf("staged-dry-run-$source", "verification-tools-$source") == selectedCurrentNames) { "Missing or unexpected current-run artifact" }
+    available.singleOrNull { it["name"] == "verification-tools-$source" }?.let { artifact ->
+        require(
+            artifact["expired"] == false && artifact["workflow_run"].obj()["head_sha"] == current["head_sha"] &&
+                (artifact["workflow_run"].obj()["id"] as Number).toLong() == (current["id"] as Number).toLong(),
+        ) { "Shared verifier must belong to this run/source" }
+    }
     result.forEach { artifact ->
         val owner = artifact.metadata["workflow_run"].obj()
         require((owner["id"] as Number).toLong() == artifact.runId && owner["head_sha"] == artifact.run["head_sha"] && artifact.metadata["expired"] == false) { "Selected artifact provenance changed or expired" }
@@ -145,7 +152,8 @@ fun fetchStagedInputs(repository: String, runId: Long, androidRunId: Long, outpu
             try {
                 val finished = process.waitFor(10, TimeUnit.MINUTES)
                 if (finished && process.exitValue() == 0) {
-                    require(Files.size(partial) == (artifact.metadata["size_in_bytes"] as Number).toLong() && "sha256:${sha256(partial)}" == artifact.metadata["digest"]) { "Downloaded artifact differs from its official digest" }
+                    // inspectArtifactArchive performs the authoritative digest/CRC/payload pass once.
+                    require(Files.size(partial) == (artifact.metadata["size_in_bytes"] as Number).toLong()) { "Incomplete downloaded artifact" }
                     Files.move(partial, archive)
                     downloaded = true
                     break

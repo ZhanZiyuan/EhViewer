@@ -7,6 +7,8 @@ fun main(args: Array<String>) {
     val result: Any = when (args[0]) {
         "architecture" -> verifyArchitecture()
         "source-policy" -> verifySourcePolicy()
+        "ci-plan" -> writeCiPlan()
+        "ci-gate" -> verifyCiGate()
         "migration-phase" -> verifyMigrationPhase()
         "shared-core" -> verifySharedCore(options.path("--output"))
         "common-jvm" -> commonJvmArtifact(options.path("--input"), options.path("--output"))
