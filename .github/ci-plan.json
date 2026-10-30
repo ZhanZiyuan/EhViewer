@@ -23,7 +23,7 @@
   ],
   "fast_patterns": ["^app/src/", "^docs/", "^README", "^LICENSE", "^\\.gitignore$", "^\\.editorconfig$"],
   "dependencies": {
-    "ios": ["rust_host", "desktop_intel"],
+    "ios": [],
     "rust_host": ["shared_kmp"],
     "desktop_intel_native": ["desktop_intel", "shared_kmp"],
     "desktop_linux_arm64": ["shared_kmp"],

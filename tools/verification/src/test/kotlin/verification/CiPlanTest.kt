@@ -36,9 +36,10 @@ class CiPlanTest {
     }
 
     @Test fun iosAndDesktopChangesIncludeAllRealProducerDependencies() {
-        val ios = required(plan("app/ios/src/iosMain/Main.kt"))
-        assertTrue(ios.containsAll(listOf("ios", "rust_host", "desktop_intel", "shared_kmp")))
-        assertFalse(ios.contains("windows_native_core"))
+        val iosPlan = plan("app/ios/src/iosMain/Main.kt")
+        val ios = required(iosPlan)
+        assertEquals(setOf("source_policy", "shared_kmp", "android", "ios"), ios)
+        assertEquals("PASS", ciGate(iosPlan, results(iosPlan), sha)["result"])
         val desktop = required(plan("app/desktop/src/main/Main.kt"))
         assertTrue(desktop.containsAll(listOf("rust_host", "desktop_intel", "desktop_intel_native", "windows_native_core", "desktop_linux_arm64")))
     }
@@ -58,7 +59,7 @@ class CiPlanTest {
     }
 
     @Test fun missingFailedCancelledSkippedNeutralOrPendingRequiredResultsNeverPass() {
-        for (plan in listOf(plan("README.md"), plan("core/common/src/Api.kt"), plan("native/rust/core/src/lib.rs"))) {
+        for (plan in listOf(plan("README.md"), plan("app/ios/src/iosMain/Main.kt"), plan("core/common/src/Api.kt"), plan("native/rust/core/src/lib.rs"))) {
             val actual = results(plan)
             for (job in required(plan)) {
                 rejects { ciGate(plan, actual - job, sha) }

@@ -5,9 +5,9 @@ import org.junit.Test
 
 class GalleryValidationTest {
     @Test fun actualCookieAndRepositorySuitesCannotBeSkippedOrOmitted() {
-        val good = mapOf("status" to "PASS", "executed" to true, "tests" to 39, "suites" to mapOf("GalleryRepositoryTest[desktop]" to 10, "PersistentCookieStorageTest[desktop]" to 11, "GalleryContentRepositoryTest[desktop]" to 10, "GalleryAuthenticationRepositoryTest[desktop]" to 8))
+        val good = mapOf("status" to "PASS", "executed" to true, "tests" to 46, "suites" to mapOf("GalleryRepositoryTest[desktop]" to 10, "PersistentCookieStorageTest[desktop]" to 11, "GalleryContentRepositoryTest[desktop]" to 10, "GalleryAuthenticationRepositoryTest[desktop]" to 8, "BrowserSignInTest[desktop]" to 7))
         verifyNetworkTests(good)
-        verifyNetworkTests(good + mapOf("tests" to 41, "suites" to (good["suites"].obj() + ("AdditionalNetworkTest[desktop]" to 2))))
+        verifyNetworkTests(good + mapOf("tests" to 48, "suites" to (good["suites"].obj() + ("AdditionalNetworkTest[desktop]" to 2))))
         for (bad in listOf(good + ("executed" to false), good + ("status" to "SKIPPED"), good + ("tests" to 0), good + ("suites" to mapOf("GalleryRepositoryTest" to 18)))) {
             assertThrows(IllegalArgumentException::class.java) { verifyNetworkTests(bad) }
         }

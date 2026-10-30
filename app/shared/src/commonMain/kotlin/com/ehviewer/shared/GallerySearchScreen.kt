@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
-fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, onReady: () -> Unit = {}) {
+fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, browserFactory: ((String) -> GalleryLoginBrowser)? = null, onReady: () -> Unit = {}) {
     var query by rememberSaveable { mutableStateOf("") }
     var loadedQuery by remember { mutableStateOf("") }
     var page by remember { mutableStateOf<GallerySearchResult?>(null) }
@@ -100,7 +100,7 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
             Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
                 Column(Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
                     if (account) {
-                        GalleryAccountScreen(session, onIdentityAction = {
+                        GalleryAccountScreen(session, browserFactory, onIdentityAction = {
                             request?.cancel()
                             generation++
                             selected = null

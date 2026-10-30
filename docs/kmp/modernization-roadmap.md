@@ -2,6 +2,8 @@
 
 # 现代化路线与阶段门禁
 
+本轮先交付 iOS 原生浏览器登录入口：共享 CMP 导航和确认，Kotlin/Native 嵌入独立 WKWebView，无 Swift/自维护 JavaScript。真实 HttpOnly Cookie 交接在公共 KMP 检查身份、范围、期限及会话代次后才原子写入 Keychain；取消不写入。网络 Android/JVM/Native 各 46、阅读器各 20、真实 WebKit/Keychain 双冷启动及原 Android 验收任务通过，iPhone/iPad 官方验证页、窄屏/横屏和取消已测。托管 CI 仍需独立验证；网站验证码/真实账号、桌面与 Android 浏览器接入、配置与数据迁移仍待完成，M3 不标记完成。参见[浏览器切片的参考、验证与限制](browser-sign-in.md)。
+
 当前账户切片已接入同一 CMP 登录/退出表单和真实 Ktor 事务：成功后单次写入 OS vault，失败保留旧会话，退出使在途登录失效，取消后重读真实存储；Android/JVM/Native 各 39 项网络测试、原 20 项阅读器测试和 Android 完整验收任务通过，iPad 输入/遮罩/返回清空及用户名 IME 修复已实测。上一阅读器 SHA `4e791db93` 已通过全部 12 个必需 Job、gate 与 dry-run，本切片仍须自己的独立 CI；认证浏览器跳转、Android 共享接入与数据库/配置迁移仍待完成，M3 不标记完成。范围与许可见[共享账户与认证](gallery-authentication.md)。
 
 阅读进度恢复、RTL 与连续阅读已完成本地产品验收：20 项阅读器测试在 Android/JVM/Native 均通过，实际 macOS 重启恢复第 5 页，iPad 容器迁移后恢复第 102 页/连续模式/RTL；快速拖动限速和横屏保留第 3 页也已运行。修复了真实重装发现的 OS vault 绝对目录标识问题，保留密钥和密文。前一修复 `12820976e` 已通过全部 12 个适用 Job、gate 与 dry-run，本功能仍需独立 SHA 的必需 CI。设计、参考差异与额外库 lint 的未通过记录见[阅读进度与连续阅读](reader-progress-and-continuous.md)。完整 M3 的认证、Android 接入、数据库/共享配置等仍未完成。

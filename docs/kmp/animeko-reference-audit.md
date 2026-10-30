@@ -1,5 +1,7 @@
 # Animeko → EhViewer 只读参考审计
 
+本轮浏览器登录使用共同 CMP 账户/确认界面及 Kotlin/Native WKWebView，Cookie 由真实 WebKit HttpOnly API 交给公共 KMP 事务并写入 OS vault。按需复阅 `SessionStateProvider.kt` 与 `CommonKoinModule.kt` 的 WebSession 接线，只采用会话所有权、网络/浏览器身份边界；拒绝 OAuth 状态、Koin 图、页面求值器和自动识别器，无 AGPL 代码、脚本或依赖复制。目标、差异、许可证和实际验证见[原生浏览器登录](browser-sign-in.md)。46 项网络测试已在 Android/JVM/Native 执行，实际 Keychain/WebKit 双启动检查及 iPhone/iPad 不完整登录/取消路径通过；站点验证码及真实账户登录未完成，桌面/Android 浏览器适配和完整 M3 仍未完成。参考快照和旧审计结果保留。
+
 共享认证切片沿用已审阅的 `app/shared/app-data/src/commonMain/kotlin/domain/session/SessionStateProvider.kt` 和 `app/shared/application/src/commonMain/kotlin/platform/CommonKoinModule.kt` 的职责边界概念，独立实现 EhViewer 自身论坛协议、临时 HTTP Cookie 事务、OS vault 单次提交与 CMP 账户 UI；拒绝 OAuth、刷新协议、服务查找和参考依赖图，不复制 AGPL 实现。目标、差异、许可与 Android/JVM/Native/实际账户表单验证见[共享认证](gallery-authentication.md)；浏览器接入与完整 M3 仍未完成。
 
 阅读进度与连续阅读：按需只读审阅 `app/shared/app-data/src/commonMain/kotlin/data/persistent/SettingsStore.kt` 和 `app/shared/app-data/src/commonMain/kotlin/data/repository/media/EpisodePreferencesRepository.kt` 的公共状态与平台存储边界。EhViewer 独立实现图库进度、方向和连续阅读，使用已验证的 OS vault，保留损坏状态并显式报错；不复制自动重置策略、视频模型、服务查找或依赖图。目标文件、采用/改造/拒绝与许可处理见[阅读进度与连续阅读](reader-progress-and-continuous.md)；实际验证按执行结果补充，M3 仍未完成。

@@ -140,6 +140,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val readerEvidence = sharedHostTestEvidence(readerXml.map(Path::readBytes), filesBelow(root.resolve("app/shared/src/commonTest"), ".kt").size)
     require(readerEvidence == iosReader - setOf("execution", "test_executable_sha256")) { "Actual Native reader XML differs from its producer receipt" }
     require(ios["gallery_product_checks_by_launch"].array() == listOf(3, 3)) { "Missing actual iOS detail/page/image decoder checks" }
+    require(ios["browser_cookie_checks_by_launch"].array() == listOf(4, 4)) { "Missing actual WebKit cookie transfer checks" }
     val iosSession = ios["session_backend_tests"].obj()
     require(iosSession["result"] == "PASS" && iosSession["passed"] == 3 && iosSession["ignored"] == 0 && iosSession["execution"] == "REAL_IOS_KEYCHAIN_ON_OWNED_SIMULATOR")
     require(sha256(path("ios", "session-tests.kexe")) == iosSession["test_executable_sha256"] && sha256(path("ios", "session-entitlements.plist")) == iosSession["simulator_identity_sha256"])
@@ -155,7 +156,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     for (name in listOf("first", "second")) {
         val pid = ios["${name}_pid"]
         val stderr = path("ios", "$name-cold-start.stderr.log").readText()
-        for (marker in listOf("cold-start", "compose-ready", "rust-ffi-ready completed=2000 live=0")) require(stderr.lineSequence().any { "EhViewer[$pid:" in it && "EhViewerM1:$marker" in it }) { "Independent per-PID iOS stderr differs" }
+        for (marker in listOf("cold-start", "compose-ready", "rust-ffi-ready completed=2000 live=0", "browser-cookie-ready checks=4")) require(stderr.lineSequence().any { "EhViewer[$pid:" in it && "EhViewerM1:$marker" in it }) { "Independent per-PID iOS stderr differs" }
     }
     val headers = listOf("aarch64-apple-ios", "aarch64-apple-ios-sim").map { path("apple-rust", "$it/include/ehviewer_capi.h") }
     headers.forEach { verifyGalleryCapiHeader(it.readText()) }

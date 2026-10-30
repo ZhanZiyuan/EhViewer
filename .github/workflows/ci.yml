@@ -380,8 +380,8 @@ jobs:
         run: rm -rf .private-signing "$RUNNER_TEMP/private-snapshot" "$RUNNER_TEMP/snapshot-public.pem"
 
   ios:
-    # Admit iOS after both ARM producers finish; this only limits hosted runner demand.
-    needs: [source_policy, rust_host, desktop_intel]
+    # iOS consumes only the source verifier; unrelated desktop jobs must not serialize it.
+    needs: [source_policy]
     if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.ios.required
     name: ci/ios
     runs-on: macos-latest

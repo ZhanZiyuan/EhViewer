@@ -31,6 +31,12 @@ class GalleryAuthenticationRepository(
 ) {
     private val signInMutex = Mutex()
 
+    suspend fun beginBrowserSignIn(): BrowserSignInTransaction = try {
+        BrowserSignInTransaction(cookies, cookies.authenticationGeneration())
+    } catch (_: SessionStorageException) {
+        throw GalleryRequestException(GalleryFailure.SESSION_STORAGE)
+    }
+
     suspend fun signIn(username: String, password: String) {
         require(username.isNotBlank() && username.length <= 256 && password.isNotEmpty() && password.length <= 4096) { "Enter a supported username and password" }
         signInMutex.withLock {

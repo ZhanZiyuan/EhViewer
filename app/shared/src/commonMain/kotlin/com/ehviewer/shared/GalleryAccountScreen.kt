@@ -43,7 +43,7 @@ import kotlinx.coroutines.launch
 
 /** Common account UI. Credentials stay in composition memory and never enter saved instance state. */
 @Composable
-internal fun GalleryAccountScreen(session: GallerySession, onIdentityAction: () -> Unit, onBack: () -> Unit) {
+internal fun GalleryAccountScreen(session: GallerySession, browserFactory: ((String) -> GalleryLoginBrowser)?, onIdentityAction: () -> Unit, onBack: () -> Unit) {
     var signedIn by remember { mutableStateOf<Boolean?>(null) }
     var checking by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
@@ -54,6 +54,14 @@ internal fun GalleryAccountScreen(session: GallerySession, onIdentityAction: () 
     var operation by remember { mutableStateOf<Job?>(null) }
     var generation by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
+    var browser by remember { mutableStateOf(false) }
+    if (browser && browserFactory != null) {
+        GalleryBrowserSignInScreen(session, browserFactory, onBack = { browser = false }, onSignedIn = {
+            browser = false
+            checkAttempt++
+        })
+        return
+    }
     LaunchedEffect(session, checkAttempt) {
         checking = true
         try {
@@ -124,6 +132,13 @@ internal fun GalleryAccountScreen(session: GallerySession, onIdentityAction: () 
                         keyboardActions = KeyboardActions(onDone = { if (!busy && username.isNotBlank() && password.isNotEmpty()) perform(signOut = false) }),
                     )
                     Button(onClick = { perform(signOut = false) }, enabled = !busy && !checking && username.isNotBlank() && password.isNotEmpty()) { Text("Sign in") }
+                    if (browserFactory != null) {
+                        TextButton(enabled = !busy && !checking, onClick = {
+                            password = ""
+                            onIdentityAction()
+                            browser = true
+                        }) { Text("Sign in with browser") }
+                    }
                 }
                 null -> if (!checking) TextButton(onClick = { checkAttempt++ }) { Text("Retry saved session") }
             }

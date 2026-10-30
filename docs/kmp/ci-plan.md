@@ -14,6 +14,8 @@ This is the current migration matrix, not a declaration that all five final appl
 
 `.github/ci-plan.json` declares paths, mandatory jobs and producer dependencies. Kotlin computes a dependency closure and records each path's reason, source SHA, PR head and comparison baseline. It compares the actual merge against the newest reachable successful CI head belonging to the same PR. The first run, unavailable matching history, main and manual Full requests select Full. An API error fails planning; it cannot authorize a narrower plan. Failed commits are included in the next diff because they cannot become the successful baseline.
 
+The iOS browser slice removes an old capacity-only scheduling dependency: the iOS job consumes the source verifier, not desktop Intel or Rust-host artifacts. It can start after source verification. An iOS-only implementation change still requires source/shared/Android/iOS checks; shared public APIs continue to require every integrated platform, and Full still requires every original job and dry-run. Behavioral tests reject every missing/failed/cancelled/skipped required iOS-plan result. Hosted runner availability can still queue jobs; elapsed improvement is not claimed before the new run.
+
 Phase completion must update `docs/kmp/milestones/Mx.json`; that path forces Full. Changes to any Gradle script, version catalog, Native source, CI policy, release workflow or changelog also force Full. Before merging, run Full again on the final head. `workflow_dispatch` defaults to Full. Do not label a stage complete until its product acceptance and this run both succeed.
 
 ## Stable gate and receipts

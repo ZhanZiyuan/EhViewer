@@ -11,7 +11,7 @@ import io.ktor.client.engine.HttpClientEngine
 expect fun platformNetworkEngine(): HttpClientEngine
 
 /** One application-owned engine, secure cookie store and repository; closing releases the engine. */
-class GallerySession(vault: SessionVault, decoder: GalleryDocumentDecoder, userAgent: String, restricted: Boolean = false) : AutoCloseable {
+class GallerySession(vault: SessionVault, decoder: GalleryDocumentDecoder, val userAgent: String, restricted: Boolean = false) : AutoCloseable {
     val cookies = PersistentCookieStorage(vault)
     private val engine = platformNetworkEngine()
     private val client = try {
