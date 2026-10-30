@@ -47,19 +47,36 @@ fun stagedArtifactPlan(context: Map<String, Any?>, source: String, repository: S
     require(repository == "ZhanZiyuan/EhViewer" && Regex("[0-9a-f]{40}").matches(source) && source != "0".repeat(40)) { "Unexpected target repository/source" }
     fun run(value: Map<String, Any?>) {
         require((value["id"] as Number).toLong() > 0 && value["repository"].obj()["full_name"] == repository && value["head_repository"].obj()["full_name"] == repository && value["path"] == ".github/workflows/ci.yml") { "Expected an actual target CI run" }
-        require(value["event"] in setOf("push", "pull_request", "workflow_dispatch") && Regex("[0-9a-f]{40}").matches(value.str("head_sha"))) { "Unexpected CI event/head" }
-        require(value["status"] == "in_progress" || value["status"] == "completed" && value["conclusion"] == "success") { "A failed/cancelled or unstarted run cannot produce staged packages" }
+        require(value["event"] in setOf("push", "pull_request", "workflow_dispatch") && Regex("[0-9a-f]{40}").matches(value.str("head_sha")) && (value["run_attempt"] as Number).toInt() > 0) { "Unexpected CI event/head/attempt" }
     }
     val current = context["run"].obj().also(::run)
     require(current["event"] == "pull_request" || current["head_sha"] == source) { "Push/manual source differs from its actual head" }
-    val jobs = context["jobs"].obj()["jobs"].array().map(Any?::obj)
-    require((context["jobs"].obj()["total_count"] as Number).toInt() == jobs.size) { "Incomplete upstream job catalog" }
-    require(jobs.map { it.str("name") }.toSet().size == jobs.size && jobs.all { (it["run_id"] as Number).toLong() == (current["id"] as Number).toLong() }) { "Ambiguous or cross-run upstream jobs" }
-    require(jobs.map { it.str("name") }.toSet() - stagedUpstreamJobs - setOf("ci/gate", "ci/release-dry-run") == emptySet<String>()) { "Undeclared staging dependency" }
+    val history = context["jobs"].obj()["jobs"].array().map(Any?::obj)
+    require((context["jobs"].obj()["total_count"] as Number).toInt() == history.size) { "Incomplete upstream job catalog" }
+    val attempt = (current["run_attempt"] as Number).toInt()
+    require(history.all { (it["run_id"] as Number).toLong() == (current["id"] as Number).toLong() && (it["run_attempt"] as Number).toInt() in 1..attempt }) { "Cross-run or future-attempt upstream jobs" }
+    require(history.map { it.str("name") }.toSet() - stagedUpstreamJobs - setOf("ci/gate", "ci/release-dry-run") == emptySet<String>()) { "Undeclared staging dependency" }
+    // A failed-job rerun retains successful same-source producers from earlier attempts.
+    // Always use each job's latest result; an old success cannot mask a new failure.
+    val jobs = history.groupBy { it.str("name") }.map { (_, versions) ->
+        require(versions.map { it["run_attempt"] }.toSet().size == versions.size) { "Ambiguous upstream jobs within one attempt" }
+        versions.maxBy { (it["run_attempt"] as Number).toInt() }
+    }
     stagedUpstreamJobs.forEach { name ->
         val job = jobs.single { it["name"] == name }
         require(job["status"] == "completed" && job["conclusion"] == "success") { "Every integrated upstream job must actually succeed: $name" }
     }
+    val dryRun = jobs.singleOrNull { it["name"] == "ci/release-dry-run" }
+    val activeDryRun = dryRun?.get("status") == "in_progress" && dryRun["conclusion"] == null && (dryRun["run_attempt"] as Number).toInt() == attempt
+    // The run-level API can still say queued while this actual job is running.
+    // Completed failures stay rejected; queued alone never establishes readiness.
+    val ready = when (current["status"]) {
+        "completed" -> current["conclusion"] == "success"
+        "in_progress" -> current["conclusion"] == null
+        "queued", "waiting" -> current["conclusion"] == null && activeDryRun
+        else -> false
+    }
+    require(ready) { "Staging needs a successful run or an active same-attempt dry-run after every upstream success: status=${current["status"]}, conclusion=${current["conclusion"]}, attempt=$attempt" }
     val android = context["android_run"].obj().also(::run)
     val reused = android["id"] != current["id"]
     val trustedMain = current["head_branch"] == "main" && current["event"] in setOf("push", "workflow_dispatch") && current["head_sha"] == source
@@ -134,13 +151,13 @@ fun fetchStagedInputs(repository: String, runId: Long, androidRunId: Long, outpu
         "repository" to repository,
         "run" to current,
         "catalog" to currentCatalog,
-        "jobs" to api("actions/runs/$runId/jobs?per_page=100"),
+        "jobs" to api("actions/runs/$runId/jobs?filter=all&per_page=100"),
         "android_run" to android,
         "android_catalog" to if (androidRunId == runId) currentCatalog else api("actions/runs/$androidRunId/artifacts?per_page=100"),
     )
-    val plan = stagedArtifactPlan(context, source, repository)
     Files.createDirectory(output)
     output.resolve("context.json").writeText(json(context))
+    val plan = stagedArtifactPlan(context, source, repository)
     val archives = Files.createDirectory(output.resolve("archives"))
     stagedDownloads(plan) { artifact ->
         val archive = archives.resolve("${artifact.id}.zip")

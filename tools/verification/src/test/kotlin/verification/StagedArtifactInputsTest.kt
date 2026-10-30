@@ -13,7 +13,7 @@ class StagedArtifactInputsTest {
     private fun rejects(block: () -> Unit) = assertNotNull(runCatching(block).exceptionOrNull())
     private fun fixture(branch: String = "feature/kmp", event: String = "push"): Map<String, Any?> {
         val head = if (event == "pull_request") "2".repeat(40) else source
-        val run = mapOf("id" to 100, "head_sha" to head, "head_branch" to branch, "event" to event, "status" to "completed", "conclusion" to "success", "path" to ".github/workflows/ci.yml", "repository" to mapOf("full_name" to repository), "head_repository" to mapOf("full_name" to repository))
+        val run = mapOf("id" to 100, "run_attempt" to 1, "head_sha" to head, "head_branch" to branch, "event" to event, "status" to "completed", "conclusion" to "success", "path" to ".github/workflows/ci.yml", "repository" to mapOf("full_name" to repository), "head_repository" to mapOf("full_name" to repository))
         val prefixes = listOf("source-policy", "migration-phase", "shared-core", "desktop-native-linux-x86_64", "desktop-native-macos-arm64", "linux-arm64-runtime", "ios-startup", "ios-rust-build", "intel-dmg-on-arm", "intel-dmg-native", "windows-arm64-core", "windows-arm64-jvm", "windows-arm64-runtime", "windows-arm64-package", "windows-arm64-zip-launch", "domain-native", "common-native")
         var id = 200
         fun artifact(name: String): Map<String, Any?> = mapOf("id" to ++id, "name" to name, "expired" to false, "workflow_run" to mapOf("id" to 100, "head_sha" to head))
@@ -24,7 +24,7 @@ class StagedArtifactInputsTest {
         artifacts += artifact("snapshot-$source-${diagnostics?.get("id") ?: 0}-${apks.joinToString("-") { it["id"].toString() }}")
         artifacts += artifact("verification-reports")
         val catalog = mapOf("total_count" to artifacts.size, "artifacts" to artifacts)
-        val jobs = (stagedUpstreamJobs + setOf("ci/gate", "ci/release-dry-run")).map { mapOf("name" to it, "run_id" to 100, "status" to "completed", "conclusion" to "success") }
+        val jobs = (stagedUpstreamJobs + setOf("ci/gate", "ci/release-dry-run")).map { mapOf("name" to it, "run_id" to 100, "run_attempt" to 1, "status" to "completed", "conclusion" to "success") }
         return mapOf("repository" to repository, "run" to run, "android_run" to run, "catalog" to catalog, "android_catalog" to catalog, "jobs" to mapOf("total_count" to jobs.size, "jobs" to jobs))
     }
 
@@ -69,6 +69,54 @@ class StagedArtifactInputsTest {
                 rejects { stagedArtifactPlan(context + ("jobs" to mapOf("total_count" to changed.size, "jobs" to changed)), source, repository) }
             }
         }
+    }
+
+    @Test fun laggingQueuedRunNeedsEveryUpstreamSuccessAndAnActualCurrentAttemptDryRun() {
+        val context = fixture(event = "pull_request")
+        val original = context["run"].obj()
+        val jobs = context["jobs"].obj()["jobs"].array().map(Any?::obj)
+        fun changed(status: String, conclusion: String? = null, jobStatus: String = "in_progress", jobAttempt: Int = 1): Map<String, Any?> {
+            val run = original + mapOf("status" to status, "conclusion" to conclusion)
+            val active = jobs.map { if (it["name"] == "ci/release-dry-run") it + mapOf("status" to jobStatus, "conclusion" to null, "run_attempt" to jobAttempt) else it }
+            return context + mapOf("run" to run, "android_run" to run, "jobs" to mapOf("total_count" to active.size, "jobs" to active))
+        }
+        for (status in listOf("queued", "waiting", "in_progress")) assertEquals(23, stagedArtifactPlan(changed(status), source, repository).size)
+        for (status in listOf("queued", "waiting")) {
+            for (jobStatus in listOf("queued", "completed", "cancelled")) rejects { stagedArtifactPlan(changed(status, jobStatus = jobStatus), source, repository) }
+            rejects { stagedArtifactPlan(changed(status, jobAttempt = 2), source, repository) }
+        }
+        for (status in listOf("completed", "in_progress", "queued", "waiting", "requested", "unknown")) {
+            for (conclusion in listOf("failure", "cancelled", "skipped", "neutral")) rejects { stagedArtifactPlan(changed(status, conclusion), source, repository) }
+        }
+        rejects { stagedArtifactPlan(changed("completed"), source, repository) }
+        val incomplete = changed("queued")
+        val missing = incomplete["jobs"].obj()["jobs"].array().drop(1)
+        rejects { stagedArtifactPlan(incomplete + ("jobs" to mapOf("total_count" to missing.size, "jobs" to missing)), source, repository) }
+    }
+
+    @Test fun failedJobRerunsReuseOnlyTheLatestActualResultOfEverySameSourceProducer() {
+        val context = fixture(event = "pull_request")
+        val current = context["run"].obj() + mapOf("run_attempt" to 2, "status" to "queued", "conclusion" to null)
+        val previous = context["jobs"].obj()["jobs"].array().map(Any?::obj)
+        val active = previous.single { it["name"] == "ci/release-dry-run" } + mapOf("run_attempt" to 2, "status" to "in_progress", "conclusion" to null)
+        fun changed(extra: List<Map<String, Any?>>): Map<String, Any?> {
+            val history = previous + active + extra
+            return context + mapOf("run" to current, "android_run" to current, "jobs" to mapOf("total_count" to history.size, "jobs" to history))
+        }
+        assertEquals(23, stagedArtifactPlan(changed(emptyList()), source, repository).size)
+        for (name in stagedUpstreamJobs) {
+            val rerun = previous.single { it["name"] == name } + ("run_attempt" to 2)
+            assertEquals(23, stagedArtifactPlan(changed(listOf(rerun)), source, repository).size)
+            for (conclusion in listOf("failure", "cancelled", "skipped", "neutral", null)) {
+                rejects { stagedArtifactPlan(changed(listOf(rerun + ("conclusion" to conclusion))), source, repository) }
+            }
+        }
+        rejects { stagedArtifactPlan(changed(listOf(active)), source, repository) }
+        rejects { stagedArtifactPlan(changed(listOf(active + ("run_attempt" to 3))), source, repository) }
+        rejects { stagedArtifactPlan(changed(listOf(active + ("run_id" to 99))), source, repository) }
+        val stale = changed(emptyList())
+        val history = previous + (active + ("run_attempt" to 1))
+        rejects { stagedArtifactPlan(stale + ("jobs" to mapOf("total_count" to history.size, "jobs" to history)), source, repository) }
     }
 
     @Test fun incompleteDuplicatedCrossRunAndUndeclaredJobListsFail() {
