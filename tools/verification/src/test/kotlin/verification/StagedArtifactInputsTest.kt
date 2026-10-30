@@ -3,6 +3,7 @@ package verification
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -117,6 +118,100 @@ class StagedArtifactInputsTest {
         val stale = changed(emptyList())
         val history = previous + (active + ("run_attempt" to 1))
         rejects { stagedArtifactPlan(stale + ("jobs" to mapOf("total_count" to history.size, "jobs" to history)), source, repository) }
+    }
+
+    private fun observedPendingIos(): Map<String, Any?> {
+        val context = fixture(event = "pull_request")
+        val run = context["run"].obj() + mapOf("status" to "queued", "conclusion" to null)
+        val jobs = context["jobs"].obj()["jobs"].array().map { value ->
+            val job = value.obj()
+            when (job["name"]) {
+                "ci/ios" -> job + mapOf("status" to "in_progress", "conclusion" to null)
+                "ci/release-dry-run" -> job + mapOf("status" to "queued", "conclusion" to null)
+                else -> job
+            }
+        }
+        return context + mapOf("run" to run, "android_run" to run, "jobs" to mapOf("total_count" to jobs.size, "jobs" to jobs))
+    }
+
+    @Test fun recordedPendingIosObservationMustBecomeActualSuccessBeforeInputsAreAuthorized() {
+        val pending = observedPendingIos()
+        val iosReady = pending["jobs"].obj()["jobs"].array().map { value ->
+            val job = value.obj()
+            if (job["name"] == "ci/ios") job + mapOf("status" to "completed", "conclusion" to "success") else job
+        }
+        val waitingForSelf = pending + ("jobs" to mapOf("total_count" to iosReady.size, "jobs" to iosReady))
+        val ready = fixture(event = "pull_request")
+        var reads = 0
+        var pauses = 0
+        val result = awaitStagedMetadata(attempts = 3, pause = { pauses++ }, read = {
+            when (++reads) {
+                1 -> pending
+                2 -> waitingForSelf
+                else -> ready
+            }
+        }, validate = { stagedArtifactPlan(it, source, repository) })
+        assertEquals(ready, result)
+        assertEquals(3, reads)
+        assertEquals(2, pauses)
+    }
+
+    @Test fun staleMetadataExhaustionAndElapsedDeadlineNeverBecomeSuccessfulPackages() {
+        var reads = 0
+        var pauses = 0
+        assertThrows(StagedMetadataPending::class.java) {
+            awaitStagedMetadata(attempts = 3, pause = { pauses++ }, read = {
+                reads++
+                observedPendingIos()
+            }, validate = { stagedArtifactPlan(it, source, repository) })
+        }
+        assertEquals(3, reads)
+        assertEquals(2, pauses)
+        reads = 0
+        var nanos = 0L
+        assertThrows(StagedMetadataPending::class.java) {
+            awaitStagedMetadata(now = { nanos }, pause = { nanos = java.time.Duration.ofMinutes(3).toNanos() }, read = {
+                reads++
+                observedPendingIos()
+            }, validate = { stagedArtifactPlan(it, source, repository) })
+        }
+        assertEquals(1, reads)
+    }
+
+    @Test fun pollingNeverRetriesFailedCancelledSkippedNeutralOrInvalidProvenance() {
+        val good = fixture(event = "pull_request")
+        val original = good["run"].obj()
+        val wrongRepository = original + ("head_repository" to mapOf("full_name" to "other/EhViewer"))
+        val invalid = listOf("failure", "cancelled", "skipped", "neutral").map { result ->
+            good + ("run" to original + ("conclusion" to result))
+        } + listOf(good + ("run" to wrongRepository))
+        for (context in invalid) {
+            var reads = 0
+            var pauses = 0
+            val failure = assertThrows(IllegalArgumentException::class.java) {
+                awaitStagedMetadata(pause = { pauses++ }, read = {
+                    reads++
+                    context
+                }, validate = { stagedArtifactPlan(it, source, repository) })
+            }
+            assertFalse(failure is StagedMetadataPending)
+            assertEquals(1, reads)
+            assertEquals(0, pauses)
+        }
+        val pending = observedPendingIos()
+        val failedJobs = pending["jobs"].obj()["jobs"].array().map { value ->
+            val job = value.obj()
+            if (job["name"] == "ci/ios") job + mapOf("status" to "completed", "conclusion" to "failure") else job
+        }
+        var reads = 0
+        var pauses = 0
+        assertThrows(IllegalArgumentException::class.java) {
+            awaitStagedMetadata(pause = { pauses++ }, read = {
+                if (++reads == 1) pending else pending + ("jobs" to mapOf("total_count" to failedJobs.size, "jobs" to failedJobs))
+            }, validate = { stagedArtifactPlan(it, source, repository) })
+        }
+        assertEquals(2, reads)
+        assertEquals(1, pauses)
     }
 
     @Test fun incompleteDuplicatedCrossRunAndUndeclaredJobListsFail() {

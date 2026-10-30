@@ -3,6 +3,7 @@ package verification
 import groovy.json.JsonSlurper
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Duration
 import java.util.concurrent.Callable
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.ExecutorCompletionService
@@ -20,6 +21,35 @@ val stagedUpstreamJobs = setOf(
 data class StagedArtifact(val role: String, val metadata: Map<String, Any?>, val catalog: Map<String, Any?>, val run: Map<String, Any?>) {
     val id get() = (metadata["id"] as Number).toLong()
     val runId get() = (run["id"] as Number).toLong()
+}
+
+/** Incomplete API observations never authorize artifacts; only this condition may be reread. */
+class StagedMetadataPending(message: String) : IllegalArgumentException(message)
+
+fun awaitStagedMetadata(
+    attempts: Int = 25,
+    now: () -> Long = System::nanoTime,
+    pause: () -> Unit = { Thread.sleep(5_000) },
+    read: () -> Map<String, Any?>,
+    validate: (Map<String, Any?>) -> Unit,
+): Map<String, Any?> {
+    require(attempts in 1..25)
+    val started = now()
+    var pending: StagedMetadataPending? = null
+    repeat(attempts) { attempt ->
+        if (pending != null && now() - started >= Duration.ofMinutes(3).toNanos()) throw requireNotNull(pending)
+        val context = read()
+        try {
+            validate(context)
+            return context
+        } catch (failure: StagedMetadataPending) {
+            pending = failure
+            if (attempt == attempts - 1 || now() - started >= Duration.ofMinutes(3).toNanos()) throw failure
+            System.err.println("Waiting for source-bound Actions metadata: poll=${attempt + 1}/$attempts; ${failure.message}")
+            pause()
+        }
+    }
+    error("Metadata polling ended without a validated observation")
 }
 
 /** Bound independent reads; any failure cancels and joins the other owned workers. */
@@ -48,6 +78,9 @@ fun stagedArtifactPlan(context: Map<String, Any?>, source: String, repository: S
     fun run(value: Map<String, Any?>) {
         require((value["id"] as Number).toLong() > 0 && value["repository"].obj()["full_name"] == repository && value["head_repository"].obj()["full_name"] == repository && value["path"] == ".github/workflows/ci.yml") { "Expected an actual target CI run" }
         require(value["event"] in setOf("push", "pull_request", "workflow_dispatch") && Regex("[0-9a-f]{40}").matches(value.str("head_sha")) && (value["run_attempt"] as Number).toInt() > 0) { "Unexpected CI event/head/attempt" }
+        val successful = value["status"] == "completed" && value["conclusion"] == "success"
+        val ongoing = value["status"] in setOf("queued", "waiting", "in_progress") && value["conclusion"] == null
+        require(successful || ongoing) { "Failed/cancelled or invalid run metadata cannot produce staged packages" }
     }
     val current = context["run"].obj().also(::run)
     require(current["event"] == "pull_request" || current["head_sha"] == source) { "Push/manual source differs from its actual head" }
@@ -64,6 +97,7 @@ fun stagedArtifactPlan(context: Map<String, Any?>, source: String, repository: S
     }
     stagedUpstreamJobs.forEach { name ->
         val job = jobs.single { it["name"] == name }
+        if (job["status"] in setOf("queued", "waiting", "in_progress") && job["conclusion"] == null) throw StagedMetadataPending("Latest required job is not yet completed/success: $name")
         require(job["status"] == "completed" && job["conclusion"] == "success") { "Every integrated upstream job must actually succeed: $name" }
     }
     val dryRun = jobs.singleOrNull { it["name"] == "ci/release-dry-run" }
@@ -75,6 +109,9 @@ fun stagedArtifactPlan(context: Map<String, Any?>, source: String, repository: S
         "in_progress" -> current["conclusion"] == null
         "queued", "waiting" -> current["conclusion"] == null && activeDryRun
         else -> false
+    }
+    if (!ready && current["status"] in setOf("queued", "waiting") && dryRun != null && dryRun["status"] in setOf("queued", "waiting") && dryRun["conclusion"] == null && (dryRun["run_attempt"] as Number).toInt() == attempt) {
+        throw StagedMetadataPending("Current dry-run is not yet reported active in attempt $attempt")
     }
     require(ready) { "Staging needs a successful run or an active same-attempt dry-run after every upstream success: status=${current["status"]}, conclusion=${current["conclusion"]}, attempt=$attempt" }
     val android = context["android_run"].obj().also(::run)
@@ -135,7 +172,7 @@ fun fetchStagedInputs(repository: String, runId: Long, androidRunId: Long, outpu
         var last: CommandFailure? = null
         repeat(3) {
             try {
-                return JsonSlurper().parseText(command("gh", "api", "repos/$repository/$suffix")).obj()
+                return JsonSlurper().parseText(command("gh", "api", "-H", "Cache-Control: no-cache", "repos/$repository/$suffix", timeout = Duration.ofSeconds(30))).obj()
             } catch (failure: CommandFailure) {
                 last = failure
                 if (Regex("HTTP (401|403|404)").containsMatchIn(failure.output)) throw failure
@@ -143,20 +180,21 @@ fun fetchStagedInputs(repository: String, runId: Long, androidRunId: Long, outpu
         }
         throw requireNotNull(last)
     }
-    val current = api("actions/runs/$runId")
-    if (System.getenv("GITHUB_ACTIONS") == "true") require(System.getenv("GITHUB_REPOSITORY") == repository && System.getenv("GITHUB_RUN_ID") == runId.toString() && System.getenv("GITHUB_RUN_ATTEMPT") == current["run_attempt"].toString() && System.getenv("GITHUB_SHA") == source) { "CI must inspect its own actual run/source" }
-    val android = if (androidRunId == runId) current else api("actions/runs/$androidRunId")
-    val currentCatalog = api("actions/runs/$runId/artifacts?per_page=100")
-    val context = mapOf(
-        "repository" to repository,
-        "run" to current,
-        "catalog" to currentCatalog,
-        "jobs" to api("actions/runs/$runId/jobs?filter=all&per_page=100"),
-        "android_run" to android,
-        "android_catalog" to if (androidRunId == runId) currentCatalog else api("actions/runs/$androidRunId/artifacts?per_page=100"),
-    )
     Files.createDirectory(output)
-    output.resolve("context.json").writeText(json(context))
+    val context = awaitStagedMetadata(read = {
+        val current = api("actions/runs/$runId")
+        if (System.getenv("GITHUB_ACTIONS") == "true") require(System.getenv("GITHUB_REPOSITORY") == repository && System.getenv("GITHUB_RUN_ID") == runId.toString() && System.getenv("GITHUB_RUN_ATTEMPT") == current["run_attempt"].toString() && System.getenv("GITHUB_SHA") == source) { "CI must inspect its own actual run/source" }
+        val android = if (androidRunId == runId) current else api("actions/runs/$androidRunId")
+        val currentCatalog = api("actions/runs/$runId/artifacts?per_page=100")
+        mapOf(
+            "repository" to repository,
+            "run" to current,
+            "catalog" to currentCatalog,
+            "jobs" to api("actions/runs/$runId/jobs?filter=all&per_page=100"),
+            "android_run" to android,
+            "android_catalog" to if (androidRunId == runId) currentCatalog else api("actions/runs/$androidRunId/artifacts?per_page=100"),
+        ).also { output.resolve("context.json").writeText(json(it)) }
+    }, validate = { stagedArtifactPlan(it, source, repository) })
     val plan = stagedArtifactPlan(context, source, repository)
     val archives = Files.createDirectory(output.resolve("archives"))
     stagedDownloads(plan) { artifact ->
