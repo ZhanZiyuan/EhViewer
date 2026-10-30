@@ -499,7 +499,7 @@ jobs:
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
             pkg-config --atleast-version=2.42 webkit2gtk-4.1
-            xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-native-smoke --output reports/desktop-native
+            dbus-run-session -- xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-native-smoke --output reports/desktop-native
           else
             tools/verification/build/install/verification/bin/verification desktop-native-smoke --output reports/desktop-native
           fi
@@ -664,7 +664,7 @@ jobs:
       - name: Native build and display prerequisites
         run: >-
           sudo apt-get update && sudo apt-get install -y
-          build-essential cmake pkg-config libarchive-dev binutils libwebkit2gtk-4.1-dev
+          build-essential cmake pkg-config libarchive-dev binutils libwebkit2gtk-4.1-dev dbus
           xvfb xauth libx11-6 libxext6 libxi6 libxrender1 libxtst6
           libgl1 libegl1 libgl1-mesa-dri libfontconfig1 fonts-dejavu-core libasound2t64
       - name: Rust native target
@@ -689,7 +689,7 @@ jobs:
           # Xvfb has no guaranteed GL context. Still draw real Skia frames in both real windows.
           SKIKO_RENDER_API: SOFTWARE_COMPAT
         run: >-
-          xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-linux-arm64
+          dbus-run-session -- xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-linux-arm64
           --image app/desktop/build/compose/binaries/main/app/EhViewer
           --output reports/desktop-linux-arm64
       - uses: actions/download-artifact@v8

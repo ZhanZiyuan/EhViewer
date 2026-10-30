@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.webkit.CookieManager
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.hippo.ehviewer.ui.MainActivity
@@ -36,6 +37,7 @@ class PlatformRegressionTest {
     @Test
     fun webViewUsesMobileUserAgentAndStoresCookies() {
         val saved = CountDownLatch(1)
+        val loaded = CountDownLatch(1)
         val completed = CountDownLatch(1)
         var result = ""
         var view: WebView? = null
@@ -45,10 +47,19 @@ class PlatformRegressionTest {
                 assertTrue(settings.javaScriptEnabled)
                 assertTrue(settings.userAgentString.contains("Mobile"))
                 CookieManager.getInstance().setCookie("https://native-regression.invalid", "p3_test=value; Secure") { saved.countDown() }
+                webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView, url: String) {
+                        if (url == "https://native-regression.invalid/" && view.title == "EhViewer native regression") loaded.countDown()
+                    }
+                }
+                // The initial about:blank document can retain the tablet's default
+                // UA. Exercise a real document created after configuring WebView.
+                loadDataWithBaseURL("https://native-regression.invalid/", "<!DOCTYPE html><title>EhViewer native regression</title>", "text/html", "UTF-8", null)
             }
         }
         try {
             assertTrue(saved.await(10, TimeUnit.SECONDS))
+            assertTrue(loaded.await(10, TimeUnit.SECONDS))
             CookieManager.getInstance().flush()
             assertTrue(CookieManager.getInstance().getCookie("https://native-regression.invalid").contains("p3_test=value"))
             instrumentation.runOnMainSync {
