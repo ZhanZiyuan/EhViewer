@@ -94,7 +94,7 @@ class GalleryPreviewIntegrationTest {
         try {
             val intent = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             ActivityScenario.launch<MainActivity>(intent).use { scenario ->
-                scenario.onActivity { activity -> activity.setContent { GalleryLibraryScreen(library, library.readerState, appearance) } }
+                scenario.onActivity { activity -> activity.setContent { GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory) } }
                 fun click(text: String) = requireNotNull(device.wait(Until.findObject(By.text(text)), 15_000)).click()
                 click("Search")
                 click(title)
@@ -112,6 +112,18 @@ class GalleryPreviewIntegrationTest {
                 assertTrue("Preview route was not retained", device.wait(Until.hasObject(By.desc("Preview of page 3")), 15_000))
                 click("Back to details")
                 assertTrue(device.wait(Until.hasObject(By.text(title)), 10_000))
+                click("Back to search")
+                click("History")
+                assertTrue(device.wait(Until.hasObject(By.text("Reading history")), 10_000))
+                click(title)
+                click("Back to history")
+                click("Remove from history")
+                runBlocking {
+                    withTimeout(10_000) { while (EhDB.sharedHistory.recent().any { it.gid == gid }) delay(25) }
+                    assertEquals(2, EhDB.getReadingPosition(gid)?.page)
+                }
+                click("Back to search")
+                assertTrue(device.wait(Until.hasObject(By.text("Search galleries")), 10_000))
                 assertTrue(requests.any { it == "/g/$gid/$token/?p=1" })
                 assertTrue(requests.any { it.startsWith("/s/3333333333/$gid-3") })
             }

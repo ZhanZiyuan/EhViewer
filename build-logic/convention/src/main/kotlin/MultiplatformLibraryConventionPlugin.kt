@@ -38,7 +38,7 @@ class MultiplatformLibraryConventionPlugin : Plugin<Project> {
                         withCompilations { it.target is KotlinMultiplatformAndroidLibraryTarget }
                         withJvm()
                     }
-                    if (path in setOf(":core:domain", ":core:common", ":core:network", ":app:shared")) {
+                    if (path in setOf(":core:domain", ":core:common", ":core:data", ":core:network", ":app:shared")) {
                         group("ios") {
                             withIos()
                         }

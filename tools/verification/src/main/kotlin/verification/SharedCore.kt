@@ -15,8 +15,8 @@ import kotlin.io.path.readText
 
 private const val CORE_ENTRY_LIMIT = 8 * 1024 * 1024
 val sharedArtifactModules = listOf("common", "domain", "data", "i18n", "ui", "network", "shared-ui")
-const val SHARED_SCHEMA = 5
-const val SHARED_SCOPE = "ANDROID_CORE_AND_PORTABLE_COMMON_DOMAIN_NETWORK_UI_JVM"
+const val SHARED_SCHEMA = 6
+const val SHARED_SCOPE = "ANDROID_CORE_AND_PORTABLE_COMMON_DOMAIN_DATA_NETWORK_UI_JVM"
 private fun coreDigest(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
 internal fun coreArchive(bytes: ByteArray): Map<String, ByteArray> {
@@ -199,7 +199,8 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
     val architecture = verifyArchitecture()
     require(architecture["legacy_shared_core_android_only"] == true && architecture["portable_domain_targets"] == portableDomainTargets)
-    require(architecture["portable_common_targets"] == portableCommonTargets && architecture["legacy_shared_modules"] == listOf("data", "i18n", "ui"))
+    require(architecture["portable_common_targets"] == portableCommonTargets && architecture["legacy_shared_modules"] == listOf("i18n", "ui"))
+    require(architecture["portable_data_targets"] == portableDomainTargets)
     val delivery = releaseContract(root.resolve("app/build.gradle.kts").readText(), source)
     require(!output.exists()) { "Refusing to overwrite shared evidence" }
     Files.createDirectories(output)
@@ -209,9 +210,14 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         val aar = filesBelow(directory.resolve("build/outputs/aar"), ".aar").single()
         val evidence = sharedAarEvidence(aar, directory.resolve("build/classes/kotlin/android/main"), if (sharedUi) "com.ehviewer.app.shared" else "com.ehviewer.core.$module", module == "i18n")
         val testSources = filesBelow(directory.resolve("src"), ".kt").filter { directory.resolve("src").relativize(it).getName(0).toString().endsWith("Test") }
-        require(testSources.all { directory.resolve("src").relativize(it).getName(0).toString() in setOf("commonTest", "jvmTest", "androidHostTest") || module == "common" && directory.resolve("src").relativize(it).getName(0).toString() == "nonAndroidTest" }) { "A new shared test source set needs explicit stage integration" }
+        require(
+            testSources.all {
+                val name = directory.resolve("src").relativize(it).getName(0).toString()
+                name in setOf("commonTest", "jvmTest", "androidHostTest") || module == "common" && name == "nonAndroidTest" || module == "data" && name in setOf("nonAndroidTest", "desktopTest", "iosTest")
+            },
+        ) { "A new shared test source set needs explicit stage integration" }
         val testFiles = filesBelow(directory.resolve("build/test-results/testAndroidHostTest"), ".xml")
-        val androidSources = testSources.filter { directory.resolve("src").relativize(it).getName(0).toString() != "nonAndroidTest" }
+        val androidSources = testSources.filter { directory.resolve("src").relativize(it).getName(0).toString() in setOf("commonTest", "jvmTest", "androidHostTest") }
         val tests = sharedHostTestEvidence(testFiles.map { it.readBytes() }, androidSources.size)
         if (module == "domain") verifyDomainTests(tests)
         if (module == "network") verifyNetworkTests(tests)
@@ -251,6 +257,20 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         Files.createDirectories(target.parent)
         Files.copy(file, target)
     }
+    val data = root.resolve("core/data")
+    val dataJar = data.resolve("build/libs/data-jvm.jar")
+    val dataJvm = sharedJvmEvidence(dataJar, data.resolve("build/classes/kotlin/desktop/main"))
+    checkedDataJvmArtifact(dataJar, dataJvm)
+    val dataXml = filesBelow(data.resolve("build/test-results/desktopTest"), ".xml")
+    val dataSources = listOf("commonTest", "nonAndroidTest", "desktopTest").sumOf { filesBelow(data.resolve("src/$it"), ".kt").size }
+    val dataTests = sharedHostTestEvidence(dataXml.map(Path::readBytes), dataSources)
+    verifyDataTests(dataTests)
+    Files.copy(dataJar, output.resolve("data-jvm.jar"))
+    dataXml.forEach { file ->
+        val target = output.resolve("tests/data-jvm/${file.fileName}")
+        Files.createDirectories(target.parent)
+        Files.copy(file, target)
+    }
     val productJvm = mapOf("network" to "core/network", "shared-ui" to "app/shared").map { (name, path) ->
         val directory = root.resolve(path)
         val artifact = filesBelow(directory.resolve("build/libs"), "-jvm.jar").single()
@@ -273,9 +293,10 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         "modules" to modules, "retained_architecture_checks" to architecture, "shared_library_artifacts_verified" to true,
         "domain_jvm" to jvm + mapOf("artifact" to "domain-jvm.jar", "host_tests" to jvmEvidence, "link_probe" to probe),
         "common_jvm" to commonJvm + mapOf("artifact" to "common-jvm.jar", "host_tests" to commonTests, "link_probe" to commonProbe),
+        "data_jvm" to dataJvm + mapOf("artifact" to "data-jvm.jar", "host_tests" to dataTests),
         "product_jvm" to productJvm,
         "portable_common_targets" to portableCommonTargets,
-        "legacy_shared_modules" to listOf("data", "i18n", "ui"),
+        "legacy_shared_modules" to listOf("i18n", "ui"), "portable_data_targets" to portableDomainTargets,
         "portable_domain_targets" to listOf("android", "jvm"), "domain_ios_targets" to domainIosTargets,
         "domain_ios_evidence" to "SEPARATE_REQUIRED_CI_IOS_JOB", "ios_product_domain_integration" to "GALLERY_SEARCH",
         "desktop_product_domain_integration" to "GALLERY_SEARCH",

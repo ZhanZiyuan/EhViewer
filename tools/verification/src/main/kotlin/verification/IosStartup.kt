@@ -190,11 +190,37 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             Files.copy(binary, output.resolve("reader-tests.kexe"))
             evidence + mapOf("test_executable_sha256" to sha256(binary), "execution" to "BOOTED_OWNED_SIMULATOR")
         }
+        val dataTests = temporary { staged ->
+            phase("shared-data-tests")
+            val started = Instant.now()
+            val log = try {
+                command(
+                    root.resolve("gradlew"), ":core:data:iosSimulatorArm64Test", "--rerun",
+                    "-Pehviewer.data.testSimulator=$device", "-Pehviewer.data.testDirectory=$staged",
+                    "--console=plain", "--no-daemon", "--max-workers=1", "-Dorg.gradle.parallel=false",
+                    "-Dorg.gradle.jvmargs=-Xmx2g", "-Pkotlin.native.jvmArgs=-Xmx3g", timeout = Duration.ofMinutes(10),
+                )
+            } catch (failure: CommandFailure) {
+                output.resolve("data-tests.log").writeText(failure.output)
+                throw failure
+            }
+            output.resolve("data-tests.log").writeText(log)
+            val binary = root.resolve("core/data/build/bin/iosSimulatorArm64/debugTest/test.kexe")
+            require(sha256(binary) == sha256(staged.resolve("test.kexe"))) { "Executed data tests differ from the actual Native binary" }
+            val xml = filesBelow(root.resolve("core/data/build/test-results/iosSimulatorArm64Test"), ".xml")
+            require(xml.isNotEmpty() && xml.all { Files.getLastModifiedTime(it).toInstant() >= started.minusSeconds(1) }) { "Missing or stale Native data test receipts" }
+            val sources = listOf("commonTest", "nonAndroidTest", "iosTest").sumOf { filesBelow(root.resolve("core/data/src/$it"), ".kt").size }
+            val evidence = sharedHostTestEvidence(xml.map { Files.readAllBytes(it) }, sources)
+            verifyDataTests(evidence, native = true)
+            xml.forEach { Files.copy(it, output.resolve("data-${it.fileName}")) }
+            Files.copy(binary, output.resolve("data-tests.kexe"))
+            evidence + mapOf("test_executable_sha256" to sha256(binary), "execution" to "BOOTED_OWNED_SIMULATOR")
+        }
         command("xcrun", "simctl", "install", device, app)
         captureDirectory = Path.of(command("xcrun", "simctl", "get_app_container", device, bundle, "data").trim()).resolve("tmp")
         logStart = Instant.now()
         val (firstPid, firstStderr) = launch("first-cold-start")
-        awaitMarkers("first-render", firstPid, firstStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "browser-cookie-ready checks=4" to 1, "active" to 1)
+        awaitMarkers("first-render", firstPid, firstStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "browser-cookie-ready checks=4" to 1, "history-product-ready checks=3" to 1, "active" to 1)
         command("xcrun", "simctl", "io", device, "screenshot", output.resolve("startup.png"))
         require(output.resolve("startup.png").fileSize() > 0)
         phase("open-settings")
@@ -212,10 +238,11 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         check(!alive(firstPid)) { "Terminated app PID $firstPid is still alive" }
         val (secondPid, secondStderr) = launch("second-cold-start")
         check(secondPid != firstPid) { "Second cold start reused the terminated PID" }
-        awaitMarkers("second-render", secondPid, secondStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "browser-cookie-ready checks=4" to 1, "active" to 1)
+        awaitMarkers("second-render", secondPid, secondStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "browser-cookie-ready checks=4" to 1, "history-product-ready checks=3" to 1, "active" to 1)
         val rustResults = listOf(rustInteropResults(firstStderr.readText()), rustInteropResults(secondStderr.readText()))
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM3:gallery-product checks=3").findAll(stderr.readText()).count() == 1) { "Actual iOS detail/page/image regression did not execute" }
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM3:account-product checks=3").findAll(stderr.readText()).count() == 1) { "Actual iOS account decoder regression did not execute" }
+        for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM1:history-product-ready checks=3").findAll(stderr.readText()).count() == 1) { "Actual iOS native Room history regression did not execute" }
         val lifecycle = logs("lifecycle")
         output.resolve("lifecycle.log").writeText(lifecycle)
         val unified = iosUnifiedLifecycle(lifecycle, firstPid, secondPid)
@@ -225,6 +252,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             "source_dirty" to dirty,
             "network_tests" to networkTests,
             "reader_tests" to readerTests,
+            "data_tests" to dataTests,
             "session_backend_tests" to sessionBackend,
             "runtime" to runtime.str("name"), "device_type" to type.str("name"), "architecture" to "arm64",
             "bundle_id" to bundle, "version" to plist("CFBundleShortVersionString"), "build" to plist("CFBundleVersion"),
@@ -234,6 +262,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             "rust_c_abi" to "PASS", "rust_completed_results_by_launch" to rustResults, "rust_live_results_after_probe" to 0,
             "gallery_product_checks_by_launch" to listOf(3, 3),
             "account_product_checks_by_launch" to listOf(3, 3),
+            "history_product_checks_by_launch" to listOf(3, 3),
             "browser_cookie_checks_by_launch" to listOf(4, 4),
             "unified_log_lifecycle" to unified,
         )

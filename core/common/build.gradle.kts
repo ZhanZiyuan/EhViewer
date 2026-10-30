@@ -40,12 +40,10 @@ kotlin {
                 api(libs.bundles.arrow)
             }
         }
-        androidMain {
-            dependencies {
-                api(libs.kotlinx.coroutines.android)
-                api(libs.splitties.appctx)
-                implementation(libs.androidx.core)
-            }
+        findByName("androidMain")?.dependencies {
+            api(libs.kotlinx.coroutines.android)
+            api(libs.splitties.appctx)
+            implementation(libs.androidx.core)
         }
     }
 }

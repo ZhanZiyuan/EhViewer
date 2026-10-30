@@ -45,6 +45,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.ehviewer.core.domain.GalleryHistoryException
+import com.ehviewer.core.domain.GalleryHistoryStore
 import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.GalleryLibrary
@@ -68,9 +70,20 @@ private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
-fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, browserFactory: ((String) -> GalleryLoginBrowser)? = null, onReady: () -> Unit = {}) {
+fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, browserFactory: ((String) -> GalleryLoginBrowser)? = null, onReady: () -> Unit = {}) {
     DisposableEffect(session) { onDispose { session.close() } }
-    GalleryLibraryScreen(session, readerState, appearance, accountContent = { changed, back ->
+    val library = remember(session, history) {
+        object : GalleryLibrary by session {
+            override suspend fun details(gid: Long, token: String) = session.details(gid, token).also {
+                try {
+                    history.record(it)
+                } catch (_: GalleryHistoryException) {
+                    throw GalleryRequestException(GalleryFailure.LOCAL_STORAGE)
+                }
+            }
+        }
+    }
+    GalleryLibraryScreen(library, readerState, appearance, history, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
     }, onReady = onReady)
 }
@@ -81,6 +94,7 @@ fun GalleryLibraryScreen(
     session: GalleryLibrary,
     readerState: ReaderStateStore,
     appearance: GalleryAppearanceStore,
+    history: GalleryHistoryStore,
     onBack: (() -> Unit)? = null,
     onAccount: (() -> Unit)? = null,
     accountContent: (@Composable (onIdentityAction: () -> Unit, onBack: () -> Unit) -> Unit)? = null,
@@ -92,6 +106,7 @@ fun GalleryLibraryScreen(
     var loadedFilters by remember { mutableStateOf(GallerySearchFilters()) }
     var filtersOpen by remember { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    var historyOpen by rememberSaveable { mutableStateOf(false) }
     var themeMode by remember(appearance) { mutableStateOf<GalleryThemeMode?>(null) }
     var appearanceFailed by remember { mutableStateOf(false) }
     var appearanceAttempt by remember { mutableIntStateOf(0) }
@@ -176,7 +191,11 @@ fun GalleryLibraryScreen(
                     }
                     val gallery = selected
                     if (gallery != null) {
-                        GalleryDetailScreen(session, gallery, readerState, onBack = { selected = null })
+                        GalleryDetailScreen(session, gallery, readerState, backLabel = if (historyOpen) "Back to history" else "Back to search", onBack = { selected = null })
+                        return@Column
+                    }
+                    if (historyOpen) {
+                        GalleryHistoryScreen(history, onOpen = { selected = it }, onBack = { historyOpen = false })
                         return@Column
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -206,6 +225,7 @@ fun GalleryLibraryScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { filtersOpen = true }) { Text("Filters") }
                         if (filters != GallerySearchFilters()) Text("Filters applied", style = MaterialTheme.typography.labelMedium)
+                        TextButton(onClick = { historyOpen = true }) { Text("History") }
                         TextButton(onClick = { settingsOpen = true }) { Text("Settings") }
                     }
                     if (appearanceFailed) {

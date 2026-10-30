@@ -36,7 +36,7 @@ internal class AndroidGalleryLibrary(
         val result = content.details(gid, token)
         try {
             // This is the real validated response, never a placeholder FK parent.
-            withContext(Dispatchers.IO) { EhDB.putHistoryInfo(result) }
+            withContext(Dispatchers.IO) { EhDB.sharedHistory.record(result) }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {

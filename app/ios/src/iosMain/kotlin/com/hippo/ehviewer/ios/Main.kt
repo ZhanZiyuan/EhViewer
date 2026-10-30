@@ -2,9 +2,15 @@
 
 package com.hippo.ehviewer.ios
 
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
+import com.ehviewer.core.data.RoomGalleryHistoryStore
+import com.ehviewer.core.database.DataDirectory
+import com.ehviewer.core.database.EhDatabase
+import com.ehviewer.core.database.Schema17to18
+import com.ehviewer.core.database.roomDb
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.shared.AppleGalleryLoginBrowser
 import com.ehviewer.shared.GallerySearchScreen
@@ -13,6 +19,7 @@ import com.ehviewer.shared.settings.GalleryAppearanceRepository
 import com.ehviewer.shared.verifyAccountProduct
 import com.ehviewer.shared.verifyAppleBrowserCookieTransfer
 import com.ehviewer.shared.verifyGalleryProduct
+import com.ehviewer.shared.verifyHistoryProduct
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointerVar
 import kotlinx.cinterop.ExportObjCClass
@@ -24,6 +31,7 @@ import kotlinx.cinterop.get
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.set
+import okio.Path.Companion.toPath
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
@@ -89,13 +97,25 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                 val session = remember { applicationSession() }
                 val readerState = remember { ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/reader-state")) }
                 val appearance = remember { GalleryAppearanceRepository(AppleSessionVault("${applicationDirectory()}/appearance")) }
+                val database = remember {
+                    DataDirectory.configure("${applicationDirectory()}/database".toPath())
+                    roomDb<EhDatabase>("eh.db") { addMigrations(Schema17to18()) }
+                }
+                DisposableEffect(database) { onDispose { database.close() } }
+                val history = remember(database) { RoomGalleryHistoryStore(database) }
+                if (startupRegression) {
+                    LaunchedEffect(history) {
+                        check(verifyHistoryProduct(history) == 3)
+                        NSLog("EhViewerM1:history-product-ready checks=3")
+                    }
+                }
                 if (startupRegression) {
                     LaunchedEffect(session) {
                         check(verifyAppleBrowserCookieTransfer(AppleSessionVault("${applicationDirectory()}/browser-regression")) == 4)
                         NSLog("EhViewerM1:browser-cookie-ready checks=4")
                     }
                 }
-                GallerySearchScreen(session, readerState, appearance, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
+                GallerySearchScreen(session, readerState, appearance, history, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
             }
             makeKeyAndVisible()
         }

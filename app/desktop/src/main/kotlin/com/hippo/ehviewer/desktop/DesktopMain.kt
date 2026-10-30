@@ -44,6 +44,7 @@ fun main(arguments: Array<String>) {
     val completed = owned?.completed ?: verifyUnixJni(nativeRoot, macIntel)
     val galleryChecks = verifyGalleryProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder)
     val accountChecks = verifyAccountProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder)
+    val historyChecks = verifyDesktopHistory()
     val browserLibrary = nativeRoot.resolve(if (windowsArm) "ehviewer_capi.dll" else "libehviewer_rust.${if (macIntel) "dylib" else "so"}")
     val browserProof = verifyBrowserBridge(browserLibrary, nativeRoot.resolve(if (windowsArm) "ehviewer_browser.exe" else "ehviewer_browser"), windowsArm)
     val frames = AtomicInteger()
@@ -72,6 +73,7 @@ fun main(arguments: Array<String>) {
                         setProperty("rust_hash_results", completed.toString())
                         setProperty("gallery_product_checks", galleryChecks.toString())
                         setProperty("account_product_checks", accountChecks.toString())
+                        setProperty("history_product_checks", historyChecks.toString())
                         if (owned != null) {
                             setProperty("windows_code_page", windowsProcessCodePage().toString())
                             setProperty("native_encoding", System.getProperty("native.encoding"))

@@ -65,8 +65,8 @@ fun verifyCoreTargetBoundary(configurations: Map<String, String>) {
     val common = configurations.getValue("core/common/build.gradle.kts")
     require(target.findAll(common).map { it.groupValues[1] }.toList() == listOf("jvm", "iosArm64", "iosSimulatorArm64") && Regex("\\bjvm\\(\\s*\"desktop\"\\s*\\)").containsMatchIn(common)) { "Common targets must be exactly Android, desktop JVM and the two reviewed iOS targets" }
     require("alias(libs.plugins.ehviewer.multiplatform.library)" in common) { "Common must retain the existing Android library convention" }
-    val portable = setOf("core/domain/build.gradle.kts", "core/common/build.gradle.kts", "core/network/build.gradle.kts", "app/shared/build.gradle.kts")
-    for (path in listOf("core/network/build.gradle.kts", "app/shared/build.gradle.kts")) {
+    val portable = setOf("core/domain/build.gradle.kts", "core/common/build.gradle.kts", "core/data/build.gradle.kts", "core/network/build.gradle.kts", "app/shared/build.gradle.kts")
+    for (path in listOf("core/data/build.gradle.kts", "core/network/build.gradle.kts", "app/shared/build.gradle.kts")) {
         configurations[path]?.let { text ->
             require(target.findAll(text).map { it.groupValues[1] }.toList() == listOf("jvm", "iosArm64", "iosSimulatorArm64") && Regex("\\bjvm\\(\\s*\"desktop\"\\s*\\)").containsMatchIn(text)) { "$path: expected the reviewed Android, desktop JVM and iOS targets" }
             require("alias(libs.plugins.ehviewer.multiplatform.library" in text) { "$path: missing Android library convention" }
@@ -136,7 +136,8 @@ fun verifyArchitecture(): Map<String, Any?> {
         "language_policy" to languages.sorted(),
         "shared_core_android_only" to false,
         "legacy_shared_core_android_only" to true,
-        "legacy_shared_modules" to listOf("data", "i18n", "ui"),
+        "legacy_shared_modules" to listOf("i18n", "ui"),
+        "portable_data_targets" to portableDomainTargets,
         "portable_common_targets" to portableCommonTargets,
         "portable_domain_targets" to portableDomainTargets,
         "portable_network_targets" to portableDomainTargets,

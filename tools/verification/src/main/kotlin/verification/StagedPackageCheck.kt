@@ -92,6 +92,13 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val commonTests = sharedHostTestEvidence(filesBelow(path("shared", "shared-core/tests/common-jvm"), ".xml").map(Path::readBytes), 2)
     verifyCommonJvmTests(commonTests)
     require(commonTests == common["host_tests"])
+    val dataJvm = shared["data_jvm"].obj()
+    require(dataJvm["artifact"] == "data-jvm.jar")
+    checkedDataJvmArtifact(path("shared", "shared-core/data-jvm.jar"), dataJvm)
+    val dataJvmSources = listOf("commonTest", "nonAndroidTest", "desktopTest").sumOf { filesBelow(root.resolve("core/data/src/$it"), ".kt").size }
+    val dataJvmTests = sharedHostTestEvidence(filesBelow(path("shared", "shared-core/tests/data-jvm"), ".xml").map(Path::readBytes), dataJvmSources)
+    verifyDataTests(dataJvmTests)
+    require(dataJvmTests == dataJvm["host_tests"]) { "Actual database JVM XML differs from its producer receipt" }
     val commonProbe = commonJvmLinkProbe(commonJar)
     val commonConsumers = listOf(
         listOf("linux-host", "common-jvm.json", "Linux", "amd64"),
@@ -109,7 +116,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         require(host["target"] == if (role == "linux-host") "x86_64-unknown-linux-gnu" else "aarch64-apple-darwin") { "Host JNI target differs" }
         require(host["jvm_architecture"] == if (role == "linux-host") "amd64" else "aarch64") { "Host JNI JVM architecture differs" }
         require(host["checks"].obj()["ownership_checks"] == 4170 && host["checks"].obj()["archive_cases"] == 13) { "Incomplete host JNI regression" }
-        require(host["gallery_product_checks"] == 3 && host["account_product_checks"] == 3) { "Missing actual host gallery/account decoders" }
+        require(host["gallery_product_checks"] == 3 && host["account_product_checks"] == 3 && host["history_product_checks"] == 3) { "Missing actual host gallery/account/history runtime checks" }
         val browser = host["native_browser"].obj()
         verifyDesktopBrowserReceipt(browser, setOf(host.str("jvm_architecture")), "JNI", host.str("library_sha256"), browser.str("browser_executable_sha256"))
         require(readJson(path(role, "native-browser.json")) == browser) { "Browser receipt differs from host summary" }
@@ -121,7 +128,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     require(
         linuxChecks["launches"].array().all {
             val proof = it.obj()
-            proof["gallery_product_checks"] == 3 && proof["account_product_checks"] == 3 && proof["rust_hash_results"] == 100 && (proof["compose_frames"] as Number).toInt() > 0 && proof["bundled_runtime"] == "PASS" && proof["render_api"] == "SOFTWARE_COMPAT"
+            proof["gallery_product_checks"] == 3 && proof["account_product_checks"] == 3 && proof["history_product_checks"] == 3 && proof["rust_hash_results"] == 100 && (proof["compose_frames"] as Number).toInt() > 0 && proof["bundled_runtime"] == "PASS" && proof["render_api"] == "SOFTWARE_COMPAT"
         },
     ) { "Both original Linux windows must pass" }
     val image = path("linux-runtime", "app/desktop/build/compose/binaries/main/app/EhViewer")
@@ -147,8 +154,15 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val readerXml = filesBelow(path("ios", "."), ".xml").filter { it.fileName.toString().startsWith("reader-") }
     val readerEvidence = sharedHostTestEvidence(readerXml.map(Path::readBytes), filesBelow(root.resolve("app/shared/src/commonTest"), ".kt").size)
     require(readerEvidence == iosReader - setOf("execution", "test_executable_sha256")) { "Actual Native reader XML differs from its producer receipt" }
+    val iosData = ios["data_tests"].obj()
+    verifyDataTests(iosData, native = true)
+    require(iosData["execution"] == "BOOTED_OWNED_SIMULATOR" && sha256(path("ios", "data-tests.kexe")) == iosData["test_executable_sha256"])
+    val dataXml = filesBelow(path("ios", "."), ".xml").filter { it.fileName.toString().startsWith("data-") }
+    val dataSources = listOf("commonTest", "nonAndroidTest", "iosTest").sumOf { filesBelow(root.resolve("core/data/src/$it"), ".kt").size }
+    require(sharedHostTestEvidence(dataXml.map(Path::readBytes), dataSources) == iosData - setOf("execution", "test_executable_sha256")) { "Actual Native database XML differs from its producer receipt" }
     require(ios["gallery_product_checks_by_launch"].array() == listOf(3, 3)) { "Missing actual iOS detail/page/image decoder checks" }
     require(ios["account_product_checks_by_launch"].array() == listOf(3, 3)) { "Missing actual iOS account decoder checks" }
+    require(ios["history_product_checks_by_launch"].array() == listOf(3, 3)) { "Missing actual iOS native database runtime checks" }
     require(ios["browser_cookie_checks_by_launch"].array() == listOf(4, 4)) { "Missing actual WebKit cookie transfer checks" }
     val iosSession = ios["session_backend_tests"].obj()
     require(iosSession["result"] == "PASS" && iosSession["passed"] == 3 && iosSession["ignored"] == 0 && iosSession["execution"] == "REAL_IOS_KEYCHAIN_ON_OWNED_SIMULATOR")
@@ -231,7 +245,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         require(
             checks["version"] == version && checks["launches"].array().size == 2 && checks["launches"].array().all {
                 val launch = it.obj()
-                launch["gallery_product_checks"] == 3 && launch["account_product_checks"] == 3 && launch["rust_hash_results"] == 100 && launch["bundled_runtime"] == "PASS" && (launch["compose_frames"] as Number).toInt() > 0
+                launch["gallery_product_checks"] == 3 && launch["account_product_checks"] == 3 && launch["history_product_checks"] == 3 && launch["rust_hash_results"] == 100 && launch["bundled_runtime"] == "PASS" && (launch["compose_frames"] as Number).toInt() > 0
             },
         ) { "Incomplete actual Intel package launches" }
     }
@@ -249,6 +263,10 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val core = receipt("windows-core", "windows-native-core.json")
     val jvmFile = path("windows-jvm", "windows-jvm-ffi.json")
     val jvm = receipt("windows-jvm", "windows-jvm-ffi.json")
+    val windowsData = jvm["data_tests"].obj()
+    verifyDataTests(windowsData)
+    val windowsDataSources = listOf("commonTest", "nonAndroidTest", "desktopTest").sumOf { filesBelow(root.resolve("core/data/src/$it"), ".kt").size }
+    require(sharedHostTestEvidence(filesBelow(path("windows-jvm", "data-tests"), ".xml").map(Path::readBytes), windowsDataSources) == windowsData) { "Actual Windows native database XML differs from its producer receipt" }
     require(jvm["target"] == "aarch64-pc-windows-msvc" && jvm["caller"].obj()["rust_hash_results"] == "2000" && jvm["caller"].obj()["rust_active_results"] == "0" && jvm["caller"].obj()["library_closed"] == "PASS") { "Incomplete original Windows JVM ownership evidence" }
     require(jvm["caller"].obj()["path_transport"] == "utf8-base64" && listOf("double_free", "stale_handle", "undersized_copy").all { jvm["caller"].obj()[it] == "PASS" }) { "Original standalone Windows ownership errors differ" }
     require(sha256(path("windows-jvm", "native-libraries/ehviewer_capi.dll")) == jvm["rust_capi_sha256"]) { "Standalone Windows C API bytes changed" }
@@ -274,6 +292,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     fun windowsWindow(proof: Map<String, Any?>) {
         require(proof["gallery_product_checks"] == "3") { "Missing actual Windows detail/page/image decoder checks" }
         require(proof["account_product_checks"] == "3") { "Missing actual Windows account decoder checks" }
+        require(proof["history_product_checks"] == "3") { "Missing actual Windows native Room history checks" }
         require(proof["application_version"] == version && proof["architecture"] == "aarch64" && proof["java_version"] == "25.0.5.0.2" && proof["windows_code_page"] == "65001" && proof["native_encoding"] == "UTF-8" && proof["render_api"] == "SOFTWARE_COMPAT" && proof["rust_hash_results"] == "2000" && proof["rust_active_results"] == "0" && proof["rust_ownership_errors"] == "PASS" && proof["rust_library_closed"] == "PASS" && proof["window_showing"] == "true" && proof.str("compose_frames").toInt() > 0) { "Incomplete original Windows window/ownership check" }
     }
     require(runtime["launches"].array().size == 2) { "Both original Windows image launches remain mandatory" }

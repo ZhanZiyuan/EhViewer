@@ -128,7 +128,7 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
     fun encoded(path: Path) = Base64.getEncoder().encodeToString(path.toString().toByteArray(Charsets.UTF_8))
     capture(
         "jvm-probe.txt", jdk.resolve("bin/java.exe"), "-Dorg.gradle.appname=gradlew", "-jar", root.resolve("gradle/wrapper/gradle-wrapper.jar"),
-        "-p", root.resolve("app/desktop"), "rustCapiProbe", "spotlessCheck", "-PffiLibraryBase64=${encoded(library)}", "-PffiOutputBase64=${encoded(caller)}",
+        "-p", root.resolve("app/desktop"), "rustCapiProbe", "spotlessCheck", ":core:data:desktopTest", "-PffiLibraryBase64=${encoded(library)}", "-PffiOutputBase64=${encoded(caller)}",
         "--console=plain", "--no-daemon", "--max-workers=1", "-Dorg.gradle.parallel=false", "-Dorg.gradle.jvmargs=-Xmx2g", "-Dorg.gradle.java.home=$jdk",
         environment = mapOf("JAVA_HOME" to jdk.toString(), pathKey to "${jdk.resolve("bin")};${System.getenv(pathKey)}"),
     )
@@ -139,10 +139,17 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
     require(proof.getProperty("path_transport") == "utf8-base64") { "Caller did not preserve the explicit UTF-8 path transport" }
     require(proof.getProperty("rust_hash_results") == "2000" && proof.getProperty("rust_active_results") == "0" && proof.getProperty("abi_version") == "1") { "Incomplete real Rust ownership calls" }
     for (name in listOf("undersized_copy", "stale_handle", "double_free", "library_closed")) require(proof.getProperty(name) == "PASS") { "Missing FFI check: $name" }
+    val dataXml = filesBelow(root.resolve("core/data/build/test-results/desktopTest"), ".xml")
+    val dataSources = listOf("commonTest", "nonAndroidTest", "desktopTest").sumOf { filesBelow(root.resolve("core/data/src/$it"), ".kt").size }
+    val dataTests = sharedHostTestEvidence(dataXml.map { Files.readAllBytes(it) }, dataSources)
+    verifyDataTests(dataTests)
+    val dataReports = output.resolve("data-tests").createDirectories()
+    dataXml.forEach { Files.copy(it, dataReports.resolve(it.fileName)) }
     val result = mapOf(
         "source_commit" to source, "source_dirty" to dirty, "result" to "PASS", "target" to "aarch64-pc-windows-msvc",
         "jdk_url" to WINDOWS_JDK_URL, "jdk_archive_sha256" to WINDOWS_JDK_SHA256, "java_sha256" to sha256(jdk.resolve("bin/java.exe")),
         "rust_capi_sha256" to sha256(library), "caller" to proof.stringPropertyNames().sorted().associateWith { proof.getProperty(it) },
+        "data_tests" to dataTests,
         "packaged_jvm_window" to "NOT_VERIFIED", "windows_zip" to "NOT_VERIFIED", "complete_license_audit" to "NOT_VERIFIED",
     )
     output.resolve("windows-jvm-ffi.json").writeText(json(result))

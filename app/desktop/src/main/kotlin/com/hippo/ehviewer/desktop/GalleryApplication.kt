@@ -2,6 +2,11 @@ package com.hippo.ehviewer.desktop
 
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.ehviewer.core.data.RoomGalleryHistoryStore
+import com.ehviewer.core.database.DataDirectory
+import com.ehviewer.core.database.EhDatabase
+import com.ehviewer.core.database.Schema17to18
+import com.ehviewer.core.database.roomDb
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
 import com.ehviewer.core.network.session.NativeSessionVault
@@ -9,6 +14,7 @@ import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.reader.ReaderStateRepository
 import com.ehviewer.shared.settings.GalleryAppearanceRepository
 import java.nio.file.Path
+import okio.Path.Companion.toPath
 
 private fun applicationData(): Path {
     val os = System.getProperty("os.name")
@@ -39,14 +45,18 @@ fun galleryApplication() {
     val appearance = if (windows) windowsAppearanceStore(resources.resolve("ehviewer_capi.dll"), appearanceDirectory) else GalleryAppearanceRepository(NativeSessionVault(appearanceDirectory.toString()))
     val browserLibrary = resources.resolve(if (windows) "ehviewer_capi.dll" else "libehviewer_rust.${if (System.getProperty("os.name").startsWith("Mac")) "dylib" else "so"}")
     val browsers = DesktopBrowserService(browserLibrary, resources.resolve(if (windows) "ehviewer_browser.exe" else "ehviewer_browser"))
+    DataDirectory.configure(applicationData().resolve("database").toString().toPath())
+    val database = roomDb<EhDatabase>("eh.db") { addMigrations(Schema17to18()) }
+    val history = RoomGalleryHistoryStore(database)
     try {
         application {
             Window(onCloseRequest = ::exitApplication, title = "EhViewer") {
-                GallerySearchScreen(session, readerState, appearance, browserFactory = browsers::create)
+                GallerySearchScreen(session, readerState, appearance, history, browserFactory = browsers::create)
             }
         }
     } finally {
         browsers.close()
         session.close()
+        database.close()
     }
 }

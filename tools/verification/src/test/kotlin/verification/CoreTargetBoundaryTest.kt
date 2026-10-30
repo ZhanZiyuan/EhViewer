@@ -11,7 +11,9 @@ class CoreTargetBoundaryTest {
         .map { it.resolve("core/domain/build.gradle.kts") }.first(Files::isRegularFile).readText()
     private val common = generateSequence(Path.of("").toAbsolutePath()) { it.parent }
         .map { it.resolve("core/common/build.gradle.kts") }.first(Files::isRegularFile).readText()
-    private val configuration = mapOf("core/domain/build.gradle.kts" to domain, "core/common/build.gradle.kts" to common, "core/data/build.gradle.kts" to "android library")
+    private val data = generateSequence(Path.of("").toAbsolutePath()) { it.parent }
+        .map { it.resolve("core/data/build.gradle.kts") }.first(Files::isRegularFile).readText()
+    private val configuration = mapOf("core/domain/build.gradle.kts" to domain, "core/common/build.gradle.kts" to common, "core/data/build.gradle.kts" to data)
 
     @Test fun actualReviewedDomainConfigurationPasses() = verifyCoreTargetBoundary(configuration)
 

@@ -108,6 +108,7 @@ kotlin {
     }
     sourceSets.commonMain.dependencies {
         implementation(projects.core.network)
+        implementation(projects.core.data)
         implementation(projects.app.shared)
         implementation(libs.compose.multiplatform.ui)
         implementation(libs.compose.multiplatform.foundation)

@@ -11,6 +11,9 @@ import com.ehviewer.core.database.model.HistoryInfo
 
 @Dao
 interface HistoryDao {
+    @Query("SELECT GALLERIES.* FROM HISTORY JOIN GALLERIES USING(GID) ORDER BY TIME DESC, GID DESC LIMIT :limit")
+    suspend fun recent(limit: Int): List<GalleryEntity>
+
     @Query("SELECT HISTORY.* FROM HISTORY JOIN GALLERIES USING(GID) ORDER BY TIME")
     suspend fun list(): List<HistoryInfo>
 

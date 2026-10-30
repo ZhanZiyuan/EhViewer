@@ -282,6 +282,7 @@ java {
 }
 dependencies {
     implementation(project(":core:network"))
+    implementation(project(":core:data"))
     implementation(project(":app:shared"))
     implementation(libs.serialization.json)
     implementation(libs.compose.material3)

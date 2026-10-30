@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import com.ehviewer.shared.GalleryLibraryScreen
+import com.hippo.ehviewer.EhDB
 import com.hippo.ehviewer.Settings
 import com.hippo.ehviewer.client.EhUrl
 import com.hippo.ehviewer.collectAsState
@@ -24,6 +25,6 @@ fun AnimatedVisibilityScope.SharedGalleriesScreen(navigator: DestinationsNavigat
     val appearance = remember { AndroidGalleryAppearanceStore() }
     key(site, signedIn) {
         val library = remember { AndroidGalleryLibrary(site == EhUrl.SITE_EX) }
-        GalleryLibraryScreen(library, library.readerState, appearance, onBack = { navigator.popBackStack() }, onAccount = { navigator.navigate(EhScreenDestination) })
+        GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, onBack = { navigator.popBackStack() }, onAccount = { navigator.navigate(EhScreenDestination) })
     }
 }

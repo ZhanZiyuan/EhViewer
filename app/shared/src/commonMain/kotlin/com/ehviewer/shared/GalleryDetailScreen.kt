@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
 
 /** Detail and reader routes retain the original search and detail state when navigating back. */
 @Composable
-internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, onBack: () -> Unit) {
+internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, backLabel: String = "Back to search", onBack: () -> Unit) {
     var detail by remember(gallery.gid) { mutableStateOf<GalleryDetail?>(null) }
     var failure by remember(gallery.gid) { mutableStateOf<GalleryFailure?>(null) }
     var loading by remember(gallery.gid) { mutableStateOf(false) }
@@ -102,7 +102,7 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onBack) { Text("Back to search") }
+            TextButton(onClick = onBack) { Text(backLabel) }
             TextButton(onClick = { attempt++ }, enabled = !loading) { Text("Refresh") }
         }
         Text(document?.title ?: gallery.title.orEmpty(), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(vertical = 12.dp))

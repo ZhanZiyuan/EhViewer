@@ -116,6 +116,7 @@ jobs:
           :core:i18n:bundleAndroidMainAar :core:ui:bundleAndroidMainAar
           :core:domain:bundleAndroidMainAar :core:domain:desktopJar
           :core:common:desktopJar :core:common:desktopTest
+          :core:data:desktopJar :core:data:desktopTest
           :core:common:testAndroidHostTest :core:data:testAndroidHostTest
           :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest
           :core:domain:testAndroidHostTest :core:domain:desktopTest

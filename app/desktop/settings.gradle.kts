@@ -34,11 +34,13 @@ dependencyResolutionManagement {
 rootProject.name = "desktop"
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
-include(":core:domain", ":core:network", ":app:shared")
+include(":core:domain", ":core:common", ":core:data", ":core:network", ":app:shared")
 project(":app").projectDir = file("..")
 // The standalone Desktop graph needs the parent path, not the Android application build script.
 project(":app").buildFileName = "standalone-parent.gradle.kts"
 project(":app:shared").projectDir = file("../shared")
 project(":core").projectDir = file("../../core")
 project(":core:domain").projectDir = file("../../core/domain")
+project(":core:common").projectDir = file("../../core/common")
+project(":core:data").projectDir = file("../../core/data")
 project(":core:network").projectDir = file("../../core/network")

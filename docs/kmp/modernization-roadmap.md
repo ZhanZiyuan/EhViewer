@@ -2,7 +2,9 @@
 
 # 现代化路线与阶段门禁
 
-当前产品进度：搜索/会话、图库详情/图片、阅读进度/连续阅读、共享表单登录和 iOS 浏览器交接分别已有独立全量 CI 通过；最新已验收 HEAD 为 `d688e40f59e3b9e18802b494a2862b9a3876fc05`，PR #15 仍为 Draft。桌面浏览器使用相同 CMP 控件和共享事务，通过 Rust JNI/C ABI 接入独立原生窗口，当前等待本次新 SHA 的 Full 验收；具体参考、许可与真实测试边界见 [desktop-browser-sign-in.md](desktop-browser-sign-in.md)。下一优先级为 Android 共享业务接入及 profile/Ex 初始化，然后持久化/配置与下载。M3 整阶段仍未完成，不以单个功能提交代替阶段完成提示；后续按维护者加速计划逐功能推进。
+当前仍为 M3 / IN_PROGRESS，PR #15 始终保持 Draft。搜索/会话、详情/图片、分页/连续/RTL 阅读、账户及浏览器交接、Android 接入、筛选、外观设置与缩略图导航均已逐提交通过完整 CI。最近已验收提交 `6add2aaa38ab6251a3ef6b0f760e5c43579b9b7d` 的 [Full CI](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41137373300) 全部 12 项成功。本切片交付共享历史、原数据库迁移和便携配置，保留 Android 原客户端、Cookie、Room 与 DataStore；真实本地迁移、回滚、手机/平板交互和 iPad 历史/冷启动验收已通过，仍须本提交的完整 CI，尤其 Windows ARM64 SQLite 原生构建及执行；见 [shared-history-and-data.md](shared-history-and-data.md)。后续共享下载与离线阅读在独立开发，不混入历史提交，也不以基础库测试代替五平台 P0。版本到 M8 之前保持 `1.15.10 / 180074`。
+
+以下保留各历史时点的范围、结果和未通过记录；其“当前/待验”描述不覆盖以上进度，也不改变维护者的加速计划。
 
 本轮先交付 iOS 原生浏览器登录入口：共享 CMP 导航和确认，Kotlin/Native 嵌入独立 WKWebView，无 Swift/自维护 JavaScript。真实 HttpOnly Cookie 交接在公共 KMP 检查身份、范围、期限及会话代次后才原子写入 Keychain；取消不写入。网络 Android/JVM/Native 各 46、阅读器各 20、真实 WebKit/Keychain 双冷启动及原 Android 验收任务通过，iPhone/iPad 官方验证页、窄屏/横屏和取消已测。托管 CI 仍需独立验证；网站验证码/真实账号、桌面与 Android 浏览器接入、配置与数据迁移仍待完成，M3 不标记完成。参见[浏览器切片的参考、验证与限制](browser-sign-in.md)。
 

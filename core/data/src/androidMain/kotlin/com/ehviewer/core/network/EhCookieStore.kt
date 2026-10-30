@@ -6,6 +6,7 @@ import io.ktor.http.URLBuilder
 import io.ktor.http.URLProtocol
 import io.ktor.http.Url
 
+/** Original Android WebView store; portable clients use core/network's persistent session store. */
 object EhCookieStore : CookiesStorage {
     private val manager = getCookieManager()
     private val urlE = URLBuilder(URLProtocol.HTTPS, "e-hentai.org").build()
