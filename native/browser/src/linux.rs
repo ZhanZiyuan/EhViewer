@@ -132,9 +132,11 @@ pub fn cookies(view: &wry::WebView) -> CookieResult {
 }
 
 pub fn verify(view: &wry::WebView) -> Result<usize, ()> {
+    eprintln!("Native fixture checking the empty private cookie store");
     if !private_store(view)? || !cookies(view)?.is_empty() {
         return Err(());
     }
+    eprintln!("Native fixture checking the visible rendered page");
     verify_rendered_fixture(view)?;
     let manager = view
         .webview()
@@ -155,6 +157,7 @@ pub fn verify(view: &wry::WebView) -> Result<usize, ()> {
         });
         await_callback(receiver, &cancel)??;
     }
+    eprintln!("Native fixture reading synthetic native cookie metadata");
     let records = cookies(view)?;
     let domain = records
         .iter()

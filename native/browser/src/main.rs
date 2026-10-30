@@ -216,6 +216,16 @@ fn run() -> Result<(), ()> {
     let self_test = arguments.as_slice() == ["--self-test"];
     let bridge_regression = arguments.as_slice() == ["--bridge-regression"];
     let regression = self_test || bridge_regression;
+    let started = Instant::now();
+    let phase = |name| {
+        if regression {
+            eprintln!(
+                "Native fixture phase={name} elapsed_ms={} pid={}",
+                started.elapsed().as_millis(),
+                std::process::id()
+            );
+        }
+    };
     if !regression
         && (io::stdout().is_terminal()
             || arguments.len() != 2
@@ -226,12 +236,15 @@ fn run() -> Result<(), ()> {
     {
         return Err(());
     }
+    phase("event-loop-start");
     let mut events = EventLoopBuilder::<Command>::with_user_event().build();
+    phase("event-loop-ready");
     let window = WindowBuilder::new()
         .with_title("EhViewer — Browser sign-in")
         .with_inner_size(tao::dpi::LogicalSize::new(900.0, 720.0))
         .build(&events)
         .map_err(|_| ())?;
+    phase("window-ready");
     let builder = WebViewBuilder::new()
         .with_incognito(true)
         .with_user_agent(if regression {
@@ -260,6 +273,7 @@ fn run() -> Result<(), ()> {
     };
     #[cfg(not(target_os = "linux"))]
     let view = builder.build(&window).map_err(|_| ())?;
+    phase("webview-ready");
     #[cfg(target_os = "windows")]
     if !windows_backend::private_store(&view)? {
         return Err(());
@@ -305,6 +319,7 @@ fn run() -> Result<(), ()> {
     let deadline = Instant::now() + Duration::from_secs(if regression { 45 } else { 15 * 60 });
     let mut failed = false;
     let mut verified = false;
+    phase("event-dispatch-start");
     events.run_return(|event, _, flow| {
         *flow = ControlFlow::WaitUntil(deadline);
         if Instant::now() >= deadline {
@@ -312,7 +327,13 @@ fn run() -> Result<(), ()> {
         }
         match event {
             Event::UserEvent(Command::Verify) => {
+                phase("verify-start");
                 verified = verify_native_store(&view) == Ok(4);
+                phase(if verified {
+                    "verify-pass"
+                } else {
+                    "verify-fail"
+                });
                 failed = !verified;
                 if bridge_regression && verified {
                     if emit(Response {
@@ -335,6 +356,7 @@ fn run() -> Result<(), ()> {
                 ..
             } => *flow = ControlFlow::Exit,
             Event::UserEvent(Command::Cookies) => {
+                phase("cookies-start");
                 let result = native_cookies(&view).and_then(|cookies| {
                     let scoped = cookies
                         .into_iter()
@@ -353,6 +375,11 @@ fn run() -> Result<(), ()> {
                         status: "cookies",
                         cookies: scoped,
                     })
+                });
+                phase(if result.is_ok() {
+                    "cookies-pass"
+                } else {
+                    "cookies-fail"
                 });
                 if result.is_err() {
                     failed = true;

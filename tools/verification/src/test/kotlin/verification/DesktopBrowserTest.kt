@@ -4,6 +4,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DesktopBrowserTest {
+    @Test fun standaloneDiagnosticsCannotSubstituteForNativeSuccessOnTheActualCpu() {
+        val proof = mapOf("protocol" to 1, "status" to "verified", "checks" to 4, "architecture" to "aarch64", "os" to "linux", "engine_version" to "2.52.6")
+        val output = "Native fixture phase=verify-pass\n" + json(proof).replace("\n", "")
+        verifyDesktopBrowserSelfTest(output, "aarch64")
+        for (bad in listOf("Native fixture phase=verify-pass", output + "\n" + output, json(proof + ("checks" to 0)).replace("\n", ""), json(proof + ("status" to "skipped")).replace("\n", ""))) {
+            assertTrue(runCatching { verifyDesktopBrowserSelfTest(bad, "aarch64") }.isFailure)
+        }
+        assertTrue(runCatching { verifyDesktopBrowserSelfTest(output, "x86_64") }.isFailure)
+    }
+
     @Test fun rejectsChangedBrowserAbiWidthsOwnershipAndMissingDeclarations() {
         val header = """
             uint32_t ehv_browser_api_version(void);

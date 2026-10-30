@@ -71,6 +71,10 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
     capture("browser-client-tests.log", "cargo", "test", "--manifest-path", root.resolve("native/rust/Cargo.toml"), "--locked", "-p", "ehviewer_browser_client")
     capture("browser-build.log", "cargo", "build", "--manifest-path", browserManifest, "--locked", "--release", "--target", target, timeout = Duration.ofMinutes(15))
     val browser = root.resolve("native/browser/target/$target/release/ehviewer_browser")
+    if (!mac) {
+        val standalone = capture("browser-standalone.log", browser, "--self-test", timeout = Duration.ofSeconds(20))
+        verifyDesktopBrowserSelfTest(standalone, "x86_64")
+    }
     capture(
         "browser-jni.log", root.resolve("gradlew"), "-p", root.resolve("app/desktop"), "browserHandoffRegression",
         "-Pehviewer.desktopOnly=true", "-PnativeBrowserLibrary=$library", "-PnativeBrowserExecutable=$browser",

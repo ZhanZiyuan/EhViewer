@@ -1,6 +1,16 @@
 package verification
 
+import groovy.json.JsonSlurper
 import java.nio.file.Path
+
+/** Same actual native store/rendering regression without a JVM parent, to isolate startup failures. */
+fun verifyDesktopBrowserSelfTest(output: String, architecture: String) {
+    val record = output.lineSequence().filter { it.startsWith('{') }.toList().singleOrNull()
+        ?: error("Missing or ambiguous standalone native browser result")
+    val proof = JsonSlurper().parseText(record).obj()
+    require(proof["protocol"] == 1 && proof["status"] == "verified" && proof["checks"] == 4 && proof["architecture"] == architecture && proof["os"] == "linux") { "Standalone native browser did not verify this Linux CPU" }
+    require(Regex("[0-9]+(?:\\.[0-9]+){1,3}").matches(proof.str("engine_version"))) { "Missing actual native engine version" }
+}
 
 fun verifyDesktopBrowserHeader(header: String) {
     val declarations = header.replace(Regex("/\\*.*?\\*/", RegexOption.DOT_MATCHES_ALL), "").replace(Regex("\\s+"), "")

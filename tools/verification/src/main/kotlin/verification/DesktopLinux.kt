@@ -53,6 +53,8 @@ fun desktopLinuxArm64(image: Path, output: Path): Map<String, Any?> {
         val launcher = installed.resolve("bin/EhViewer")
         require(Files.isExecutable(launcher)) { "Missing executable launcher" }
         val rust = contents.resolve("app/resources/libehviewer_rust.so")
+        val standalone = capture("browser-standalone.log", contents.resolve("app/resources/ehviewer_browser"), "--self-test", timeout = Duration.ofSeconds(20))
+        verifyDesktopBrowserSelfTest(standalone, "aarch64")
         val home = contents.resolve("runtime")
         val jvm = home.resolve("lib/server/libjvm.so")
         val relocations = capture("rust-relocations.txt", "ldd", "-r", rust)
