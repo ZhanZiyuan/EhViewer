@@ -49,6 +49,7 @@ val buildOfflineClient = tasks.register<Exec>("buildOfflineClient") {
 }
 
 tasks.withType<Test>().configureEach {
+    workingDir(rootDir.resolve("../.."))
     dependsOn(buildOfflineClient)
     systemProperty("verification.offlineClient", offlineClient.get().asFile.absolutePath)
     inputs.file(offlineClient).withPropertyName("offlineProcessClient").withPathSensitivity(PathSensitivity.NONE)
@@ -67,6 +68,9 @@ tasks.withType<Test>().configureEach {
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file(rootDir.resolve("../../core/common/build.gradle.kts"))
         .withPropertyName("reviewedCommonTargets")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootDir.resolve("../../core/data/build.gradle.kts"))
+        .withPropertyName("reviewedDataTargets")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file(rootDir.resolve("../../core/network/build.gradle.kts")).withPropertyName("reviewedNetworkTargets").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file(rootDir.resolve("../../app/shared/build.gradle.kts")).withPropertyName("reviewedGalleryUiTargets").withPathSensitivity(PathSensitivity.RELATIVE)

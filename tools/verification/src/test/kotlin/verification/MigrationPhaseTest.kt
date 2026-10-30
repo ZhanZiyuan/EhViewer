@@ -18,8 +18,18 @@ class MigrationPhaseTest {
 
     @Test fun retainedModuleCoverageIsExplicit() {
         val report = report()
-        for (module in listOf("domain", "common", "network", "shared-ui")) assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_module_targets"].obj()[module])
-        for (module in listOf("data", "i18n", "ui")) assertEquals(listOf("android"), report["shared_module_targets"].obj()[module])
+        for (module in listOf("domain", "common", "network", "shared-ui", "data")) assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_module_targets"].obj()[module])
+        for (module in listOf("i18n", "ui")) assertEquals(listOf("android"), report["shared_module_targets"].obj()[module])
+    }
+
+    @Test fun executablePhaseGateMatchesActualMigratedDataArchitecture() {
+        val report = verifyMigrationPhase()
+        val architecture = report["retained_architecture_checks"].obj()
+        assertEquals("PASS", architecture["result"])
+        assertEquals(portableDomainTargets, architecture["portable_data_targets"])
+        assertEquals(architecture["portable_data_targets"], report["shared_module_targets"].obj()["data"])
+        assertEquals(listOf("i18n", "ui"), architecture["legacy_shared_modules"])
+        assertEquals(false, report["milestone_complete"])
     }
 
     @Test fun nativeAndJvmExecutionSurfacesRemainRecorded() {

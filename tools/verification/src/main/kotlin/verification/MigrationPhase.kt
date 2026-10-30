@@ -2,7 +2,7 @@ package verification
 
 import kotlin.io.path.readText
 
-/** Reviewed first M3 migration. A declared surface is not an executed artifact receipt. */
+/** Reviewed M3 targets. A declared surface is not an executed artifact receipt. */
 fun migrationPhaseContract(sourceSha: String, settings: String): Map<String, Any?> {
     require(Regex("[0-9a-f]{40}").matches(sourceSha) && sourceSha != "0".repeat(40)) { "Expected a nonzero full source SHA" }
     val delivery = releaseContract(settings, sourceSha)
@@ -32,7 +32,7 @@ fun migrationPhaseContract(sourceSha: String, settings: String): Map<String, Any
         "ci_policy" to ".github/ci-plan.json",
         "always_required_jobs" to listOf("android", "shared_kmp", "source_policy"),
         "shared_product_core_targets" to portableDomainTargets,
-        "shared_module_targets" to mapOf("domain" to portableDomainTargets, "common" to portableCommonTargets, "network" to portableDomainTargets, "shared-ui" to portableDomainTargets, "data" to listOf("android"), "i18n" to listOf("android"), "ui" to listOf("android")),
+        "shared_module_targets" to mapOf("domain" to portableDomainTargets, "common" to portableCommonTargets, "network" to portableDomainTargets, "shared-ui" to portableDomainTargets, "data" to portableDomainTargets, "i18n" to listOf("android"), "ui" to listOf("android")),
         "common_jvm_evidence_jobs" to listOf("desktop_intel_native", "desktop_linux_arm64", "rust_host", "windows_native_core"),
         "domain_ios_targets" to domainIosTargets,
         "domain_ios_evidence_job" to "ios",
@@ -54,10 +54,10 @@ fun verifyMigrationPhase(): Map<String, Any?> {
     val source = command("git", "rev-parse", "HEAD").trim()
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
-    // Common and domain retain their reviewed JVM/iOS targets.
+    // Every migrated library retains its reviewed targets; localization/UI legacy modules stay Android-only.
     val architecture = verifyArchitecture()
     require(architecture["legacy_shared_core_android_only"] == true && architecture["portable_domain_targets"] == portableDomainTargets && architecture["result"] == "PASS")
-    require(architecture["portable_common_targets"] == portableCommonTargets && architecture["legacy_shared_modules"] == listOf("data", "i18n", "ui"))
+    require(architecture["portable_common_targets"] == portableCommonTargets && architecture["portable_data_targets"] == portableDomainTargets && architecture["legacy_shared_modules"] == listOf("i18n", "ui")) { "Phase declarations must match the reviewed common/data targets and remaining Android-only modules" }
     return migrationPhaseContract(source, root.resolve("app/build.gradle.kts").readText()) + mapOf(
         "source_dirty" to dirty,
         "retained_architecture_checks" to architecture,
