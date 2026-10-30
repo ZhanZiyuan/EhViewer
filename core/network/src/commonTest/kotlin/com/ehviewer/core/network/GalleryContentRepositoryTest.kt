@@ -32,6 +32,23 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 
 class GalleryContentRepositoryTest {
+    @Test fun actualForumLoginRedirectIsAuthenticationBeforeAnyLoginPageIsFetched() = runTest {
+        val visited = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            visited += request.url.host
+            respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "https://forums.e-hentai.org/index.php?act=Login&CODE=00"))
+        }
+        val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "test")
+        try {
+            val error = assertFailsWith<GalleryRequestException> { GalleryContentRepository(client, decoder()).details(1, "0123456789") }
+            assertEquals(GalleryFailure.AUTHENTICATION, error.failure)
+            assertEquals(listOf("e-hentai.org"), visited)
+        } finally {
+            client.close()
+            engine.close()
+        }
+    }
+
     private val details = GalleryDetail(
         galleryInfo = BaseGalleryInfo(gid = 1, token = "0123456789", pages = 2),
         tagGroups = emptyList(),

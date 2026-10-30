@@ -85,7 +85,8 @@ internal class GalleryRequests(private val client: HttpClient, private val host:
         if (url.protocol != URLProtocol.HTTPS || !url.user.isNullOrEmpty() || !url.password.isNullOrEmpty()) invalid()
         val allowed = if (image) isGalleryImageHost(url.host) else url.host in setOf(host, "forums.e-hentai.org")
         if (!allowed) invalid()
-        if (!image && url.encodedPath.contains("login", ignoreCase = true)) throw GalleryRequestException(GalleryFailure.AUTHENTICATION)
+        val forumLogin = url.host == "forums.e-hentai.org" && url.encodedPath.equals("/index.php", ignoreCase = true) && url.parameters["act"].equals("Login", ignoreCase = true)
+        if (!image && (url.encodedPath.contains("login", ignoreCase = true) || forumLogin)) throw GalleryRequestException(GalleryFailure.AUTHENTICATION)
     }
 }
 

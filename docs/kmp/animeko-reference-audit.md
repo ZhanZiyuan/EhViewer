@@ -1,5 +1,7 @@
 # Animeko → EhViewer 只读参考审计
 
+共享认证切片沿用已审阅的 `app/shared/app-data/src/commonMain/kotlin/domain/session/SessionStateProvider.kt` 和 `app/shared/application/src/commonMain/kotlin/platform/CommonKoinModule.kt` 的职责边界概念，独立实现 EhViewer 自身论坛协议、临时 HTTP Cookie 事务、OS vault 单次提交与 CMP 账户 UI；拒绝 OAuth、刷新协议、服务查找和参考依赖图，不复制 AGPL 实现。目标、差异、许可与 Android/JVM/Native/实际账户表单验证见[共享认证](gallery-authentication.md)；浏览器接入与完整 M3 仍未完成。
+
 阅读进度与连续阅读：按需只读审阅 `app/shared/app-data/src/commonMain/kotlin/data/persistent/SettingsStore.kt` 和 `app/shared/app-data/src/commonMain/kotlin/data/repository/media/EpisodePreferencesRepository.kt` 的公共状态与平台存储边界。EhViewer 独立实现图库进度、方向和连续阅读，使用已验证的 OS vault，保留损坏状态并显式报错；不复制自动重置策略、视频模型、服务查找或依赖图。目标文件、采用/改造/拒绝与许可处理见[阅读进度与连续阅读](reader-progress-and-continuous.md)；实际验证按执行结果补充，M3 仍未完成。
 
 共享详情与阅读切片：另按需只读审阅 `app/shared/app-platform/src/commonMain/kotlin/navigation/AniBackStack.kt` 和 `app/shared/ui-subject/src/commonMain/kotlin/ui/subject/details/state/SubjectDetailsStateLoader.kt` 的状态保留、取消和重试职责。EhViewer 使用自身 Rust 详情解析器、独立页面提取、KMP 网络及同一 CMP 详情/阅读界面；没有复制参考导航、加载器或依赖实现。路径映射、差异、许可证处理及 Android/JVM/Native/实际 Desktop+iPad 验证范围见[共享详情与阅读](gallery-details-and-reader.md)。M3 整体仍未完成。

@@ -62,6 +62,7 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
     var request by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
     var selected by remember { mutableStateOf<BaseGalleryInfo?>(null) }
+    var account by remember { mutableStateOf(false) }
     val resultsState = rememberLazyListState()
 
     fun load(cursor: String? = null, previous: Boolean = false) {
@@ -98,12 +99,33 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
                 Column(Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    if (account) {
+                        GalleryAccountScreen(session, onIdentityAction = {
+                            request?.cancel()
+                            generation++
+                            selected = null
+                            page = null
+                            query = ""
+                            loadedQuery = ""
+                            failure = null
+                            loading = false
+                        }, onBack = { account = false })
+                        return@Column
+                    }
                     val gallery = selected
                     if (gallery != null) {
                         GalleryDetailScreen(session, gallery, readerState, onBack = { selected = null })
                         return@Column
                     }
-                    Text("EhViewer", style = MaterialTheme.typography.headlineMedium)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("EhViewer", style = MaterialTheme.typography.headlineMedium)
+                        TextButton(onClick = {
+                            request?.cancel()
+                            generation++
+                            loading = false
+                            account = true
+                        }) { Text("Account") }
+                    }
                     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(
                             query,

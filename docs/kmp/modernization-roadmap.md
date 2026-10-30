@@ -2,6 +2,8 @@
 
 # 现代化路线与阶段门禁
 
+当前账户切片已接入同一 CMP 登录/退出表单和真实 Ktor 事务：成功后单次写入 OS vault，失败保留旧会话，退出使在途登录失效，取消后重读真实存储；Android/JVM/Native 各 39 项网络测试、原 20 项阅读器测试和 Android 完整验收任务通过，iPad 输入/遮罩/返回清空及用户名 IME 修复已实测。上一阅读器 SHA `4e791db93` 已通过全部 12 个必需 Job、gate 与 dry-run，本切片仍须自己的独立 CI；认证浏览器跳转、Android 共享接入与数据库/配置迁移仍待完成，M3 不标记完成。范围与许可见[共享账户与认证](gallery-authentication.md)。
+
 阅读进度恢复、RTL 与连续阅读已完成本地产品验收：20 项阅读器测试在 Android/JVM/Native 均通过，实际 macOS 重启恢复第 5 页，iPad 容器迁移后恢复第 102 页/连续模式/RTL；快速拖动限速和横屏保留第 3 页也已运行。修复了真实重装发现的 OS vault 绝对目录标识问题，保留密钥和密文。前一修复 `12820976e` 已通过全部 12 个适用 Job、gate 与 dry-run，本功能仍需独立 SHA 的必需 CI。设计、参考差异与额外库 lint 的未通过记录见[阅读进度与连续阅读](reader-progress-and-continuous.md)。完整 M3 的认证、Android 接入、数据库/共享配置等仍未完成。
 
 当前推进共享详情与在线分页阅读：实际 macOS 与 iPad Simulator 已完成真实列表→详情→图片 1/2→返回流程，平板横屏与旋转后保留详情也已运行；Android 原有完整回归、四 ABI 构建和共享代码检查通过。继续在同一产品切片完成重试/平台检查与精确 SHA 的 PR CI，随后推进阅读进度、连续/RTL 阅读及 M3 存储/认证和 Android 接入；不把本切片标为 M3 完成。设计与真实范围见[详情与阅读](gallery-details-and-reader.md)，此前时点记录保留如下。

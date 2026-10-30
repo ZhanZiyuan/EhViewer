@@ -134,4 +134,39 @@ class PersistentCookieStorageTest {
         assertFailsWith<CancellationException> { PersistentCookieStorage(vault).get(root) }
         assertEquals(null, vault.bytes)
     }
+
+    @Test fun cancellationAfterAnAtomicWriteReloadsTheActualCommittedCookie() = runTest {
+        val durable = TestSessionVault()
+        var cancelled = false
+        val vault = object : SessionVault by durable {
+            override suspend fun write(bytes: ByteArray) {
+                durable.write(bytes)
+                if (cancelled) throw CancellationException("test-only-after-commit")
+            }
+        }
+        val store = PersistentCookieStorage(vault)
+        store.addCookie(root, Cookie("one", "old", path = "/"))
+        cancelled = true
+        assertFailsWith<CancellationException> { store.addCookie(root, Cookie("one", "committed", path = "/")) }
+        cancelled = false
+        assertEquals("committed", store.get(root).single().value)
+        assertEquals(store.get(root), PersistentCookieStorage(durable).get(root))
+    }
+
+    @Test fun cancelledLogoutCannotKeepAnAlreadyClearedSessionSignedIn() = runTest {
+        val durable = TestSessionVault()
+        val vault = object : SessionVault by durable {
+            override suspend fun clear() {
+                durable.clear()
+                throw CancellationException("test-only-after-clear")
+            }
+        }
+        val store = PersistentCookieStorage(vault)
+        store.addCookie(root, Cookie("ipb_member_id", "test-member", path = "/"))
+        store.addCookie(root, Cookie("ipb_pass_hash", "test-only-secret", path = "/"))
+        assertTrue(store.isSignedIn())
+        assertFailsWith<CancellationException> { store.logout() }
+        assertFalse(store.isSignedIn())
+        assertFalse(PersistentCookieStorage(durable).isSignedIn())
+    }
 }
