@@ -283,7 +283,14 @@ impl BrowserClient {
         let mut child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
+            // Explicit regression loads only our static fixture/synthetic cookies.
+            // Retain native sandbox/display diagnostics there; interactive login
+            // still discards browser stderr so account content never enters logs.
+            .stderr(if regression {
+                Stdio::inherit()
+            } else {
+                Stdio::null()
+            })
             .spawn()
             .map_err(|_| Error::Unavailable)?;
         let Some(input) = child.stdin.take() else {

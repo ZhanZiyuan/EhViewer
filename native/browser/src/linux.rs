@@ -35,6 +35,7 @@ fn await_callback<T>(receiver: Receiver<T>, cancel: &gio::Cancellable) -> Result
             Ok(result) => return Ok(result),
             Err(TryRecvError::Disconnected) => return Err(()),
             Err(TryRecvError::Empty) if Instant::now() >= deadline => {
+                eprintln!("Native browser GTK callback reached its deadline");
                 cancel.cancel();
                 return Err(());
             }
@@ -190,12 +191,19 @@ fn verify_rendered_fixture(view: &wry::WebView) -> Result<(), ()> {
         || !widget.is_mapped()
     {
         if Instant::now() >= deadline {
+            eprintln!(
+                "Native fixture did not load/map before its deadline (mapped={}, loading={}, title_matches={})",
+                widget.is_mapped(),
+                widget.is_loading(),
+                widget.title().as_deref() == Some("EhViewer native regression")
+            );
             return Err(());
         }
         context.iteration(false);
         std::thread::sleep(Duration::from_millis(5));
     }
     if widget.parent().is_none() || !widget.is_visible() {
+        eprintln!("Native fixture is not attached to a visible GTK parent");
         return Err(());
     }
     let cancel = gio::Cancellable::new();
@@ -205,22 +213,111 @@ fn verify_rendered_fixture(view: &wry::WebView) -> Result<(), ()> {
         webkit2gtk::SnapshotOptions::empty(),
         Some(&cancel),
         move |surface| {
-            let _ = sender.send(surface.map_err(|_| ()));
+            let _ = sender.send(surface.map_err(|error| {
+                // This path exists only for our fixed synthetic page, never login.
+                eprintln!("Native fixture snapshot failed: {error}");
+            }));
         },
     );
     let surface = await_callback(receiver, &cancel)??;
-    let mut image = gtk::cairo::ImageSurface::try_from(surface).map_err(|_| ())?;
+    let image = gtk::cairo::ImageSurface::try_from(surface).map_err(|_| {
+        eprintln!("Native fixture snapshot is not an image surface");
+    })?;
+    verify_fixture_image(&image)?;
+    eprintln!(
+        "Native fixture snapshot verified (pid={}, format={:?}, size={}x{})",
+        std::process::id(),
+        image.format(),
+        image.width(),
+        image.height()
+    );
+    Ok(())
+}
+
+fn verify_fixture_image(image: &gtk::cairo::ImageSurface) -> Result<(), ()> {
+    let format = image.format();
     let (width, height, stride) = (image.width(), image.height(), image.stride());
     if !(32..=4096).contains(&width) || !(32..=4096).contains(&height) || stride < width * 4 {
         return Err(());
     }
-    image.flush();
-    let data = image.data().map_err(|_| ())?;
-    let offset = usize::try_from(stride * (height / 2) + (width / 2) * 4).map_err(|_| ())?;
+    let stride = usize::try_from(stride).map_err(|_| ())?;
+    let height = usize::try_from(height).map_err(|_| ())?;
+    if stride.checked_mul(height).ok_or(())? > 64 * 1024 * 1024 {
+        return Err(());
+    }
+    let offset = stride
+        .checked_mul(height / 2)
+        .and_then(|row| row.checked_add(width as usize / 2 * 4))
+        .ok_or(())?;
     // Both supported Linux CPUs are little-endian. The actual center pixel must
     // match the fixture background, not an unattached/blank WebKit widget.
-    if data.get(offset..offset + 4) != Some(&[0x80, 0x4d, 0x1a, 0xff]) {
+    let mut valid = false;
+    // WebKit may retain a reference to its immutable snapshot. `data()` asks for
+    // mutable/exclusive ownership and can reject a perfectly valid shared image.
+    image
+        .with_data(|data| {
+            valid = data
+                .get(offset..)
+                .is_some_and(|pixel| fixture_pixel(format, pixel));
+        })
+        .map_err(|_| {
+            eprintln!("Native fixture snapshot cannot be read");
+        })?;
+    if !valid {
+        eprintln!("Native fixture snapshot differs from its fixed background (format={format:?})");
         return Err(());
     }
     Ok(())
+}
+
+fn fixture_pixel(format: gtk::cairo::Format, pixel: &[u8]) -> bool {
+    // cairo RGB24 stores pixels in four bytes but does not define the upper byte.
+    // Validate all defined color channels; require opaque alpha only for ARGB32.
+    // https://www.cairographics.org/manual/cairo-Image-Surfaces.html#cairo-format-t
+    match format {
+        gtk::cairo::Format::ARgb32 => pixel.get(..4) == Some(&[0x80, 0x4d, 0x1a, 0xff]),
+        gtk::cairo::Format::Rgb24 => pixel.get(..3) == Some(&[0x80, 0x4d, 0x1a]),
+        _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn actual_cairo_paints_validate_defined_channels_without_inventing_rgb24_alpha() {
+        use gtk::cairo::{Context, Format, ImageSurface};
+        for format in [Format::ARgb32, Format::Rgb24] {
+            let mut image = ImageSurface::create(format, 32, 32).unwrap();
+            {
+                let context = Context::new(&image).unwrap();
+                context.set_source_rgb(26.0 / 255.0, 77.0 / 255.0, 128.0 / 255.0);
+                context.paint().unwrap();
+            }
+            let retained = image.clone();
+            assert!(
+                image.data().is_err(),
+                "A shared Cairo surface cannot be mutably borrowed"
+            );
+            verify_fixture_image(&image).unwrap();
+            drop(retained);
+            image.flush();
+            let mut pixel = image.data().unwrap();
+            assert!(fixture_pixel(format, &pixel));
+            pixel[0] ^= 1;
+            assert!(!fixture_pixel(format, &pixel));
+            pixel[0] ^= 1;
+            pixel[3] = 0;
+            assert_eq!(fixture_pixel(format, &pixel), format == Format::Rgb24);
+            let center = (32 * 16 + 16) * 4;
+            pixel[center] ^= 1;
+            drop(pixel);
+            assert!(verify_fixture_image(&image).is_err());
+        }
+        assert!(!fixture_pixel(
+            gtk::cairo::Format::A8,
+            &[0x80, 0x4d, 0x1a, 0xff]
+        ));
+    }
 }

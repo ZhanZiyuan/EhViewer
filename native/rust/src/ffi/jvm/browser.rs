@@ -20,8 +20,9 @@ fn text(env: &mut JNIEnv, input: &JString, maximum: usize) -> Result<String> {
     Ok(text)
 }
 
-fn failure(_: client::Error) -> anyhow::Error {
-    anyhow::anyhow!("The native sign-in browser is unavailable")
+fn failure(error: client::Error) -> anyhow::Error {
+    // The enum contains no paths, URLs, cookies or underlying OS error text.
+    anyhow::anyhow!("The native sign-in browser is unavailable ({error:?})")
 }
 
 #[jni_fn("com.hippo.ehviewer.desktop.NativeBrowserBridge")]
