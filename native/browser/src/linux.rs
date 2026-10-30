@@ -4,6 +4,7 @@ use gtk::glib::{
     self,
     translate::{FromGlibPtrContainer, ToGlibPtr, from_glib_full},
 };
+use gtk::prelude::WidgetExt;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::time::{Duration, Instant};
 use webkit2gtk::{CookieManagerExt, WebViewExt, WebsiteDataManagerExt};
@@ -74,7 +75,7 @@ unsafe extern "C" fn cookies_ready(
         }
         // SAFETY: the API transfers a GList of boxed SoupCookie objects. gtk-rs owns
         // and frees every list node and cookie, including filtered-out domains.
-        let cookies: Vec<soup3::Cookie> = unsafe { FromGlibPtrContainer::from_glib_full(raw) };
+        let cookies: Vec<soup::Cookie> = unsafe { FromGlibPtrContainer::from_glib_full(raw) };
         if cookies.len() > 4096 {
             return Err(());
         }
@@ -133,6 +134,7 @@ pub fn verify(view: &wry::WebView) -> Result<usize, ()> {
     if !private_store(view)? || !cookies(view)?.is_empty() {
         return Err(());
     }
+    verify_rendered_fixture(view)?;
     let manager = view
         .webview()
         .website_data_manager()
@@ -142,7 +144,7 @@ pub fn verify(view: &wry::WebView) -> Result<usize, ()> {
         ("ehviewer-domain", ".e-hentai.org", "/private"),
         ("ehviewer-host", "e-hentai.org", "/"),
     ] {
-        let mut cookie = soup3::Cookie::new(name, "synthetic-only", domain, path, 3600);
+        let mut cookie = soup::Cookie::new(name, "synthetic-only", domain, path, 3600);
         cookie.set_http_only(true);
         cookie.set_secure(true);
         let cancel = gio::Cancellable::new();
@@ -176,4 +178,49 @@ pub fn verify(view: &wry::WebView) -> Result<usize, ()> {
         return Err(());
     }
     Ok(4)
+}
+
+/// Only the explicit static regression page is captured, never a login/account page.
+fn verify_rendered_fixture(view: &wry::WebView) -> Result<(), ()> {
+    let widget = view.webview();
+    let context = glib::MainContext::ref_thread_default();
+    let deadline = Instant::now() + Duration::from_secs(15);
+    while widget.is_loading()
+        || widget.title().as_deref() != Some("EhViewer native regression")
+        || !widget.is_mapped()
+    {
+        if Instant::now() >= deadline {
+            return Err(());
+        }
+        context.iteration(false);
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    if widget.parent().is_none() || !widget.is_visible() {
+        return Err(());
+    }
+    let cancel = gio::Cancellable::new();
+    let (sender, receiver) = mpsc::channel();
+    widget.snapshot(
+        webkit2gtk::SnapshotRegion::Visible,
+        webkit2gtk::SnapshotOptions::empty(),
+        Some(&cancel),
+        move |surface| {
+            let _ = sender.send(surface.map_err(|_| ()));
+        },
+    );
+    let surface = await_callback(receiver, &cancel)??;
+    let mut image = gtk::cairo::ImageSurface::try_from(surface).map_err(|_| ())?;
+    let (width, height, stride) = (image.width(), image.height(), image.stride());
+    if !(32..=4096).contains(&width) || !(32..=4096).contains(&height) || stride < width * 4 {
+        return Err(());
+    }
+    image.flush();
+    let data = image.data().map_err(|_| ())?;
+    let offset = usize::try_from(stride * (height / 2) + (width / 2) * 4).map_err(|_| ())?;
+    // Both supported Linux CPUs are little-endian. The actual center pixel must
+    // match the fixture background, not an unattached/blank WebKit widget.
+    if data.get(offset..offset + 4) != Some(&[0x80, 0x4d, 0x1a, 0xff]) {
+        return Err(());
+    }
+    Ok(())
 }

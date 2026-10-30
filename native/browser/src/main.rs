@@ -239,12 +239,14 @@ fn run() -> Result<(), ()> {
         } else {
             arguments[1].clone()
         })
-        .with_navigation_handler(|url| official_navigation(&url))
+        .with_navigation_handler(move |url| {
+            official_navigation(&url) || regression && url == "about:blank"
+        })
         .with_permission_handler(|_| PermissionResponse::Deny)
         .with_download_started_handler(|_, _| false)
         .with_new_window_req_handler(|_, _| NewWindowResponse::Deny);
     let builder = if regression {
-        builder.with_html("<html><body>EhViewer native cookie regression</body></html>")
+        builder.with_html("<!DOCTYPE html><html><head><title>EhViewer native regression</title></head><body style=\"margin:0;background:#1a4d80\">EhViewer native cookie regression</body></html>")
     } else {
         builder.with_url("https://forums.e-hentai.org/index.php?act=Login&CODE=00")
     };
@@ -252,7 +254,9 @@ fn run() -> Result<(), ()> {
     let view = {
         use tao::platform::unix::WindowExtUnix;
         use wry::WebViewBuilderExtUnix;
-        builder.build_gtk(window.gtk_window()).map_err(|_| ())?
+        builder
+            .build_gtk(window.default_vbox().ok_or(())?)
+            .map_err(|_| ())?
     };
     #[cfg(not(target_os = "linux"))]
     let view = builder.build(&window).map_err(|_| ())?;
