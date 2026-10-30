@@ -1,0 +1,568 @@
+# Generated from checksum-verified newly locked crates.io archives; only license text is retained.
+
+[[component]]
+name = "aes"
+version = "0.9.3"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "35f0f96ce78e38c3dc6d8948aa8163d06385be74000f3c7a95bf1eef35d3ea32"
+notice = "aes-0.9.3/LICENSE-MIT"
+notice_sha256 = "25f77efa393854f7c15eaf6a2589a2071db2d7337642742763adb12bdecf0445"
+
+[[component]]
+name = "apple-native-keyring-store"
+version = "1.0.2"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "2b350bfd03649e07aa05c0a81b3e15934374e585c98204a57e20b9d49f49bb9a"
+notice = "apple-native-keyring-store-1.0.2/LICENSE-MIT"
+notice_sha256 = "157cc607717b1b372a69f6b4526f6ad18c1279af9f3267835cca2943f37bc07d"
+
+[[component]]
+name = "async-broadcast"
+version = "0.7.2"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "435a87a52755b8f27fcf321ac4f04b2802e337c8c4872923137471ec39c37532"
+notice = "async-broadcast-0.7.2/LICENSE-MIT"
+notice_sha256 = "24e5860bf589d8501643e6ea51ffb3df66db2867492b09033d486183efbfa970"
+
+[[component]]
+name = "async-channel"
+version = "2.5.0"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "924ed96dd52d1b75e9c1a3e6275715fd320f5f9439fb5a4a11fa51f4221158d2"
+notice = "async-channel-2.5.0/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "async-executor"
+version = "1.14.0"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "c96bf972d85afc50bf5ab8fe2d54d1586b4e0b46c97c50a0c9e71e2f7bcd812a"
+notice = "async-executor-1.14.0/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "async-io"
+version = "2.6.0"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "456b8a8feb6f42d237746d4b3e9a178494627745c3c56c6ea55d92ba50d026fc"
+notice = "async-io-2.6.0/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "async-lock"
+version = "3.4.2"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "290f7f2596bd5b78a9fec8088ccd89180d7f9f55b94b0576823bbbdc72ee8311"
+notice = "async-lock-3.4.2/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "async-process"
+version = "2.5.0"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "fc50921ec0055cdd8a16de48773bfeec5c972598674347252c0399676be7da75"
+notice = "async-process-2.5.0/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "async-recursion"
+version = "1.2.0"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "4f8abc12baad266b1c8cec146854c195b5864b4221d4b2ca7296a7ae82d9e451"
+notice = "async-recursion-1.2.0/LICENSE-MIT"
+notice_sha256 = "cdbd06e25b8c9c5d6019949d2de8123f56d29cee4166396423d2ba8c81700845"
+
+[[component]]
+name = "async-signal"
+version = "0.2.14"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "52b5aaafa020cf5053a01f2a60e8ff5dccf550f0f77ec54a4e47285ac2bab485"
+notice = "async-signal-0.2.14/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "async-task"
+version = "4.7.1"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "8b75356056920673b02621b35afd0f7dda9306d03c79a30f5c56c44cf256e3de"
+notice = "async-task-4.7.1/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "async-trait"
+version = "0.1.92"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "82f6aeea286b8eb4dd3431a1be1b59d290ace00f5bfd8e2a159bc2a05e2c1667"
+notice = "async-trait-0.1.92/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "block-buffer"
+version = "0.12.1"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "d2f6c7dbe95a6ed67ad9f18e57daf93a2f034c524b99fd2b76d18fdfeb6660aa"
+notice = "block-buffer-0.12.1/LICENSE-MIT"
+notice_sha256 = "98181e7249d0c01737645ec982499ce99a0f07eb8f7d625b8840d799d10dbc01"
+
+[[component]]
+name = "block-padding"
+version = "0.4.2"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "710f1dd022ef4e93f8a438b4ba958de7f64308434fa6a87104481645cc30068b"
+notice = "block-padding-0.4.2/LICENSE-MIT"
+notice_sha256 = "98181e7249d0c01737645ec982499ce99a0f07eb8f7d625b8840d799d10dbc01"
+
+[[component]]
+name = "blocking"
+version = "1.7.0"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "a70e4329df6cb94385eed412ec92375c3cdd8a6e502493d1229b6414e4036dfa"
+notice = "blocking-1.7.0/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "byteorder"
+version = "1.5.0"
+declared_license = "Unlicense OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
+notice = "byteorder-1.5.0/LICENSE-MIT"
+notice_sha256 = "0f96a83840e146e43c0ec96a22ec1f392e0680e6c1226e6f3ba87e0740af850f"
+
+[[component]]
+name = "cbc"
+version = "0.2.1"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "ce2dc9ee5f88d11e0beb842c88b33c8a5cf0d1329c4b19494af42b07dbfe8896"
+notice = "cbc-0.2.1/LICENSE-MIT"
+notice_sha256 = "63af4bea227c94d021e99427f6ca3a4b8efddadcca93ab6130f708cf6138cf68"
+
+[[component]]
+name = "cipher"
+version = "0.5.2"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "e8cf2a2c93cd704877c0858356ed03480ff301ee950b43f1cbe4573b088bfa6c"
+notice = "cipher-0.5.2/LICENSE-MIT"
+notice_sha256 = "950d712c518a02fcb7cff96950aee304a1cc5283361712c980ea21e8d6d669a5"
+
+[[component]]
+name = "cmov"
+version = "0.5.4"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
+notice = "cmov-0.5.4/LICENSE-MIT"
+notice_sha256 = "70c9d40f1f9545c3f133b8a67206e89da850f6468eed072281bb3701514114a9"
+
+[[component]]
+name = "concurrent-queue"
+version = "2.5.0"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "4ca0197aee26d1ae37445ee532fefce43251d24cc7c166799f4d46817f1d3973"
+notice = "concurrent-queue-2.5.0/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "const-oid"
+version = "0.10.2"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
+notice = "const-oid-0.10.2/LICENSE-MIT"
+notice_sha256 = "73b9dc2e79c7308998dd30296e073aefaefb944a68fb89aa412c23c0edcabcaa"
+
+[[component]]
+name = "cpubits"
+version = "0.1.1"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "15b85f9c39137c3a891689859392b1bd49812121d0d61c9caf00d46ed5ce06ae"
+notice = "cpubits-0.1.1/LICENSE-MIT"
+notice_sha256 = "003736bc98408b53511b9cc8ff5d1af3bf0a8f17d53841cc39d8ab1b96a195b0"
+
+[[component]]
+name = "crossbeam-utils"
+version = "0.8.23"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "a31eee39dddec8330830986fcd7625edb5a24ec90ea038215273bbc3adb08ac6"
+notice = "crossbeam-utils-0.8.23/LICENSE-MIT"
+notice_sha256 = "5734ed989dfca1f625b40281ee9f4530f91b2411ec01cb748223e7eb87e201ab"
+
+[[component]]
+name = "crypto-common"
+version = "0.2.2"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "ce6e4c961d6cd6c9a86db418387425e8bdeaf05b3c8bc1411e6dca4c252f1453"
+notice = "crypto-common-0.2.2/LICENSE-MIT"
+notice_sha256 = "d2e7ec5355c96eeade56b09187ceb48a6a30299da3ce7531a66d3d11405ab963"
+
+[[component]]
+name = "ctutils"
+version = "0.4.7"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "a2376ffd6f96d8a9db59875b4b6b0237d6900b5baf64279714e05493ce64828a"
+notice = "ctutils-0.4.7/LICENSE-MIT"
+notice_sha256 = "91585c36e4fb9ab4ca0d3dfac5d66d3c0c62cc51f640a0e1196542daf2267eae"
+
+[[component]]
+name = "digest"
+version = "0.11.3"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "f1dd6dbb5841937940781866fa1281a1ff7bd3bf827091440879f9994983d5c2"
+notice = "digest-0.11.3/LICENSE-MIT"
+notice_sha256 = "af59cea35d7f5e2777a713b8d155d65efa2c339eb43f3c14e868c6ac8506edad"
+
+[[component]]
+name = "endi"
+version = "1.1.1"
+declared_license = "MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "66b7e2430c6dff6a955451e2cfc438f09cea1965a9d6f87f7e3b90decc014099"
+notice = "endi-1.1.1/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "enumflags2"
+version = "0.7.12"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "1027f7680c853e056ebcec683615fb6fbbc07dbaa13b4d5d9442b146ded4ecef"
+notice = "enumflags2-0.7.12/LICENSE-MIT"
+notice_sha256 = "2e3edd2716fb15616e867bd53f724f0906732242e9ae76bb1faad1d88f7eeebd"
+
+[[component]]
+name = "enumflags2_derive"
+version = "0.7.12"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "67c78a4d8fdf9953a5c9d458f9efe940fd97a0cab0941c075a813ac594733827"
+notice = "enumflags2_derive-0.7.12/LICENSE-MIT"
+notice_sha256 = "d13669f0eaff9b7015bff0d8637297213b53d9f239826636c07a15633acf7052"
+
+[[component]]
+name = "event-listener"
+version = "5.4.2"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "5a23add41df1562121a9393cb065eab5146a1242410f23a644851e90cfd669d2"
+notice = "event-listener-5.4.2/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "event-listener-strategy"
+version = "0.5.4"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93"
+notice = "event-listener-strategy-0.5.4/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "futures-io"
+version = "0.3.34"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "53c0fa8157de1303bfffdaa1cc2a673bfffb60102f76b0ef4441659124373fed"
+notice = "futures-io-0.3.34/LICENSE-MIT"
+notice_sha256 = "6652c868f35dfe5e8ef636810a4e576b9d663f3a17fb0f5613ad73583e1b88fd"
+
+[[component]]
+name = "futures-lite"
+version = "2.6.1"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "f78e10609fe0e0b3f4157ffab1876319b5b0db102a2c60dc4626306dc46b44ad"
+notice = "futures-lite-2.6.1/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "futures-macro"
+version = "0.3.34"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "9fb9654ba8355388abeb8dcb4fc62f511300867002afc858860463bdd9fe0c44"
+notice = "futures-macro-0.3.34/LICENSE-MIT"
+notice_sha256 = "6652c868f35dfe5e8ef636810a4e576b9d663f3a17fb0f5613ad73583e1b88fd"
+
+[[component]]
+name = "hermit-abi"
+version = "0.5.3"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "e17592d60ebacc7d5e169f4663c5f84f9161cc90328abcfe8456f41e4dfcb284"
+notice = "hermit-abi-0.5.3/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "hex"
+version = "0.4.3"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+notice = "hex-0.4.3/LICENSE-MIT"
+notice_sha256 = "f7bdb3426d045cd50efd4953026e3eb5a83d0199f458a075602611b9344da5b9"
+
+[[component]]
+name = "hkdf"
+version = "0.13.0"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "4aaa26c720c68b866f2c96ef5c1264b3e6f473fe5d4ce61cd44bbe913e553018"
+notice = "hkdf-0.13.0/LICENSE-MIT"
+notice_sha256 = "d288f9c9b4590446ec18c22ead8f8b5a12a3d4025b68f62dc9015063eb9cca69"
+
+[[component]]
+name = "hmac"
+version = "0.13.0"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "6303bc9732ae41b04cb554b844a762b4115a61bfaa81e3e83050991eeb56863f"
+notice = "hmac-0.13.0/LICENSE-MIT"
+notice_sha256 = "9e0dfd2dd4173a530e238cb6adb37aa78c34c6bc7444e0e10c1ab5d8881f63ba"
+
+[[component]]
+name = "hybrid-array"
+version = "0.4.15"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "27f864f10dfb56725ce5ce5472bc52252c8f93a4ab86327122cebf62c5f59a17"
+notice = "hybrid-array-0.4.15/LICENSE-MIT"
+notice_sha256 = "70c9d40f1f9545c3f133b8a67206e89da850f6468eed072281bb3701514114a9"
+
+[[component]]
+name = "inout"
+version = "0.2.5"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "3b5cf4372d022092674a83b8febf5865f7a573cc0c5baec5e49c879b6a20978f"
+notice = "inout-0.2.5/LICENSE-MIT"
+notice_sha256 = "a07fcacc3c60de4dc0fab10ac9d6aaba7379974e28451c99da7f7df09c25b28c"
+
+[[component]]
+name = "keyring"
+version = "4.2.0"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "2270074a3d26bcac93c1dc5d2845eb4c089e8d761ccf6e0ea266a16004640627"
+notice = "keyring-4.2.0/LICENSE-MIT"
+notice_sha256 = "157cc607717b1b372a69f6b4526f6ad18c1279af9f3267835cca2943f37bc07d"
+
+[[component]]
+name = "keyring-core"
+version = "1.0.1"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "29fbf4b551298c67925f38cf341a1ada797a75f1837bdf8ae1fc8e2ebc6efb59"
+notice = "keyring-core-1.0.1/LICENSE-MIT"
+notice_sha256 = "157cc607717b1b372a69f6b4526f6ad18c1279af9f3267835cca2943f37bc07d"
+
+[[component]]
+name = "memoffset"
+version = "0.9.1"
+declared_license = "MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
+notice = "memoffset-0.9.1/LICENSE"
+notice_sha256 = "3234ac55816264ee7b6c7ee27efd61cf0a1fe775806870e3d9b4c41ea73c5cb1"
+
+[[component]]
+name = "ordered-stream"
+version = "0.2.0"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "9aa2b01e1d916879f73a53d01d1d6cee68adbb31d6d9177a8cfce093cced1d50"
+notice = "ordered-stream-0.2.0/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "parking"
+version = "2.2.1"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "f38d5652c16fde515bb1ecef450ab0f6a219d619a7274976324d5e377f7dceba"
+notice = "parking-2.2.1/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "piper"
+version = "0.2.5"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "c835479a4443ded371d6c535cbfd8d31ad92c5d23ae9770a61bc155e4992a3c1"
+notice = "piper-0.2.5/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "polling"
+version = "3.11.0"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "5d0e4f59085d47d8241c88ead0f274e8a0cb551f3625263c05eb8dd897c34218"
+notice = "polling-3.11.0/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "secret-service"
+version = "5.2.0"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "5107b24b91445dd2aa449a258a1807b63240942157292354dc5bfdbeb8bc6db8"
+notice = "secret-service-5.2.0/LICENSE-MIT"
+notice_sha256 = "074585dbaf488db540c26f7b20f36053a157d7580bb1c390dc9f6afdb017c83a"
+
+[[component]]
+name = "serde_repr"
+version = "0.1.21"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "8d3b1629de253c70a0508c3899572da79ca359fdab27c7920ff00406df418906"
+notice = "serde_repr-0.1.21/LICENSE-MIT"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[[component]]
+name = "sha2"
+version = "0.11.1"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "47d7069beb7d6ac7b9acd1039986e73443f24234f41074da099d6f994ac9ad19"
+notice = "sha2-0.11.1/LICENSE-MIT"
+notice_sha256 = "831e0f43ad0bf014c1c4fec5767aae470434c1d66d6e671be2d823e729063e25"
+
+[[component]]
+name = "signal-hook-registry"
+version = "1.4.8"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "c4db69cba1110affc0e9f7bcd48bbf87b3f4fc7c61fc9155afd4c469eb3d6c1b"
+notice = "signal-hook-registry-1.4.8/LICENSE-MIT"
+notice_sha256 = "503558bfefe66ca15e4e3f7955b3cb0ec87fd52f29bf24b336af7bd00e946d5c"
+
+[[component]]
+name = "tracing-attributes"
+version = "0.1.31"
+declared_license = "MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "7490cfa5ec963746568740651ac6781f701c9c5ea257c58e057f3ba8cf69e8da"
+notice = "tracing-attributes-0.1.31/LICENSE"
+notice_sha256 = "898b1ae9821e98daf8964c8d6c7f61641f5f5aa78ad500020771c0939ee0dea1"
+
+[[component]]
+name = "uds_windows"
+version = "1.2.1"
+declared_license = "MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
+notice = "uds_windows-1.2.1/LICENSE"
+notice_sha256 = "27ebda9d51f0a56b7e281ccd8230a27236dcb51c05f64b07869ecf6e965d68b0"
+
+[[component]]
+name = "uuid"
+version = "1.29.0"
+declared_license = "Apache-2.0 OR MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "4a0e2d11620c50695fe12bbbfde96b3477fe606e7284c22d505c12ce51214514"
+notice = "uuid-1.29.0/LICENSE-MIT"
+notice_sha256 = "436bc5a105d8e57dcd8778730f3754f7bf39c14d2f530e4cde4bd2d17a83ec3d"
+
+[[component]]
+name = "windows-native-keyring-store"
+version = "1.1.0"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "063426e76fdec7438d56bb777f67e318a84a25c707b07e575cb8b78e10c028f8"
+notice = "windows-native-keyring-store-1.1.0/LICENSE-MIT"
+notice_sha256 = "1b9916aeb17b63b74372d5493b6c6ce828eef2853e1dc48ac2bba701f148920c"
+
+[[component]]
+name = "zbus"
+version = "5.19.0"
+declared_license = "MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "5db4be7c075cb421e4b7ee645541604239bd243ba7c357511f4ff3a74b555907"
+notice = "zbus-5.19.0/LICENSE"
+notice_sha256 = "260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad"
+
+[[component]]
+name = "zbus-secret-service-keyring-store"
+version = "1.0.1"
+declared_license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+registry_archive_sha256 = "74801d001b9e7729adb4f1825b67b398185fed424749aa3d8bacf70417137d9a"
+notice = "zbus-secret-service-keyring-store-1.0.1/LICENSE-MIT"
+notice_sha256 = "157cc607717b1b372a69f6b4526f6ad18c1279af9f3267835cca2943f37bc07d"
+
+[[component]]
+name = "zbus_macros"
+version = "5.19.0"
+declared_license = "MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "2990635d09ade6df1868f72f8cac69a876a90981e8bd3c40b1be413f8dc88f40"
+notice = "zbus_macros-5.19.0/LICENSE"
+notice_sha256 = "260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad"
+
+[[component]]
+name = "zbus_names"
+version = "4.3.5"
+declared_license = "MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "812a12be4ead7a59e18ea8f047d08add0066b73bc62fc1467066a2472ae088dd"
+notice = "zbus_names-4.3.5/LICENSE"
+notice_sha256 = "260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad"
+
+[[component]]
+name = "zcheapstr"
+version = "1.1.0"
+declared_license = "MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "d1afec51604565183aeb5c54c20aeab286120d4e4460f7f76e3e8bb8c0d99473"
+notice = "zcheapstr-1.1.0/LICENSE"
+notice_sha256 = "59871bb1612f8a0569655c10b995636827eceab42c6578cebdc45ad2922e0142"
+
+[[component]]
+name = "zvariant"
+version = "5.15.1"
+declared_license = "MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "80bf6d6cd6a4b601acb64cfb8284cdc643fcfa75ef26ae3c46ec8aa4e8a1fbb7"
+notice = "zvariant-5.15.1/LICENSE"
+notice_sha256 = "260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad"
+
+[[component]]
+name = "zvariant_derive"
+version = "5.15.1"
+declared_license = "MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "ef2672456ba1cb54b5eaec136e63135b3c7495fb938e53b28a62e633496d486d"
+notice = "zvariant_derive-5.15.1/LICENSE"
+notice_sha256 = "260e4ff3fc493695880c90774283eb1e3d018f898fabe655bbd52dd2cbd2fcad"
+
+[[component]]
+name = "zvariant_utils"
+version = "4.2.0"
+declared_license = "MIT"
+selected_license = "MIT"
+registry_archive_sha256 = "bad0294361a320b694a328460dc73add56c306150f5cb6bfafc44446120008a3"
+notice = "zvariant_utils-4.2.0/LICENSE"
+notice_sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"

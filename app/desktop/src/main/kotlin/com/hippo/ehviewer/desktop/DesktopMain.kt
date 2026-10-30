@@ -22,6 +22,10 @@ import kotlinx.coroutines.withTimeout
 
 /** A real M1 window/native runtime probe. Shared reader and desktop P0 arrive in M5. */
 fun main(arguments: Array<String>) {
+    if (arguments.isEmpty()) {
+        galleryApplication()
+        return
+    }
     val macIntel = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")
     val linuxArm = System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") == "aarch64"
     val windowsArm = System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64"

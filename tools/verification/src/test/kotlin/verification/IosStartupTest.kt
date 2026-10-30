@@ -26,6 +26,12 @@ class IosStartupTest {
         assertTrue(runCatching { latestIosRuntime(emptyList()) }.isFailure)
     }
 
+    @Test fun generalAcceptanceDoesNotImplicitlySelectADeviceSpecificRuntime() {
+        val specialized = runtime("27.2") + ("identifier" to "com.apple.CoreSimulator.SimRuntime.iOS-27-2-iPhone19-4")
+        assertEquals("27.0", latestIosRuntime(listOf(runtime("27.0"), specialized))["version"])
+        assertEquals(specialized, latestIosRuntime(listOf(specialized), specialized["identifier"] as String))
+    }
+
     @Test fun explicitRuntimeMustBeAvailableAndDoesNotSilentlyFallBack() {
         val runtimes = listOf(runtime("26.5"), runtime("27.0"), runtime("28.0", false))
         assertEquals("26.5", latestIosRuntime(runtimes, "com.apple.CoreSimulator.SimRuntime.iOS-26-5")["version"])

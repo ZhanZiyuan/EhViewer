@@ -14,6 +14,9 @@ import kotlin.io.path.readBytes
 import kotlin.io.path.readText
 
 private const val CORE_ENTRY_LIMIT = 8 * 1024 * 1024
+val sharedArtifactModules = listOf("common", "domain", "data", "i18n", "ui", "network", "shared-ui")
+const val SHARED_SCHEMA = 5
+const val SHARED_SCOPE = "ANDROID_CORE_AND_PORTABLE_COMMON_DOMAIN_NETWORK_UI_JVM"
 private fun coreDigest(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
 internal fun coreArchive(bytes: ByteArray): Map<String, ByteArray> {
@@ -172,16 +175,18 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
     val delivery = releaseContract(root.resolve("app/build.gradle.kts").readText(), source)
     require(!output.exists()) { "Refusing to overwrite shared evidence" }
     Files.createDirectories(output)
-    val modules = listOf("common", "domain", "data", "i18n", "ui").associateWith { module ->
-        val directory = root.resolve("core/$module")
+    val modules = sharedArtifactModules.associateWith { module ->
+        val sharedUi = module == "shared-ui"
+        val directory = root.resolve(if (sharedUi) "app/shared" else "core/$module")
         val aar = filesBelow(directory.resolve("build/outputs/aar"), ".aar").single()
-        val evidence = sharedAarEvidence(aar, directory.resolve("build/classes/kotlin/android/main"), "com.ehviewer.core.$module", module == "i18n")
+        val evidence = sharedAarEvidence(aar, directory.resolve("build/classes/kotlin/android/main"), if (sharedUi) "com.ehviewer.app.shared" else "com.ehviewer.core.$module", module == "i18n")
         val testSources = filesBelow(directory.resolve("src"), ".kt").filter { directory.resolve("src").relativize(it).getName(0).toString().endsWith("Test") }
         require(testSources.all { directory.resolve("src").relativize(it).getName(0).toString() in setOf("commonTest", "jvmTest", "androidHostTest") || module == "common" && directory.resolve("src").relativize(it).getName(0).toString() == "nonAndroidTest" }) { "A new shared test source set needs explicit stage integration" }
         val testFiles = filesBelow(directory.resolve("build/test-results/testAndroidHostTest"), ".xml")
         val androidSources = testSources.filter { directory.resolve("src").relativize(it).getName(0).toString() != "nonAndroidTest" }
         val tests = sharedHostTestEvidence(testFiles.map { it.readBytes() }, androidSources.size)
         if (module == "domain") verifyDomainTests(tests)
+        if (module == "network") verifyNetworkTests(tests)
         Files.copy(aar, output.resolve("$module.aar"))
         testFiles.forEach { file ->
             val target = output.resolve("tests/$module/${file.fileName}")
@@ -218,17 +223,34 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         Files.createDirectories(target.parent)
         Files.copy(file, target)
     }
+    val productJvm = mapOf("network" to "core/network", "shared-ui" to "app/shared").map { (name, path) ->
+        val directory = root.resolve(path)
+        val artifact = filesBelow(directory.resolve("build/libs"), "-jvm.jar").single()
+        val evidence = sharedJvmEvidence(artifact, directory.resolve("build/classes/kotlin/desktop/main"))
+        val sources = filesBelow(directory.resolve("src/commonTest"), ".kt")
+        val xml = filesBelow(directory.resolve("build/test-results/desktopTest"), ".xml")
+        val tests = sharedHostTestEvidence(xml.map(Path::readBytes), sources.size)
+        if (name == "network") verifyNetworkTests(tests)
+        Files.copy(artifact, output.resolve("$name-jvm.jar"))
+        xml.forEach { file ->
+            val target = output.resolve("tests/$name-jvm/${file.fileName}")
+            Files.createDirectories(target.parent)
+            Files.copy(file, target)
+        }
+        name to (evidence + mapOf("artifact" to "$name-jvm.jar", "host_tests" to tests))
+    }.toMap()
     return mapOf(
-        "schema_version" to 4, "verification_scope" to "ANDROID_CORE_AND_PORTABLE_COMMON_DOMAIN_JVM", "source_commit" to source, "source_dirty" to dirty,
+        "schema_version" to SHARED_SCHEMA, "verification_scope" to SHARED_SCOPE, "source_commit" to source, "source_dirty" to dirty,
         "version" to delivery["version"], "android_version_code" to delivery["android_version_code"], "targets" to listOf("android"),
         "modules" to modules, "retained_architecture_checks" to architecture, "shared_library_artifacts_verified" to true,
         "domain_jvm" to jvm + mapOf("artifact" to "domain-jvm.jar", "host_tests" to jvmEvidence, "link_probe" to probe),
         "common_jvm" to commonJvm + mapOf("artifact" to "common-jvm.jar", "host_tests" to commonTests, "link_probe" to commonProbe),
+        "product_jvm" to productJvm,
         "portable_common_targets" to portableCommonTargets,
         "legacy_shared_modules" to listOf("data", "i18n", "ui"),
         "portable_domain_targets" to listOf("android", "jvm"), "domain_ios_targets" to domainIosTargets,
-        "domain_ios_evidence" to "SEPARATE_REQUIRED_CI_IOS_JOB", "ios_product_domain_integration" to "NOT_INTEGRATED",
-        "desktop_product_domain_integration" to "NOT_INTEGRATED",
+        "domain_ios_evidence" to "SEPARATE_REQUIRED_CI_IOS_JOB", "ios_product_domain_integration" to "GALLERY_SEARCH",
+        "desktop_product_domain_integration" to "GALLERY_SEARCH",
         "legacy_desktop_ios_shared_targets" to "NOT_INTEGRATED", "final_delivery_assets_verified" to false, "product_p0_verified" to false, "publish_enabled" to false,
     )
 }

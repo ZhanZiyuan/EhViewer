@@ -1,5 +1,7 @@
 # Animeko → EhViewer 只读参考审计
 
+M3 搜索与会话：按需只读核对 `app/shared/application/src/commonMain/kotlin/platform/CommonKoinModule.kt` 的服务装配边界，以及 `app/shared/app-data/src/commonMain/kotlin/domain/session/SessionStateProvider.kt` 的会话职责。EhViewer 独立使用 Ktor/Cookie、Rust 自有解析器和 OS 密钥库，并共享 CMP 搜索界面；拒绝参考项目的 OAuth 类型、Koin 依赖树及视频/BT 功能，没有复制或机械改写 AGPL 实现。参考路径→目标文件、采用/改造/拒绝、独立依赖许可及真实验证范围见 [搜索与会话](gallery-search-and-session.md)。原 M0 快照身份记录保留，参考目录未写入或构建。
+
 M3-004仅采用已只读审阅的settings.gradle.kts/ani.kmp-library中通用平台源集与actual边界思路；目标是EhViewer自身common的JVM真实文件流，保留Android源文件字节与公共路径操作，不复制参考文件系统/插件/依赖实现。依据既有固定Okio3.18.1、kotlinx.io0.9.1公开API独立编写Kotlin actual、磁盘测试和实际JAR消费者；参考→目标/差异/许可/验证见[ADR0027](adr/0027-common-jvm-filesystem.md)。参考目录仍无写入或构建。
 
 M3-003已在d3d2e47d1双完整12job/gate、各23实物及同英文Draft PR第42行回读后GATE_PASSED；46归档/1844原payload全重哈希。以下模型/Native记录保留各时点范围。

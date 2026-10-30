@@ -5,7 +5,7 @@
     <key>CFBundleIdentifier</key><string>moe.tarsin.ehviewer</string>
     <key>CFBundleExecutable</key><string>EhViewer</string>
     <key>CFBundleName</key><string>EhViewer</string>
-    <key>CFBundleDisplayName</key><string>EhViewer Startup Spike</string>
+    <key>CFBundleDisplayName</key><string>EhViewer</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>${appVersion}</string>
     <key>CFBundleVersion</key><string>${buildVersion}</string>

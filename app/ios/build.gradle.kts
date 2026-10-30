@@ -81,6 +81,7 @@ kotlin {
                 repositoryRoot.file("rust-toolchain.toml"),
                 fileTree(rustRoot.dir("core")) { exclude("target/**") },
                 fileTree(rustRoot.dir("capi")) { exclude("target/**") },
+                fileTree(rustRoot.dir("session")) { exclude("target/**") },
             )
             header.set(rustHeader)
             archive.set(rustArchive)
@@ -99,9 +100,15 @@ kotlin {
         binaries.executable {
             baseName = "EhViewer"
             entryPoint = "com.hippo.ehviewer.ios.main"
+            if (rustTriple == "aarch64-apple-ios-sim") {
+                linkerOpts("-sectcreate", "__TEXT", "__entitlements", file("Simulator.entitlements").absolutePath)
+                linkTaskProvider.configure { inputs.file(file("Simulator.entitlements")) }
+            }
         }
     }
     sourceSets.commonMain.dependencies {
+        implementation(projects.core.network)
+        implementation(projects.app.shared)
         implementation(libs.compose.multiplatform.ui)
         implementation(libs.compose.multiplatform.foundation)
         implementation(libs.compose.multiplatform.runtime)
@@ -124,6 +131,8 @@ val stageSimulatorApp = tasks.register<Sync>("stageSimulatorApp") {
             "buildVersion" to Regex("versionCode = (\\d+)").find(androidVersionSource.get())!!.groupValues[1],
         )
     }
+    from(rootProject.layout.projectDirectory.dir("app/desktop/licenses/session")) { into("licenses/session") }
+    from(rootProject.layout.projectDirectory.file("LICENSE")) { into("licenses/EhViewer") }
 }
 
 tasks.register<Exec>("packageSimulatorApp") {

@@ -1,5 +1,7 @@
 # Reviewed migration phase
 
+The current M3 product slice integrates real shared Ktor/session services and a shared CMP search screen into Desktop/iOS. `network` and `shared-ui` join the reviewed portable targets; the seven Android AARs and four JVM JARs are inspected from actual output. Real iOS Keychain tests and all 19 Native network tests join the existing iOS job. This is search integration only, not complete M3/P0 acceptance. Current policy follows the maintainer's accelerated single-PR plan; older dual-event/layout-specific entries below are historical. See [gallery-search-and-session.md](gallery-search-and-session.md).
+
 M3-005 / IN_PROGRESS: common and domain each declare exactly Android/JVM/iosArm64/iosSimulatorArm64; data/i18n/ui remain Android-only. All12 jobs/barriers remain. The new common-native artifact is required alongside domain-native, making23 stage inputs/24 artifacts per event. Declaration metadata is not execution proof. M3-004 was GATE_PASSED at98c1f12d4; older descriptions below are historical. See ADR0028.
 
 M3-004 / IN_PROGRESS: common now declares Android/JVM, domain retains Android/JVM/two iOS targets, data/i18n/ui stay Android-only. Phase checks preserve all12 actual jobs and require source-producer barriers for the five real common JVM consumers in four existing job declarations. These declarations do not certify execution; each new SHA still needs the full dual workflows and actual shared/host/Native/package evidence. M3-003 is GATE_PASSED at d3d2e47d1; complete M3 remains unfinished. See ADR0027.

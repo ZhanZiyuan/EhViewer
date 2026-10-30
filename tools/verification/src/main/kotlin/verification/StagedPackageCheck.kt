@@ -51,12 +51,28 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val phase = receipt("phase", "migration-phase.json", false)
     require(phase["milestone"] == "M3" && phase["version"] == version && phase["android_version_code"] == code && phase["retained_architecture_checks"].obj()["result"] == "PASS" && phase["shared_module_targets"].obj()["domain"].array() == portableDomainTargets && phase["shared_module_targets"].obj()["common"].array() == portableCommonTargets) { "Expected the reviewed M3 common/domain/retained architecture/version checks" }
     val shared = receipt("shared", "shared-core.json", false)
-    require(shared["schema_version"] == 4 && shared["shared_library_artifacts_verified"] == true && shared["version"] == version && shared["android_version_code"] == code && shared["targets"].array() == listOf("android")) { "Shared artifact scope changed" }
-    require(shared["modules"].obj().keys == setOf("common", "domain", "data", "i18n", "ui") && shared["verification_scope"] == "ANDROID_CORE_AND_PORTABLE_COMMON_DOMAIN_JVM") { "Unexpected shared module inventory" }
+    require(shared["schema_version"] == SHARED_SCHEMA && shared["shared_library_artifacts_verified"] == true && shared["version"] == version && shared["android_version_code"] == code && shared["targets"].array() == listOf("android")) { "Shared artifact scope changed" }
+    require(shared["modules"].obj().keys == sharedArtifactModules.toSet() && shared["verification_scope"] == SHARED_SCOPE) { "Unexpected shared module inventory" }
     shared["modules"].obj().forEach { (name, value) ->
         val module = value.obj()
         require(module["artifact"] == "$name.aar") { "Shared AAR path differs from its owned module" }
         require(sha256(path("shared", "shared-core/${module.str("artifact")}")) == module["aar_sha256"]) { "Actual shared AAR bytes changed" }
+    }
+    val productJvm = shared["product_jvm"].obj()
+    require(productJvm.keys == setOf("network", "shared-ui"))
+    productJvm.forEach { (name, value) ->
+        val evidence = value.obj()
+        require(evidence["artifact"] == "$name-jvm.jar")
+        checkedJvmInventory(path("shared", "shared-core/$name-jvm.jar"), evidence)
+        val sources = if (name == "network") 2 else 0
+        val tests = sharedHostTestEvidence(filesBelow(path("shared", "shared-core/tests/$name-jvm"), ".xml").map(Path::readBytes), sources)
+        require(tests == evidence["host_tests"])
+        if (name == "network") {
+            verifyNetworkTests(tests)
+            val android = sharedHostTestEvidence(filesBelow(path("shared", "shared-core/tests/network"), ".xml").map(Path::readBytes), sources)
+            verifyNetworkTests(android)
+            require(android == shared["modules"].obj().getValue("network").obj()["host_tests"])
+        }
     }
     val domain = shared["domain_jvm"].obj()
     require(domain["artifact"] == "domain-jvm.jar") { "Missing actual portable domain JAR" }
@@ -105,7 +121,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val linux = receipt("linux-runtime", "reports/desktop-linux-arm64/linux-arm64.json")
     val linuxChecks = linux["checks"].obj()
     require(linux["target"] == "aarch64-unknown-linux-gnu" && linuxChecks["version"] == version) { "Linux identity changed" }
-    require(linuxChecks["native_files"].array().size == 30 && linuxChecks["installed_notices"].array().size == 6 && linuxChecks["launches"].array().size == 2) { "Incomplete reviewed Linux runtime inventory" }
+    require(linuxChecks["native_files"].array().size == 30 && linuxChecks["installed_notices"].array().size == expectedDesktopNativeNoticeCount() && linuxChecks["launches"].array().size == 2) { "Incomplete reviewed Linux runtime inventory" }
     require(
         linuxChecks["launches"].array().all {
             val proof = it.obj()
@@ -124,6 +140,10 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         require(sha256(image.resolve("lib/" + stageZipName(entry.str("path")))) == entry["sha256"]) { "Linux notice changed" }
     }
     val ios = receipt("ios", "startup.json", false)
+    verifyNetworkTests(ios["network_tests"].obj())
+    val iosSession = ios["session_backend_tests"].obj()
+    require(iosSession["result"] == "PASS" && iosSession["passed"] == 3 && iosSession["ignored"] == 0 && iosSession["execution"] == "REAL_IOS_KEYCHAIN_ON_OWNED_SIMULATOR")
+    require(sha256(path("ios", "session-tests.kexe")) == iosSession["test_executable_sha256"] && sha256(path("ios", "session-entitlements.plist")) == iosSession["simulator_identity_sha256"])
     require(ios["version"] == version && ios["build"] == code.toString() && ios["architecture"] == "arm64" && ios["rust_c_abi"] == "PASS" && ios["compose_ready"] == "PASS") { "Incomplete iOS startup evidence" }
     require(listOf("cold_start", "background_foreground", "explicit_termination").all { ios[it] == "PASS" } && ios["rust_completed_results_by_launch"].array() == listOf(2000, 2000) && ios["rust_live_results_after_probe"] == 0) { "Incomplete original iOS lifecycle/ownership evidence" }
     require(JsonSlurper().parseText(json(iosUnifiedLifecycle(path("ios", "lifecycle.log").readText(), (ios["first_pid"] as Number).toLong(), (ios["second_pid"] as Number).toLong()))).obj() == ios["unified_log_lifecycle"]) { "Actual per-PID iOS lifecycle differs" }
@@ -138,7 +158,9 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         val stderr = path("ios", "$name-cold-start.stderr.log").readText()
         for (marker in listOf("cold-start", "compose-ready", "rust-ffi-ready completed=2000 live=0")) require(stderr.lineSequence().any { "EhViewer[$pid:" in it && "EhViewerM1:$marker" in it }) { "Independent per-PID iOS stderr differs" }
     }
-    for (target in listOf("aarch64-apple-ios", "aarch64-apple-ios-sim")) require(sha256(path("apple-rust", "$target/include/ehviewer_capi.h")) == "c922f090b75be5774d570b23a2c3bae8429453d5be453a836eaf95a67303345a") { "Apple Rust ABI header changed" }
+    val headers = listOf("aarch64-apple-ios", "aarch64-apple-ios-sim").map { path("apple-rust", "$it/include/ehviewer_capi.h") }
+    headers.forEach { verifyGalleryCapiHeader(it.readText()) }
+    require(sha256(headers.first()) == sha256(headers.last())) { "Device and Simulator C ABI declarations differ" }
 
     val candidate = Files.createDirectory(owned.resolve("candidate"))
     val assets = mutableListOf<Map<String, Any?>>()
@@ -193,7 +215,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     require(intelInventory(producer) == intelInventory(consumer)) { "Actual Intel producer/consumer native inventories differ" }
     for (proof in listOf(producer, consumer)) {
         val checks = proof["checks"].obj()
-        require(proof["jdk"] == "25.0.5" && checks["native_files"].array().size == 32 && checks["installed_notices"].array().size == 6) { "Incomplete reviewed Intel runtime inventory" }
+        require(proof["jdk"] == "25.0.5" && checks["native_files"].array().size == 32 && checks["installed_notices"].array().size == expectedDesktopNativeNoticeCount()) { "Incomplete reviewed Intel runtime inventory" }
         require(
             checks["version"] == version && checks["launches"].array().size == 2 && checks["launches"].array().all {
                 val launch = it.obj()
@@ -218,7 +240,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     require(jvm["target"] == "aarch64-pc-windows-msvc" && jvm["caller"].obj()["rust_hash_results"] == "2000" && jvm["caller"].obj()["rust_active_results"] == "0" && jvm["caller"].obj()["library_closed"] == "PASS") { "Incomplete original Windows JVM ownership evidence" }
     require(jvm["caller"].obj()["path_transport"] == "utf8-base64" && listOf("double_free", "stale_handle", "undersized_copy").all { jvm["caller"].obj()[it] == "PASS" }) { "Original standalone Windows ownership errors differ" }
     require(sha256(path("windows-jvm", "native-libraries/ehviewer_capi.dll")) == jvm["rust_capi_sha256"]) { "Standalone Windows C API bytes changed" }
-    require(core["passed"] == 39 && core["filtered"] == 0 && sha256(path("windows-runtime", "native-core-proof.json")) == sha256(path("windows-core", "windows-native-core.json")) && sha256(path("windows-runtime", "jvm-ffi-proof.json")) == sha256(jvmFile)) { "Original Windows Core/JVM proof chain changed" }
+    require((core["passed"] as Number).toInt() >= MINIMUM_NATIVE_SESSION_PASSES && core["filtered"] == 0 && sha256(path("windows-runtime", "native-core-proof.json")) == sha256(path("windows-core", "windows-native-core.json")) && sha256(path("windows-runtime", "jvm-ffi-proof.json")) == sha256(jvmFile)) { "Original Windows Core/JVM proof chain changed" }
     val archive = path("windows-package", releaseTargets.single { it.id == "windows-arm64" }.fileName(version))
     require(packaged["version"] == version && packaged["android_version_code"] == code && packaged["target"] == "aarch64-pc-windows-msvc" && packaged["packager_source_dirty"] == false && packaged["runtime_proof_sha256"] == sha256(runtimeFile)) { "Windows ZIP producer provenance differs" }
     require(runtime["version"] == version && runtime["target"] == "aarch64-pc-windows-msvc") { "Windows runtime identity differs" }

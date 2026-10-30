@@ -59,7 +59,7 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
     val core = readJson(coreReport)
-    require(core["result"] == "PASS" && core["source_commit"] == source && core["source_dirty"] == dirty && core["target"] == "aarch64-pc-windows-msvc" && core["passed"] == 39 && core["filtered"] == 0) { "A complete native Core/C ABI result from this exact source is required" }
+    require(core["result"] == "PASS" && core["source_commit"] == source && core["source_dirty"] == dirty && core["target"] == "aarch64-pc-windows-msvc" && (core["passed"] as Number).toInt() >= MINIMUM_NATIVE_SESSION_PASSES && core["filtered"] == 0) { "A complete native Core/C ABI/session result from this exact source is required" }
     require(!output.exists()) { "Use a fresh JVM FFI evidence directory" }
     val work = root.resolve("app/desktop/build/windows-jvm-ffi")
     require(!work.exists()) { "Use a fresh JVM FFI build directory" }

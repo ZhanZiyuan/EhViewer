@@ -10,8 +10,8 @@ class CommonJvmTest {
         val identity = mapOf(
             "source_commit" to source,
             "source_dirty" to false,
-            "schema_version" to 4,
-            "verification_scope" to "ANDROID_CORE_AND_PORTABLE_COMMON_DOMAIN_JVM",
+            "schema_version" to SHARED_SCHEMA,
+            "verification_scope" to SHARED_SCOPE,
             "shared_library_artifacts_verified" to true,
             "portable_common_targets" to portableCommonTargets,
         )

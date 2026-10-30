@@ -137,11 +137,11 @@ fun windowsNativeCore(output: Path): Map<String, Any?> {
     )
     val cargoManifest = root.resolve("native/rust/Cargo.toml")
     capture("rust-format.txt", "cargo", "+$toolchain", "fmt", "--all", "--manifest-path", cargoManifest, "--", "--check", environment = environment)
-    val cargo = arrayOf<Any>("cargo", "+$toolchain", "test", "--locked", "--manifest-path", cargoManifest, "-p", "ehviewer_core", "-p", "ehviewer_capi", "--target", WINDOWS_TARGET)
+    val cargo = arrayOf<Any>("cargo", "+$toolchain", "test", "--locked", "--manifest-path", cargoManifest, "-p", "ehviewer_core", "-p", "ehviewer_capi", "-p", "ehviewer_session", "--target", WINDOWS_TARGET)
     val build = capture("cargo-build.jsonl", *cargo, "--no-run", "--message-format=json", environment = environment)
     val messages = build.lineSequence().filter { it.startsWith("{\"reason\":") }.map { JsonSlurper().parseText(it).obj() }.toList()
     val binaries = messages.filter { it["reason"] == "compiler-artifact" && it["profile"].obj()["test"] == true && it["executable"] is String }
-    require(binaries.map { it["target"].obj().str("name") }.toSet() == setOf("ehviewer_core", "archive", "ehviewer_capi") && binaries.size == 3) { "Missing complete Core/archive/C ABI test executables" }
+    require(binaries.map { it["target"].obj().str("name") }.toSet() == setOf("ehviewer_core", "archive", "ehviewer_capi", "ehviewer_session") && binaries.size == 4) { "Missing complete Core/archive/C ABI/session test executables" }
     val executableEvidence = output.resolve("test-executables").createDirectories()
     val testImages = binaries.map { artifact ->
         val path = Path.of(artifact.str("executable")).toRealPath()
@@ -154,13 +154,15 @@ fun windowsNativeCore(output: Path): Map<String, Any?> {
     val summaries = Regex("test result: ok\\. ([0-9]+) passed; ([0-9]+) failed; ([0-9]+) ignored; [0-9]+ measured; ([0-9]+) filtered out;")
         .findAll(testOutput).map { match -> match.groupValues.drop(1).map(String::toInt) }.toList()
     val ignored = Regex("(?m)^test ([^ ]+) \\.\\.\\. ignored(?:,.*)?$").findAll(testOutput).map { it.groupValues[1] }.toSet()
-    require(summaries.size >= 3 && summaries.sumOf { it[0] } >= 39 && summaries.all { it[1] == 0 && it[3] == 0 } && summaries.sumOf { it[2] } == 3) { "Incomplete native test execution" }
+    require(summaries.size >= 4 && summaries.sumOf { it[0] } >= MINIMUM_NATIVE_SESSION_PASSES && summaries.all { it[1] == 0 && it[3] == 0 } && summaries.sumOf { it[2] } == 3) { "Incomplete native test execution" }
+    require(testOutput.contains("test tests::real_platform_credential_store_restores_an_owned_encrypted_session ... ok")) { "The real Windows credential store test did not execute" }
     require(ignored == setOf("parser::test_parser::tests::test_parse_gallery_detail", "parser::test_parser::tests::test_parse_info", "parser::test_parser::tests::test_parse_profile")) { "Unexpected ignored native tests" }
     require(testOutput.contains("test zip_file_writer_preserves_ownership_offsets_and_reports_output_errors ... ok")) { "Portable File writer did not execute" }
-    capture("rust-clippy.txt", "cargo", "+$toolchain", "clippy", "--locked", "--manifest-path", cargoManifest, "-p", "ehviewer_core", "-p", "ehviewer_capi", "--all-targets", "--target", WINDOWS_TARGET, "--", "-D", "warnings", environment = environment)
+    capture("rust-clippy.txt", "cargo", "+$toolchain", "clippy", "--locked", "--manifest-path", cargoManifest, "-p", "ehviewer_core", "-p", "ehviewer_capi", "-p", "ehviewer_session", "--all-targets", "--target", WINDOWS_TARGET, "--", "-D", "warnings", environment = environment)
     val headers = messages.filter { it["reason"] == "build-script-executed" && (it["package_id"] as? String)?.contains("ehviewer_capi") == true }
         .map { Path.of(it.str("out_dir")).resolve("ehviewer_capi.h") }.filter { it.isRegularFile() }.distinct()
     require(headers.size == 1) { "Missing generated C ABI header" }
+    verifyGalleryCapiHeader(headers.single().readText())
     Files.copy(headers.single(), output.resolve("ehviewer_capi.h"))
     val result = mapOf(
         "source_commit" to command("git", "rev-parse", "HEAD").trim(), "source_dirty" to dirty, "result" to "PASS",

@@ -43,7 +43,7 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
     require(caller["rust_hash_results"] == "2000" && caller["rust_active_results"] == "0" && caller["library_closed"] == "PASS" && caller["path_transport"] == "utf8-base64") { "Incomplete real JVM ownership proof" }
     require(sha256(coreReport) == sha256(jvmReport.parent.resolve("native-core-proof.json"))) { "Native proof differs from the JVM caller's tested input" }
     val core = readJson(coreReport)
-    require(core["result"] == "PASS" && core["source_commit"] == source && core["source_dirty"] == dirty && core["passed"] == 39 && core["filtered"] == 0) { "Complete native Core/C ABI tests are required" }
+    require(core["result"] == "PASS" && core["source_commit"] == source && core["source_dirty"] == dirty && (core["passed"] as Number).toInt() >= MINIMUM_NATIVE_SESSION_PASSES && core["filtered"] == 0) { "Complete native Core/C ABI/session tests are required" }
     val work = root.resolve("app/desktop/build/windows-desktop-runtime")
     val resources = root.resolve("app/desktop/build/windows-desktop-resources")
     require(!work.exists() && !resources.exists() && !output.exists()) { "Use fresh build/resources/evidence directories" }
@@ -100,7 +100,7 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
     val noticeHashes = Files.walk(notices).use { paths ->
         paths.filter { it.isRegularFile() }.toList().associate { notices.relativize(it).toString() to sha256(it) }
     }
-    require(noticeHashes.size == 9) { "Expected project, three Skiko origin/license files and five native copyrights" }
+    require(noticeHashes.size == 6 + filesBelow(root.resolve("app/desktop/licenses"), "").size) { "Expected every project, upstream and native copyright notice" }
     val pathKey = System.getenv().keys.single { it.equals("PATH", ignoreCase = true) }
     // Do not inherit the Core build's temporary vcpkg DLL path.
     val buildEnvironment = mapOf("JAVA_HOME" to jdk.toString(), pathKey to "${jdk.resolve("bin")};${System.getenv(pathKey)}")

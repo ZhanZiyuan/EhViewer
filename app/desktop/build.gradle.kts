@@ -8,6 +8,11 @@ import java.util.zip.ZipOutputStream
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
+    alias(libs.plugins.android.kotlin.multiplatform.library) apply false
+    alias(libs.plugins.android.lint) apply false
+    alias(libs.plugins.kotlin.multiplatform) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
+    alias(libs.plugins.composeCompilerReportGenerator) apply false
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose.multiplatform)
@@ -34,14 +39,16 @@ abstract class BuildDesktopNative : DefaultTask() {
 
     @TaskAction
     fun build() {
-        val mac = target.get() == "x86_64-apple-darwin"
+        val mac = target.get().endsWith("-apple-darwin")
+        val arm = target.get().startsWith("aarch64-")
+        val hostArm = System.getProperty("os.arch") in setOf("aarch64", "arm64")
         check(
             if (mac) {
-                System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")
+                System.getProperty("os.name").startsWith("Mac") && arm == hostArm
             } else {
-                target.get() == "aarch64-unknown-linux-gnu" && System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") == "aarch64"
+                target.get().endsWith("-unknown-linux-gnu") && System.getProperty("os.name") == "Linux" && arm == hostArm
             },
-        ) { "Use the matching native Linux ARM64 or macOS Intel JDK for this runtime spike" }
+        ) { "The native Rust target must match this Desktop JDK and operating system" }
         val repo = repository.get().asFile
         val logs = evidence.get().asFile.also { it.mkdirs() }
         fun run(name: String, directory: File, vararg arguments: String) {
@@ -55,12 +62,14 @@ abstract class BuildDesktopNative : DefaultTask() {
             check(process.exitValue() == 0) { "$name failed: ${log.readText()}" }
         }
         val archive = temporaryDir.resolve("webp.tar.gz")
-        val url = URI("https://codeload.github.com/webmproject/libwebp/tar.gz/${webpCommit.get()}").toURL()
-        val connection = url.openConnection().apply {
-            connectTimeout = 30_000
-            readTimeout = 120_000
+        if (!archive.isFile) {
+            val url = URI("https://codeload.github.com/webmproject/libwebp/tar.gz/${webpCommit.get()}").toURL()
+            val connection = url.openConnection().apply {
+                connectTimeout = 30_000
+                readTimeout = 120_000
+            }
+            connection.getInputStream().use { input -> archive.outputStream().use { output -> input.copyTo(output) } }
         }
-        connection.getInputStream().use { input -> archive.outputStream().use { output -> input.copyTo(output) } }
         val digest = MessageDigest.getInstance("SHA-256").digest(archive.readBytes())
             .joinToString("") { "%02x".format(it) }
         check(digest == webpSha256.get()) { "Pinned WebP source checksum mismatch" }
@@ -70,7 +79,7 @@ abstract class BuildDesktopNative : DefaultTask() {
         run(
             "configure", repo, "cmake", "-S", temporaryDir.resolve("libwebp-${webpCommit.get()}").absolutePath,
             "-B", webpBuild.absolutePath, "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
-            *if (mac) arrayOf("-DCMAKE_OSX_ARCHITECTURES=x86_64") else emptyArray(),
+            *if (mac) arrayOf("-DCMAKE_OSX_ARCHITECTURES=${if (arm) "arm64" else "x86_64"}", "-DCMAKE_OSX_DEPLOYMENT_TARGET=11.0") else emptyArray(),
             "-DBUILD_SHARED_LIBS=OFF", "-DWEBP_BUILD_ANIM_UTILS=OFF", "-DWEBP_BUILD_CWEBP=OFF",
             "-DWEBP_BUILD_DWEBP=OFF", "-DWEBP_BUILD_VWEBP=OFF", "-DWEBP_BUILD_WEBPINFO=OFF",
             "-DWEBP_BUILD_WEBPMUX=OFF", "-DWEBP_BUILD_EXTRAS=OFF",
@@ -83,7 +92,7 @@ abstract class BuildDesktopNative : DefaultTask() {
             if (mac) "link-arg=-Wl,-install_name,@rpath/libehviewer_rust.dylib" else "link-arg=-Wl,-soname,libehviewer_rust.so",
             *if (mac) emptyArray() else arrayOf("-C", "link-arg=-Wl,-z,defs"),
         )
-        val platform = if (mac) "macos-x64" else "linux-arm64"
+        val platform = "${if (mac) "macos" else "linux"}-${if (arm) "arm64" else "x64"}"
         val library = "libehviewer_rust.${if (mac) "dylib" else "so"}"
         val destination = resources.get().asFile.resolve("$platform/$library")
         destination.parentFile.mkdirs()
@@ -160,7 +169,8 @@ val repositoryRoot = layout.projectDirectory.dir("../..")
 val intelMac = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")
 val windowsArm = System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64"
 val prepareDesktopNative = tasks.register<BuildDesktopNative>("prepareDesktopNative") {
-    target.set(if (System.getProperty("os.name") == "Linux") "aarch64-unknown-linux-gnu" else "x86_64-apple-darwin")
+    val machine = if (System.getProperty("os.arch") in setOf("aarch64", "arm64")) "aarch64" else "x86_64"
+    target.set("$machine-${if (System.getProperty("os.name") == "Linux") "unknown-linux-gnu" else "apple-darwin"}")
     webpCommit.set("4fa21912338357f89e4fd51cf2368325b59e9bd9") // Same source as the existing Android build.
     webpSha256.set("923f3382a47a2af185c3240c954cf004428b237bd7317413a95146d01eb4b94b")
     repository.set(repositoryRoot)
@@ -181,6 +191,8 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 dependencies {
+    implementation(project(":core:network"))
+    implementation(project(":app:shared"))
     implementation(compose.desktop.currentOs) {
         if (intelMac) exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-x64")
     }
@@ -221,7 +233,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg)
             packageName = "EhViewer"
             packageVersion = releaseVersion.get()
-            description = "EhViewer M1 desktop runtime spike"
+            description = "EhViewer gallery browser"
             vendor = "EhViewer"
             modules("java.desktop", "java.logging", "java.management", "jdk.unsupported")
             if (windowsArm) {
@@ -231,7 +243,10 @@ compose.desktop {
                 appResourcesRootDir.set(prepareDesktopNative.flatMap { it.resources })
             }
             licenseFile.set(repositoryRoot.file("LICENSE"))
-            macOS { bundleID = "moe.tarsin.ehviewer.m1" }
+            macOS {
+                bundleID = "moe.tarsin.ehviewer.m1"
+                minimumSystemVersion = "11.0"
+            }
         }
     }
 }

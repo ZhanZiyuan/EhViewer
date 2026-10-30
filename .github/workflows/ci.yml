@@ -119,6 +119,11 @@ jobs:
           :core:common:testAndroidHostTest :core:data:testAndroidHostTest
           :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest
           :core:domain:testAndroidHostTest :core:domain:desktopTest
+          :core:network:bundleAndroidMainAar :core:network:desktopJar
+          :core:network:testAndroidHostTest :core:network:desktopTest
+          :app:shared:bundleAndroidMainAar :app:shared:desktopJar
+          :app:shared:testAndroidHostTest :app:shared:desktopTest
+          :core:network:lint :core:network:spotlessCheck :app:shared:lint :app:shared:spotlessCheck
           --console=plain --no-daemon
       - name: Verify actual library bytes, Java 17, localization and host receipts
         run: |
@@ -471,7 +476,7 @@ jobs:
           java-version-file: .java-version
       - name: Linux native dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y pkg-config libarchive-dev libwebp-dev
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libarchive-dev libwebp-dev dbus gnome-keyring
       - name: macOS native dependencies
         if: runner.os == 'macOS'
         run: brew install libarchive webp
@@ -492,6 +497,18 @@ jobs:
         run: chmod +x tools/verification/build/install/verification/bin/verification
       - name: Load Rust JNI and verify archive ownership in a real desktop JVM
         run: tools/verification/build/install/verification/bin/verification desktop-native-smoke --output reports/desktop-native
+      - name: Test the actual macOS Keychain session backend
+        if: runner.os == 'macOS'
+        run: cargo test --manifest-path native/rust/Cargo.toml --locked -p ehviewer_session
+      - name: Test encrypted sessions against an owned Linux Secret Service
+        if: runner.os == 'Linux'
+        env:
+          XDG_DATA_HOME: ${{ runner.temp }}/ehviewer-session-test-data
+          XDG_CONFIG_HOME: ${{ runner.temp }}/ehviewer-session-test-config
+        run: >-
+          dbus-run-session -- bash -euc
+          'printf "%s" "owned-ci-keyring-password" | gnome-keyring-daemon --unlock --components=secrets;
+          cargo test --manifest-path native/rust/Cargo.toml --locked -p ehviewer_session'
       - uses: actions/download-artifact@v8
         with:
           name: shared-core-${{ github.sha }}

@@ -12,3 +12,6 @@ docs/** linguist-documentation=true
 
 # Retain the exact audited upstream license bytes on every checkout platform.
 app/desktop/licenses/** -text
+# These two original MIT texts use CRLF; preserve and recognize their upstream line endings.
+app/desktop/licenses/session/async-recursion-1.2.0/LICENSE-MIT whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+app/desktop/licenses/session/windows-native-keyring-store-1.1.0/LICENSE-MIT whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

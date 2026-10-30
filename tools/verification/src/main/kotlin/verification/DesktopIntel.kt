@@ -28,6 +28,8 @@ fun verifyIntelMachO(header: ByteArray) {
 }
 
 /** Check the retained upstream texts in the installed app, after jpackage has copied resources. */
+fun expectedDesktopNativeNoticeCount(): Int = 6 + filesBelow(root.resolve("app/desktop/licenses/session"), "").size
+
 fun desktopNativeNotices(contents: Path): List<Map<String, String>> {
     val notices = contents.resolve("app/resources/licenses")
     val expected = linkedMapOf(
@@ -38,6 +40,8 @@ fun desktopNativeNotices(contents: Path): List<Map<String, String>> {
         "libwebp-1.6.0/PATENTS" to "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c",
         "libwebp-1.6.0/AUTHORS" to "f251be89fd442bd9d701360730aea163cc8e2076ff03528f59267dc2c4f8b60a",
     )
+    val sessionNotices = root.resolve("app/desktop/licenses/session")
+    filesBelow(sessionNotices, "").forEach { file -> expected["session/" + sessionNotices.relativize(file).joinToString("/")] = sha256(file) }
     return expected.map { (name, digest) ->
         val file = notices.resolve(name)
         require(file.isRegularFile()) { "Missing installed Native notice: $name" }

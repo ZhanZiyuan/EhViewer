@@ -67,6 +67,8 @@ tasks.withType<Test>().configureEach {
     inputs.file(rootDir.resolve("../../core/common/build.gradle.kts"))
         .withPropertyName("reviewedCommonTargets")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootDir.resolve("../../core/network/build.gradle.kts")).withPropertyName("reviewedNetworkTargets").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootDir.resolve("../../app/shared/build.gradle.kts")).withPropertyName("reviewedGalleryUiTargets").withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 spotless {

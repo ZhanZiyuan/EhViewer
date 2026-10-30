@@ -18,7 +18,7 @@ class MigrationPhaseTest {
 
     @Test fun retainedModuleCoverageIsExplicit() {
         val report = report()
-        for (module in listOf("domain", "common")) assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_module_targets"].obj()[module])
+        for (module in listOf("domain", "common", "network", "shared-ui")) assertEquals(listOf("android", "jvm", "iosArm64", "iosSimulatorArm64"), report["shared_module_targets"].obj()[module])
         for (module in listOf("data", "i18n", "ui")) assertEquals(listOf("android"), report["shared_module_targets"].obj()[module])
     }
 
@@ -29,8 +29,9 @@ class MigrationPhaseTest {
         assertEquals("ios", report["domain_ios_evidence_job"])
     }
 
-    @Test fun productIntegrationCannotBeInferredFromProbes() {
-        for (key in listOf("ios_product_domain_integration", "desktop_product_domain_integration")) assertEquals("NOT_INTEGRATED", report()[key])
+    @Test fun searchIntegrationDoesNotClaimCompleteProductAcceptance() {
+        for (key in listOf("ios_product_domain_integration", "desktop_product_domain_integration")) assertEquals("GALLERY_SEARCH", report()[key])
+        assertEquals(false, report()["product_p0_verified"])
     }
 
     @Test fun everyDeliveryTargetRetainsItsActualCurrentScope() {

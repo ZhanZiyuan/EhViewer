@@ -9,8 +9,12 @@ pub const EHV_BUFFER_TOO_SMALL: i32 = 3;
 pub const EHV_LIMIT: i32 = 4;
 pub const EHV_INTERNAL: i32 = 5;
 pub const EHV_PANIC: i32 = 6;
+pub const EHV_PARSE: i32 = 7;
+pub const EHV_STORAGE: i32 = 8;
+pub const EHV_NO_SESSION: i32 = 9;
 const MAX_INPUT: usize = 8 << 20;
 const MAX_BUFFERS: usize = 4096;
+const MAX_OWNED_BYTES: usize = 32 << 20;
 
 struct Registry {
     next: u64,
@@ -28,6 +32,106 @@ fn boundary(action: impl FnOnce() -> Result<(), i32>) -> i32 {
         Ok(Err(code)) => code,
         Err(_) => EHV_PANIC,
     }
+}
+
+fn retain(bytes: Vec<u8>) -> Result<u64, i32> {
+    let mut registry = BUFFERS.lock().map_err(|_| EHV_INTERNAL)?;
+    let live: usize = registry.buffers.values().map(|buffer| buffer.len()).sum();
+    if registry.buffers.len() >= MAX_BUFFERS || bytes.len() > MAX_OWNED_BYTES - live {
+        return Err(EHV_LIMIT);
+    }
+    let id = registry.next;
+    registry.next = id.checked_add(1).ok_or(EHV_LIMIT)?;
+    registry.buffers.insert(id, bytes.into_boxed_slice());
+    Ok(id)
+}
+
+#[cfg(not(target_os = "android"))]
+unsafe fn session_root<'a>(input: *const u8, length: usize) -> Result<&'a std::path::Path, i32> {
+    if input.is_null() || length == 0 || length > 65536 {
+        return Err(EHV_INVALID_ARGUMENT);
+    }
+    // SAFETY: every caller's ABI contract borrows a valid UTF-8 directory for this call.
+    let bytes = unsafe { std::slice::from_raw_parts(input, length) };
+    let text = std::str::from_utf8(bytes).map_err(|_| EHV_INVALID_ARGUMENT)?;
+    if text.contains('\0') {
+        return Err(EHV_INVALID_ARGUMENT);
+    }
+    Ok(std::path::Path::new(text))
+}
+
+/// Read an encrypted session through the platform's real credential store.
+/// EHV_NO_SESSION returns a zero handle; successful bytes use the standard owned-buffer contract.
+///
+/// # Safety
+/// `directory` must be readable for `length` bytes, and `handle` must be a disjoint writable u64.
+#[cfg(not(target_os = "android"))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ehv_session_read(
+    directory: *const u8,
+    length: usize,
+    handle: *mut u64,
+) -> i32 {
+    if handle.is_null() {
+        return EHV_INVALID_ARGUMENT;
+    }
+    // SAFETY: the caller supplies one writable output slot.
+    unsafe { *handle = 0 };
+    boundary(|| {
+        // SAFETY: directory is borrowed under this function's contract.
+        let root = unsafe { session_root(directory, length) }?;
+        let bytes = ehviewer_session::read(root)
+            .map_err(|_| EHV_STORAGE)?
+            .ok_or(EHV_NO_SESSION)?;
+        let id = retain(bytes)?;
+        // SAFETY: output remains valid for this call.
+        unsafe { *handle = id };
+        Ok(())
+    })
+}
+
+/// Atomically replace the encrypted snapshot; plaintext is never written to the filesystem.
+///
+/// # Safety
+/// `directory`/`input` must remain readable for their lengths for this call.
+#[cfg(not(target_os = "android"))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ehv_session_write(
+    directory: *const u8,
+    length: usize,
+    input: *const u8,
+    size: usize,
+) -> i32 {
+    boundary(|| {
+        if size > 256 * 1024 {
+            return Err(EHV_LIMIT);
+        }
+        if size > 0 && input.is_null() {
+            return Err(EHV_INVALID_ARGUMENT);
+        }
+        // SAFETY: directory and input remain borrowed under this function's contract.
+        let root = unsafe { session_root(directory, length) }?;
+        let bytes = if size == 0 {
+            &[]
+        } else {
+            unsafe { std::slice::from_raw_parts(input, size) }
+        };
+        ehviewer_session::write(root, bytes).map_err(|_| EHV_STORAGE)
+    })
+}
+
+/// Clear the local encrypted session.
+///
+/// # Safety
+/// `directory` must remain readable for `length` bytes for this call.
+#[cfg(not(target_os = "android"))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ehv_session_clear(directory: *const u8, length: usize) -> i32 {
+    boundary(|| {
+        // SAFETY: directory remains borrowed under this function's contract.
+        let root = unsafe { session_root(directory, length) }?;
+        ehviewer_session::clear(root).map_err(|_| EHV_STORAGE)
+    })
 }
 
 #[unsafe(no_mangle)]
@@ -63,16 +167,43 @@ pub unsafe extern "C" fn ehv_hash_sha1(input: *const u8, length: usize, handle: 
             unsafe { std::slice::from_raw_parts(input, length) }
         };
         let hash = ehviewer_core::hash::sha1(input).map_err(|_| EHV_INTERNAL)?;
-        let mut registry = BUFFERS.lock().map_err(|_| EHV_INTERNAL)?;
-        if registry.buffers.len() >= MAX_BUFFERS {
+        let id = retain(hash.into_bytes())?;
+        // SAFETY: the borrowed output slot remains valid until this function returns.
+        unsafe { *handle = id };
+        Ok(())
+    })
+}
+
+/// Parse borrowed gallery HTML using the existing Core parser and return an owned CBOR buffer.
+/// The caller copies and frees the result with ehv_buffer_copy/ehv_buffer_free exactly once.
+///
+/// # Safety
+/// Nonempty `input` must be readable for `length` bytes for this call, without concurrent writes.
+/// `handle` must point to one writable aligned u64, disjoint from input.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ehv_parse_gallery_list(
+    input: *const u8,
+    length: usize,
+    handle: *mut u64,
+) -> i32 {
+    if handle.is_null() {
+        return EHV_INVALID_ARGUMENT;
+    }
+    // SAFETY: the caller supplies a valid output slot.
+    unsafe { *handle = 0 };
+    boundary(|| {
+        if length > MAX_INPUT {
             return Err(EHV_LIMIT);
         }
-        let id = registry.next;
-        registry.next = id.checked_add(1).ok_or(EHV_LIMIT)?;
-        registry
-            .buffers
-            .insert(id, hash.into_bytes().into_boxed_slice());
-        // SAFETY: the borrowed output slot remains valid until this function returns.
+        if input.is_null() || length == 0 {
+            return Err(EHV_INVALID_ARGUMENT);
+        }
+        // SAFETY: non-null bounded input remains borrowed for this call.
+        let bytes = unsafe { std::slice::from_raw_parts(input, length) };
+        let parsed =
+            ehviewer_core::parser::list::parse_info_list_cbor(bytes).map_err(|_| EHV_PARSE)?;
+        let id = retain(parsed)?;
+        // SAFETY: the output slot remains valid for this call.
         unsafe { *handle = id };
         Ok(())
     })
@@ -183,6 +314,70 @@ mod tests {
         let mut count = usize::MAX;
         assert_eq!(unsafe { ehv_active_buffers(&mut count) }, EHV_OK);
         assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn gallery_cbor_uses_the_owned_copy_and_release_contract() {
+        let _serial = SERIAL.lock().unwrap();
+        let html = b"<!DOCTYPE html><html>No hits found</html>";
+        let mut handle = 0;
+        assert_eq!(
+            unsafe { ehv_parse_gallery_list(html.as_ptr(), html.len(), &mut handle) },
+            EHV_OK
+        );
+        let expected = b"\xa3\x64prev\xf6\x64next\xf6\x6fgalleryInfoList\x80";
+        let mut size = 0;
+        assert_eq!(
+            unsafe { ehv_buffer_copy(handle, null_mut(), 0, &mut size) },
+            EHV_BUFFER_TOO_SMALL
+        );
+        assert_eq!(size, expected.len());
+        let mut output = vec![0; size];
+        assert_eq!(
+            unsafe { ehv_buffer_copy(handle, output.as_mut_ptr(), output.len(), &mut size) },
+            EHV_OK
+        );
+        assert_eq!(output, expected);
+        assert_eq!(ehv_buffer_free(handle), EHV_OK);
+        assert_eq!(ehv_buffer_free(handle), EHV_INVALID_HANDLE);
+        empty();
+    }
+
+    #[test]
+    fn invalid_gallery_input_resets_the_slot_and_never_allocates() {
+        let _serial = SERIAL.lock().unwrap();
+        let mut handle = 999;
+        assert_eq!(
+            unsafe { ehv_parse_gallery_list(null(), 1, &mut handle) },
+            EHV_INVALID_ARGUMENT
+        );
+        assert_eq!(handle, 0);
+        assert_eq!(
+            unsafe { ehv_parse_gallery_list(b"x".as_ptr(), MAX_INPUT + 1, &mut handle) },
+            EHV_LIMIT
+        );
+        assert_eq!(handle, 0);
+        assert_eq!(
+            unsafe { ehv_parse_gallery_list(b"\xff".as_ptr(), 1, &mut handle) },
+            EHV_PARSE
+        );
+        assert_eq!(handle, 0);
+        assert_eq!(
+            unsafe { ehv_parse_gallery_list(b"x".as_ptr(), 1, null_mut()) },
+            EHV_INVALID_ARGUMENT
+        );
+        empty();
+    }
+
+    #[test]
+    fn owned_byte_budget_applies_to_variable_sized_parser_results() {
+        let _serial = SERIAL.lock().unwrap();
+        let handle = retain(vec![0; MAX_OWNED_BYTES]).unwrap();
+        assert_eq!(retain(vec![1]), Err(EHV_LIMIT));
+        assert_eq!(ehv_buffer_free(handle), EHV_OK);
+        let next = retain(vec![1]).unwrap();
+        assert_eq!(ehv_buffer_free(next), EHV_OK);
+        empty();
     }
 
     #[test]

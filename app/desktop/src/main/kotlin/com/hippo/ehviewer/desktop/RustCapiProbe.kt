@@ -18,7 +18,7 @@ import java.security.MessageDigest
 import java.util.Base64
 import java.util.Properties
 
-private interface CapiSymbols : AutoCloseable {
+internal interface CapiSymbols : AutoCloseable {
     val loadedPath: Path
     fun find(name: String): MemorySegment
 }
@@ -90,7 +90,7 @@ private class WindowsCapiLibrary(path: Path, private val arena: Arena) : CapiSym
     }
 }
 
-private fun openCapi(path: Path): CapiSymbols {
+internal fun openCapi(path: Path): CapiSymbols {
     val arena = Arena.ofConfined()
     try {
         if (System.getProperty("os.name").startsWith("Windows")) return WindowsCapiLibrary(path, arena)

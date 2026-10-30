@@ -18,6 +18,7 @@ import kotlin.io.path.writeText
 
 fun latestIosRuntime(runtimes: List<Any?>, identifier: String? = null): Map<String, Any?> = runtimes.map(Any?::obj)
     .filter { it["isAvailable"] == true && it.str("identifier").startsWith("com.apple.CoreSimulator.SimRuntime.iOS-") }
+    .filter { identifier != null || Regex("com\\.apple\\.CoreSimulator\\.SimRuntime\\.iOS-[0-9]+(?:-[0-9]+){0,2}").matches(it.str("identifier")) }
     .filter { identifier == null || it.str("identifier") == identifier }
     .maxByOrNull {
         val numbers = it.str("version").split('.').map(String::toInt)
@@ -119,7 +120,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         captures += listOf(stdout, stderr)
         stdout.writeText("")
         stderr.writeText("")
-        val response = command("xcrun", "simctl", "launch", "--stdout=$stdout", "--stderr=$stderr", device, bundle)
+        val response = command("xcrun", "simctl", "launch", "--stdout=$stdout", "--stderr=$stderr", device, bundle, "--startup-regression")
         output.resolve("$name.launch.log").writeText(response)
         return iosLaunchPid(response, bundle) to stderr
     }
@@ -139,6 +140,31 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         phase("boot")
         command("xcrun", "simctl", "boot", device)
         command("xcrun", "simctl", "bootstatus", device, "-b", timeout = Duration.ofMinutes(5))
+        val sessionBackend = iosSessionBackendTests(device, output)
+        val networkTests = temporary { staged ->
+            phase("shared-network-tests")
+            val networkStarted = Instant.now()
+            val log = try {
+                command(
+                    root.resolve("gradlew"), ":core:network:iosSimulatorArm64Test", "--rerun",
+                    "-Pehviewer.network.testSimulator=$device", "-Pehviewer.network.testDirectory=$staged",
+                    "--console=plain", "--no-daemon", "--max-workers=1", "-Dorg.gradle.parallel=false",
+                    "-Dorg.gradle.jvmargs=-Xmx2g", "-Pkotlin.native.jvmArgs=-Xmx3g", timeout = Duration.ofMinutes(10),
+                )
+            } catch (failure: CommandFailure) {
+                output.resolve("network-tests.log").writeText(failure.output)
+                throw failure
+            }
+            output.resolve("network-tests.log").writeText(log)
+            val binary = root.resolve("core/network/build/bin/iosSimulatorArm64/debugTest/test.kexe")
+            require(sha256(binary) == sha256(staged.resolve("test.kexe"))) { "Executed network tests differ from the actual Native binary" }
+            val xml = filesBelow(root.resolve("core/network/build/test-results/iosSimulatorArm64Test"), ".xml")
+            require(xml.isNotEmpty() && xml.all { Files.getLastModifiedTime(it).toInstant() >= networkStarted.minusSeconds(1) }) { "Missing or stale Native network test receipts" }
+            val evidence = sharedHostTestEvidence(xml.map { Files.readAllBytes(it) }, 2)
+            verifyNetworkTests(evidence)
+            xml.forEach { Files.copy(it, output.resolve("network-${it.fileName}")) }
+            evidence + mapOf("test_executable_sha256" to sha256(binary), "execution" to "BOOTED_OWNED_SIMULATOR")
+        }
         command("xcrun", "simctl", "install", device, app)
         captureDirectory = Path.of(command("xcrun", "simctl", "get_app_container", device, bundle, "data").trim()).resolve("tmp")
         logStart = Instant.now()
@@ -170,6 +196,8 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         val result = mapOf(
             "source_commit" to command("git", "rev-parse", "HEAD").trim(),
             "source_dirty" to dirty,
+            "network_tests" to networkTests,
+            "session_backend_tests" to sessionBackend,
             "runtime" to runtime.str("name"), "device_type" to type.str("name"), "architecture" to "arm64",
             "bundle_id" to bundle, "version" to plist("CFBundleShortVersionString"), "build" to plist("CFBundleVersion"),
             "executable_sha256" to sha256(executable), "cold_start" to "PASS", "background_foreground" to "PASS",

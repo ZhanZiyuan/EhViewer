@@ -65,7 +65,14 @@ fun verifyCoreTargetBoundary(configurations: Map<String, String>) {
     val common = configurations.getValue("core/common/build.gradle.kts")
     require(target.findAll(common).map { it.groupValues[1] }.toList() == listOf("jvm", "iosArm64", "iosSimulatorArm64") && Regex("\\bjvm\\(\\s*\"desktop\"\\s*\\)").containsMatchIn(common)) { "Common targets must be exactly Android, desktop JVM and the two reviewed iOS targets" }
     require("alias(libs.plugins.ehviewer.multiplatform.library)" in common) { "Common must retain the existing Android library convention" }
-    configurations.filterKeys { it !in setOf("core/domain/build.gradle.kts", "core/common/build.gradle.kts") }.forEach { (path, text) ->
+    val portable = setOf("core/domain/build.gradle.kts", "core/common/build.gradle.kts", "core/network/build.gradle.kts", "app/shared/build.gradle.kts")
+    for (path in listOf("core/network/build.gradle.kts", "app/shared/build.gradle.kts")) {
+        configurations[path]?.let { text ->
+            require(target.findAll(text).map { it.groupValues[1] }.toList() == listOf("jvm", "iosArm64", "iosSimulatorArm64") && Regex("\\bjvm\\(\\s*\"desktop\"\\s*\\)").containsMatchIn(text)) { "$path: expected the reviewed Android, desktop JVM and iOS targets" }
+            require("alias(libs.plugins.ehviewer.multiplatform.library" in text) { "$path: missing Android library convention" }
+        }
+    }
+    configurations.filterKeys { it !in portable }.forEach { (path, text) ->
         require(!target.containsMatchIn(text)) { "$path: non-Android target outside the reviewed domain migration" }
     }
 }
@@ -74,18 +81,19 @@ fun verifyArchitecture(): Map<String, Any?> {
     val violations = mutableListOf<String>()
     var checked = 0
     val importPattern = Regex("^import\\s+([^\\s]+)", RegexOption.MULTILINE)
-    listOf("common", "domain", "data", "ui", "i18n").forEach { module ->
+    listOf("common", "domain", "data", "ui", "i18n", "network").forEach { module ->
         filesBelow(root.resolve("core/$module/src"), ".kt").forEach { path ->
             checked++
             val imports = importPattern.findAll(path.readText()).map { it.groupValues[1] }.toList()
             val forbidden = listOf("com.hippo.ehviewer.") + when (module) {
                 "domain" -> listOf("com.ehviewer.core.common.", "com.ehviewer.core.data.", "com.ehviewer.core.ui.", "com.ehviewer.core.i18n.")
                 "common" -> listOf("com.ehviewer.core.data.", "com.ehviewer.core.ui.", "com.ehviewer.core.i18n.")
+                "network" -> listOf("com.ehviewer.core.data.", "com.ehviewer.core.ui.", "com.ehviewer.core.i18n.")
                 "data" -> listOf("com.ehviewer.core.ui.")
                 else -> emptyList()
             }
             imports.filter { imported -> forbidden.any(imported::startsWith) }.forEach { violations += "${root.relativize(path)}: upward import $it" }
-            if (module in setOf("common", "domain") && path.any { it.toString() in setOf("commonMain", "nonAndroidMain") } && imports.any { imported ->
+            if (module in setOf("common", "domain", "network") && path.any { it.toString() in setOf("commonMain", "nonAndroidMain") } && imports.any { imported ->
                     listOf("android.", "java.", "javax.", "androidx.compose.").any(imported::startsWith)
                 }
             ) {
@@ -94,7 +102,7 @@ fun verifyArchitecture(): Map<String, Any?> {
         }
     }
     val configurations = root.resolve("core").listDirectoryEntries().map { it.resolve("build.gradle.kts") }.filter { it.exists() } +
-        filesBelow(root.resolve("build-logic/convention/src/main/kotlin"), ".kt")
+        filesBelow(root.resolve("build-logic/convention/src/main/kotlin"), ".kt") + listOf(root.resolve("app/shared/build.gradle.kts"))
     verifyCoreTargetBoundary(configurations.associate { root.relativize(it).joinToString("/") to it.readText() })
     val loader = root.resolve("app/src/main/kotlin/com/hippo/ehviewer/gallery/ArchivePageLoader.kt").readText()
     require(!Regex("^import\\s+com\\.hippo\\.ehviewer\\.jni\\.", RegexOption.MULTILINE).containsMatchIn(loader)) { "ArchivePageLoader directly imports JNI" }
@@ -131,6 +139,8 @@ fun verifyArchitecture(): Map<String, Any?> {
         "legacy_shared_modules" to listOf("data", "i18n", "ui"),
         "portable_common_targets" to portableCommonTargets,
         "portable_domain_targets" to portableDomainTargets,
+        "portable_network_targets" to portableDomainTargets,
+        "portable_gallery_ui_targets" to portableDomainTargets,
         "archive_loader_uses_port" to true,
         "bundled_github_credentials" to false,
         "result" to "PASS",

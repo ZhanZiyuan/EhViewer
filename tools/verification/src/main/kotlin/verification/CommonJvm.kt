@@ -148,8 +148,8 @@ fun commonJvmLinkProbe(jar: Path): Map<String, Any?> = URLClassLoader(arrayOf(ja
 
 fun verifyCommonJvmProducerIdentity(shared: Map<String, Any?>, source: String) {
     require(
-        shared["source_commit"] == source && shared["source_dirty"] == false && shared["schema_version"] == 4 &&
-            shared["verification_scope"] == "ANDROID_CORE_AND_PORTABLE_COMMON_DOMAIN_JVM" && shared["shared_library_artifacts_verified"] == true &&
+        shared["source_commit"] == source && shared["source_dirty"] == false && shared["schema_version"] == SHARED_SCHEMA &&
+            shared["verification_scope"] == SHARED_SCOPE && shared["shared_library_artifacts_verified"] == true &&
             shared["portable_common_targets"].array() == portableCommonTargets,
     ) { "Common JVM input must be the actual clean same-source shared producer" }
 }
