@@ -160,7 +160,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             require(sha256(binary) == sha256(staged.resolve("test.kexe"))) { "Executed network tests differ from the actual Native binary" }
             val xml = filesBelow(root.resolve("core/network/build/test-results/iosSimulatorArm64Test"), ".xml")
             require(xml.isNotEmpty() && xml.all { Files.getLastModifiedTime(it).toInstant() >= networkStarted.minusSeconds(1) }) { "Missing or stale Native network test receipts" }
-            val evidence = sharedHostTestEvidence(xml.map { Files.readAllBytes(it) }, 2)
+            val evidence = sharedHostTestEvidence(xml.map { Files.readAllBytes(it) }, filesBelow(root.resolve("core/network/src/commonTest"), ".kt").size)
             verifyNetworkTests(evidence)
             xml.forEach { Files.copy(it, output.resolve("network-${it.fileName}")) }
             evidence + mapOf("test_executable_sha256" to sha256(binary), "execution" to "BOOTED_OWNED_SIMULATOR")
@@ -189,6 +189,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         check(secondPid != firstPid) { "Second cold start reused the terminated PID" }
         awaitMarkers("second-render", secondPid, secondStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "active" to 1)
         val rustResults = listOf(rustInteropResults(firstStderr.readText()), rustInteropResults(secondStderr.readText()))
+        for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM3:gallery-product checks=3").findAll(stderr.readText()).count() == 1) { "Actual iOS detail/page/image regression did not execute" }
         val lifecycle = logs("lifecycle")
         output.resolve("lifecycle.log").writeText(lifecycle)
         val unified = iosUnifiedLifecycle(lifecycle, firstPid, secondPid)
@@ -204,6 +205,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             "first_pid" to firstPid, "second_pid" to secondPid, "explicit_termination" to "PASS",
             "compose_ready" to "PASS", "development_signed_device" to "NOT_VERIFIED",
             "rust_c_abi" to "PASS", "rust_completed_results_by_launch" to rustResults, "rust_live_results_after_probe" to 0,
+            "gallery_product_checks_by_launch" to listOf(3, 3),
             "unified_log_lifecycle" to unified,
         )
         output.resolve("startup.json").writeText(json(result))

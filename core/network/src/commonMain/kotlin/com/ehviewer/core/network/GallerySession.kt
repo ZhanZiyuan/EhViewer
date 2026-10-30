@@ -1,6 +1,7 @@
 package com.ehviewer.core.network
 
-import com.ehviewer.core.network.gallery.GalleryListDecoder
+import com.ehviewer.core.network.gallery.GalleryContentRepository
+import com.ehviewer.core.network.gallery.GalleryDocumentDecoder
 import com.ehviewer.core.network.gallery.GalleryRepository
 import com.ehviewer.core.network.session.PersistentCookieStorage
 import com.ehviewer.core.network.session.SessionVault
@@ -9,7 +10,7 @@ import io.ktor.client.engine.HttpClientEngine
 expect fun platformNetworkEngine(): HttpClientEngine
 
 /** One application-owned engine, secure cookie store and repository; closing releases the engine. */
-class GallerySession(vault: SessionVault, decoder: GalleryListDecoder, userAgent: String, restricted: Boolean = false) : AutoCloseable {
+class GallerySession(vault: SessionVault, decoder: GalleryDocumentDecoder, userAgent: String, restricted: Boolean = false) : AutoCloseable {
     val cookies = PersistentCookieStorage(vault)
     private val engine = platformNetworkEngine()
     private val client = try {
@@ -19,6 +20,7 @@ class GallerySession(vault: SessionVault, decoder: GalleryListDecoder, userAgent
         throw failure
     }
     val galleries = GalleryRepository(client, decoder, restricted)
+    val content = GalleryContentRepository(client, decoder, restricted)
 
     override fun close() {
         client.close()

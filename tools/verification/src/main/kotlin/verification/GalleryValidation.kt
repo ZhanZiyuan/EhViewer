@@ -2,10 +2,11 @@ package verification
 
 /** The shared cookie and repository suites must execute on both Android Host and desktop JVM. */
 fun verifyNetworkTests(evidence: Map<String, Any?>) {
-    require(evidence["status"] == "PASS" && evidence["executed"] == true && (evidence["tests"] as Number).toInt() >= 19)
+    require(evidence["status"] == "PASS" && evidence["executed"] == true && (evidence["tests"] as Number).toInt() >= 28)
     val suites = evidence["suites"].obj().mapKeys { (name, _) -> name.substringAfterLast('.').substringBefore('[') }
-    require(suites.keys == setOf("GalleryRepositoryTest", "PersistentCookieStorageTest")) { "Missing actual shared network test suites" }
+    require(suites.keys == setOf("GalleryRepositoryTest", "PersistentCookieStorageTest", "GalleryContentRepositoryTest")) { "Missing actual shared network test suites" }
     require((suites.getValue("GalleryRepositoryTest") as Number).toInt() >= 10 && (suites.getValue("PersistentCookieStorageTest") as Number).toInt() >= 9) { "Incomplete network/session regression" }
+    require((suites.getValue("GalleryContentRepositoryTest") as Number).toInt() >= 9) { "Incomplete gallery/reader transport regression" }
 }
 
 /** ABI additions preserve all original widths, ownership operations and status codes. */
@@ -18,6 +19,8 @@ fun verifyGalleryCapiHeader(header: String) {
         "int32_tehv_buffer_free(uint64_thandle);",
         "int32_tehv_active_buffers(size_t*count);",
         "int32_tehv_parse_gallery_list(constuint8_t*input,size_tlength,uint64_t*handle);",
+        "int32_tehv_parse_gallery_detail(constuint8_t*input,size_tlength,uint64_t*handle);",
+        "int32_tehv_parse_gallery_page(constuint8_t*input,size_tlength,uint64_t*handle);",
         "int32_tehv_session_read(constuint8_t*directory,size_tlength,uint64_t*handle);",
         "int32_tehv_session_write(constuint8_t*directory,size_tlength,constuint8_t*input,size_tsize);",
         "int32_tehv_session_clear(constuint8_t*directory,size_tlength);",
@@ -28,4 +31,4 @@ fun verifyGalleryCapiHeader(header: String) {
     }
 }
 
-const val MINIMUM_NATIVE_SESSION_PASSES = 47
+const val MINIMUM_NATIVE_SESSION_PASSES = 52

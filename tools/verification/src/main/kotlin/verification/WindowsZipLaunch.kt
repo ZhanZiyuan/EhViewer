@@ -40,6 +40,7 @@ fun windowsPackagedLaunches(image: Path, output: Path, version: String): List<Ma
         require(Path.of(proof.getProperty("java_home")).toRealPath() == runtime.toRealPath()) { "Launcher used an external JVM" }
         require(Path.of(proof.getProperty("rust_library")).toRealPath() == rust.toRealPath()) { "Caller loaded a different Rust DLL" }
         require(proof.getProperty("application_version") == version && proof.getProperty("rust_hash_results") == "2000" && proof.getProperty("rust_active_results") == "0") { "Incomplete packaged Rust ownership calls" }
+        require(proof.getProperty("gallery_product_checks") == "3") { "Packaged detail/page/image regression did not execute" }
         for (name in listOf("rust_ownership_errors", "rust_library_closed")) require(proof.getProperty(name) == "PASS") { "Missing ownership check: $name" }
         require(proof.getProperty("window_showing") == "true" && proof.getProperty("compose_frames").toInt() > 0 && proof.getProperty("render_api") == renderApi) { "Window did not render with the requested backend" }
         proof.stringPropertyNames().sorted().associateWith { proof.getProperty(it) }

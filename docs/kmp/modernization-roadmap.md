@@ -2,6 +2,8 @@
 
 # 现代化路线与阶段门禁
 
+当前推进共享详情与在线分页阅读：实际 macOS 与 iPad Simulator 已完成真实列表→详情→图片 1/2→返回流程，平板横屏与旋转后保留详情也已运行；Android 原有完整回归、四 ABI 构建和共享代码检查通过。继续在同一产品切片完成重试/平台检查与精确 SHA 的 PR CI，随后推进阅读进度、连续/RTL 阅读及 M3 存储/认证和 Android 接入；不把本切片标为 M3 完成。设计与真实范围见[详情与阅读](gallery-details-and-reader.md)，此前时点记录保留如下。
+
 当前 M3 产品切片：共享 Ktor 网络、加密会话与同一 CMP 搜索界面已接入 Desktop/iOS；真实搜索、翻页和 iOS 空结果已运行。Android/JVM/Native 各 19 项共享测试、真实 macOS/iOS Keychain 测试及 Android 原有构建回归已本地通过，当前提交仍需完整 PR CI。详情、图片和阅读器为紧接的功能闭环；认证 UI、Android 导航接入、持久化等 M3 未完成项继续推进，不将本切片视为阶段完成。设计差异、许可与验收范围见 [搜索与会话](gallery-search-and-session.md)。
 
 M3-004当前迁移common的JVM真实文件流，为后续持久化提供平台基础；Android文档URI实现字节不变，暂不启用common Native目标。原三标题+五真实文件/失败/协程取消测试及打包JAR独立八场景本机通过，CI在五个已接入桌面JVM环境消费同一实际JAR、聚合逐源/字节/真实回执验证，仍待完整新SHA门禁。见[ADR0027](adr/0027-common-jvm-filesystem.md)；M4下载/归档没有提前修改。

@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.shared.GallerySearchScreen
+import com.ehviewer.shared.verifyGalleryProduct
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointerVar
 import kotlinx.cinterop.ExportObjCClass
@@ -55,6 +56,8 @@ class EhViewerDelegate : UIResponder, UIApplicationDelegateProtocol {
             NSLog("EhViewerM1:cold-start")
             val rust = verifyRustInterop()
             NSLog("EhViewerM1:rust-ffi-ready completed=${rust.completed} live=${rust.live}")
+            check(verifyGalleryProduct(NativeGalleryDecoder) == 3)
+            NSLog("EhViewerM3:gallery-product checks=3")
         }
         return true
     }

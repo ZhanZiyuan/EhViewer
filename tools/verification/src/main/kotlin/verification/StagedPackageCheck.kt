@@ -125,7 +125,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     require(
         linuxChecks["launches"].array().all {
             val proof = it.obj()
-            proof["rust_hash_results"] == 100 && (proof["compose_frames"] as Number).toInt() > 0 && proof["bundled_runtime"] == "PASS" && proof["render_api"] == "SOFTWARE_COMPAT"
+            proof["gallery_product_checks"] == 3 && proof["rust_hash_results"] == 100 && (proof["compose_frames"] as Number).toInt() > 0 && proof["bundled_runtime"] == "PASS" && proof["render_api"] == "SOFTWARE_COMPAT"
         },
     ) { "Both original Linux windows must pass" }
     val image = path("linux-runtime", "app/desktop/build/compose/binaries/main/app/EhViewer")
@@ -141,6 +141,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     }
     val ios = receipt("ios", "startup.json", false)
     verifyNetworkTests(ios["network_tests"].obj())
+    require(ios["gallery_product_checks_by_launch"].array() == listOf(3, 3)) { "Missing actual iOS detail/page/image decoder checks" }
     val iosSession = ios["session_backend_tests"].obj()
     require(iosSession["result"] == "PASS" && iosSession["passed"] == 3 && iosSession["ignored"] == 0 && iosSession["execution"] == "REAL_IOS_KEYCHAIN_ON_OWNED_SIMULATOR")
     require(sha256(path("ios", "session-tests.kexe")) == iosSession["test_executable_sha256"] && sha256(path("ios", "session-entitlements.plist")) == iosSession["simulator_identity_sha256"])
@@ -219,7 +220,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         require(
             checks["version"] == version && checks["launches"].array().size == 2 && checks["launches"].array().all {
                 val launch = it.obj()
-                launch["rust_hash_results"] == 100 && launch["bundled_runtime"] == "PASS" && (launch["compose_frames"] as Number).toInt() > 0
+                launch["gallery_product_checks"] == 3 && launch["rust_hash_results"] == 100 && launch["bundled_runtime"] == "PASS" && (launch["compose_frames"] as Number).toInt() > 0
             },
         ) { "Incomplete actual Intel package launches" }
     }
@@ -260,6 +261,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     }
     require(launch["launches"].array().size == 2 && launch["extracted_file_count"] == manifest["files"].array().size && launch["native_files_verified"] == native.size) { "Incomplete extracted Windows package proof" }
     fun windowsWindow(proof: Map<String, Any?>) {
+        require(proof["gallery_product_checks"] == "3") { "Missing actual Windows detail/page/image decoder checks" }
         require(proof["application_version"] == version && proof["architecture"] == "aarch64" && proof["java_version"] == "25.0.5.0.2" && proof["windows_code_page"] == "65001" && proof["native_encoding"] == "UTF-8" && proof["render_api"] == "SOFTWARE_COMPAT" && proof["rust_hash_results"] == "2000" && proof["rust_active_results"] == "0" && proof["rust_ownership_errors"] == "PASS" && proof["rust_library_closed"] == "PASS" && proof["window_showing"] == "true" && proof.str("compose_frames").toInt() > 0) { "Incomplete original Windows window/ownership check" }
     }
     require(runtime["launches"].array().size == 2) { "Both original Windows image launches remain mandatory" }

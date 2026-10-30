@@ -5,7 +5,7 @@ import org.junit.Test
 
 class GalleryValidationTest {
     @Test fun actualCookieAndRepositorySuitesCannotBeSkippedOrOmitted() {
-        val good = mapOf("status" to "PASS", "executed" to true, "tests" to 19, "suites" to mapOf("GalleryRepositoryTest[desktop]" to 10, "PersistentCookieStorageTest[desktop]" to 9))
+        val good = mapOf("status" to "PASS", "executed" to true, "tests" to 28, "suites" to mapOf("GalleryRepositoryTest[desktop]" to 10, "PersistentCookieStorageTest[desktop]" to 9, "GalleryContentRepositoryTest[desktop]" to 9))
         verifyNetworkTests(good)
         for (bad in listOf(good + ("executed" to false), good + ("status" to "SKIPPED"), good + ("tests" to 0), good + ("suites" to mapOf("GalleryRepositoryTest" to 18)))) {
             assertThrows(IllegalArgumentException::class.java) { verifyNetworkTests(bad) }
@@ -20,6 +20,8 @@ class GalleryValidationTest {
             int32_t ehv_buffer_free(uint64_t handle);
             int32_t ehv_active_buffers(size_t *count);
             int32_t ehv_parse_gallery_list(const uint8_t *input, size_t length, uint64_t *handle);
+            int32_t ehv_parse_gallery_detail(const uint8_t *input, size_t length, uint64_t *handle);
+            int32_t ehv_parse_gallery_page(const uint8_t *input, size_t length, uint64_t *handle);
             int32_t ehv_session_read(const uint8_t *directory, size_t length, uint64_t *handle);
             int32_t ehv_session_write(const uint8_t *directory, size_t length, const uint8_t *input, size_t size);
             int32_t ehv_session_clear(const uint8_t *directory, size_t length);

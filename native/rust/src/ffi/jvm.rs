@@ -47,6 +47,38 @@ pub fn decodeNative(mut env: JNIEnv, _: JObject, input: JByteArray) -> jbyteArra
     })
 }
 
+#[jni_fn("com.ehviewer.core.network.gallery.RustGalleryDecoder")]
+pub fn decodeDetailsNative(env: JNIEnv, _: JObject, input: JByteArray) -> jbyteArray {
+    gallery_document(
+        env,
+        input,
+        ehviewer_core::parser::gallery::parse_detail_cbor,
+    )
+}
+
+#[jni_fn("com.ehviewer.core.network.gallery.RustGalleryDecoder")]
+pub fn decodePageNative(env: JNIEnv, _: JObject, input: JByteArray) -> jbyteArray {
+    gallery_document(env, input, ehviewer_core::parser::gallery::parse_page_cbor)
+}
+
+fn gallery_document(
+    mut env: JNIEnv,
+    input: JByteArray,
+    parse: fn(&[u8]) -> Result<Vec<u8>>,
+) -> jbyteArray {
+    jni_throwing(&mut env, |env| {
+        let size = env.get_array_length(&input)?;
+        ensure!(
+            size > 0 && size <= 8 * 1024 * 1024,
+            "Invalid gallery response size"
+        );
+        let borrowed = env.convert_byte_array(input)?;
+        let parsed = parse(&borrowed).map_err(|_| anyhow::anyhow!("Invalid gallery response"))?;
+        ensure!(parsed.len() <= 8 * 1024 * 1024, "Gallery result size limit");
+        Ok(env.byte_array_from_slice(&parsed)?.into_raw())
+    })
+}
+
 #[cfg(not(target_os = "android"))]
 #[jni_fn("com.ehviewer.core.network.session.NativeSessionVault")]
 pub fn readSnapshot(mut env: JNIEnv, _: JObject, directory: JString) -> jbyteArray {

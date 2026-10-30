@@ -225,6 +225,17 @@ tasks.register<JavaExec>("rustCapiProbe") {
     )
 }
 
+val regressionLibrary = providers.gradleProperty("galleryRegressionLibrary")
+tasks.register<JavaExec>("galleryProductRegression") {
+    group = "verification"
+    description = "Decode real Rust documents and platform image pixels using production shared code"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.hippo.ehviewer.desktop.GalleryRegressionMainKt")
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    inputs.file(regressionLibrary)
+    argumentProviders.add(CommandLineArgumentProvider { listOf(regressionLibrary.get()) })
+}
+
 compose.desktop {
     application {
         mainClass = "com.hippo.ehviewer.desktop.DesktopMainKt"

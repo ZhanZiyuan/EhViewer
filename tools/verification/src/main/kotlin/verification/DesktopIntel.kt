@@ -161,7 +161,8 @@ fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null):
                 require(Path.of(proof.getProperty("java_home")).toRealPath() == bundledHome.toRealPath()) { "Launcher used an external JVM" }
                 require(proof.getProperty("java_version") == System.getProperty("java.version")) { "Unexpected bundled JVM version" }
                 require(proof.getProperty("rust_hash_results").toInt() == 100 && proof.getProperty("compose_frames").toInt() > 0 && proof.getProperty("window_showing") == "true")
-                mapOf("rust_hash_results" to proof.getProperty("rust_hash_results").toInt(), "compose_frames" to proof.getProperty("compose_frames").toInt(), "bundled_runtime" to "PASS")
+                require(proof.getProperty("gallery_product_checks") == "3") { "Packaged detail/page/image regression did not execute" }
+                mapOf("gallery_product_checks" to 3, "rust_hash_results" to proof.getProperty("rust_hash_results").toInt(), "compose_frames" to proof.getProperty("compose_frames").toInt(), "bundled_runtime" to "PASS")
             }
             val dependencyLog = capture("rust-dependencies.txt", "otool", "-L", rust)
             require(!dependencyLog.contains("/opt/homebrew") && !dependencyLog.contains("/Users/runner") && !dependencyLog.contains(root.toString())) { "Native library depends on a build-machine path" }

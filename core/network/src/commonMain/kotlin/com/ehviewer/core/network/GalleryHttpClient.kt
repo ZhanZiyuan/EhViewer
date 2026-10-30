@@ -35,6 +35,7 @@ fun galleryHttpClient(engine: HttpClientEngine, cookies: CookiesStorage, userAge
             header(HttpHeaders.AcceptLanguage, "en-US,en;q=0.9")
         }
         expectSuccess = false
-        followRedirects = true
+        // GalleryRequests validates every redirect before it can send headers to another origin.
+        followRedirects = false
     }
 }

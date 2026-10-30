@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.ehviewer.core.network.gallery.RustGalleryDecoder
+import com.ehviewer.shared.verifyGalleryProduct
 import com.hippo.ehviewer.jni.sha1
 import java.io.FileDescriptor
 import java.io.FileInputStream
@@ -39,6 +41,7 @@ fun main(arguments: Array<String>) {
     val nativeRoot = Path.of(checkNotNull(System.getProperty("compose.application.resources.dir")))
     val owned = if (windowsArm) verifyOwnedCapi(nativeRoot.resolve("ehviewer_capi.dll")) else null
     val completed = owned?.completed ?: verifyUnixJni(nativeRoot, macIntel)
+    val galleryChecks = verifyGalleryProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder)
     val frames = AtomicInteger()
     application {
         Window(onCloseRequest = ::exitApplication, title = "EhViewer · M1 desktop runtime") {
@@ -63,6 +66,7 @@ fun main(arguments: Array<String>) {
                         setProperty("java_home", System.getProperty("java.home"))
                         setProperty("application_version", System.getProperty("jpackage.app-version"))
                         setProperty("rust_hash_results", completed.toString())
+                        setProperty("gallery_product_checks", galleryChecks.toString())
                         if (owned != null) {
                             setProperty("windows_code_page", windowsProcessCodePage().toString())
                             setProperty("native_encoding", System.getProperty("native.encoding"))

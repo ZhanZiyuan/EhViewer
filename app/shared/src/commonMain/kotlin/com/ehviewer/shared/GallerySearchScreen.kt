@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -37,9 +38,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
@@ -59,7 +60,8 @@ fun GallerySearchScreen(session: GallerySession, onReady: () -> Unit = {}) {
     var generation by remember { mutableIntStateOf(0) }
     var request by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
-    val uriHandler = LocalUriHandler.current
+    var selected by remember { mutableStateOf<BaseGalleryInfo?>(null) }
+    val resultsState = rememberLazyListState()
 
     fun load(cursor: String? = null, previous: Boolean = false) {
         request?.cancel()
@@ -95,6 +97,11 @@ fun GallerySearchScreen(session: GallerySession, onReady: () -> Unit = {}) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
                 Column(Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    val gallery = selected
+                    if (gallery != null) {
+                        GalleryDetailScreen(session, gallery, onBack = { selected = null })
+                        return@Column
+                    }
                     Text("EhViewer", style = MaterialTheme.typography.headlineMedium)
                     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(
@@ -120,12 +127,12 @@ fun GallerySearchScreen(session: GallerySession, onReady: () -> Unit = {}) {
                     if (result == null && !loading && error == null) Text("Search by title or tags, or leave the search empty to browse.", Modifier.padding(vertical = 24.dp))
                     if (result != null) {
                         if (result.galleryInfoList.isEmpty()) Text("No galleries found.", Modifier.padding(vertical = 24.dp))
-                        LazyColumn(Modifier.weight(1f)) {
+                        LazyColumn(Modifier.weight(1f), state = resultsState) {
                             items(result.galleryInfoList, key = { it.gid }) { gallery ->
                                 ListItem(
                                     headlineContent = { Text(gallery.title ?: gallery.titleJpn.orEmpty()) },
                                     supportingContent = { Text("${gallery.pages} pages") },
-                                    modifier = Modifier.clickable { uriHandler.openUri(session.galleries.galleryUrl(gallery.gid, gallery.token).toString()) },
+                                    modifier = Modifier.clickable { selected = gallery },
                                 )
                                 HorizontalDivider()
                             }
@@ -142,13 +149,13 @@ fun GallerySearchScreen(session: GallerySession, onReady: () -> Unit = {}) {
     SideEffect(onReady)
 }
 
-private fun GalleryFailure.userMessage(): String = when (this) {
+internal fun GalleryFailure.userMessage(): String = when (this) {
     GalleryFailure.AUTHENTICATION -> "Sign in to continue."
     GalleryFailure.CHALLENGE -> "The site requires browser verification."
     GalleryFailure.RATE_LIMIT -> "Too many requests. Please try again later."
     GalleryFailure.OFFLINE -> "Unable to connect. Check your connection and try again."
     GalleryFailure.SERVER -> "The site is temporarily unavailable."
     GalleryFailure.INVALID_RESPONSE -> "The site returned a page that could not be read."
-    GalleryFailure.RESPONSE_TOO_LARGE -> "The response is too large. Try a narrower search."
+    GalleryFailure.RESPONSE_TOO_LARGE -> "The content exceeds the loading limit."
     GalleryFailure.SESSION_STORAGE -> "Secure session storage is unavailable. Unlock it and try again."
 }

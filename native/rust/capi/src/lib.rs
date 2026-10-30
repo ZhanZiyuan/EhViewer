@@ -186,6 +186,56 @@ pub unsafe extern "C" fn ehv_parse_gallery_list(
     length: usize,
     handle: *mut u64,
 ) -> i32 {
+    // SAFETY: the wrapper preserves the borrowed-input and writable-handle contract.
+    unsafe {
+        parse_document(input, length, handle, |bytes| {
+            ehviewer_core::parser::list::parse_info_list_cbor(bytes).map_err(|_| EHV_PARSE)
+        })
+    }
+}
+
+/// Parse an original gallery detail document into the shared CBOR model.
+///
+/// # Safety
+/// Nonempty `input` is borrowed for `length` bytes; `handle` is one disjoint writable u64.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ehv_parse_gallery_detail(
+    input: *const u8,
+    length: usize,
+    handle: *mut u64,
+) -> i32 {
+    // SAFETY: the wrapper preserves the same owned-buffer contract as gallery lists.
+    unsafe {
+        parse_document(input, length, handle, |bytes| {
+            ehviewer_core::parser::gallery::parse_detail_cbor(bytes).map_err(|_| EHV_PARSE)
+        })
+    }
+}
+
+/// Parse the actual image source and reader navigation from a gallery image page.
+///
+/// # Safety
+/// Nonempty `input` is borrowed for `length` bytes; `handle` is one disjoint writable u64.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ehv_parse_gallery_page(
+    input: *const u8,
+    length: usize,
+    handle: *mut u64,
+) -> i32 {
+    // SAFETY: the wrapper preserves the same owned-buffer contract as gallery lists.
+    unsafe {
+        parse_document(input, length, handle, |bytes| {
+            ehviewer_core::parser::gallery::parse_page_cbor(bytes).map_err(|_| EHV_PARSE)
+        })
+    }
+}
+
+unsafe fn parse_document(
+    input: *const u8,
+    length: usize,
+    handle: *mut u64,
+    parse: impl FnOnce(&[u8]) -> Result<Vec<u8>, i32>,
+) -> i32 {
     if handle.is_null() {
         return EHV_INVALID_ARGUMENT;
     }
@@ -200,8 +250,7 @@ pub unsafe extern "C" fn ehv_parse_gallery_list(
         }
         // SAFETY: non-null bounded input remains borrowed for this call.
         let bytes = unsafe { std::slice::from_raw_parts(input, length) };
-        let parsed =
-            ehviewer_core::parser::list::parse_info_list_cbor(bytes).map_err(|_| EHV_PARSE)?;
+        let parsed = parse(bytes)?;
         let id = retain(parsed)?;
         // SAFETY: the output slot remains valid for this call.
         unsafe { *handle = id };
@@ -340,6 +389,62 @@ mod tests {
         assert_eq!(output, expected);
         assert_eq!(ehv_buffer_free(handle), EHV_OK);
         assert_eq!(ehv_buffer_free(handle), EHV_INVALID_HANDLE);
+        empty();
+    }
+
+    #[test]
+    fn image_page_results_are_copied_and_freed_without_borrowing_the_html() {
+        let _serial = SERIAL.lock().unwrap();
+        let html =
+            b"<!DOCTYPE html><html><img id=\"img\" src=\"https://ehgt.org/fixture.png\"></html>";
+        let expected = ehviewer_core::parser::gallery::parse_page_cbor(html).unwrap();
+        let mut handle = 0;
+        assert_eq!(
+            unsafe { ehv_parse_gallery_page(html.as_ptr(), html.len(), &mut handle) },
+            EHV_OK
+        );
+        let mut size = 0;
+        assert_eq!(
+            unsafe { ehv_buffer_copy(handle, null_mut(), 0, &mut size) },
+            EHV_BUFFER_TOO_SMALL
+        );
+        assert_eq!(size, expected.len());
+        let mut copied = vec![0; size];
+        assert_eq!(
+            unsafe { ehv_buffer_copy(handle, copied.as_mut_ptr(), copied.len(), &mut size) },
+            EHV_OK
+        );
+        assert_eq!(copied, expected);
+        assert_eq!(ehv_buffer_free(handle), EHV_OK);
+        assert_eq!(ehv_buffer_free(handle), EHV_INVALID_HANDLE);
+        empty();
+    }
+
+    #[test]
+    fn detail_and_image_parsers_reject_invalid_borrows_and_documents_without_live_results() {
+        let _serial = SERIAL.lock().unwrap();
+        for parse in [
+            ehv_parse_gallery_detail as unsafe extern "C" fn(*const u8, usize, *mut u64) -> i32,
+            ehv_parse_gallery_page,
+        ] {
+            let mut handle = 999;
+            assert_eq!(
+                unsafe { parse(null(), 1, &mut handle) },
+                EHV_INVALID_ARGUMENT
+            );
+            assert_eq!(handle, 0);
+            assert_eq!(
+                unsafe { parse(b"x".as_ptr(), MAX_INPUT + 1, &mut handle) },
+                EHV_LIMIT
+            );
+            assert_eq!(handle, 0);
+            assert_eq!(unsafe { parse(b"x".as_ptr(), 1, &mut handle) }, EHV_PARSE);
+            assert_eq!(handle, 0);
+            assert_eq!(
+                unsafe { parse(b"x".as_ptr(), 1, null_mut()) },
+                EHV_INVALID_ARGUMENT
+            );
+        }
         empty();
     }
 

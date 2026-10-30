@@ -59,11 +59,18 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
     val library = root.resolve("native/rust/target/$target/debug/libehviewer_rust.${if (mac) "dylib" else "so"}")
     library.inputStream().use { verifyDesktopLibrary(it.readNBytes(32), target) }
     val results = desktopArchiveRegression(output, Path.of(System.getProperty("java.home"), "bin", "java"), library)
+    val gallery = capture(
+        "gallery-product.log", root.resolve("gradlew"), "-p", root.resolve("app/desktop"), "galleryProductRegression",
+        "-Pehviewer.desktopOnly=true", "-PgalleryRegressionLibrary=$library", "--console=plain", "--no-daemon",
+        timeout = Duration.ofMinutes(10),
+    )
+    require(gallery.lineSequence().count { it == "Gallery product regression passed: 3 checks" } == 1) { "Production JNI/model/image decoder regression did not execute" }
     val result = mapOf(
         "source_commit" to command("git", "rev-parse", "HEAD").trim(), "source_dirty" to dirty,
         "target" to target, "jvm_architecture" to System.getProperty("os.arch"), "jvm_version" to System.getProperty("java.version"),
         "rust" to command("rustc", "--version").trim(), "library_sha256" to sha256(library), "result" to "PASS",
         "checks" to results, "packaged_runtime" to "NOT_VERIFIED", "ios_c_abi" to "NOT_VERIFIED",
+        "gallery_product_checks" to 3,
     )
     output.resolve("desktop-native.json").writeText(json(result))
     return result

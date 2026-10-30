@@ -2,7 +2,7 @@
 
 This M3 slice uses `core/network` for the real Ktor request, cookie/session contract and gallery repository, and `app/shared` for the same Compose Multiplatform search screen. Desktop and iOS launch this business screen by default. The original explicit startup/archive regressions remain available to CI. M3 is not complete.
 
-The visible flow supports anonymous browsing, title/tag search, cursor pagination, loading, retry and empty results. Gallery rows temporarily open the real gallery URL in the platform browser. Native detail, preview/image loading and the reader are the next product slice. Android compiles the same network/UI libraries; integration with its existing navigation and WebView login is still pending. The existing Android application, browser cookies and Rust reader remain intact.
+The initial search slice supports anonymous browsing, title/tag search, cursor pagination, loading, retry and empty results. Its temporary browser handoff is now superseded by the [shared details and online reader slice](gallery-details-and-reader.md). Android compiles the same network/UI libraries; integration with its existing navigation and WebView login is still pending. The existing Android application, browser cookies and Rust reader remain intact.
 
 ## Platform boundaries
 
