@@ -47,7 +47,7 @@ import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.domain.reader.ReadingDirection
 import com.ehviewer.core.domain.reader.ReadingLayout
 import com.ehviewer.core.model.GalleryDetail
-import com.ehviewer.core.network.GallerySession
+import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GalleryRequestException
@@ -57,7 +57,7 @@ import kotlinx.coroutines.launch
 
 /** A bounded, cancellable online page reader shared by touch and desktop applications. */
 @Composable
-internal fun GalleryReaderScreen(session: GallerySession, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit) {
+internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit) {
     var url by remember(initial) { mutableStateOf(initial) }
     var reloadKey by remember(url) { mutableStateOf<String?>(null) }
     var document by remember { mutableStateOf<GalleryImagePage?>(null) }

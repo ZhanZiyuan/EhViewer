@@ -5,12 +5,13 @@ import org.junit.Test
 
 class GalleryValidationTest {
     @Test fun actualCookieAndRepositorySuitesCannotBeSkippedOrOmitted() {
-        val good = mapOf("status" to "PASS", "executed" to true, "tests" to 46, "suites" to mapOf("GalleryRepositoryTest[desktop]" to 10, "PersistentCookieStorageTest[desktop]" to 11, "GalleryContentRepositoryTest[desktop]" to 10, "GalleryAuthenticationRepositoryTest[desktop]" to 8, "BrowserSignInTest[desktop]" to 7))
+        val good = mapOf("status" to "PASS", "executed" to true, "tests" to 60, "suites" to mapOf("GalleryRepositoryTest[desktop]" to 10, "PersistentCookieStorageTest[desktop]" to 12, "GalleryContentRepositoryTest[desktop]" to 10, "GalleryAuthenticationRepositoryTest[desktop]" to 8, "BrowserSignInTest[desktop]" to 7, "GalleryAccountRepositoryTest[desktop]" to 13))
         verifyNetworkTests(good)
-        verifyNetworkTests(good + mapOf("tests" to 48, "suites" to (good["suites"].obj() + ("AdditionalNetworkTest[desktop]" to 2))))
+        verifyNetworkTests(good + mapOf("tests" to 62, "suites" to (good["suites"].obj() + ("AdditionalNetworkTest[desktop]" to 2))))
         for (bad in listOf(good + ("executed" to false), good + ("status" to "SKIPPED"), good + ("tests" to 0), good + ("suites" to mapOf("GalleryRepositoryTest" to 18)))) {
             assertThrows(IllegalArgumentException::class.java) { verifyNetworkTests(bad) }
         }
+        assertThrows(IllegalArgumentException::class.java) { verifyNetworkTests(good + ("suites" to good["suites"].obj().minus("GalleryAccountRepositoryTest[desktop]"))) }
     }
 
     @Test fun generatedHeaderRetainsOriginalOwnershipAndNewSessionWidths() {
@@ -23,6 +24,9 @@ class GalleryValidationTest {
             int32_t ehv_parse_gallery_list(const uint8_t *input, size_t length, uint64_t *handle);
             int32_t ehv_parse_gallery_detail(const uint8_t *input, size_t length, uint64_t *handle);
             int32_t ehv_parse_gallery_page(const uint8_t *input, size_t length, uint64_t *handle);
+            int32_t ehv_parse_profile_link(const uint8_t *input, size_t length, uint64_t *handle);
+            int32_t ehv_parse_account_profile(const uint8_t *input, size_t length, uint64_t *handle);
+            int32_t ehv_parse_account_config(const uint8_t *input, size_t length, uint64_t *handle);
             int32_t ehv_session_read(const uint8_t *directory, size_t length, uint64_t *handle);
             int32_t ehv_session_write(const uint8_t *directory, size_t length, const uint8_t *input, size_t size);
             int32_t ehv_session_clear(const uint8_t *directory, size_t length);

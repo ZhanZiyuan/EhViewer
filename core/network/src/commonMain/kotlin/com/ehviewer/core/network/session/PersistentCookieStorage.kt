@@ -51,7 +51,7 @@ private fun scopedCookie(url: Url, cookie: Cookie, time: Long, hosts: Set<String
 
 private fun updatedCookies(old: List<StoredCookie>, incoming: StoredCookie, time: Long): List<StoredCookie> = old.filterNot {
     it.expiresAt?.let { expiry -> expiry <= time } == true ||
-        it.cookie.name == incoming.cookie.name && it.cookie.domain == incoming.cookie.domain && it.cookie.path == incoming.cookie.path
+        it.cookie.name == incoming.cookie.name && it.cookie.domain?.trimStart('.')?.lowercase() == incoming.cookie.domain?.trimStart('.')?.lowercase() && it.cookie.path == incoming.cookie.path
 }.let { retained ->
     if (incoming.expiresAt == null || incoming.expiresAt > time) retained + incoming else retained
 }.also { require(it.size <= MAX_COOKIES) { "Session cookie limit exceeded" } }
@@ -68,9 +68,9 @@ private fun cookiesFor(records: List<StoredCookie>, url: Url, time: Long, hosts:
 }
 
 /** A bounded HTTP transaction jar, never presented as persistent storage. Commit only after login succeeds. */
-internal class AuthenticationCookieJar : CookiesStorage {
+internal class AuthenticationCookieJar(initial: List<StoredCookie> = emptyList()) : CookiesStorage {
     private val mutex = Mutex()
-    private var records = emptyList<StoredCookie>()
+    private var records = initial.toList()
 
     override suspend fun addCookie(requestUrl: Url, cookie: Cookie) = mutex.withLock {
         val time = getTimeMillis()
@@ -82,6 +82,7 @@ internal class AuthenticationCookieJar : CookiesStorage {
 
     override suspend fun get(requestUrl: Url): List<Cookie> = mutex.withLock { cookiesFor(records, requestUrl, getTimeMillis(), serviceHosts) }
     suspend fun snapshot(): List<StoredCookie> = mutex.withLock { records.toList() }
+    suspend fun restore(snapshot: List<StoredCookie>) = mutex.withLock { records = snapshot.toList() }
     override fun close() = Unit
 }
 
@@ -157,6 +158,19 @@ class PersistentCookieStorage(
     internal suspend fun authenticationGeneration(): Long = mutex.withLock {
         load()
         generation
+    }
+
+    internal suspend fun accountSnapshot(): Pair<Long, List<StoredCookie>> = mutex.withLock {
+        val snapshot = load()
+        val identity = cookiesFor(snapshot, Url("https://e-hentai.org/"), now(), allowedHosts)
+        if (!listOf("ipb_member_id", "ipb_pass_hash").all { name -> identity.any { it.name == name && it.value.isNotEmpty() } }) {
+            throw com.ehviewer.core.network.gallery.GalleryRequestException(com.ehviewer.core.network.gallery.GalleryFailure.AUTHENTICATION)
+        }
+        generation to snapshot.toList()
+    }
+
+    internal suspend fun requireGeneration(expected: Long) = mutex.withLock {
+        if (generation != expected) throw CancellationException("Session changed during account refresh")
     }
 
     internal suspend fun commitAuthentication(expectedGeneration: Long, records: List<StoredCookie>) = mutex.withLock {

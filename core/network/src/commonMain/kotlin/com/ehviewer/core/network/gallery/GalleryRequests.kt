@@ -21,9 +21,10 @@ internal const val MAX_HTML_BYTES = 8 * 1024 * 1024
 internal const val MAX_IMAGE_BYTES = 32 * 1024 * 1024
 
 /** Bound both the stream and redirects before following them; never expose response bodies or URLs. */
-internal class GalleryRequests(private val client: HttpClient, private val host: String) {
+internal class GalleryRequests(private val client: HttpClient, private val host: String, private val beforeRequest: suspend () -> Unit = {}) {
     suspend fun <T> document(url: Url, decode: (ByteArray) -> T): T = operation {
         val bytes = fetch(url, "https://$host/", MAX_HTML_BYTES, image = false)
+        beforeRequest()
         try {
             withContext(Dispatchers.Default) { decode(bytes) }
         } catch (cancelled: CancellationException) {
@@ -40,6 +41,7 @@ internal class GalleryRequests(private val client: HttpClient, private val host:
     private suspend fun fetch(initial: Url, referer: String, maximum: Int, image: Boolean): ByteArray {
         var url = initial
         repeat(6) { attempt ->
+            beforeRequest()
             validate(url, image)
             var redirect: Url? = null
             val bytes = client.prepareGet(url) { header(HttpHeaders.Referrer, referer) }.execute { response ->
@@ -83,6 +85,10 @@ internal class GalleryRequests(private val client: HttpClient, private val host:
 
     private fun validate(url: Url, image: Boolean) {
         if (url.protocol != URLProtocol.HTTPS || !url.user.isNullOrEmpty() || !url.password.isNullOrEmpty()) invalid()
+        val hathImage = image && (url.host == "hath.network" || url.host.endsWith(".hath.network"))
+        // H@H clients use 443 or a configured nonprivileged port; account/service
+        // traffic stays on 443, and the cookie jar never sends identity to H@H.
+        if (url.port != 443 && !(hathImage && url.port in 1024..65534)) invalid()
         val allowed = if (image) isGalleryImageHost(url.host) else url.host in setOf(host, "forums.e-hentai.org")
         if (!allowed) invalid()
         val forumLogin = url.host == "forums.e-hentai.org" && url.encodedPath.equals("/index.php", ignoreCase = true) && url.parameters["act"].equals("Login", ignoreCase = true)

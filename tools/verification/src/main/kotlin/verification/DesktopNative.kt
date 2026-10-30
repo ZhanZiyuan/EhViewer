@@ -65,6 +65,7 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
         timeout = Duration.ofMinutes(10),
     )
     require(gallery.lineSequence().count { it == "Gallery product regression passed: 3 checks" } == 1) { "Production JNI/model/image decoder regression did not execute" }
+    require(gallery.lineSequence().count { it == "Account product regression passed: 3 checks" } == 1) { "Production JNI account decoder regression did not execute" }
     val browserManifest = root.resolve("native/browser/Cargo.toml")
     capture("browser-unit-tests.log", "cargo", "test", "--manifest-path", browserManifest, "--locked", "--bin", "ehviewer_browser", timeout = Duration.ofMinutes(15))
     capture("browser-clippy.log", "cargo", "clippy", "--manifest-path", browserManifest, "--locked", "--all-targets", "--", "-D", "warnings", timeout = Duration.ofMinutes(10))
@@ -88,6 +89,7 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
         "rust" to command("rustc", "--version").trim(), "library_sha256" to sha256(library), "result" to "PASS",
         "checks" to results, "packaged_runtime" to "NOT_VERIFIED", "ios_c_abi" to "NOT_VERIFIED",
         "gallery_product_checks" to 3,
+        "account_product_checks" to 3,
         "native_browser" to browserProof,
     )
     output.resolve("desktop-native.json").writeText(json(result))

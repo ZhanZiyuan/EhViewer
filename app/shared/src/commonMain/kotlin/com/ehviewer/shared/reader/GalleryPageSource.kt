@@ -3,11 +3,11 @@ package com.ehviewer.shared.reader
 import androidx.compose.ui.graphics.ImageBitmap
 import com.ehviewer.core.domain.reader.ReadingPosition
 import com.ehviewer.core.model.GalleryDetail
-import com.ehviewer.core.network.GallerySession
+import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.shared.decodeGalleryImage
 
 /** Real network/decoder factory; lightweight navigation keys are bounded separately from image pixels. */
-internal class GalleryPageSource(private val session: GallerySession, private val detail: GalleryDetail, initial: String) {
+internal class GalleryPageSource(private val session: GalleryLibrary, private val detail: GalleryDetail, initial: String) {
     private val known = linkedMapOf<Int, String>()
     private val reload = mutableMapOf<Int, String?>()
     private val retryKeys = mutableMapOf<Int, String?>()

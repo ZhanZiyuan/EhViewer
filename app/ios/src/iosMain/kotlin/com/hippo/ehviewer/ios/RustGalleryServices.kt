@@ -6,6 +6,7 @@ import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.gallery.GalleryDocumentDecoder
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GallerySearchResult
+import com.ehviewer.core.network.session.GalleryAccountProfile
 import com.ehviewer.core.network.session.SessionStorageException
 import com.ehviewer.core.network.session.SessionVault
 import com.hippo.ehviewer.rust.capi.EHV_BUFFER_TOO_SMALL
@@ -13,9 +14,12 @@ import com.hippo.ehviewer.rust.capi.EHV_NO_SESSION
 import com.hippo.ehviewer.rust.capi.EHV_OK
 import com.hippo.ehviewer.rust.capi.ehv_buffer_copy
 import com.hippo.ehviewer.rust.capi.ehv_buffer_free
+import com.hippo.ehviewer.rust.capi.ehv_parse_account_config
+import com.hippo.ehviewer.rust.capi.ehv_parse_account_profile
 import com.hippo.ehviewer.rust.capi.ehv_parse_gallery_detail
 import com.hippo.ehviewer.rust.capi.ehv_parse_gallery_list
 import com.hippo.ehviewer.rust.capi.ehv_parse_gallery_page
+import com.hippo.ehviewer.rust.capi.ehv_parse_profile_link
 import com.hippo.ehviewer.rust.capi.ehv_session_clear
 import com.hippo.ehviewer.rust.capi.ehv_session_read
 import com.hippo.ehviewer.rust.capi.ehv_session_write
@@ -58,6 +62,9 @@ object NativeGalleryDecoder : GalleryDocumentDecoder {
     override fun decode(html: ByteArray): GallerySearchResult = cbor.decodeFromByteArray(parse(html, 0))
     override fun decodeDetails(html: ByteArray): GalleryDetail = cbor.decodeFromByteArray(parse(html, 1))
     override fun decodePage(html: ByteArray): GalleryImagePage = cbor.decodeFromByteArray(parse(html, 2))
+    override fun decodeProfileLink(html: ByteArray): String? = cbor.decodeFromByteArray(parse(html, 3))
+    override fun decodeProfile(html: ByteArray): GalleryAccountProfile = cbor.decodeFromByteArray(parse(html, 4))
+    override fun decodeUserConfig(html: ByteArray): List<String> = cbor.decodeFromByteArray(parse(html, 5))
 
     private fun parse(html: ByteArray, kind: Int): ByteArray = memScoped {
         require(html.isNotEmpty() && html.size <= 8 * 1024 * 1024)
@@ -66,7 +73,11 @@ object NativeGalleryDecoder : GalleryDocumentDecoder {
             val status = when (kind) {
                 0 -> ehv_parse_gallery_list(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
                 1 -> ehv_parse_gallery_detail(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
-                else -> ehv_parse_gallery_page(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
+                2 -> ehv_parse_gallery_page(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
+                3 -> ehv_parse_profile_link(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
+                4 -> ehv_parse_account_profile(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
+                5 -> ehv_parse_account_config(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
+                else -> error("Unknown account document kind")
             }
             check(status == EHV_OK) { "Invalid gallery response" }
         }

@@ -1,5 +1,9 @@
 # Animeko → EhViewer 只读参考审计
 
+Android 共享业务接入：只读复阅 `docs/contributing/architecture.md:112–153` 的 UI→领域→数据→平台责任划分；目标为 `core/network/.../GalleryLibrary.kt`、共同 `GalleryLibraryScreen`、Android `AndroidGalleryLibrary.kt` 和 `SharedGalleriesScreen.kt`。采用共享 CMP 界面与平台数据适配边界，改造为借用 EhViewer 自有 HTTP/Cookie/Room/DataStore，拒绝替换存量数据库、复制参考 Repository/DI/依赖集。全部独立 Kotlin 实现，无 AGPL 精确复用。实际手机/平板同 APK 各 32 项仪器测试（含真实显示旋转和账户导航）、455 任务完整 Android 回归、Desktop 公共测试/JNI 及 iOS 重编译/双冷启动/60 网络/20 阅读测试通过；真实 Android 站点交互与本功能 SHA 托管门禁仍待验，M3 未完成。设计差异、许可处理与结果范围见[账号与 Android 集成](account-initialization.md)。参考快照无写入、构建或格式化。
+
+共享账号初始化：按需只读复阅 `app/shared/app-data/src/commonMain/kotlin/domain/session/SessionStateProvider.kt` 与 `SessionManager.kt` 的会话职责和状态边界。EhViewer 复用自身 Rust 资料/配置解析器，独立实现按域隔离的临时 Cookie 事务、代次检查及共同 CMP 账号/站点选择界面；拒绝 OAuth/token 刷新、后台重试、Koin 图及参考实现，不复制 AGPL 代码或资源。目标路径、差异、许可及真实验证范围见[账号初始化](account-initialization.md)。M3 整体与真实账户验收仍未完成，参考目录无写入或构建。
+
 本轮浏览器登录使用共同 CMP 账户/确认界面及 Kotlin/Native WKWebView，Cookie 由真实 WebKit HttpOnly API 交给公共 KMP 事务并写入 OS vault。按需复阅 `SessionStateProvider.kt` 与 `CommonKoinModule.kt` 的 WebSession 接线，只采用会话所有权、网络/浏览器身份边界；拒绝 OAuth 状态、Koin 图、页面求值器和自动识别器，无 AGPL 代码、脚本或依赖复制。目标、差异、许可证和实际验证见[原生浏览器登录](browser-sign-in.md)。46 项网络测试已在 Android/JVM/Native 执行，实际 Keychain/WebKit 双启动检查及 iPhone/iPad 不完整登录/取消路径通过；站点验证码及真实账户登录未完成，桌面/Android 浏览器适配和完整 M3 仍未完成。参考快照和旧审计结果保留。
 
 共享认证切片沿用已审阅的 `app/shared/app-data/src/commonMain/kotlin/domain/session/SessionStateProvider.kt` 和 `app/shared/application/src/commonMain/kotlin/platform/CommonKoinModule.kt` 的职责边界概念，独立实现 EhViewer 自身论坛协议、临时 HTTP Cookie 事务、OS vault 单次提交与 CMP 账户 UI；拒绝 OAuth、刷新协议、服务查找和参考依赖图，不复制 AGPL 实现。目标、差异、许可与 Android/JVM/Native/实际账户表单验证见[共享认证](gallery-authentication.md)；浏览器接入与完整 M3 仍未完成。

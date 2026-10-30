@@ -1,6 +1,7 @@
 package com.hippo.ehviewer.desktop
 
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
+import com.ehviewer.shared.verifyAccountProduct
 import com.ehviewer.shared.verifyGalleryProduct
 import java.nio.file.Path
 
@@ -15,5 +16,7 @@ fun main(arguments: Array<String>) {
         RustGalleryDecoder
     }
     check(verifyGalleryProduct(decoder) == 3)
+    check(verifyAccountProduct(decoder) == 3)
     println("Gallery product regression passed: 3 checks")
+    println("Account product regression passed: 3 checks")
 }

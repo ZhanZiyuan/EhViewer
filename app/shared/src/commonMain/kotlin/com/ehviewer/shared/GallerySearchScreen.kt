@@ -42,6 +42,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.BaseGalleryInfo
+import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
@@ -53,6 +54,22 @@ import kotlinx.coroutines.launch
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
 fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, browserFactory: ((String) -> GalleryLoginBrowser)? = null, onReady: () -> Unit = {}) {
+    DisposableEffect(session) { onDispose { session.close() } }
+    GalleryLibraryScreen(session, readerState, accountContent = { changed, back ->
+        GalleryAccountScreen(session, browserFactory, changed, back)
+    }, onReady = onReady)
+}
+
+/** Android uses the same views while its original session/history adapters remain authoritative. */
+@Composable
+fun GalleryLibraryScreen(
+    session: GalleryLibrary,
+    readerState: ReaderStateStore,
+    onBack: (() -> Unit)? = null,
+    onAccount: (() -> Unit)? = null,
+    accountContent: (@Composable (onIdentityAction: () -> Unit, onBack: () -> Unit) -> Unit)? = null,
+    onReady: () -> Unit = {},
+) {
     var query by rememberSaveable { mutableStateOf("") }
     var loadedQuery by remember { mutableStateOf("") }
     var page by remember { mutableStateOf<GallerySearchResult?>(null) }
@@ -92,15 +109,14 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
     DisposableEffect(session) {
         onDispose {
             request?.cancel()
-            session.close()
         }
     }
     MaterialTheme {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
                 Column(Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
-                    if (account) {
-                        GalleryAccountScreen(session, browserFactory, onIdentityAction = {
+                    if (account && accountContent != null) {
+                        accountContent({
                             request?.cancel()
                             generation++
                             selected = null
@@ -109,7 +125,7 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
                             loadedQuery = ""
                             failure = null
                             loading = false
-                        }, onBack = { account = false })
+                        }, { account = false })
                         return@Column
                     }
                     val gallery = selected
@@ -118,13 +134,16 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
                         return@Column
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        onBack?.let { back -> TextButton(onClick = back) { Text("Back") } }
                         Text("EhViewer", style = MaterialTheme.typography.headlineMedium)
-                        TextButton(onClick = {
-                            request?.cancel()
-                            generation++
-                            loading = false
-                            account = true
-                        }) { Text("Account") }
+                        if (onAccount != null || accountContent != null) {
+                            TextButton(onClick = {
+                                request?.cancel()
+                                generation++
+                                loading = false
+                                if (onAccount != null) onAccount() else account = true
+                            }) { Text("Account") }
+                        }
                     }
                     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(
@@ -181,4 +200,5 @@ internal fun GalleryFailure.userMessage(): String = when (this) {
     GalleryFailure.INVALID_RESPONSE -> "The site returned a page that could not be read."
     GalleryFailure.RESPONSE_TOO_LARGE -> "The content exceeds the loading limit."
     GalleryFailure.SESSION_STORAGE -> "Secure session storage is unavailable. Unlock it and try again."
+    GalleryFailure.LOCAL_STORAGE -> "Gallery data could not be saved. Check device storage and try again."
 }

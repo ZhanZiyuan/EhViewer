@@ -41,6 +41,9 @@ class ReadingNavigationTest {
         }
         val client = galleryHttpClient(engine, PersistentCookieStorage(vault), "reader-test")
         val decoder = object : GalleryDocumentDecoder {
+            override fun decodeProfileLink(html: ByteArray): String? = error("No account request expected")
+            override fun decodeProfile(html: ByteArray): com.ehviewer.core.network.session.GalleryAccountProfile = error("No account request expected")
+            override fun decodeUserConfig(html: ByteArray): List<String> = error("No account request expected")
             override fun decode(html: ByteArray) = GallerySearchResult(null, null, emptyList())
             override fun decodeDetails(html: ByteArray): GalleryDetail {
                 assertEquals("previews", html.decodeToString())

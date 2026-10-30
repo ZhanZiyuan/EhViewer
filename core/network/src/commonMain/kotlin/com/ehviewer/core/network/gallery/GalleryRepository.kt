@@ -16,7 +16,7 @@ fun interface GalleryListDecoder {
     fun decode(html: ByteArray): GallerySearchResult
 }
 
-enum class GalleryFailure { AUTHENTICATION, CHALLENGE, RATE_LIMIT, OFFLINE, SERVER, INVALID_RESPONSE, RESPONSE_TOO_LARGE, SESSION_STORAGE }
+enum class GalleryFailure { AUTHENTICATION, CHALLENGE, RATE_LIMIT, OFFLINE, SERVER, INVALID_RESPONSE, RESPONSE_TOO_LARGE, SESSION_STORAGE, LOCAL_STORAGE }
 
 class GalleryRequestException(val failure: GalleryFailure) : Exception("Gallery request failed: $failure")
 

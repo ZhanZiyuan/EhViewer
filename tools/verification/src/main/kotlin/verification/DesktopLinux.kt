@@ -109,10 +109,11 @@ fun desktopLinuxArm64(image: Path, output: Path): Map<String, Any?> {
             require(proof.getProperty("java_version") == System.getProperty("java.version")) { "Unexpected bundled JVM version" }
             require(proof.getProperty("rust_hash_results").toInt() == 100 && proof.getProperty("compose_frames").toInt() > 0 && proof.getProperty("window_showing") == "true")
             require(proof.getProperty("gallery_product_checks") == "3") { "Packaged detail/page/image regression did not execute" }
+            require(proof.getProperty("account_product_checks") == "3") { "Packaged account decoder regression did not execute" }
             val browser = desktopBrowserReceipt(proofDirectory, rust, contents.resolve("app/resources/ehviewer_browser"), setOf("aarch64"), "JNI")
             val renderApi = proof.getProperty("render_api")
             require(renderApi in linuxRenderApis && (requestedRenderApi == null || renderApi == requestedRenderApi)) { "Measured render API does not match the requested backend: $renderApi / $requestedRenderApi" }
-            mapOf("native_browser" to browser, "gallery_product_checks" to 3, "rust_hash_results" to 100, "compose_frames" to proof.getProperty("compose_frames").toInt(), "bundled_runtime" to "PASS", "render_api" to renderApi)
+            mapOf("native_browser" to browser, "gallery_product_checks" to 3, "account_product_checks" to 3, "rust_hash_results" to 100, "compose_frames" to proof.getProperty("compose_frames").toInt(), "bundled_runtime" to "PASS", "render_api" to renderApi)
         }
         val regression = desktopArchiveRegression(output, Path.of(System.getProperty("java.home"), "bin/java"), rust)
         mapOf(

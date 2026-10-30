@@ -61,6 +61,8 @@ object EhDB {
 
     fun getReadProgressFlow(gid: Long) = db.progressDao().getPageFlow(gid)
     suspend fun getReadProgress(gid: Long) = db.progressDao().getPage(gid)
+    suspend fun getReadingPosition(gid: Long) = db.progressDao().load(gid)
+    suspend fun getGalleryInfo(gid: Long) = db.galleryDao().load(gid)
     suspend fun putReadProgress(gid: Long, page: Int) = db.progressDao().upsert(ProgressInfo(gid, page))
     suspend fun clearProgressInfo() = db.progressDao().deleteAll()
 

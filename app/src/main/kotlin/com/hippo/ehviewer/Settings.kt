@@ -159,6 +159,7 @@ object Settings : DataStorePreferences(null) {
     val customBrightness = boolPref("pref_custom_brightness_key", false)
     val customBrightnessValue = intPref("custom_brightness_value", 0)
     val readingMode = intPref("pref_default_reading_mode_key", ReadingModeType.DEFAULT.prefValue)
+    val continuousReadingRtl = boolPref("reader_continuous_rtl", true)
     val orientationMode = intPref("pref_default_orientation_type_key", OrientationType.DEFAULT.prefValue)
     val showReaderSeekbar = boolPref("pref_show_reader_seekbar", true)
     val showPageNumber = boolPref("pref_show_page_number_key", true)

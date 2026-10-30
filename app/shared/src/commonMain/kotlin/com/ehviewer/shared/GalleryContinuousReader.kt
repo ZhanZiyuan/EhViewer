@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.GalleryDetail
-import com.ehviewer.core.network.GallerySession
+import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.shared.reader.GalleryPageSource
 import com.ehviewer.shared.reader.ReaderPageState
 import com.ehviewer.shared.reader.ReaderPageWindow
@@ -44,7 +44,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
-internal fun GalleryContinuousReader(session: GallerySession, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit, onPaged: (String) -> Unit) {
+internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit, onPaged: (String) -> Unit) {
     val first = session.content.pageIndex(initial, detail.gid)
     val list = rememberLazyListState(first)
     val scope = rememberCoroutineScope()

@@ -2,12 +2,13 @@ package verification
 
 /** The shared cookie and repository suites must execute on both Android Host and desktop JVM. */
 fun verifyNetworkTests(evidence: Map<String, Any?>) {
-    require(evidence["status"] == "PASS" && evidence["executed"] == true && (evidence["tests"] as Number).toInt() >= 46)
+    require(evidence["status"] == "PASS" && evidence["executed"] == true && (evidence["tests"] as Number).toInt() >= 60)
     val suites = evidence["suites"].obj().mapKeys { (name, _) -> name.substringAfterLast('.').substringBefore('[') }
-    require(suites.keys.containsAll(setOf("GalleryRepositoryTest", "PersistentCookieStorageTest", "GalleryContentRepositoryTest", "GalleryAuthenticationRepositoryTest", "BrowserSignInTest"))) { "Missing actual shared network test suites" }
-    require((suites.getValue("GalleryRepositoryTest") as Number).toInt() >= 10 && (suites.getValue("PersistentCookieStorageTest") as Number).toInt() >= 11) { "Incomplete network/session regression" }
+    require(suites.keys.containsAll(setOf("GalleryRepositoryTest", "PersistentCookieStorageTest", "GalleryContentRepositoryTest", "GalleryAuthenticationRepositoryTest", "BrowserSignInTest", "GalleryAccountRepositoryTest"))) { "Missing actual shared network test suites" }
+    require((suites.getValue("GalleryRepositoryTest") as Number).toInt() >= 10 && (suites.getValue("PersistentCookieStorageTest") as Number).toInt() >= 12) { "Incomplete network/session regression" }
     require((suites.getValue("GalleryContentRepositoryTest") as Number).toInt() >= 10 && (suites.getValue("GalleryAuthenticationRepositoryTest") as Number).toInt() >= 8) { "Incomplete gallery/authentication transport regression" }
     require((suites.getValue("BrowserSignInTest") as Number).toInt() >= 7) { "Incomplete native browser handoff regression" }
+    require((suites.getValue("GalleryAccountRepositoryTest") as Number).toInt() >= 13) { "Incomplete account initialization and session race regression" }
 }
 
 /** ABI additions preserve all original widths, ownership operations and status codes. */
@@ -22,6 +23,9 @@ fun verifyGalleryCapiHeader(header: String) {
         "int32_tehv_parse_gallery_list(constuint8_t*input,size_tlength,uint64_t*handle);",
         "int32_tehv_parse_gallery_detail(constuint8_t*input,size_tlength,uint64_t*handle);",
         "int32_tehv_parse_gallery_page(constuint8_t*input,size_tlength,uint64_t*handle);",
+        "int32_tehv_parse_profile_link(constuint8_t*input,size_tlength,uint64_t*handle);",
+        "int32_tehv_parse_account_profile(constuint8_t*input,size_tlength,uint64_t*handle);",
+        "int32_tehv_parse_account_config(constuint8_t*input,size_tlength,uint64_t*handle);",
         "int32_tehv_session_read(constuint8_t*directory,size_tlength,uint64_t*handle);",
         "int32_tehv_session_write(constuint8_t*directory,size_tlength,constuint8_t*input,size_tsize);",
         "int32_tehv_session_clear(constuint8_t*directory,size_tlength);",
@@ -32,4 +36,4 @@ fun verifyGalleryCapiHeader(header: String) {
     }
 }
 
-const val MINIMUM_NATIVE_SESSION_PASSES = 52
+const val MINIMUM_NATIVE_SESSION_PASSES = 55

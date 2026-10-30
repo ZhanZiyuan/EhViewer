@@ -195,6 +195,7 @@ dependencies {
     implementation(projects.core.data)
     implementation(projects.core.i18n)
     implementation(projects.core.ui)
+    implementation(projects.app.shared)
 
     // https://developer.android.com/jetpack/androidx/releases/activity
     implementation(libs.androidx.activity.compose)

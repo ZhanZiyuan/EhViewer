@@ -1,5 +1,7 @@
 #![cfg(feature = "jvm")]
 
+mod account;
+
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 mod browser;
 

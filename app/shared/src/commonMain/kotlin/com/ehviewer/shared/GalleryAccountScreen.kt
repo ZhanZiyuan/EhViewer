@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
+import com.ehviewer.core.network.session.GalleryAccountOverview
+import com.ehviewer.core.network.session.RestrictedSiteAccess
 import com.ehviewer.core.network.session.SessionStorageException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -45,6 +47,8 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun GalleryAccountScreen(session: GallerySession, browserFactory: ((String) -> GalleryLoginBrowser)?, onIdentityAction: () -> Unit, onBack: () -> Unit) {
     var signedIn by remember { mutableStateOf<Boolean?>(null) }
+    var overview by remember { mutableStateOf<GalleryAccountOverview?>(null) }
+    var restricted by remember { mutableStateOf(session.restricted) }
     var checking by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<GalleryFailure?>(null) }
@@ -67,8 +71,16 @@ internal fun GalleryAccountScreen(session: GallerySession, browserFactory: ((Str
         try {
             signedIn = session.cookies.isSignedIn()
             failure = null
+            overview = if (signedIn == true) session.account.refresh() else null
+            if (restricted && overview?.restrictedAccess != RestrictedSiteAccess.AVAILABLE) {
+                session.selectSite(false)
+                restricted = false
+                onIdentityAction()
+            }
         } catch (cancelled: CancellationException) {
             throw cancelled
+        } catch (error: GalleryRequestException) {
+            failure = error.failure
         } catch (_: SessionStorageException) {
             failure = GalleryFailure.SESSION_STORAGE
         } finally {
@@ -90,8 +102,16 @@ internal fun GalleryAccountScreen(session: GallerySession, browserFactory: ((Str
             busy = true
             failure = null
             try {
-                if (signOut) session.cookies.logout() else session.authentication.signIn(submittedUsername, submittedPassword)
+                overview = null
+                if (signOut) {
+                    session.cookies.logout()
+                    session.selectSite(false)
+                    restricted = false
+                } else {
+                    session.authentication.signIn(submittedUsername, submittedPassword)
+                }
                 signedIn = session.cookies.isSignedIn()
+                if (!signOut) overview = session.account.refresh()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: GalleryRequestException) {
@@ -119,7 +139,34 @@ internal fun GalleryAccountScreen(session: GallerySession, browserFactory: ((Str
             }
             when (signedIn) {
                 true -> {
-                    Text("Signed in")
+                    Text(overview?.profile?.displayName ?: "Signed in", style = MaterialTheme.typography.titleLarge)
+                    overview?.let { account ->
+                        Text("Favorite categories", style = MaterialTheme.typography.titleMedium)
+                        account.favoriteCategories.forEachIndexed { index, name -> Text("${index + 1}. $name") }
+                        Text(
+                            when (account.restrictedAccess) {
+                                RestrictedSiteAccess.AVAILABLE -> "Restricted site available"
+                                RestrictedSiteAccess.UNAVAILABLE -> "Restricted site is unavailable for this session"
+                                RestrictedSiteAccess.UNKNOWN -> "Restricted site could not be checked. Refresh to try again."
+                            },
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(enabled = !busy && !checking && restricted, onClick = {
+                                onIdentityAction()
+                                session.selectSite(false)
+                                restricted = false
+                            }) { Text(if (restricted) "Use E-Hentai" else "E-Hentai selected") }
+                            TextButton(enabled = !busy && !checking && !restricted && account.restrictedAccess == RestrictedSiteAccess.AVAILABLE, onClick = {
+                                onIdentityAction()
+                                session.selectSite(true)
+                                restricted = true
+                            }) { Text(if (restricted) "ExHentai selected" else "Use ExHentai") }
+                        }
+                    }
+                    TextButton(onClick = {
+                        overview = null
+                        checkAttempt++
+                    }, enabled = !busy && !checking) { Text("Refresh account") }
                     Button(onClick = { perform(signOut = true) }, enabled = !busy && !checking) { Text("Sign out") }
                 }
                 false -> {

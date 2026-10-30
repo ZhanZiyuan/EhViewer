@@ -10,6 +10,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
+import com.ehviewer.shared.verifyAccountProduct
 import com.ehviewer.shared.verifyGalleryProduct
 import com.hippo.ehviewer.jni.sha1
 import java.io.FileDescriptor
@@ -42,6 +43,7 @@ fun main(arguments: Array<String>) {
     val owned = if (windowsArm) verifyOwnedCapi(nativeRoot.resolve("ehviewer_capi.dll")) else null
     val completed = owned?.completed ?: verifyUnixJni(nativeRoot, macIntel)
     val galleryChecks = verifyGalleryProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder)
+    val accountChecks = verifyAccountProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder)
     val browserLibrary = nativeRoot.resolve(if (windowsArm) "ehviewer_capi.dll" else "libehviewer_rust.${if (macIntel) "dylib" else "so"}")
     val browserProof = verifyBrowserBridge(browserLibrary, nativeRoot.resolve(if (windowsArm) "ehviewer_browser.exe" else "ehviewer_browser"), windowsArm)
     val frames = AtomicInteger()
@@ -69,6 +71,7 @@ fun main(arguments: Array<String>) {
                         setProperty("application_version", System.getProperty("jpackage.app-version"))
                         setProperty("rust_hash_results", completed.toString())
                         setProperty("gallery_product_checks", galleryChecks.toString())
+                        setProperty("account_product_checks", accountChecks.toString())
                         if (owned != null) {
                             setProperty("windows_code_page", windowsProcessCodePage().toString())
                             setProperty("native_encoding", System.getProperty("native.encoding"))

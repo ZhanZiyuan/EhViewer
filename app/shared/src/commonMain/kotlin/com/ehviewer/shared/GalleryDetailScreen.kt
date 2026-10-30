@@ -33,7 +33,7 @@ import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.domain.reader.ReadingPosition
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.model.GalleryDetail
-import com.ehviewer.core.network.GallerySession
+import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.shared.reader.readingResumeUrl
@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
 
 /** Detail and reader routes retain the original search and detail state when navigating back. */
 @Composable
-internal fun GalleryDetailScreen(session: GallerySession, gallery: BaseGalleryInfo, readerState: ReaderStateStore, onBack: () -> Unit) {
+internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, onBack: () -> Unit) {
     var detail by remember(gallery.gid) { mutableStateOf<GalleryDetail?>(null) }
     var failure by remember(gallery.gid) { mutableStateOf<GalleryFailure?>(null) }
     var loading by remember(gallery.gid) { mutableStateOf(false) }
@@ -70,7 +70,7 @@ internal fun GalleryDetailScreen(session: GallerySession, gallery: BaseGalleryIn
         loading = true
         failure = null
         try {
-            detail = session.content.details(gallery.gid, gallery.token)
+            detail = session.details(gallery.gid, gallery.token)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: GalleryRequestException) {

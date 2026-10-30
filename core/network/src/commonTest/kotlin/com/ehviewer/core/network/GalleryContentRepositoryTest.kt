@@ -57,6 +57,9 @@ class GalleryContentRepositoryTest {
     )
     private val image = GalleryImagePage("https://node.hath.network/image.png", null, null, null, "https://e-hentai.org/s/2222222222/1-2", null)
     private fun decoder(detail: GalleryDetail = details, page: GalleryImagePage = image) = object : GalleryDocumentDecoder {
+        override fun decodeProfileLink(html: ByteArray): String? = error("No account request expected")
+        override fun decodeProfile(html: ByteArray): com.ehviewer.core.network.session.GalleryAccountProfile = error("No account request expected")
+        override fun decodeUserConfig(html: ByteArray): List<String> = error("No account request expected")
         override fun decode(html: ByteArray) = GallerySearchResult(null, null, emptyList())
         override fun decodeDetails(html: ByteArray): GalleryDetail {
             assertEquals("detail", html.decodeToString())
@@ -120,23 +123,26 @@ class GalleryContentRepositoryTest {
         val bytes = byteArrayOf(0, 1, -1, 42)
         val cookies = PersistentCookieStorage(TestSessionVault())
         cookies.addCookie(Url("https://e-hentai.org/"), Cookie("ipb_pass_hash", "test-only-secret", path = "/", domain = "e-hentai.org"))
-        val engine = MockEngine { request ->
-            assertEquals("node.hath.network", request.url.host)
-            assertEquals("https://e-hentai.org/s/1111111111/1-1", request.headers[HttpHeaders.Referrer])
-            assertFalse(request.headers[HttpHeaders.Cookie].orEmpty().contains("test-only-secret"))
-            respond(bytes, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
-        }
-        val client = galleryHttpClient(engine, cookies, "test")
-        try {
-            assertContentEquals(bytes, GalleryContentRepository(client, decoder()).image(image, "https://e-hentai.org/s/1111111111/1-1", 1))
-        } finally {
-            client.close()
-            engine.close()
+        for (port in listOf(443, 1024, 32002, 65534)) {
+            val engine = MockEngine { request ->
+                assertEquals("node.hath.network", request.url.host)
+                assertEquals(port, request.url.port)
+                assertEquals("https://e-hentai.org/s/1111111111/1-1", request.headers[HttpHeaders.Referrer])
+                assertFalse(request.headers[HttpHeaders.Cookie].orEmpty().contains("test-only-secret"))
+                respond(bytes, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
+            }
+            val client = galleryHttpClient(engine, cookies, "test")
+            try {
+                assertContentEquals(bytes, GalleryContentRepository(client, decoder()).image(image.copy(imageUrl = "https://node.hath.network:$port/image.png"), "https://e-hentai.org/s/1111111111/1-1", 1))
+            } finally {
+                client.close()
+                engine.close()
+            }
         }
     }
 
     @Test fun hostileAndDowngradeRedirectsAreRejectedBeforeTheDestinationIsRequested() = runTest {
-        for (destination in listOf("https://hath.network.evil.example/stolen", "http://node.hath.network/image", "https://127.0.0.1/private", "file:///private")) {
+        for (destination in listOf("https://hath.network.evil.example/stolen", "http://node.hath.network/image", "https://127.0.0.1/private", "file:///private", "https://e-hentai.org:444/private", "https://node.hath.network:1023/image", "https://node.hath.network:65535/image")) {
             var count = 0
             val engine = MockEngine {
                 count++

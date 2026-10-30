@@ -2,6 +2,8 @@
 //! Input/output pointers are borrowed only for a call. Rust buffers stay behind monotonic IDs.
 use std::{collections::BTreeMap, panic::AssertUnwindSafe, sync::Mutex};
 
+mod account;
+
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 mod browser;
 
@@ -424,11 +426,57 @@ mod tests {
     }
 
     #[test]
+    fn account_documents_cross_the_owned_buffer_abi_and_release_every_result() {
+        let _serial = SERIAL.lock().unwrap();
+        let forum = br#"<!DOCTYPE html><html><body><div id="userlinks"><a href="https://forums.e-hentai.org/index.php?showuser=123">Profile</a></div><div class="row1"><div>Reader</div><div></div></div></body></html>"#;
+        let config = format!(
+            "<!DOCTYPE html><html><body>{}</body></html>",
+            (0..10)
+                .map(|index| format!(
+                    r#"<input type="text" name="favorite_{index}" value="Shelf {index}">"#
+                ))
+                .collect::<String>()
+        );
+        for (parse, input) in [
+            (
+                account::ehv_parse_profile_link
+                    as unsafe extern "C" fn(*const u8, usize, *mut u64) -> i32,
+                forum.as_slice(),
+            ),
+            (account::ehv_parse_account_profile, forum.as_slice()),
+            (account::ehv_parse_account_config, config.as_bytes()),
+        ] {
+            let mut handle = 0;
+            assert_eq!(
+                unsafe { parse(input.as_ptr(), input.len(), &mut handle) },
+                EHV_OK
+            );
+            let mut size = 0;
+            assert_eq!(
+                unsafe { ehv_buffer_copy(handle, null_mut(), 0, &mut size) },
+                EHV_BUFFER_TOO_SMALL
+            );
+            assert!(size > 0 && size <= MAX_INPUT);
+            let mut bytes = vec![0; size];
+            assert_eq!(
+                unsafe { ehv_buffer_copy(handle, bytes.as_mut_ptr(), bytes.len(), &mut size) },
+                EHV_OK
+            );
+            assert_eq!(ehv_buffer_free(handle), EHV_OK);
+            assert_eq!(ehv_buffer_free(handle), EHV_INVALID_HANDLE);
+            empty();
+        }
+    }
+
+    #[test]
     fn detail_and_image_parsers_reject_invalid_borrows_and_documents_without_live_results() {
         let _serial = SERIAL.lock().unwrap();
         for parse in [
             ehv_parse_gallery_detail as unsafe extern "C" fn(*const u8, usize, *mut u64) -> i32,
             ehv_parse_gallery_page,
+            account::ehv_parse_profile_link,
+            account::ehv_parse_account_profile,
+            account::ehv_parse_account_config,
         ] {
             let mut handle = 999;
             assert_eq!(

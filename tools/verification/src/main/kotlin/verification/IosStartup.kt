@@ -215,6 +215,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         awaitMarkers("second-render", secondPid, secondStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "browser-cookie-ready checks=4" to 1, "active" to 1)
         val rustResults = listOf(rustInteropResults(firstStderr.readText()), rustInteropResults(secondStderr.readText()))
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM3:gallery-product checks=3").findAll(stderr.readText()).count() == 1) { "Actual iOS detail/page/image regression did not execute" }
+        for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM3:account-product checks=3").findAll(stderr.readText()).count() == 1) { "Actual iOS account decoder regression did not execute" }
         val lifecycle = logs("lifecycle")
         output.resolve("lifecycle.log").writeText(lifecycle)
         val unified = iosUnifiedLifecycle(lifecycle, firstPid, secondPid)
@@ -232,6 +233,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             "compose_ready" to "PASS", "development_signed_device" to "NOT_VERIFIED",
             "rust_c_abi" to "PASS", "rust_completed_results_by_launch" to rustResults, "rust_live_results_after_probe" to 0,
             "gallery_product_checks_by_launch" to listOf(3, 3),
+            "account_product_checks_by_launch" to listOf(3, 3),
             "browser_cookie_checks_by_launch" to listOf(4, 4),
             "unified_log_lifecycle" to unified,
         )

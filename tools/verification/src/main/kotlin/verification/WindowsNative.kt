@@ -156,6 +156,13 @@ fun windowsNativeCore(output: Path): Map<String, Any?> {
     val ignored = Regex("(?m)^test ([^ ]+) \\.\\.\\. ignored(?:,.*)?$").findAll(testOutput).map { it.groupValues[1] }.toSet()
     require(summaries.size >= 4 && summaries.sumOf { it[0] } >= MINIMUM_NATIVE_SESSION_PASSES && summaries.all { it[1] == 0 && it[3] == 0 } && summaries.sumOf { it[2] } == 3) { "Incomplete native test execution" }
     require(testOutput.contains("test tests::real_platform_credential_store_restores_an_owned_encrypted_session ... ok")) { "The real Windows credential store test did not execute" }
+    require(
+        listOf(
+            "parser::account::tests::original_forum_parser_preserves_name_avatar_and_guest_state",
+            "parser::account::tests::config_requires_all_original_categories_and_rejects_binary_login_and_oversized_documents",
+            "tests::account_documents_cross_the_owned_buffer_abi_and_release_every_result",
+        ).all { "test $it ... ok" in testOutput },
+    ) { "Real Windows account parsers and owned C ABI tests did not execute" }
     require(ignored == setOf("parser::test_parser::tests::test_parse_gallery_detail", "parser::test_parser::tests::test_parse_info", "parser::test_parser::tests::test_parse_profile")) { "Unexpected ignored native tests" }
     require(testOutput.contains("test zip_file_writer_preserves_ownership_offsets_and_reports_output_errors ... ok")) { "Portable File writer did not execute" }
     capture("rust-clippy.txt", "cargo", "+$toolchain", "clippy", "--locked", "--manifest-path", cargoManifest, "-p", "ehviewer_core", "-p", "ehviewer_capi", "-p", "ehviewer_session", "-p", "ehviewer_browser_client", "--all-targets", "--target", WINDOWS_TARGET, "--", "-D", "warnings", environment = environment)

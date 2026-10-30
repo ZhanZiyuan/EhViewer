@@ -36,6 +36,18 @@ internal class TestSessionVault : SessionVault {
 class PersistentCookieStorageTest {
     private val root = Url("https://e-hentai.org/")
 
+    @Test fun canonicalDomainReplacementDoesNotDuplicateIdentityOrBroadenHostOnlyScope() = runTest {
+        val store = PersistentCookieStorage(TestSessionVault())
+        store.addCookie(root, Cookie("identity", "old", domain = ".e-hentai.org", path = "/", secure = true))
+        store.addCookie(root, Cookie("identity", "new", domain = "e-hentai.org", path = "/", secure = true))
+        assertEquals(listOf("new"), store.get(root).map { it.value })
+        assertEquals(listOf("new"), store.get(Url("https://forums.e-hentai.org/")).map { it.value })
+        store.addCookie(root, Cookie("identity", "host-only", path = "/", secure = true))
+        assertEquals(listOf("host-only"), store.get(root).map { it.value })
+        assertTrue(store.get(Url("https://forums.e-hentai.org/")).isEmpty())
+        assertTrue(store.get(Url("https://exhentai.org/")).isEmpty())
+    }
+
     @Test fun aRootUrlWithoutATrailingSlashStillReceivesRootCookies() = runTest {
         val store = PersistentCookieStorage(TestSessionVault())
         store.addCookie(root, Cookie("identity", "test-only", path = "/", secure = true))
