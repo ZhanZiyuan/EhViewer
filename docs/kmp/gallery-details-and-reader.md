@@ -1,6 +1,6 @@
 # Shared gallery details and online page reader
 
-This product slice extends the existing shared search/session flow with real gallery details, image-page documents and an online paged reader. Desktop and iOS use the same Compose Multiplatform screens and KMP repository. It is part of M3–M5 work, **not completion of M3 or the full reader P0**. Android builds the same libraries; its existing navigation, browser login and complete reader remain in place until their integration is independently verified.
+This product slice extends the existing shared search/session flow with real gallery details, image-page documents and an online reader. Android, Desktop and iOS use the same Compose Multiplatform screens and KMP repository; Android's common entry retains its original client, Room history and DataStore through platform adapters. It is part of M3–M5 work, **not completion of M3 or the full reader P0**.
 
 ## Behavior and implementation
 
@@ -13,6 +13,18 @@ This product slice extends the existing shared search/session flow with real gal
 Search/metadata HTML, image-page HTML, CDN traffic and decoder fixtures are distinct. Normal browsing never uses fixtures or requires a regression flag. Explicit offline packaged-app regression modes use an owned two-page HTML fixture and a generated two-pixel PNG to verify real Rust → CBOR → Kotlin types and actual pixel colors, without requiring a third-party site in CI. All original startup/archive/ownership regressions remain mandatory.
 
 ## Reference decisions
+
+### Prepared thumbnail and preview browser
+
+The common detail screen now opens an adaptive thumbnail grid with real preview-page requests. The first response establishes the page width; subsequent responses must match the original gallery, total and contiguous positions, including the last partial page. A site-layout change fails explicitly instead of fabricating a page token. Selecting a thumbnail opens that actual reader page; returning retains the selected preview-page route.
+
+`GalleryContentRepository.preview` uses the same bounded HTTPS/redirect/image transport and the real gallery referer. CDN requests retain the existing cookie isolation. The UI decodes actual images and validates V2 sprite coordinates before constructing a painter, preserving the original Android renderer's one-pixel separator rule. One active download/decode and a 16 MiB LRU share sprite sheets between visible cells. Cancellation and failed loads do not poison the cache; each preview has retry.
+
+This is independently written Kotlin. The already audited Animeko UI/data/platform boundary remains the architecture reference; EhViewer's own `ui/main/GalleryPreview.kt`, portable preview models and Rust detail parser supply the gallery-specific format. No Animeko implementation, resource, script or dependency is reused.
+
+Local preparation passed **71 network and 31 reader/appearance/preview tests** on Android Host, Desktop and actual iOS Native, plus **235 verifier tests**. Desktop and the Kotlin-only iOS application compiled. iOS retained Keychain, two cold starts, gallery/account/image/WebKit/Rust and lifecycle assertions, and independent readback confirmed deletion of the owned Simulator. Reconfigured affected Android tests, Release lint, four APKs, benchmark and test APK build passed (**455 Gradle tasks**); actual APK identity/signatures/ABI/alignment/diagnostics/bytecode passed. A first test fixture compilation error and the later build configured before a new test dependency are preserved separately.
+
+Phone and tablet each passed all **33 instrumentation tests** on identical APKs: application `df9a9f46201a2c690c3a3ba303144f7cf2aa7f2d726188a54d868947821f3f90`, test `b1d78f7ff97e1666e93d63e909c76c1c1e62df831a3207f3f908f2668cae80b2`. The new explicit offline test exercises search → real Rust details → real preview pixels → last preview page → reader → original Room progress → retained preview/detail route. The MockEngine HTTP responses exist only in `androidTest`; normal browsing has no fixture backend. These are local prepared changes; their own future commit must pass hosted CI. Manual real-site thumbnail interaction on the other platform windows is not inferred from these tests.
 
 The local Animeko directory remains read-only. Its Git identity is still unverifiable because the provided tree is a snapshot, as recorded in M0.
 
@@ -42,6 +54,6 @@ Local evidence is retained under ignored `build/kmp-work-logs/`; it explicitly r
 
 Hosted acceptance and the remaining input/advanced reader checks are still being completed for this slice; their results must not be inferred from these rows.
 
-Remaining work includes Android shared navigation/session integration, authenticated browser handoff, shared persistence/settings and migrations; detail thumbnails/favorites/actions and preview browsing; continuous/RTL reading, saved progress, prefetch/cache, animated images and complete input/accessibility/performance acceptance; downloads, archive integration and the remaining release targets. Desktop text entry was not verified through the available automation. No signed device, full five-platform P0 or eleven-asset acceptance is claimed.
+Remaining work includes full shared persistence/settings and migrations, live account/Ex validation, favorites/actions/comments, animated/original images and complete input/accessibility/performance acceptance; downloads, archive integration and the remaining release targets. Paged/continuous/RTL reading, saved progress, bounded prefetch and native browser handoff have separate implemented slices, with their actual limits recorded in their feature documents. Desktop text entry was not verified through the available automation. No signed device, full five-platform P0 or eleven-asset acceptance is claimed.
 
 The application remains `1.15.10 / Android 180074`. Production `releases.yml`, signing and publication protections are unchanged. The final `1.16.0` freeze remains an independent M8 commit after the required acceptance.

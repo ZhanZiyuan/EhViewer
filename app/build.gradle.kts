@@ -190,6 +190,7 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.uiautomator)
+    androidTestImplementation(libs.ktor.client.mock)
 
     implementation(projects.core.common)
     implementation(projects.core.data)

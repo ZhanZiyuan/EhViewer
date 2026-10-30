@@ -188,7 +188,7 @@ fun verifyProductTestReceipts(shared: Map<String, Any?>, artifacts: Path, reposi
 fun verifyReaderTests(tests: Map<String, Any?>) {
     require(tests["status"] == "PASS" && tests["executed"] == true)
     val suites = tests["suites"].obj().mapKeys { it.key.substringAfterLast('.').substringBefore('[') }
-    for ((name, minimum) in mapOf("GalleryImageLimitsTest" to 2, "ReaderStateRepositoryTest" to 9, "ReaderPageWindowTest" to 6, "ReadingNavigationTest" to 3, "GalleryAppearanceRepositoryTest" to 6)) {
+    for ((name, minimum) in mapOf("GalleryImageLimitsTest" to 2, "ReaderStateRepositoryTest" to 9, "ReaderPageWindowTest" to 6, "ReadingNavigationTest" to 3, "GalleryAppearanceRepositoryTest" to 6, "GalleryPreviewCacheTest" to 5)) {
         require((suites[name] as? Number)?.toInt()?.let { it >= minimum } == true) { "Required shared reader behavior was not tested: $name" }
     }
 }

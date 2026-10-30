@@ -48,6 +48,8 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     var loading by remember(gallery.gid) { mutableStateOf(false) }
     var attempt by remember(gallery.gid) { mutableIntStateOf(0) }
     var reader by remember(gallery.gid) { mutableStateOf<String?>(null) }
+    var browsingPreviews by remember(gallery.gid) { mutableStateOf(false) }
+    var previewPage by remember(gallery.gid) { mutableIntStateOf(0) }
     val previewsState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var saved by remember(gallery.gid) { mutableStateOf<ReadingPosition?>(null) }
@@ -81,9 +83,21 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     }
     val document = detail
     val page = reader
-    BackHandler { if (page != null) reader = null else onBack() }
+    BackHandler {
+        when {
+            page != null -> reader = null
+            browsingPreviews -> browsingPreviews = false
+            else -> onBack()
+        }
+    }
     if (page != null && document != null) {
         GalleryReaderScreen(session, document, page, readerState, onBack = { reader = null })
+        return
+    }
+    if (browsingPreviews && document != null) {
+        GalleryPreviewScreen(session, document, previewPage, onPage = { previewPage = it }, onOpen = {
+            reader = session.content.pageUrl(document.gid, it.pToken, it.position).toString()
+        }, onBack = { browsingPreviews = false })
         return
     }
     Column(Modifier.fillMaxSize()) {
@@ -128,7 +142,12 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                 items(document.tagGroups) { group ->
                     Text("${group.namespace.value}: ${group.tags.joinToString { it.text }}", Modifier.padding(vertical = 6.dp))
                 }
-                item { Text("Pages", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp)) }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Pages", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
+                        TextButton(onClick = { browsingPreviews = true }) { Text("Browse page previews") }
+                    }
+                }
                 items(document.previewList, key = { it.position }) { preview ->
                     ListItem(
                         headlineContent = { Text("Page ${preview.position + 1}") },

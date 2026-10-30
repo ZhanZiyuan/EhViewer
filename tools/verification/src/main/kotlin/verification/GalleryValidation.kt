@@ -2,14 +2,15 @@ package verification
 
 /** The shared cookie and repository suites must execute on both Android Host and desktop JVM. */
 fun verifyNetworkTests(evidence: Map<String, Any?>) {
-    require(evidence["status"] == "PASS" && evidence["executed"] == true && (evidence["tests"] as Number).toInt() >= 66)
+    require(evidence["status"] == "PASS" && evidence["executed"] == true && (evidence["tests"] as Number).toInt() >= 71)
     val suites = evidence["suites"].obj().mapKeys { (name, _) -> name.substringAfterLast('.').substringBefore('[') }
-    require(suites.keys.containsAll(setOf("GalleryRepositoryTest", "PersistentCookieStorageTest", "GalleryContentRepositoryTest", "GalleryAuthenticationRepositoryTest", "BrowserSignInTest", "GalleryAccountRepositoryTest", "GallerySearchFiltersTest"))) { "Missing actual shared network test suites" }
+    require(suites.keys.containsAll(setOf("GalleryRepositoryTest", "PersistentCookieStorageTest", "GalleryContentRepositoryTest", "GalleryAuthenticationRepositoryTest", "BrowserSignInTest", "GalleryAccountRepositoryTest", "GallerySearchFiltersTest", "GalleryPreviewRepositoryTest"))) { "Missing actual shared network test suites" }
     require((suites.getValue("GalleryRepositoryTest") as Number).toInt() >= 10 && (suites.getValue("PersistentCookieStorageTest") as Number).toInt() >= 12) { "Incomplete network/session regression" }
     require((suites.getValue("GalleryContentRepositoryTest") as Number).toInt() >= 10 && (suites.getValue("GalleryAuthenticationRepositoryTest") as Number).toInt() >= 8) { "Incomplete gallery/authentication transport regression" }
     require((suites.getValue("BrowserSignInTest") as Number).toInt() >= 7) { "Incomplete native browser handoff regression" }
     require((suites.getValue("GalleryAccountRepositoryTest") as Number).toInt() >= 13) { "Incomplete account initialization and session race regression" }
     require((suites.getValue("GallerySearchFiltersTest") as Number).toInt() >= 6) { "Incomplete shared search filter protocol regression" }
+    require((suites.getValue("GalleryPreviewRepositoryTest") as Number).toInt() >= 5) { "Incomplete real thumbnail transport regression" }
 }
 
 /** ABI additions preserve all original widths, ownership operations and status codes. */

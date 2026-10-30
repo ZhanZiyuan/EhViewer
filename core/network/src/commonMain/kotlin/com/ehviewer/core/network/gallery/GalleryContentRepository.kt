@@ -1,6 +1,7 @@
 package com.ehviewer.core.network.gallery
 
 import com.ehviewer.core.model.GalleryDetail
+import com.ehviewer.core.model.GalleryPreview
 import io.ktor.client.HttpClient
 import io.ktor.http.URLBuilder
 import io.ktor.http.URLProtocol
@@ -69,5 +70,16 @@ class GalleryContentRepository(client: HttpClient, private val decoder: GalleryD
             },
             Url(pageUrl),
         )
+    }
+
+    /** Thumbnails and sprite sheets use the same bounded, validated image transport as reader pages. */
+    suspend fun preview(preview: GalleryPreview, gid: Long, token: String): ByteArray {
+        require(gid > 0 && Regex("[a-f0-9]{10}").matches(token) && preview.position >= 0)
+        val url = try {
+            Url(preview.url)
+        } catch (_: Exception) {
+            invalid()
+        }
+        return requests.image(url, Url("https://$host/g/$gid/$token/"))
     }
 }
