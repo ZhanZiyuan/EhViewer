@@ -64,16 +64,8 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         val evidence = value.obj()
         require(evidence["artifact"] == "$name-jvm.jar")
         checkedJvmInventory(path("shared", "shared-core/$name-jvm.jar"), evidence)
-        val sources = if (name == "network") 2 else 0
-        val tests = sharedHostTestEvidence(filesBelow(path("shared", "shared-core/tests/$name-jvm"), ".xml").map(Path::readBytes), sources)
-        require(tests == evidence["host_tests"])
-        if (name == "network") {
-            verifyNetworkTests(tests)
-            val android = sharedHostTestEvidence(filesBelow(path("shared", "shared-core/tests/network"), ".xml").map(Path::readBytes), sources)
-            verifyNetworkTests(android)
-            require(android == shared["modules"].obj().getValue("network").obj()["host_tests"])
-        }
     }
+    verifyProductTestReceipts(shared, path("shared", "shared-core"))
     val domain = shared["domain_jvm"].obj()
     require(domain["artifact"] == "domain-jvm.jar") { "Missing actual portable domain JAR" }
     verifyDomainTests(domain["host_tests"].obj(), jvm = true)

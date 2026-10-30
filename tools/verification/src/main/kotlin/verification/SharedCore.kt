@@ -165,6 +165,27 @@ fun sharedHostTestEvidence(xml: List<ByteArray>, sourceFiles: Int): Map<String, 
     return mapOf("status" to "PASS", "executed" to true, "source_files" to sourceFiles, "tests" to suites.sumOf { it.second }, "suites" to suites.toMap())
 }
 
+/** Recheck both host receipts against the same-source inventory, rather than a past slice's file count. */
+fun verifyProductTestReceipts(shared: Map<String, Any?>, artifacts: Path, repository: Path = root) {
+    val products = shared["product_jvm"].obj()
+    require(products.keys == setOf("network", "shared-ui"))
+    for ((name, value) in products) {
+        val module = if (name == "network") "core/network" else "app/shared"
+        val sources = filesBelow(repository.resolve("$module/src/commonTest"), ".kt").size
+        val jvm = sharedHostTestEvidence(filesBelow(artifacts.resolve("tests/$name-jvm"), ".xml").map(Path::readBytes), sources)
+        val android = sharedHostTestEvidence(filesBelow(artifacts.resolve("tests/$name"), ".xml").map(Path::readBytes), sources)
+        require(jvm == value.obj()["host_tests"] && android == shared["modules"].obj().getValue(name).obj()["host_tests"]) { "Actual product test receipts differ from producer evidence or same-source tests" }
+        for (tests in listOf(jvm, android)) {
+            if (name == "network") {
+                verifyNetworkTests(tests)
+            } else {
+                val suites = tests["suites"].obj().mapKeys { it.key.substringAfterLast('.').substringBefore('[') }
+                require((suites["GalleryImageLimitsTest"] as? Number)?.toInt()?.let { it >= 2 } == true) { "Shared image allocation limits were not tested" }
+            }
+        }
+    }
+}
+
 fun verifySharedCore(output: Path): Map<String, Any?> {
     val source = command("git", "rev-parse", "HEAD").trim()
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
@@ -252,5 +273,5 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         "domain_ios_evidence" to "SEPARATE_REQUIRED_CI_IOS_JOB", "ios_product_domain_integration" to "GALLERY_SEARCH",
         "desktop_product_domain_integration" to "GALLERY_SEARCH",
         "legacy_desktop_ios_shared_targets" to "NOT_INTEGRATED", "final_delivery_assets_verified" to false, "product_p0_verified" to false, "publish_enabled" to false,
-    )
+    ).also { verifyProductTestReceipts(it, output) }
 }
