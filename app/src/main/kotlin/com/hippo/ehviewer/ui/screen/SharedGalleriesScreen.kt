@@ -21,8 +21,9 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 fun AnimatedVisibilityScope.SharedGalleriesScreen(navigator: DestinationsNavigator) = Screen(navigator) {
     val site by Settings.gallerySite.collectAsState()
     val signedIn by Settings.hasSignedIn.collectAsState()
+    val appearance = remember { AndroidGalleryAppearanceStore() }
     key(site, signedIn) {
         val library = remember { AndroidGalleryLibrary(site == EhUrl.SITE_EX) }
-        GalleryLibraryScreen(library, library.readerState, onBack = { navigator.popBackStack() }, onAccount = { navigator.navigate(EhScreenDestination) })
+        GalleryLibraryScreen(library, library.readerState, appearance, onBack = { navigator.popBackStack() }, onAccount = { navigator.navigate(EhScreenDestination) })
     }
 }

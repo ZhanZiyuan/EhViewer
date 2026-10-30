@@ -9,6 +9,7 @@ import com.ehviewer.core.network.GallerySession
 import com.ehviewer.shared.AppleGalleryLoginBrowser
 import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.reader.ReaderStateRepository
+import com.ehviewer.shared.settings.GalleryAppearanceRepository
 import com.ehviewer.shared.verifyAccountProduct
 import com.ehviewer.shared.verifyAppleBrowserCookieTransfer
 import com.ehviewer.shared.verifyGalleryProduct
@@ -87,13 +88,14 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
             rootViewController = ComposeUIViewController {
                 val session = remember { applicationSession() }
                 val readerState = remember { ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/reader-state")) }
+                val appearance = remember { GalleryAppearanceRepository(AppleSessionVault("${applicationDirectory()}/appearance")) }
                 if (startupRegression) {
                     LaunchedEffect(session) {
                         check(verifyAppleBrowserCookieTransfer(AppleSessionVault("${applicationDirectory()}/browser-regression")) == 4)
                         NSLog("EhViewerM1:browser-cookie-ready checks=4")
                     }
                 }
-                GallerySearchScreen(session, readerState, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
+                GallerySearchScreen(session, readerState, appearance, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
             }
             makeKeyAndVisible()
         }

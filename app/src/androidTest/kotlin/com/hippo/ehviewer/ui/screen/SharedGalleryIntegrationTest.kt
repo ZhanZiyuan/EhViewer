@@ -1,6 +1,7 @@
 package com.hippo.ehviewer.ui.screen
 
 import android.content.Intent
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -16,6 +17,7 @@ import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
 import com.ehviewer.core.preferences.PrefDelegate
 import com.ehviewer.core.preferences.edit
+import com.ehviewer.shared.settings.GalleryThemeMode
 import com.ehviewer.shared.verifyAccountProduct
 import com.ehviewer.shared.verifyGalleryProduct
 import com.hippo.ehviewer.EhDB
@@ -83,6 +85,17 @@ class SharedGalleryIntegrationTest {
                 requireNotNull(device.wait(Until.findObject(By.text("Cancel")), 5_000)).click()
                 searchIsVisible()
                 assertFalse("Cancelling filters changed the applied search", device.hasObject(By.text("Filters applied")))
+                requireNotNull(device.wait(Until.findObject(By.text("Settings")), 5_000)).click()
+                assertTrue("Common appearance settings did not open", device.wait(Until.hasObject(By.text("Appearance")), 5_000))
+                requireNotNull(device.wait(Until.findObject(By.text("Dark theme")), 5_000)).click()
+                runBlocking {
+                    withTimeout(10_000) {
+                        while (AndroidGalleryAppearanceStore().mode() != GalleryThemeMode.DARK) delay(25)
+                    }
+                    assertEquals(AppCompatDelegate.MODE_NIGHT_YES, Settings.snapshot()[Settings.theme])
+                }
+                device.pressBack()
+                searchIsVisible()
                 requireNotNull(device.wait(Until.findObject(By.text("Account")), 5_000)).click()
                 assertTrue("Original account settings did not open", device.wait(Until.hasObject(By.text(context.getString(com.ehviewer.core.i18n.R.string.settings_eh))), 10_000))
                 device.pressBack()
@@ -97,6 +110,7 @@ class SharedGalleryIntegrationTest {
                 restore(needSignIn)
                 restore(updateIntervalDays)
                 restore(launchPage)
+                restore(theme)
             }
             Settings.appLinkVerifyTip = linkTip
             with(Settings) {

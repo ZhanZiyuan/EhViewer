@@ -7,6 +7,7 @@ import com.ehviewer.core.network.gallery.RustGalleryDecoder
 import com.ehviewer.core.network.session.NativeSessionVault
 import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.reader.ReaderStateRepository
+import com.ehviewer.shared.settings.GalleryAppearanceRepository
 import java.nio.file.Path
 
 private fun applicationData(): Path {
@@ -34,12 +35,14 @@ fun galleryApplication() {
     }
     val readerDirectory = applicationData().resolve("reader-state")
     val readerState = if (windows) windowsReaderState(resources.resolve("ehviewer_capi.dll"), readerDirectory) else ReaderStateRepository(NativeSessionVault(readerDirectory.toString()))
+    val appearanceDirectory = applicationData().resolve("appearance")
+    val appearance = if (windows) windowsAppearanceStore(resources.resolve("ehviewer_capi.dll"), appearanceDirectory) else GalleryAppearanceRepository(NativeSessionVault(appearanceDirectory.toString()))
     val browserLibrary = resources.resolve(if (windows) "ehviewer_capi.dll" else "libehviewer_rust.${if (System.getProperty("os.name").startsWith("Mac")) "dylib" else "so"}")
     val browsers = DesktopBrowserService(browserLibrary, resources.resolve(if (windows) "ehviewer_browser.exe" else "ehviewer_browser"))
     try {
         application {
             Window(onCloseRequest = ::exitApplication, title = "EhViewer") {
-                GallerySearchScreen(session, readerState, browserFactory = browsers::create)
+                GallerySearchScreen(session, readerState, appearance, browserFactory = browsers::create)
             }
         }
     } finally {

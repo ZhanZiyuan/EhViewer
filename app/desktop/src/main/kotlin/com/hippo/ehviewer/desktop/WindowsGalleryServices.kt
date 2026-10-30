@@ -11,6 +11,7 @@ import com.ehviewer.core.network.session.GalleryAccountProfile
 import com.ehviewer.core.network.session.SessionStorageException
 import com.ehviewer.core.network.session.SessionVault
 import com.ehviewer.shared.reader.ReaderStateRepository
+import com.ehviewer.shared.settings.GalleryAppearanceRepository
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
 import java.lang.foreign.Linker
@@ -152,3 +153,5 @@ internal class WindowsBrowserCalls(private val library: Path) : BrowserCalls {
 }
 
 internal fun windowsReaderState(library: Path, directory: Path) = ReaderStateRepository(WindowsSessionVault(library, directory))
+
+internal fun windowsAppearanceStore(library: Path, directory: Path) = GalleryAppearanceRepository(WindowsSessionVault(library, directory))

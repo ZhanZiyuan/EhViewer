@@ -1,6 +1,7 @@
 package com.ehviewer.shared
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,8 +27,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -49,6 +53,9 @@ import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.gallery.GallerySearchFilters
 import com.ehviewer.core.network.gallery.GallerySearchResult
+import com.ehviewer.shared.settings.GalleryAppearanceException
+import com.ehviewer.shared.settings.GalleryAppearanceStore
+import com.ehviewer.shared.settings.GalleryThemeMode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -61,9 +68,9 @@ private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
-fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, browserFactory: ((String) -> GalleryLoginBrowser)? = null, onReady: () -> Unit = {}) {
+fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, browserFactory: ((String) -> GalleryLoginBrowser)? = null, onReady: () -> Unit = {}) {
     DisposableEffect(session) { onDispose { session.close() } }
-    GalleryLibraryScreen(session, readerState, accountContent = { changed, back ->
+    GalleryLibraryScreen(session, readerState, appearance, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
     }, onReady = onReady)
 }
@@ -73,6 +80,7 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
 fun GalleryLibraryScreen(
     session: GalleryLibrary,
     readerState: ReaderStateStore,
+    appearance: GalleryAppearanceStore,
     onBack: (() -> Unit)? = null,
     onAccount: (() -> Unit)? = null,
     accountContent: (@Composable (onIdentityAction: () -> Unit, onBack: () -> Unit) -> Unit)? = null,
@@ -83,6 +91,20 @@ fun GalleryLibraryScreen(
     var filters by rememberSaveable(stateSaver = searchFiltersSaver) { mutableStateOf(GallerySearchFilters()) }
     var loadedFilters by remember { mutableStateOf(GallerySearchFilters()) }
     var filtersOpen by remember { mutableStateOf(false) }
+    var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    var themeMode by remember(appearance) { mutableStateOf<GalleryThemeMode?>(null) }
+    var appearanceFailed by remember { mutableStateOf(false) }
+    var appearanceAttempt by remember { mutableIntStateOf(0) }
+    LaunchedEffect(appearance, appearanceAttempt) {
+        try {
+            themeMode = appearance.mode()
+            appearanceFailed = false
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: GalleryAppearanceException) {
+            appearanceFailed = true
+        }
+    }
     var page by remember { mutableStateOf<GallerySearchResult?>(null) }
     var failure by remember { mutableStateOf<GalleryFailure?>(null) }
     var loading by remember { mutableStateOf(false) }
@@ -125,10 +147,19 @@ fun GalleryLibraryScreen(
             request?.cancel()
         }
     }
-    MaterialTheme {
+    val theme = themeMode ?: GalleryThemeMode.SYSTEM
+    val dark = theme == GalleryThemeMode.DARK || theme == GalleryThemeMode.SYSTEM && isSystemInDarkTheme()
+    MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
                 Column(Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    if (settingsOpen) {
+                        GallerySettingsScreen(appearance, readerState, themeMode, appearanceFailed, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = {
+                            settingsOpen = false
+                            appearanceAttempt++
+                        })
+                        return@Column
+                    }
                     if (account && accountContent != null) {
                         accountContent({
                             request?.cancel()
@@ -175,6 +206,13 @@ fun GalleryLibraryScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { filtersOpen = true }) { Text("Filters") }
                         if (filters != GallerySearchFilters()) Text("Filters applied", style = MaterialTheme.typography.labelMedium)
+                        TextButton(onClick = { settingsOpen = true }) { Text("Settings") }
+                    }
+                    if (appearanceFailed) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Appearance settings are unavailable.", Modifier.weight(1f))
+                            TextButton(onClick = { appearanceAttempt++ }) { Text("Retry") }
+                        }
                     }
                     if (filtersOpen) {
                         GallerySearchFiltersDialog(filters, onApply = { applied ->
