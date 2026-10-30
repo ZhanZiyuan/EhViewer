@@ -1,5 +1,5 @@
 [workspace]
-members = ["core", "capi", "session"]
+members = ["core", "capi", "session", "browser"]
 resolver = "3"
 
 [package]
@@ -32,6 +32,9 @@ memmap2 = "0.9"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 ehviewer_session = { path = "session" }
+
+[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))'.dependencies]
+ehviewer_browser_client = { path = "browser" }
 
 [profile.release]
 panic = "unwind"

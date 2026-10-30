@@ -34,13 +34,16 @@ fun galleryApplication() {
     }
     val readerDirectory = applicationData().resolve("reader-state")
     val readerState = if (windows) windowsReaderState(resources.resolve("ehviewer_capi.dll"), readerDirectory) else ReaderStateRepository(NativeSessionVault(readerDirectory.toString()))
+    val browserLibrary = resources.resolve(if (windows) "ehviewer_capi.dll" else "libehviewer_rust.${if (System.getProperty("os.name").startsWith("Mac")) "dylib" else "so"}")
+    val browsers = DesktopBrowserService(browserLibrary, resources.resolve(if (windows) "ehviewer_browser.exe" else "ehviewer_browser"))
     try {
         application {
             Window(onCloseRequest = ::exitApplication, title = "EhViewer") {
-                GallerySearchScreen(session, readerState)
+                GallerySearchScreen(session, readerState, browserFactory = browsers::create)
             }
         }
     } finally {
+        browsers.close()
         session.close()
     }
 }

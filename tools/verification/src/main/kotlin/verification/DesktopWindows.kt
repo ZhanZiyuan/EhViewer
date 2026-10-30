@@ -104,6 +104,7 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
     val pathKey = System.getenv().keys.single { it.equals("PATH", ignoreCase = true) }
     // Do not inherit the Core build's temporary vcpkg DLL path.
     val buildEnvironment = mapOf("JAVA_HOME" to jdk.toString(), pathKey to "${jdk.resolve("bin")};${System.getenv(pathKey)}")
+    capture("browser-clippy.txt", "cargo", "clippy", "--manifest-path", root.resolve("native/browser/Cargo.toml"), "--locked", "--all-targets", "--target", WINDOWS_TARGET, "--", "-D", "warnings", environment = buildEnvironment)
     capture(
         "package-app-image.txt", jdk.resolve("bin/java.exe"), "-Dorg.gradle.appname=gradlew", "-jar", root.resolve("gradle/wrapper/gradle-wrapper.jar"),
         "-p", root.resolve("app/desktop"), "createDistributable", "spotlessCheck", "--console=plain", "--no-daemon", "--max-workers=1",

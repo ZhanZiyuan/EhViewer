@@ -476,7 +476,7 @@ jobs:
           java-version-file: .java-version
       - name: Linux native dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y pkg-config libarchive-dev libwebp-dev dbus gnome-keyring
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libarchive-dev libwebp-dev dbus gnome-keyring libwebkit2gtk-4.1-dev xvfb xauth
       - name: macOS native dependencies
         if: runner.os == 'macOS'
         run: brew install libarchive webp
@@ -495,8 +495,14 @@ jobs:
           path: tools/verification/build
       - name: Restore verifier executable permission
         run: chmod +x tools/verification/build/install/verification/bin/verification
-      - name: Load Rust JNI and verify archive ownership in a real desktop JVM
-        run: tools/verification/build/install/verification/bin/verification desktop-native-smoke --output reports/desktop-native
+      - name: Load Rust JNI, native browser and verify archive ownership in a real desktop JVM
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            pkg-config --atleast-version=2.42 webkit2gtk-4.1
+            xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-native-smoke --output reports/desktop-native
+          else
+            tools/verification/build/install/verification/bin/verification desktop-native-smoke --output reports/desktop-native
+          fi
       - name: Test the actual macOS Keychain session backend
         if: runner.os == 'macOS'
         run: cargo test --manifest-path native/rust/Cargo.toml --locked -p ehviewer_session
@@ -658,7 +664,7 @@ jobs:
       - name: Native build and display prerequisites
         run: >-
           sudo apt-get update && sudo apt-get install -y
-          build-essential cmake pkg-config libarchive-dev binutils
+          build-essential cmake pkg-config libarchive-dev binutils libwebkit2gtk-4.1-dev
           xvfb xauth libx11-6 libxext6 libxi6 libxrender1 libxtst6
           libgl1 libegl1 libgl1-mesa-dri libfontconfig1 fonts-dejavu-core libasound2t64
       - name: Rust native target

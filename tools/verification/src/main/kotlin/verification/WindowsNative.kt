@@ -28,7 +28,7 @@ fun verifyWindowsArm64Pe(header: ByteArray) {
 }
 
 private const val VCPKG_BASELINE = "15b12b99a227d51e21c86dffd40385439eac87a0"
-private const val WINDOWS_TARGET = "aarch64-pc-windows-msvc"
+internal const val WINDOWS_TARGET = "aarch64-pc-windows-msvc"
 
 /** Real Windows ARM64 Core/C ABI tests. This is not a packaged JVM/window or final ZIP proof. */
 fun windowsNativeCore(output: Path): Map<String, Any?> {
@@ -158,11 +158,13 @@ fun windowsNativeCore(output: Path): Map<String, Any?> {
     require(testOutput.contains("test tests::real_platform_credential_store_restores_an_owned_encrypted_session ... ok")) { "The real Windows credential store test did not execute" }
     require(ignored == setOf("parser::test_parser::tests::test_parse_gallery_detail", "parser::test_parser::tests::test_parse_info", "parser::test_parser::tests::test_parse_profile")) { "Unexpected ignored native tests" }
     require(testOutput.contains("test zip_file_writer_preserves_ownership_offsets_and_reports_output_errors ... ok")) { "Portable File writer did not execute" }
-    capture("rust-clippy.txt", "cargo", "+$toolchain", "clippy", "--locked", "--manifest-path", cargoManifest, "-p", "ehviewer_core", "-p", "ehviewer_capi", "-p", "ehviewer_session", "--all-targets", "--target", WINDOWS_TARGET, "--", "-D", "warnings", environment = environment)
+    capture("rust-clippy.txt", "cargo", "+$toolchain", "clippy", "--locked", "--manifest-path", cargoManifest, "-p", "ehviewer_core", "-p", "ehviewer_capi", "-p", "ehviewer_session", "-p", "ehviewer_browser_client", "--all-targets", "--target", WINDOWS_TARGET, "--", "-D", "warnings", environment = environment)
+    capture("browser-client-tests.txt", "cargo", "+$toolchain", "test", "--locked", "--manifest-path", cargoManifest, "-p", "ehviewer_browser_client", "--target", WINDOWS_TARGET, environment = environment)
     val headers = messages.filter { it["reason"] == "build-script-executed" && (it["package_id"] as? String)?.contains("ehviewer_capi") == true }
         .map { Path.of(it.str("out_dir")).resolve("ehviewer_capi.h") }.filter { it.isRegularFile() }.distinct()
     require(headers.size == 1) { "Missing generated C ABI header" }
     verifyGalleryCapiHeader(headers.single().readText())
+    verifyDesktopBrowserHeader(headers.single().readText())
     Files.copy(headers.single(), output.resolve("ehviewer_capi.h"))
     val result = mapOf(
         "source_commit" to command("git", "rev-parse", "HEAD").trim(), "source_dirty" to dirty, "result" to "PASS",

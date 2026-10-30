@@ -2,6 +2,9 @@
 //! Input/output pointers are borrowed only for a call. Rust buffers stay behind monotonic IDs.
 use std::{collections::BTreeMap, panic::AssertUnwindSafe, sync::Mutex};
 
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+mod browser;
+
 pub const EHV_OK: i32 = 0;
 pub const EHV_INVALID_ARGUMENT: i32 = 1;
 pub const EHV_INVALID_HANDLE: i32 = 2;

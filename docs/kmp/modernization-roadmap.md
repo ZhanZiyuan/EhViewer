@@ -2,6 +2,8 @@
 
 # 现代化路线与阶段门禁
 
+当前产品进度：搜索/会话、图库详情/图片、阅读进度/连续阅读、共享表单登录和 iOS 浏览器交接分别已有独立全量 CI 通过；最新已验收 HEAD 为 `d688e40f59e3b9e18802b494a2862b9a3876fc05`，PR #15 仍为 Draft。桌面浏览器使用相同 CMP 控件和共享事务，通过 Rust JNI/C ABI 接入独立原生窗口，当前等待本次新 SHA 的 Full 验收；具体参考、许可与真实测试边界见 [desktop-browser-sign-in.md](desktop-browser-sign-in.md)。下一优先级为 Android 共享业务接入及 profile/Ex 初始化，然后持久化/配置与下载。M3 整阶段仍未完成，不以单个功能提交代替阶段完成提示；后续按维护者加速计划逐功能推进。
+
 本轮先交付 iOS 原生浏览器登录入口：共享 CMP 导航和确认，Kotlin/Native 嵌入独立 WKWebView，无 Swift/自维护 JavaScript。真实 HttpOnly Cookie 交接在公共 KMP 检查身份、范围、期限及会话代次后才原子写入 Keychain；取消不写入。网络 Android/JVM/Native 各 46、阅读器各 20、真实 WebKit/Keychain 双冷启动及原 Android 验收任务通过，iPhone/iPad 官方验证页、窄屏/横屏和取消已测。托管 CI 仍需独立验证；网站验证码/真实账号、桌面与 Android 浏览器接入、配置与数据迁移仍待完成，M3 不标记完成。参见[浏览器切片的参考、验证与限制](browser-sign-in.md)。
 
 当前账户切片已接入同一 CMP 登录/退出表单和真实 Ktor 事务：成功后单次写入 OS vault，失败保留旧会话，退出使在途登录失效，取消后重读真实存储；Android/JVM/Native 各 39 项网络测试、原 20 项阅读器测试和 Android 完整验收任务通过，iPad 输入/遮罩/返回清空及用户名 IME 修复已实测。上一阅读器 SHA `4e791db93` 已通过全部 12 个必需 Job、gate 与 dry-run，本切片仍须自己的独立 CI；认证浏览器跳转、Android 共享接入与数据库/配置迁移仍待完成，M3 不标记完成。范围与许可见[共享账户与认证](gallery-authentication.md)。

@@ -101,4 +101,50 @@ internal fun windowsGallerySession(library: Path, directory: Path, userAgent: St
     return GallerySession(WindowsSessionVault(library, directory), WindowsGalleryDecoder(library), userAgent)
 }
 
+/** A caller retains one application-lifetime DLL owner on the main thread. Each IO call
+ * additionally owns its confined loader/arena, so no foreign arena crosses threads. */
+internal class WindowsBrowserCalls(private val library: Path) : BrowserCalls {
+    override fun protocolVersion(): Int = nativeCall(library) { call ->
+        call.function("ehv_browser_api_version", FunctionDescriptor.of(JAVA_INT)).invokeWithArguments() as Int
+    }
+
+    override fun open(binary: String, userAgent: String, regression: Boolean): Long = nativeCall(library) { call ->
+        val path = binary.toByteArray(Charsets.UTF_8)
+        val agent = userAgent.toByteArray(Charsets.UTF_8)
+        val output = call.arena.allocate(JAVA_LONG)
+        val open = call.function("ehv_browser_open", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS))
+        check(open.invokeWithArguments(call.bytes(path), path.size.toLong(), call.bytes(agent), agent.size.toLong(), if (regression) 1 else 0, output) == 0)
+        output.get(JAVA_LONG, 0).also { check(it > 0) }
+    }
+
+    override fun cookies(handle: Long): ByteArray = nativeCall(library) { call ->
+        val output = call.arena.allocate(JAVA_LONG)
+        val read = call.function("ehv_browser_cookies", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS))
+        check(read.invokeWithArguments(handle, output) == 0)
+        call.copyOwned(output.get(JAVA_LONG, 0), 256 * 1024)
+    }
+
+    override fun close(handle: Long) = nativeCall(library) { call ->
+        check(call.function("ehv_browser_close", FunctionDescriptor.of(JAVA_INT, JAVA_LONG)).invokeWithArguments(handle) == 0)
+    }
+
+    override fun running(handle: Long): Boolean = nativeCall(library) { call ->
+        val output = call.arena.allocate(JAVA_INT)
+        check(call.function("ehv_browser_running", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS)).invokeWithArguments(handle, output) == 0)
+        output.get(JAVA_INT, 0).also { check(it in 0..1) } == 1
+    }
+
+    override fun processId(handle: Long): Long = nativeCall(library) { call ->
+        val output = call.arena.allocate(JAVA_LONG)
+        check(call.function("ehv_browser_process_id", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS)).invokeWithArguments(handle, output) == 0)
+        output.get(JAVA_LONG, 0)
+    }
+
+    override fun active(): Int = nativeCall(library) { call ->
+        val output = call.arena.allocate(JAVA_LONG)
+        check(call.function("ehv_browser_active", FunctionDescriptor.of(JAVA_INT, ADDRESS)).invokeWithArguments(output) == 0)
+        output.get(JAVA_LONG, 0).also { check(it in 0..4) }.toInt()
+    }
+}
+
 internal fun windowsReaderState(library: Path, directory: Path) = ReaderStateRepository(WindowsSessionVault(library, directory))

@@ -42,6 +42,8 @@ fun main(arguments: Array<String>) {
     val owned = if (windowsArm) verifyOwnedCapi(nativeRoot.resolve("ehviewer_capi.dll")) else null
     val completed = owned?.completed ?: verifyUnixJni(nativeRoot, macIntel)
     val galleryChecks = verifyGalleryProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder)
+    val browserLibrary = nativeRoot.resolve(if (windowsArm) "ehviewer_capi.dll" else "libehviewer_rust.${if (macIntel) "dylib" else "so"}")
+    val browserProof = verifyBrowserBridge(browserLibrary, nativeRoot.resolve(if (windowsArm) "ehviewer_browser.exe" else "ehviewer_browser"), windowsArm)
     val frames = AtomicInteger()
     application {
         Window(onCloseRequest = ::exitApplication, title = "EhViewer · M1 desktop runtime") {
@@ -80,6 +82,7 @@ fun main(arguments: Array<String>) {
                         setProperty("render_api", window.renderApi.name)
                     }
                     Files.newOutputStream(report.resolve("launcher.properties")).use { proof.store(it, "Measured M1 packaged launcher evidence") }
+                    Files.writeString(report.resolve("native-browser.json"), browserProof.toString())
                     delay(250)
                     exitApplication()
                 }

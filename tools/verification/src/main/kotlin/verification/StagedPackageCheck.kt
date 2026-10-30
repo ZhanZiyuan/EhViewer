@@ -109,11 +109,14 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         require(host["target"] == if (role == "linux-host") "x86_64-unknown-linux-gnu" else "aarch64-apple-darwin") { "Host JNI target differs" }
         require(host["jvm_architecture"] == if (role == "linux-host") "amd64" else "aarch64") { "Host JNI JVM architecture differs" }
         require(host["checks"].obj()["ownership_checks"] == 4170 && host["checks"].obj()["archive_cases"] == 13) { "Incomplete host JNI regression" }
+        val browser = host["native_browser"].obj()
+        verifyDesktopBrowserReceipt(browser, setOf(host.str("jvm_architecture")), "JNI", host.str("library_sha256"), browser.str("browser_executable_sha256"))
+        require(readJson(path(role, "native-browser.json")) == browser) { "Browser receipt differs from host summary" }
     }
     val linux = receipt("linux-runtime", "reports/desktop-linux-arm64/linux-arm64.json")
     val linuxChecks = linux["checks"].obj()
     require(linux["target"] == "aarch64-unknown-linux-gnu" && linuxChecks["version"] == version) { "Linux identity changed" }
-    require(linuxChecks["native_files"].array().size == 30 && linuxChecks["installed_notices"].array().size == expectedDesktopNativeNoticeCount() && linuxChecks["launches"].array().size == 2) { "Incomplete reviewed Linux runtime inventory" }
+    require(linuxChecks["native_files"].array().size == 31 && linuxChecks["installed_notices"].array().size == expectedDesktopNativeNoticeCount() && linuxChecks["launches"].array().size == 2) { "Incomplete reviewed Linux runtime inventory" }
     require(
         linuxChecks["launches"].array().all {
             val proof = it.obj()
@@ -121,6 +124,10 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         },
     ) { "Both original Linux windows must pass" }
     val image = path("linux-runtime", "app/desktop/build/compose/binaries/main/app/EhViewer")
+    for ((index, launch) in linuxChecks["launches"].array().withIndex()) {
+        val browser = desktopBrowserReceipt(path("linux-runtime", "reports/desktop-linux-arm64/launch-${index + 1}"), image.resolve("lib/app/resources/libehviewer_rust.so"), image.resolve("lib/app/resources/ehviewer_browser"), setOf("aarch64"), "JNI")
+        require(launch.obj()["native_browser"] == browser)
+    }
     linuxChecks["native_files"].array().forEach { value ->
         val entry = value.obj()
         val file = image.resolve(stageZipName(entry.str("path")))
@@ -215,7 +222,10 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     require(intelInventory(producer) == intelInventory(consumer)) { "Actual Intel producer/consumer native inventories differ" }
     for (proof in listOf(producer, consumer)) {
         val checks = proof["checks"].obj()
-        require(proof["jdk"] == "25.0.5" && checks["native_files"].array().size == 32 && checks["installed_notices"].array().size == expectedDesktopNativeNoticeCount()) { "Incomplete reviewed Intel runtime inventory" }
+        require(proof["jdk"] == "25.0.5" && checks["native_files"].array().size == 33 && checks["installed_notices"].array().size == expectedDesktopNativeNoticeCount()) { "Incomplete reviewed Intel runtime inventory" }
+        val nativeFiles = checks["native_files"].array().map(Any?::obj)
+        val browserDigest = nativeFiles.single { it.str("path").endsWith("/resources/ehviewer_browser") }.str("sha256")
+        for (launch in checks["launches"].array()) verifyDesktopBrowserReceipt(launch.obj()["native_browser"].obj(), setOf("x86_64", "amd64"), "JNI", checks.str("rust_sha256"), browserDigest)
         require(
             checks["version"] == version && checks["launches"].array().size == 2 && checks["launches"].array().all {
                 val launch = it.obj()
@@ -249,7 +259,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     require(JsonSlurper().parseText(json(archiveProof)).obj() == packaged["archive_evidence"] && launch["archive_sha256"] == sha256(archive) && launch["package_report_sha256"] == sha256(packagedFile) && launch["runtime_report_sha256"] == sha256(runtimeFile) && launch["zip_extracted_launch"] == "PASS" && launch["version"] == version) { "Windows ZIP/native startup hashes differ" }
     val native = runtime["native_files"].array().map(Any?::obj).associate { stageZipName(it.str("path").replace('\\', '/')) to it.str("sha256") }
     require(native["app/resources/ehviewer_capi.dll"] == jvm["rust_capi_sha256"]) { "Packaged Windows Rust differs from the actual JVM caller" }
-    require(native.size == runtime["native_files"].array().size && setOf("EhViewer.exe", "runtime/bin/server/jvm.dll", "app/skiko-windows-arm64.dll", "app/resources/ehviewer_capi.dll").all { it in native }) { "Missing original Windows entry/runtime/Skiko/Rust" }
+    require(native.size == runtime["native_files"].array().size && setOf("EhViewer.exe", "runtime/bin/server/jvm.dll", "app/skiko-windows-arm64.dll", "app/resources/ehviewer_capi.dll", "app/resources/ehviewer_browser.exe").all { it in native }) { "Missing original Windows entry/runtime/Skiko/Rust/browser" }
     val recordedFiles = manifest["files"].array().map(Any?::obj).associateBy { it.str("path") }
     native.forEach { (name, expected) -> require(recordedFiles.getValue("EhViewer/$name")["sha256"] == expected) { "Windows native bytes differ from the measured runtime" } }
     runtime["installed_notices"].obj().forEach { (name, expected) -> require(recordedFiles.getValue("EhViewer/app/resources/licenses/" + stageZipName(name.replace('\\', '/')))["sha256"] == expected) { "Windows notice differs from the measured runtime" } }
@@ -269,6 +279,8 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         val proof = value.obj()
         val properties = Properties().apply { path("windows-launch", "launch-${index + 1}/launcher.properties").inputStream().use(::load) }
         require(properties.stringPropertyNames().associateWith { properties.getProperty(it) } == proof) { "Actual Windows launch properties differ" }
+        val browser = readJson(path("windows-launch", "launch-${index + 1}/native-browser.json"))
+        verifyDesktopBrowserReceipt(browser, setOf("aarch64"), "C_ABI", native.getValue("app/resources/ehviewer_capi.dll"), native.getValue("app/resources/ehviewer_browser.exe"))
         windowsWindow(proof)
         require(proof.str("java_home").replace('\\', '/').endsWith("/ZIP 安装目录/EhViewer/runtime") && proof.str("rust_library").replace('\\', '/').endsWith("/ZIP 安装目录/EhViewer/app/resources/ehviewer_capi.dll")) { "Expected the extracted bundled JVM/Rust paths" }
     }

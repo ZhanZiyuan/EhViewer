@@ -43,7 +43,8 @@ val buildOfflineClient = tasks.register<Exec>("buildOfflineClient") {
     inputs.file(offlineClientSource)
     inputs.file(rootDir.resolve("../../rust-toolchain.toml"))
     outputs.file(offlineClient)
-    doFirst { offlineClient.get().asFile.parentFile.mkdirs() }
+    val executableFile = offlineClient.get().asFile
+    doFirst { executableFile.parentFile.mkdirs() }
     commandLine("clippy-driver", "--edition=2024", "-Dwarnings", offlineClientSource.asFile.absolutePath, "-o", offlineClient.get().asFile.absolutePath)
 }
 

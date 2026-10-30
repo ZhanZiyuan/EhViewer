@@ -12,5 +12,8 @@ ehviewer_core = { path = "../core" }
 [target.'cfg(not(target_os = "android"))'.dependencies]
 ehviewer_session = { path = "../session" }
 
+[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))'.dependencies]
+ehviewer_browser_client = { path = "../browser" }
+
 [build-dependencies]
 cbindgen = { version = "=0.29.4", default-features = false }

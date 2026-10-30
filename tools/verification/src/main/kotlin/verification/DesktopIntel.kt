@@ -28,7 +28,7 @@ fun verifyIntelMachO(header: ByteArray) {
 }
 
 /** Check the retained upstream texts in the installed app, after jpackage has copied resources. */
-fun expectedDesktopNativeNoticeCount(): Int = 6 + filesBelow(root.resolve("app/desktop/licenses/session"), "").size
+fun expectedDesktopNativeNoticeCount(): Int = 6 + listOf("session", "browser").sumOf { filesBelow(root.resolve("app/desktop/licenses/$it"), "").size }
 
 fun desktopNativeNotices(contents: Path): List<Map<String, String>> {
     val notices = contents.resolve("app/resources/licenses")
@@ -42,6 +42,8 @@ fun desktopNativeNotices(contents: Path): List<Map<String, String>> {
     )
     val sessionNotices = root.resolve("app/desktop/licenses/session")
     filesBelow(sessionNotices, "").forEach { file -> expected["session/" + sessionNotices.relativize(file).joinToString("/")] = sha256(file) }
+    val browserNotices = root.resolve("app/desktop/licenses/browser")
+    filesBelow(browserNotices, "").forEach { file -> expected["browser/" + browserNotices.relativize(file).joinToString("/")] = sha256(file) }
     return expected.map { (name, digest) ->
         val file = notices.resolve(name)
         require(file.isRegularFile()) { "Missing installed Native notice: $name" }
@@ -162,7 +164,8 @@ fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null):
                 require(proof.getProperty("java_version") == System.getProperty("java.version")) { "Unexpected bundled JVM version" }
                 require(proof.getProperty("rust_hash_results").toInt() == 100 && proof.getProperty("compose_frames").toInt() > 0 && proof.getProperty("window_showing") == "true")
                 require(proof.getProperty("gallery_product_checks") == "3") { "Packaged detail/page/image regression did not execute" }
-                mapOf("gallery_product_checks" to 3, "rust_hash_results" to proof.getProperty("rust_hash_results").toInt(), "compose_frames" to proof.getProperty("compose_frames").toInt(), "bundled_runtime" to "PASS")
+                val browser = desktopBrowserReceipt(proofDirectory, rust, contents.resolve("app/resources/ehviewer_browser"), setOf("x86_64", "amd64"), "JNI")
+                mapOf("native_browser" to browser, "gallery_product_checks" to 3, "rust_hash_results" to proof.getProperty("rust_hash_results").toInt(), "compose_frames" to proof.getProperty("compose_frames").toInt(), "bundled_runtime" to "PASS")
             }
             val dependencyLog = capture("rust-dependencies.txt", "otool", "-L", rust)
             require(!dependencyLog.contains("/opt/homebrew") && !dependencyLog.contains("/Users/runner") && !dependencyLog.contains(root.toString())) { "Native library depends on a build-machine path" }

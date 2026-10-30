@@ -11,6 +11,7 @@ build
 
 # Native build caches and local, access-restricted release diagnostics
 /native/rust/target/
+/native/browser/target/
 /.private-release/
 /release-dry-run/
 /reports/

@@ -1,3 +1,4 @@
+import groovy.json.JsonSlurper
 import java.net.URI
 import java.security.MessageDigest
 import java.util.Base64
@@ -117,6 +118,50 @@ abstract class BuildDesktopNative : DefaultTask() {
     }
 }
 
+/** Build the native desktop browser for the actual distribution CPU; retain Cargo's output receipt. */
+abstract class BuildNativeBrowser : DefaultTask() {
+    @get:Input abstract val target: Property<String>
+
+    @get:Internal abstract val repository: DirectoryProperty
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val sources: ConfigurableFileCollection
+
+    @get:OutputFile abstract val executable: RegularFileProperty
+
+    @get:OutputDirectory abstract val evidence: DirectoryProperty
+
+    @TaskAction
+    fun build() {
+        val repo = repository.get().asFile
+        val logs = evidence.get().asFile.also { it.mkdirs() }
+        val cargoOutput = logs.resolve("cargo.jsonl")
+        val cargoErrors = logs.resolve("cargo.stderr.log")
+        val destination = executable.get().asFile
+        val windows = target.get().endsWith("pc-windows-msvc")
+        val cargoTarget = temporaryDir.resolve("cargo-target")
+        val process = ProcessBuilder(
+            "cargo", "build", "--manifest-path", repo.resolve("native/browser/Cargo.toml").absolutePath,
+            "--locked", "--release", "--target", target.get(), "--target-dir", cargoTarget.absolutePath,
+            "--message-format=json-render-diagnostics",
+        ).directory(repo).redirectOutput(cargoOutput).redirectError(cargoErrors).start()
+        if (!process.waitFor(15, TimeUnit.MINUTES)) {
+            process.destroyForcibly().waitFor()
+            error("Native browser build timed out")
+        }
+        check(process.exitValue() == 0) { "Native browser build failed: ${cargoErrors.readText()}" }
+        val actual = cargoTarget.resolve("${target.get()}/release/ehviewer_browser${if (windows) ".exe" else ""}").canonicalFile
+        val artifacts = cargoOutput.readLines().filter { it.startsWith('{') }.map { JsonSlurper().parseText(it) as Map<*, *> }
+            .filter { it["reason"] == "compiler-artifact" && (it["target"] as Map<*, *>)["name"] == "ehviewer_browser" }
+        check(artifacts.any { (it["executable"] as? String)?.let(::File)?.canonicalFile == actual } && actual.isFile) { "Cargo did not produce the requested native browser" }
+        destination.parentFile.mkdirs()
+        actual.copyTo(destination, overwrite = true)
+        if (!windows) check(destination.setExecutable(true, false))
+        logs.resolve("binary.sha256").writeText(MessageDigest.getInstance("SHA-256").digest(destination.readBytes()).joinToString("") { "%02x".format(it) } + "\n")
+    }
+}
+
 /** Select the published Intel entries; the original checksummed cache stays untouched. */
 abstract class SelectIntelSkiko : DefaultTask() {
     @get:InputFiles
@@ -185,6 +230,51 @@ val prepareDesktopNative = tasks.register<BuildDesktopNative>("prepareDesktopNat
     evidence.set(layout.buildDirectory.dir("native-evidence"))
 }
 
+val browserMachine = if (System.getProperty("os.arch") in setOf("aarch64", "arm64")) "aarch64" else "x86_64"
+val browserOperatingSystem = when {
+    System.getProperty("os.name").startsWith("Windows") -> "windows"
+    System.getProperty("os.name").startsWith("Mac") -> "macos"
+    else -> "linux"
+}
+val browserResourcePlatform = "$browserOperatingSystem-${if (browserMachine == "aarch64") "arm64" else "x64"}"
+val prepareNativeBrowser = tasks.register<BuildNativeBrowser>("prepareNativeBrowser") {
+    target.set(
+        "$browserMachine-${when (browserOperatingSystem) {
+            "windows" -> "pc-windows-msvc"
+            "macos" -> "apple-darwin"
+            else -> "unknown-linux-gnu"
+        }}",
+    )
+    repository.set(repositoryRoot)
+    sources.from(repositoryRoot.file("rust-toolchain.toml"), fileTree(repositoryRoot.dir("native/browser")) { exclude("target/**") })
+    executable.set(layout.buildDirectory.file("native-browser-bin/$browserResourcePlatform/ehviewer_browser${if (browserOperatingSystem == "windows") ".exe" else ""}"))
+    evidence.set(layout.buildDirectory.dir("native-browser-evidence"))
+}
+val desktopProductResources = layout.buildDirectory.dir("desktop-product-resources")
+val prepareDesktopProductResources = tasks.register<Sync>("prepareDesktopProductResources") {
+    into(desktopProductResources)
+    if (windowsArm) from(layout.buildDirectory.dir("windows-desktop-resources")) else from(prepareDesktopNative.flatMap { it.resources })
+    from(prepareNativeBrowser.flatMap { it.executable }) { into(browserResourcePlatform) }
+}
+tasks.matching { it.name == "prepareAppResources" }.configureEach { dependsOn(prepareDesktopProductResources) }
+
+/** jpackage copies additional resources as data and drops their executable bit. */
+class PreserveBrowserExecutable(private val executable: File) : Action<Task>, java.io.Serializable {
+    override fun execute(task: Task) {
+        check(executable.isFile && executable.setExecutable(true, false) && executable.canExecute()) {
+            "The packaged native browser must be executable"
+        }
+    }
+}
+if (browserOperatingSystem != "windows") {
+    val packagedBrowser = layout.buildDirectory.file(
+        "compose/binaries/main/app/EhViewer${if (browserOperatingSystem == "macos") ".app/Contents/app" else "/lib/app"}/resources/ehviewer_browser",
+    ).get().asFile
+    tasks.matching { it.name == "createDistributable" }.configureEach {
+        doLast(PreserveBrowserExecutable(packagedBrowser))
+    }
+}
+
 kotlin { compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -193,6 +283,8 @@ java {
 dependencies {
     implementation(project(":core:network"))
     implementation(project(":app:shared"))
+    implementation(libs.serialization.json)
+    implementation(libs.compose.material3)
     implementation(compose.desktop.currentOs) {
         if (intelMac) exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-x64")
     }
@@ -225,6 +317,32 @@ tasks.register<JavaExec>("rustCapiProbe") {
     )
 }
 
+abstract class BrowserRegressionArguments : CommandLineArgumentProvider {
+    @get:Input abstract val library: Property<String>
+
+    @get:Input abstract val executable: Property<String>
+
+    @get:Input abstract val evidence: Property<String>
+
+    @get:Input abstract val cApi: Property<Boolean>
+    override fun asArguments(): Iterable<String> = listOf(library.get(), executable.get(), evidence.get()) + if (cApi.get()) listOf("--c-api") else emptyList()
+}
+tasks.register<JavaExec>("browserHandoffRegression") {
+    group = "verification"
+    description = "Transfer actual native browser cookies through the production JNI/C ABI"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.hippo.ehviewer.desktop.BrowserBridgeProbeKt")
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+    argumentProviders.add(
+        objects.newInstance<BrowserRegressionArguments>().apply {
+            library.set(providers.gradleProperty("nativeBrowserLibrary"))
+            executable.set(providers.gradleProperty("nativeBrowserExecutable"))
+            evidence.set(providers.gradleProperty("nativeBrowserEvidence"))
+            cApi.set(providers.gradleProperty("nativeBrowserUseCapi").map(String::toBooleanStrict).orElse(false))
+        },
+    )
+}
+
 val regressionLibrary = providers.gradleProperty("galleryRegressionLibrary")
 tasks.register<JavaExec>("galleryProductRegression") {
     group = "verification"
@@ -247,12 +365,7 @@ compose.desktop {
             description = "EhViewer gallery browser"
             vendor = "EhViewer"
             modules("java.desktop", "java.logging", "java.management", "jdk.unsupported")
-            if (windowsArm) {
-                // The Kotlin Windows verifier stages the exact already-tested DLLs/notices here.
-                appResourcesRootDir.set(layout.buildDirectory.dir("windows-desktop-resources"))
-            } else {
-                appResourcesRootDir.set(prepareDesktopNative.flatMap { it.resources })
-            }
+            appResourcesRootDir.set(desktopProductResources)
             licenseFile.set(repositoryRoot.file("LICENSE"))
             macOS {
                 bundleID = "moe.tarsin.ehviewer.m1"

@@ -1,5 +1,8 @@
 #![cfg(feature = "jvm")]
 
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+mod browser;
+
 use crate::EhError;
 use crate::img::webp::{create_decoder, get_image_info, pack_image_info};
 use crate::parser::api::parse_vote_tag;

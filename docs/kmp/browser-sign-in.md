@@ -1,6 +1,6 @@
 # Native browser sign-in and shared session handoff
 
-This M3 slice adds an actual iOS WKWebView login surface, written in Kotlin/Native and embedded in the same CMP Account flow. The shared Back, confirmation, progress and error controls are Kotlin/CMP. Desktop and Android browser adapters remain separate unfinished work; they do not display an unimplemented entry point.
+This M3 slice adds an actual iOS WKWebView login surface, written in Kotlin/Native and embedded in the same CMP Account flow. The shared Back, confirmation, progress and error controls are Kotlin/CMP. Subsequent desktop integration and its separate acceptance are recorded in [desktop-browser-sign-in.md](desktop-browser-sign-in.md); Android shared browser integration remains unfinished.
 
 The browser uses a new nonpersistent WebKit data store, the same configured User-Agent as the Ktor session, normal system TLS and the official forum login page. Main-frame navigation is limited to the three official HTTPS service hosts on port 443; external schemes, foreign destinations and popup windows are rejected. Cloudflare's HTTPS challenge subframe can load. No custom JavaScript, Swift, certificate override, browser password persistence or automated CAPTCHA solver is introduced.
 

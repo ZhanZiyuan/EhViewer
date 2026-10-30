@@ -65,12 +65,26 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
         timeout = Duration.ofMinutes(10),
     )
     require(gallery.lineSequence().count { it == "Gallery product regression passed: 3 checks" } == 1) { "Production JNI/model/image decoder regression did not execute" }
+    val browserManifest = root.resolve("native/browser/Cargo.toml")
+    capture("browser-unit-tests.log", "cargo", "test", "--manifest-path", browserManifest, "--locked", "--bin", "ehviewer_browser", timeout = Duration.ofMinutes(15))
+    capture("browser-clippy.log", "cargo", "clippy", "--manifest-path", browserManifest, "--locked", "--all-targets", "--", "-D", "warnings", timeout = Duration.ofMinutes(10))
+    capture("browser-client-tests.log", "cargo", "test", "--manifest-path", root.resolve("native/rust/Cargo.toml"), "--locked", "-p", "ehviewer_browser_client")
+    capture("browser-build.log", "cargo", "build", "--manifest-path", browserManifest, "--locked", "--release", "--target", target, timeout = Duration.ofMinutes(15))
+    val browser = root.resolve("native/browser/target/$target/release/ehviewer_browser")
+    capture(
+        "browser-jni.log", root.resolve("gradlew"), "-p", root.resolve("app/desktop"), "browserHandoffRegression",
+        "-Pehviewer.desktopOnly=true", "-PnativeBrowserLibrary=$library", "-PnativeBrowserExecutable=$browser",
+        "-PnativeBrowserEvidence=${output.toAbsolutePath().resolve("native-browser.json")}", "--console=plain", "--no-daemon",
+        timeout = Duration.ofMinutes(10),
+    )
+    val browserProof = desktopBrowserReceipt(output, library, browser, setOf(System.getProperty("os.arch")), "JNI")
     val result = mapOf(
         "source_commit" to command("git", "rev-parse", "HEAD").trim(), "source_dirty" to dirty,
         "target" to target, "jvm_architecture" to System.getProperty("os.arch"), "jvm_version" to System.getProperty("java.version"),
         "rust" to command("rustc", "--version").trim(), "library_sha256" to sha256(library), "result" to "PASS",
         "checks" to results, "packaged_runtime" to "NOT_VERIFIED", "ios_c_abi" to "NOT_VERIFIED",
         "gallery_product_checks" to 3,
+        "native_browser" to browserProof,
     )
     output.resolve("desktop-native.json").writeText(json(result))
     return result
