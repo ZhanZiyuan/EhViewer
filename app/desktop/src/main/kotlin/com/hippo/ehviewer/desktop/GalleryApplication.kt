@@ -6,6 +6,7 @@ import com.ehviewer.core.network.GallerySession
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
 import com.ehviewer.core.network.session.NativeSessionVault
 import com.ehviewer.shared.GallerySearchScreen
+import com.ehviewer.shared.reader.ReaderStateRepository
 import java.nio.file.Path
 
 private fun applicationData(): Path {
@@ -31,10 +32,12 @@ fun galleryApplication() {
         System.load(resources.resolve("libehviewer_rust.$extension").toAbsolutePath().toString())
         GallerySession(NativeSessionVault(applicationData().toString()), RustGalleryDecoder, "EhViewer/$version")
     }
+    val readerDirectory = applicationData().resolve("reader-state")
+    val readerState = if (windows) windowsReaderState(resources.resolve("ehviewer_capi.dll"), readerDirectory) else ReaderStateRepository(NativeSessionVault(readerDirectory.toString()))
     try {
         application {
             Window(onCloseRequest = ::exitApplication, title = "EhViewer") {
-                GallerySearchScreen(session)
+                GallerySearchScreen(session, readerState)
             }
         }
     } finally {

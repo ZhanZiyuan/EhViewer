@@ -133,6 +133,12 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     }
     val ios = receipt("ios", "startup.json", false)
     verifyNetworkTests(ios["network_tests"].obj())
+    val iosReader = ios["reader_tests"].obj()
+    verifyReaderTests(iosReader)
+    require(iosReader["execution"] == "BOOTED_OWNED_SIMULATOR" && sha256(path("ios", "reader-tests.kexe")) == iosReader["test_executable_sha256"])
+    val readerXml = filesBelow(path("ios", "."), ".xml").filter { it.fileName.toString().startsWith("reader-") }
+    val readerEvidence = sharedHostTestEvidence(readerXml.map(Path::readBytes), filesBelow(root.resolve("app/shared/src/commonTest"), ".kt").size)
+    require(readerEvidence == iosReader - setOf("execution", "test_executable_sha256")) { "Actual Native reader XML differs from its producer receipt" }
     require(ios["gallery_product_checks_by_launch"].array() == listOf(3, 3)) { "Missing actual iOS detail/page/image decoder checks" }
     val iosSession = ios["session_backend_tests"].obj()
     require(iosSession["result"] == "PASS" && iosSession["passed"] == 3 && iosSession["ignored"] == 0 && iosSession["execution"] == "REAL_IOS_KEYCHAIN_ON_OWNED_SIMULATOR")

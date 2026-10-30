@@ -9,6 +9,7 @@ import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GallerySearchResult
 import com.ehviewer.core.network.session.SessionStorageException
 import com.ehviewer.core.network.session.SessionVault
+import com.ehviewer.shared.reader.ReaderStateRepository
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
 import java.lang.foreign.Linker
@@ -99,3 +100,5 @@ internal fun windowsGallerySession(library: Path, directory: Path, userAgent: St
     require(ADDRESS.byteSize() == 8L)
     return GallerySession(WindowsSessionVault(library, directory), WindowsGalleryDecoder(library), userAgent)
 }
+
+internal fun windowsReaderState(library: Path, directory: Path) = ReaderStateRepository(WindowsSessionVault(library, directory))

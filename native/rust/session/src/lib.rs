@@ -19,6 +19,8 @@ const HEADER: &[u8] = b"EHVS\x01";
 const MAX_PLAIN: usize = 256 * 1024;
 const SERVICE: &str = "moe.tarsin.ehviewer.session";
 const SNAPSHOT: &str = "session-v1.bin";
+// This non-secret identifier moves with the data container; the master key stays in the OS store.
+const ACCOUNT: &str = ".session-account-v1";
 
 /// Errors intentionally contain no credential, plaintext, path or OS-store error string.
 #[derive(Debug, PartialEq, Eq)]
@@ -149,12 +151,42 @@ fn locked<T>(root: &Path, operation: impl FnOnce(&Path, &str) -> Result<T>) -> R
         .open(root.join(".session.lock"))
         .map_err(|_| SessionError::Storage)?;
     file.lock().map_err(|_| SessionError::Storage)?;
-    let identity = ehviewer_core::hash::sha1(root.as_os_str().to_string_lossy().as_bytes())
-        .map_err(|_| SessionError::Storage)?;
-    let account = format!("v1-{identity}");
-    let result = operation(&root.join(SNAPSHOT), &account);
+    let result = (|| {
+        let account = persistent_account(&root)?;
+        operation(&root.join(SNAPSHOT), &account)
+    })();
     file.unlock().map_err(|_| SessionError::Storage)?;
     result
+}
+
+fn persistent_account(root: &Path) -> Result<String> {
+    let path = root.join(ACCOUNT);
+    match fs::symlink_metadata(&path) {
+        Ok(metadata) => {
+            if !metadata.is_file() || metadata.is_symlink() || metadata.len() != 43 {
+                return Err(SessionError::Corrupt);
+            }
+            let bytes = fs::read(path).map_err(|_| SessionError::Storage)?;
+            if bytes.len() != 43
+                || !bytes.starts_with(b"v1-")
+                || !bytes[3..]
+                    .iter()
+                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(byte))
+            {
+                return Err(SessionError::Corrupt);
+            }
+            String::from_utf8(bytes).map_err(|_| SessionError::Corrupt)
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            // Enroll the legacy account without replacing its key or re-encrypting its snapshot.
+            let identity = ehviewer_core::hash::sha1(root.as_os_str().to_string_lossy().as_bytes())
+                .map_err(|_| SessionError::Storage)?;
+            let account = format!("v1-{identity}");
+            atomic_write(&path, account.as_bytes())?;
+            Ok(account)
+        }
+        Err(_) => Err(SessionError::Storage),
+    }
 }
 
 fn read_with(
@@ -190,6 +222,10 @@ fn write_with(
     }
     let master = provider(account, !path.exists())?;
     let encrypted = seal(bytes, &master)?;
+    atomic_write(path, &encrypted)
+}
+
+fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     let mut random = [0; 12];
     SystemRandom::new()
         .fill(&mut random)
@@ -212,8 +248,7 @@ fn write_with(
         let mut file = options
             .open(&temporary)
             .map_err(|_| SessionError::Storage)?;
-        file.write_all(&encrypted)
-            .map_err(|_| SessionError::Storage)?;
+        file.write_all(bytes).map_err(|_| SessionError::Storage)?;
         file.sync_all().map_err(|_| SessionError::Storage)?;
         drop(file);
         fs::rename(&temporary, path).map_err(|_| SessionError::Storage)?;
@@ -296,10 +331,33 @@ mod tests {
             assert_eq!(fs::read(path).unwrap(), original);
             write_with(path, account, &[], provider)?;
             assert_eq!(read_with(path, account, provider)?, None);
-            assert_eq!(fs::read_dir(path.parent().unwrap()).unwrap().count(), 2);
+            assert_eq!(fs::read_dir(path.parent().unwrap()).unwrap().count(), 3);
             Ok(())
         })
         .unwrap();
+        let identity = root.join(ACCOUNT);
+        let original_identity = fs::read(&identity).unwrap();
+        let original_snapshot = fs::read(root.join(SNAPSHOT)).unwrap();
+        for invalid in [Vec::new(), vec![0; 44], vec![b'z'; 43], vec![255; 43]] {
+            fs::write(&identity, invalid).unwrap();
+            assert_eq!(
+                locked(&root, |path, account| read_with(path, account, provider)),
+                Err(SessionError::Corrupt)
+            );
+            assert_eq!(fs::read(root.join(SNAPSHOT)).unwrap(), original_snapshot);
+        }
+        fs::write(&identity, &original_identity).unwrap();
+        #[cfg(unix)]
+        {
+            let target = root.join("owned-account-target");
+            fs::rename(&identity, &target).unwrap();
+            std::os::unix::fs::symlink(&target, &identity).unwrap();
+            assert_eq!(
+                locked(&root, |path, account| read_with(path, account, provider)),
+                Err(SessionError::Corrupt)
+            );
+            assert_eq!(fs::read(root.join(SNAPSHOT)).unwrap(), original_snapshot);
+        }
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -318,6 +376,7 @@ mod tests {
         )
         .unwrap();
         let account = format!("v1-{identity}");
+        let relocated = root.with_extension("relocated");
         let result = (|| {
             assert_eq!(read(&root)?, None);
             write(&root, b"owned-test-session")?;
@@ -329,6 +388,24 @@ mod tests {
                     .any(|part| part == b"owned-test-session")
             );
             assert_eq!(platform_key(&account, false)?.len(), 32);
+            // Existing draft snapshots enroll their legacy key while still at their original path.
+            fs::remove_file(root.join(ACCOUNT)).unwrap();
+            assert_eq!(read(&root)?, Some(b"owned-test-session".to_vec()));
+            let ciphertext = fs::read(root.join(SNAPSHOT)).unwrap();
+            fs::rename(&root, &relocated).unwrap();
+            assert_eq!(read(&relocated)?, Some(b"owned-test-session".to_vec()));
+            assert_eq!(fs::read(relocated.join(SNAPSHOT)).unwrap(), ciphertext);
+            assert_eq!(
+                fs::read_to_string(relocated.join(ACCOUNT)).unwrap(),
+                account
+            );
+            // Missing identity after a previous relocation cannot silently create a replacement key.
+            fs::remove_file(relocated.join(ACCOUNT)).unwrap();
+            assert_eq!(read(&relocated), Err(SessionError::Storage));
+            assert_eq!(fs::read(relocated.join(SNAPSHOT)).unwrap(), ciphertext);
+            fs::write(relocated.join(ACCOUNT), &account).unwrap();
+            assert_eq!(read(&relocated)?, Some(b"owned-test-session".to_vec()));
+            fs::rename(&relocated, &root).unwrap();
             clear(&root)?;
             assert_eq!(read(&root)?, None);
             Ok::<(), SessionError>(())
@@ -339,7 +416,11 @@ mod tests {
             .delete_credential();
         #[cfg(target_os = "ios")]
         let removed = security_framework::passwords::delete_generic_password(SERVICE, &account);
-        fs::remove_dir_all(root).unwrap();
+        for directory in [root, relocated] {
+            if directory.exists() {
+                fs::remove_dir_all(directory).unwrap();
+            }
+        }
         result.unwrap();
         removed.unwrap();
     }

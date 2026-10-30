@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.shared.GallerySearchScreen
+import com.ehviewer.shared.reader.ReaderStateRepository
 import com.ehviewer.shared.verifyGalleryProduct
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointerVar
@@ -39,9 +40,13 @@ import platform.UIKit.UIWindowSceneDelegateProtocol
 private val startupRegression: Boolean
     get() = NSProcessInfo.processInfo.arguments.any { it as String == "--startup-regression" }
 
-private fun applicationSession(): GallerySession {
+private fun applicationDirectory(): String {
     val support = NSFileManager.defaultManager.URLsForDirectory(NSApplicationSupportDirectory, NSUserDomainMask).first() as NSURL
-    val directory = checkNotNull(support.URLByAppendingPathComponent("EhViewer", true)?.path)
+    return checkNotNull(support.URLByAppendingPathComponent("EhViewer", true)?.path)
+}
+
+private fun applicationSession(): GallerySession {
+    val directory = applicationDirectory()
     val version = NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "development"
     return GallerySession(AppleSessionVault(directory), NativeGalleryDecoder, "EhViewer/$version")
 }
@@ -75,7 +80,8 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
         appWindow = UIWindow(windowScene = windowScene).apply {
             rootViewController = ComposeUIViewController {
                 val session = remember { applicationSession() }
-                GallerySearchScreen(session) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
+                val readerState = remember { ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/reader-state")) }
+                GallerySearchScreen(session, readerState) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
             }
             makeKeyAndVisible()
         }

@@ -165,6 +165,31 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             xml.forEach { Files.copy(it, output.resolve("network-${it.fileName}")) }
             evidence + mapOf("test_executable_sha256" to sha256(binary), "execution" to "BOOTED_OWNED_SIMULATOR")
         }
+        val readerTests = temporary { staged ->
+            phase("shared-reader-tests")
+            val started = Instant.now()
+            val log = try {
+                command(
+                    root.resolve("gradlew"), ":app:shared:iosSimulatorArm64Test", "--rerun",
+                    "-Pehviewer.reader.testSimulator=$device", "-Pehviewer.reader.testDirectory=$staged",
+                    "--console=plain", "--no-daemon", "--max-workers=1", "-Dorg.gradle.parallel=false",
+                    "-Dorg.gradle.jvmargs=-Xmx2g", "-Pkotlin.native.jvmArgs=-Xmx3g", timeout = Duration.ofMinutes(10),
+                )
+            } catch (failure: CommandFailure) {
+                output.resolve("reader-tests.log").writeText(failure.output)
+                throw failure
+            }
+            output.resolve("reader-tests.log").writeText(log)
+            val binary = root.resolve("app/shared/build/bin/iosSimulatorArm64/debugTest/test.kexe")
+            require(sha256(binary) == sha256(staged.resolve("test.kexe"))) { "Executed reader tests differ from the actual Native binary" }
+            val xml = filesBelow(root.resolve("app/shared/build/test-results/iosSimulatorArm64Test"), ".xml")
+            require(xml.isNotEmpty() && xml.all { Files.getLastModifiedTime(it).toInstant() >= started.minusSeconds(1) }) { "Missing or stale Native reader test receipts" }
+            val evidence = sharedHostTestEvidence(xml.map { Files.readAllBytes(it) }, filesBelow(root.resolve("app/shared/src/commonTest"), ".kt").size)
+            verifyReaderTests(evidence)
+            xml.forEach { Files.copy(it, output.resolve("reader-${it.fileName}")) }
+            Files.copy(binary, output.resolve("reader-tests.kexe"))
+            evidence + mapOf("test_executable_sha256" to sha256(binary), "execution" to "BOOTED_OWNED_SIMULATOR")
+        }
         command("xcrun", "simctl", "install", device, app)
         captureDirectory = Path.of(command("xcrun", "simctl", "get_app_container", device, bundle, "data").trim()).resolve("tmp")
         logStart = Instant.now()
@@ -198,6 +223,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             "source_commit" to command("git", "rev-parse", "HEAD").trim(),
             "source_dirty" to dirty,
             "network_tests" to networkTests,
+            "reader_tests" to readerTests,
             "session_backend_tests" to sessionBackend,
             "runtime" to runtime.str("name"), "device_type" to type.str("name"), "architecture" to "arm64",
             "bundle_id" to bundle, "version" to plist("CFBundleShortVersionString"), "build" to plist("CFBundleVersion"),

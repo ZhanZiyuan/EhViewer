@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.core.network.gallery.GalleryFailure
@@ -51,7 +52,7 @@ import kotlinx.coroutines.launch
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
-fun GallerySearchScreen(session: GallerySession, onReady: () -> Unit = {}) {
+fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, onReady: () -> Unit = {}) {
     var query by rememberSaveable { mutableStateOf("") }
     var loadedQuery by remember { mutableStateOf("") }
     var page by remember { mutableStateOf<GallerySearchResult?>(null) }
@@ -99,7 +100,7 @@ fun GallerySearchScreen(session: GallerySession, onReady: () -> Unit = {}) {
                 Column(Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
                     val gallery = selected
                     if (gallery != null) {
-                        GalleryDetailScreen(session, gallery, onBack = { selected = null })
+                        GalleryDetailScreen(session, gallery, readerState, onBack = { selected = null })
                         return@Column
                     }
                     Text("EhViewer", style = MaterialTheme.typography.headlineMedium)

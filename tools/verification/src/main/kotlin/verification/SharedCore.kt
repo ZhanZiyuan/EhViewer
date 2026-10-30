@@ -179,10 +179,17 @@ fun verifyProductTestReceipts(shared: Map<String, Any?>, artifacts: Path, reposi
             if (name == "network") {
                 verifyNetworkTests(tests)
             } else {
-                val suites = tests["suites"].obj().mapKeys { it.key.substringAfterLast('.').substringBefore('[') }
-                require((suites["GalleryImageLimitsTest"] as? Number)?.toInt()?.let { it >= 2 } == true) { "Shared image allocation limits were not tested" }
+                verifyReaderTests(tests)
             }
         }
+    }
+}
+
+fun verifyReaderTests(tests: Map<String, Any?>) {
+    require(tests["status"] == "PASS" && tests["executed"] == true)
+    val suites = tests["suites"].obj().mapKeys { it.key.substringAfterLast('.').substringBefore('[') }
+    for ((name, minimum) in mapOf("GalleryImageLimitsTest" to 2, "ReaderStateRepositoryTest" to 9, "ReaderPageWindowTest" to 6, "ReadingNavigationTest" to 3)) {
+        require((suites[name] as? Number)?.toInt()?.let { it >= minimum } == true) { "Required shared reader behavior was not tested: $name" }
     }
 }
 

@@ -22,7 +22,7 @@ class ProductTestReceiptsTest {
             val directory = repository.resolve(if (name == "network") "core/network/src/commonTest" else "app/shared/src/commonTest")
             Files.createDirectories(directory)
             repeat(count) { Files.writeString(directory.resolve("Source$it.kt"), "// Unit-test inventory fixture\n") }
-            val suites = if (name == "network") mapOf("GalleryRepositoryTest" to 10, "PersistentCookieStorageTest" to 9, "GalleryContentRepositoryTest" to 9) else mapOf("GalleryImageLimitsTest" to 2)
+            val suites = if (name == "network") mapOf("GalleryRepositoryTest" to 10, "PersistentCookieStorageTest" to 9, "GalleryContentRepositoryTest" to 9) else mapOf("GalleryImageLimitsTest" to 2, "ReaderStateRepositoryTest" to 9, "ReaderPageWindowTest" to 6, "ReadingNavigationTest" to 3)
             fun receipt(target: String): Map<String, Any?> {
                 val output = artifacts.resolve("tests/$target")
                 Files.createDirectories(output)

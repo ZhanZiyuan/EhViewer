@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +41,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
+import com.ehviewer.core.domain.reader.ReaderPreferences
+import com.ehviewer.core.domain.reader.ReaderStateException
+import com.ehviewer.core.domain.reader.ReaderStateStore
+import com.ehviewer.core.domain.reader.ReadingDirection
+import com.ehviewer.core.domain.reader.ReadingLayout
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.core.network.gallery.GalleryFailure
@@ -47,10 +53,11 @@ import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import kotlin.math.min
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 /** A bounded, cancellable online page reader shared by touch and desktop applications. */
 @Composable
-internal fun GalleryReaderScreen(session: GallerySession, detail: GalleryDetail, initial: String, onBack: () -> Unit) {
+internal fun GalleryReaderScreen(session: GallerySession, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit) {
     var url by remember(initial) { mutableStateOf(initial) }
     var reloadKey by remember(url) { mutableStateOf<String?>(null) }
     var document by remember { mutableStateOf<GalleryImagePage?>(null) }
@@ -61,12 +68,67 @@ internal fun GalleryReaderScreen(session: GallerySession, detail: GalleryDetail,
     var zoom by remember { mutableFloatStateOf(1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
     var viewport by remember { mutableStateOf(IntSize.Zero) }
+    var preferences by remember { mutableStateOf(ReaderPreferences()) }
+    var preferencesFailure by remember { mutableStateOf(false) }
+    var preferencesAttempt by remember { mutableIntStateOf(0) }
+    var settingsSaving by remember { mutableStateOf(false) }
+    var saveFailure by remember(url) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
-    val index = session.content.pageIndex(url, detail.gid)
+    val currentUrl = url
+    val index = session.content.pageIndex(currentUrl, detail.gid)
+    val rtl = preferences.direction == ReadingDirection.RIGHT_TO_LEFT
+    suspend fun saveProgress() {
+        try {
+            readerState.savePosition(detail.gid, index, currentUrl.substringAfter("/s/").substringBefore('/'))
+            saveFailure = false
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: ReaderStateException) {
+            saveFailure = true
+        }
+    }
+    LaunchedEffect(readerState, preferencesAttempt) {
+        try {
+            preferences = readerState.preferences()
+            preferencesFailure = false
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: ReaderStateException) {
+            preferencesFailure = true
+        }
+    }
+    fun changePreferences(changed: ReaderPreferences, afterSave: () -> Unit = {}) {
+        settingsSaving = true
+        scope.launch {
+            try {
+                readerState.setPreferences(changed)
+                afterSave()
+                preferences = changed
+                preferencesFailure = false
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: ReaderStateException) {
+                preferencesFailure = true
+            } finally {
+                settingsSaving = false
+            }
+        }
+    }
+    if (preferences.layout == ReadingLayout.CONTINUOUS) {
+        val start = remember(preferences.layout) { currentUrl }
+        Column(Modifier.fillMaxSize()) {
+            if (preferencesFailure) ReaderStateError("Reading preferences are unavailable.") { preferencesAttempt++ }
+            GalleryContinuousReader(session, detail, start, readerState, onBack, onPaged = { position ->
+                if (!settingsSaving) changePreferences(preferences.copy(layout = ReadingLayout.PAGED)) { url = position }
+            })
+        }
+        return
+    }
     fun target(link: String?, delta: Int): String? = link?.takeIf { session.content.pageIndex(it, detail.gid) == index + delta && index + delta in 0 until detail.pages }
     val previous = target(document?.previousPageUrl, -1)
     val next = target(document?.nextPageUrl, 1)
-    LaunchedEffect(url, attempt) {
+    LaunchedEffect(currentUrl, attempt) {
         loading = true
         document = null
         bitmap = null
@@ -74,9 +136,10 @@ internal fun GalleryReaderScreen(session: GallerySession, detail: GalleryDetail,
         zoom = 1f
         pan = Offset.Zero
         try {
-            val page = session.content.page(url, detail.gid, reloadKey)
+            val page = session.content.page(currentUrl, detail.gid, reloadKey)
             document = page
-            bitmap = decodeGalleryImage(session.content.image(page, url, detail.gid))
+            bitmap = decodeGalleryImage(session.content.image(page, currentUrl, detail.gid))
+            saveProgress()
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: GalleryRequestException) {
@@ -91,8 +154,10 @@ internal fun GalleryReaderScreen(session: GallerySession, detail: GalleryDetail,
             if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
             when (event.key) {
                 Key.Escape -> onBack()
-                Key.DirectionLeft, Key.PageUp -> previous?.let { url = it } ?: return@onPreviewKeyEvent false
-                Key.DirectionRight, Key.PageDown -> next?.let { url = it } ?: return@onPreviewKeyEvent false
+                Key.DirectionLeft -> (if (rtl) next else previous)?.let { url = it } ?: return@onPreviewKeyEvent false
+                Key.DirectionRight -> (if (rtl) previous else next)?.let { url = it } ?: return@onPreviewKeyEvent false
+                Key.PageUp -> previous?.let { url = it } ?: return@onPreviewKeyEvent false
+                Key.PageDown -> next?.let { url = it } ?: return@onPreviewKeyEvent false
                 else -> return@onPreviewKeyEvent false
             }
             true
@@ -107,6 +172,15 @@ internal fun GalleryReaderScreen(session: GallerySession, detail: GalleryDetail,
             }) { Text("Reset zoom") }
         }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (preferencesFailure) ReaderStateError("Reading preferences are unavailable.") { preferencesAttempt++ }
+        if (saveFailure) ReaderStateError("Reading progress could not be saved.") { scope.launch { saveProgress() } }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = { changePreferences(preferences.copy(layout = ReadingLayout.CONTINUOUS)) }, enabled = !settingsSaving) { Text("Continuous reading") }
+            TextButton(onClick = {
+                val changed = preferences.copy(direction = if (rtl) ReadingDirection.LEFT_TO_RIGHT else ReadingDirection.RIGHT_TO_LEFT)
+                changePreferences(changed)
+            }, enabled = !settingsSaving) { Text(if (rtl) "Right to left" else "Left to right") }
+        }
         failure?.let {
             GalleryError(it) {
                 reloadKey = document?.skipHathKey
@@ -155,8 +229,26 @@ internal fun GalleryReaderScreen(session: GallerySession, detail: GalleryDetail,
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = { previous?.let { url = it } }, enabled = previous != null) { Text("Previous page") }
-            TextButton(onClick = { next?.let { url = it } }, enabled = next != null) { Text("Next page") }
+            if (rtl) {
+                ReaderPageButton("Next page", next) { url = it }
+                ReaderPageButton("Previous page", previous) { url = it }
+            } else {
+                ReaderPageButton("Previous page", previous) { url = it }
+                ReaderPageButton("Next page", next) { url = it }
+            }
         }
+    }
+}
+
+@Composable
+private fun ReaderPageButton(label: String, target: String?, navigate: (String) -> Unit) {
+    TextButton(onClick = { target?.let(navigate) }, enabled = target != null) { Text(label) }
+}
+
+@Composable
+private fun ReaderStateError(message: String, retry: () -> Unit) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(message, Modifier.weight(1f))
+        TextButton(onClick = retry) { Text("Retry") }
     }
 }
