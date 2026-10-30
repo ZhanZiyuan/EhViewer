@@ -5,13 +5,14 @@ import org.junit.Test
 
 class GalleryValidationTest {
     @Test fun actualCookieAndRepositorySuitesCannotBeSkippedOrOmitted() {
-        val good = mapOf("status" to "PASS", "executed" to true, "tests" to 60, "suites" to mapOf("GalleryRepositoryTest[desktop]" to 10, "PersistentCookieStorageTest[desktop]" to 12, "GalleryContentRepositoryTest[desktop]" to 10, "GalleryAuthenticationRepositoryTest[desktop]" to 8, "BrowserSignInTest[desktop]" to 7, "GalleryAccountRepositoryTest[desktop]" to 13))
+        val good = mapOf("status" to "PASS", "executed" to true, "tests" to 66, "suites" to mapOf("GalleryRepositoryTest[desktop]" to 10, "PersistentCookieStorageTest[desktop]" to 12, "GalleryContentRepositoryTest[desktop]" to 10, "GalleryAuthenticationRepositoryTest[desktop]" to 8, "BrowserSignInTest[desktop]" to 7, "GalleryAccountRepositoryTest[desktop]" to 13, "GallerySearchFiltersTest[desktop]" to 6))
         verifyNetworkTests(good)
-        verifyNetworkTests(good + mapOf("tests" to 62, "suites" to (good["suites"].obj() + ("AdditionalNetworkTest[desktop]" to 2))))
+        verifyNetworkTests(good + mapOf("tests" to 68, "suites" to (good["suites"].obj() + ("AdditionalNetworkTest[desktop]" to 2))))
         for (bad in listOf(good + ("executed" to false), good + ("status" to "SKIPPED"), good + ("tests" to 0), good + ("suites" to mapOf("GalleryRepositoryTest" to 18)))) {
             assertThrows(IllegalArgumentException::class.java) { verifyNetworkTests(bad) }
         }
         assertThrows(IllegalArgumentException::class.java) { verifyNetworkTests(good + ("suites" to good["suites"].obj().minus("GalleryAccountRepositoryTest[desktop]"))) }
+        assertThrows(IllegalArgumentException::class.java) { verifyNetworkTests(good + ("suites" to good["suites"].obj().minus("GallerySearchFiltersTest[desktop]"))) }
     }
 
     @Test fun generatedHeaderRetainsOriginalOwnershipAndNewSessionWidths() {

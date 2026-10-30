@@ -2,18 +2,28 @@
 
 This M3 slice uses `core/network` for the real Ktor request, cookie/session contract and gallery repository, and `app/shared` for the same Compose Multiplatform search screen. Desktop and iOS launch this business screen by default. The original explicit startup/archive regressions remain available to CI. M3 is not complete.
 
-The initial search slice supports anonymous browsing, title/tag search, cursor pagination, loading, retry and empty results. Its temporary browser handoff is now superseded by the [shared details and online reader slice](gallery-details-and-reader.md). Android compiles the same network/UI libraries; integration with its existing navigation and WebView login is still pending. The existing Android application, browser cookies and Rust reader remain intact.
+The search flow supports anonymous browsing, title/tag search, cursor pagination, loading, retry and empty results. Its temporary browser handoff is superseded by the [shared details and online reader](gallery-details-and-reader.md). Android now opens the same CMP search/detail/reader through its production drawer, borrowing the original client, browser cookies and Room/DataStore instead of replacing them; see [account and Android integration](account-initialization.md).
+
+## Shared search filters
+
+`GallerySearchFilters` and the common CMP dialog implement the existing Android service protocol from `ListUrlBuilder.kt`, `EhUtils.kt` and `AdvanceTable.kt`: ten category bits, optional minimum rating (2–5), positive page bounds and the five original advanced flags. Categories default to the site's saved preferences; explicit selections become the original inverted `f_cats` mask. Numeric bounds are validated before a request, including deserialization and copies. The form edits a private draft; Cancel discards it, Reset restores site defaults, and Apply starts a new search. Paging captures the successfully submitted query/filter pair. The same saveable form and accessible checkbox state are used on Android, Desktop and iOS.
+
+This is independently implemented from EhViewer's own protocol, with no new dependency or Animeko implementation reuse. It continues the already audited common UI/platform ownership boundaries. An anonymous, TLS-verified HTTPS request on 2026-10-30 returned HTTP 200 and a real form containing all ten requested filter field names. That observation verifies form/protocol availability, not authenticated account behavior or a complete application interaction.
+
+Local preparation passed **66 network / 20 reader tests** on Android Host and Desktop, **232 verifier tests**, affected Android tests/Release lint/four APKs/benchmark/instrumentation compilation (**406 Gradle tasks / 3m21s**) and a real Kotlin-only iOS Simulator app build. APK identity, test signatures, actual ABIs/16KB alignment, diagnostics and Java 17 bytecode passed. A fresh owned iPhone Simulator also passed **66 Native network / 20 reader / 3 Keychain tests**, two cold starts with all existing account/gallery/image/WebKit/Rust ownership assertions, and lifecycle/background/resume checks; independent readback confirmed deletion.
+
+The actual Android shared-entry test now changes a category draft, cancels it and verifies that applied filters remain unchanged, alongside real display rotation and account navigation. Both phone and tablet passed all **32 tests on identical APKs**: application `fb0478e25a22cc77937a19da62bec4e2b7704a5f7ac3c800c4cf2a11161e8b09`, test APK `852283f3f87e307e0ab795814879a64f94ca4d3e7ef57d861e3d92959b1c681e`. The first phone attempt was obstructed by a captured emulator **System UI isn't responding** dialog; no application runtime crash was recorded. Restarting the owned emulator after compilers finished passed the identical APKs and assertions; the failure remains preserved. Manual real-site form interaction remains unverified while the host is locked. This feature is prepared separately from the preceding verified account/index snapshot and is not yet committed or accepted by hosted CI. M3 remains incomplete.
 
 ## Platform boundaries
 
 | Shared contract | Desktop | iOS | Android |
 |---|---|---|---|
-| Ktor engine | OkHttp | Darwin, automatic system cookies disabled | OkHttp; existing browser integration retained |
+| Ktor engine | OkHttp | Darwin, automatic system cookies disabled | Original application Cronet/OkHttp client and browser integration |
 | Gallery HTML decoding | Original Rust parser via JNI; Windows uses the existing secure C ABI loader | Same parser through generated C ABI declarations | JNI adapter available; existing parser path retained |
 | Persistent session snapshot | Rust AES-256-GCM; OS Keychain, Credential Manager or Secret Service holds only a random 32-byte key | Same authenticated snapshot; real iOS Keychain | Existing browser cookie store; no desktop vault substituted |
-| Search UI | Shared CMP screen | Same CMP screen inside the Kotlin UIKit entry | Shared library built; navigation integration pending |
+| Search UI | Shared CMP screen | Same CMP screen inside the Kotlin UIKit entry | Same CMP screen through the original navigation and data adapters |
 
-Cookies retain HTTPS, host-only/domain, path-boundary and expiry rules. A corrupt or inaccessible store fails explicitly and does not silently become a successful empty session. Cancellation propagates. Public exceptions omit cookies, URLs, response bodies and backend causes. Logout clears the active encrypted snapshot. Authentication UI and browser session handoff remain subsequent M3 work.
+Cookies retain HTTPS, host-only/domain, path-boundary and expiry rules. A corrupt or inaccessible store fails explicitly and does not silently become a successful empty session. Cancellation propagates. Public exceptions omit cookies, URLs, response bodies and backend causes. Logout clears the active encrypted snapshot. [Authentication](gallery-authentication.md), [iOS browser handoff](browser-sign-in.md) and [desktop native browser handoff](desktop-browser-sign-in.md) now extend this initial slice; full live-account and platform P0 acceptance remains incomplete.
 
 Requests use a [streaming Ktor statement](https://api.ktor.io/ktor-client-core/io.ktor.client.statement/-http-statement/execute.html), stop above 8 MiB, and cancel the channel. A producer-backed regression detects accidental eager buffering. Rust parsing runs off the UI dispatcher. No HTTP logging plugin or production in-memory vault is installed.
 

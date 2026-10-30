@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,10 +47,17 @@ import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
+import com.ehviewer.core.network.gallery.GallerySearchFilters
 import com.ehviewer.core.network.gallery.GallerySearchResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+
+private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
+    save = { Json.encodeToString(it) },
+    restore = { runCatching { Json.decodeFromString<GallerySearchFilters>(it) }.getOrNull() },
+)
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
@@ -72,6 +80,9 @@ fun GalleryLibraryScreen(
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var loadedQuery by remember { mutableStateOf("") }
+    var filters by rememberSaveable(stateSaver = searchFiltersSaver) { mutableStateOf(GallerySearchFilters()) }
+    var loadedFilters by remember { mutableStateOf(GallerySearchFilters()) }
+    var filtersOpen by remember { mutableStateOf(false) }
     var page by remember { mutableStateOf<GallerySearchResult?>(null) }
     var failure by remember { mutableStateOf<GalleryFailure?>(null) }
     var loading by remember { mutableStateOf(false) }
@@ -86,15 +97,18 @@ fun GalleryLibraryScreen(
         request?.cancel()
         val current = ++generation
         val text = if (cursor == null) query else loadedQuery
+        val appliedFilters = if (cursor == null) filters else loadedFilters
         if (cursor == null) page = null
         request = scope.launch {
             loading = true
             failure = null
             try {
-                val result = session.galleries.search(text, cursor, previous)
+                val result = session.galleries.search(text, cursor, previous, appliedFilters)
                 if (current == generation) {
                     page = result
                     loadedQuery = text
+                    loadedFilters = appliedFilters
+                    resultsState.scrollToItem(0)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -123,6 +137,7 @@ fun GalleryLibraryScreen(
                             page = null
                             query = ""
                             loadedQuery = ""
+                            loadedFilters = GallerySearchFilters()
                             failure = null
                             loading = false
                         }, { account = false })
@@ -156,6 +171,17 @@ fun GalleryLibraryScreen(
                             keyboardActions = KeyboardActions(onSearch = { load() }),
                         )
                         Button(onClick = { load() }) { Text("Search") }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { filtersOpen = true }) { Text("Filters") }
+                        if (filters != GallerySearchFilters()) Text("Filters applied", style = MaterialTheme.typography.labelMedium)
+                    }
+                    if (filtersOpen) {
+                        GallerySearchFiltersDialog(filters, onApply = { applied ->
+                            filters = applied
+                            filtersOpen = false
+                            load()
+                        }, onDismiss = { filtersOpen = false })
                     }
                     if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                     val error = failure

@@ -25,12 +25,13 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
     private val host = if (restricted) "exhentai.org" else "e-hentai.org"
     private val requests = GalleryRequests(client, host)
 
-    suspend fun search(query: String = "", cursor: String? = null, previous: Boolean = false): GallerySearchResult {
+    suspend fun search(query: String = "", cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult {
         require(query.length <= 4096 && (cursor == null || Regex("[0-9]+(?:-[0-9]+)?").matches(cursor)))
         val url = URLBuilder(URLProtocol.HTTPS, host).apply {
             encodedPath = "/"
             if (query.isNotBlank()) parameters.append("f_search", query)
             if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
+            filters.appendTo(this)
         }.build()
         return requests.document(url, decoder::decode)
     }

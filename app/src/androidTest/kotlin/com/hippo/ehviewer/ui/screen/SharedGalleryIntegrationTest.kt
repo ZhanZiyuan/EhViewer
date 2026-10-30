@@ -29,6 +29,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -75,6 +76,13 @@ class SharedGalleryIntegrationTest {
                 }
                 rotate(true)
                 rotate(false)
+                requireNotNull(device.wait(Until.findObject(By.text("Filters")), 5_000)).click()
+                assertTrue("Common filters did not open", device.wait(Until.hasObject(By.text("Search filters")), 5_000))
+                requireNotNull(device.wait(Until.findObject(By.text("Use site category preferences")), 5_000)).click()
+                assertTrue("Category draft did not change", device.wait(Until.hasObject(By.text("Miscellaneous")), 5_000))
+                requireNotNull(device.wait(Until.findObject(By.text("Cancel")), 5_000)).click()
+                searchIsVisible()
+                assertFalse("Cancelling filters changed the applied search", device.hasObject(By.text("Filters applied")))
                 requireNotNull(device.wait(Until.findObject(By.text("Account")), 5_000)).click()
                 assertTrue("Original account settings did not open", device.wait(Until.hasObject(By.text(context.getString(com.ehviewer.core.i18n.R.string.settings_eh))), 10_000))
                 device.pressBack()
