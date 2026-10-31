@@ -16,6 +16,10 @@ dependencies {
 
 gradlePlugin {
     plugins {
+        register("desktopSqlite") {
+            id = "ehviewer.desktop.sqlite"
+            implementationClass = "DesktopSqliteConventionPlugin"
+        }
         register("androidApplication") {
             id = libs.plugins.ehviewer.android.application.get().pluginId
             implementationClass = "AndroidApplicationConventionPlugin"
