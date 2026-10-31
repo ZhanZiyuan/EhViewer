@@ -126,12 +126,18 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
 
     // The native Windows launcher can still use Cp1252. Keep both JVM hops ASCII-only.
     fun encoded(path: Path) = Base64.getEncoder().encodeToString(path.toString().toByteArray(Charsets.UTF_8))
-    capture(
-        "jvm-probe.txt", jdk.resolve("bin/java.exe"), "-Dorg.gradle.appname=gradlew", "-jar", root.resolve("gradle/wrapper/gradle-wrapper.jar"),
-        "-p", root.resolve("app/desktop"), "rustCapiProbe", "spotlessCheck", ":core:data:desktopTest", "-PffiLibraryBase64=${encoded(library)}", "-PffiOutputBase64=${encoded(caller)}",
-        "--console=plain", "--no-daemon", "--max-workers=1", "-Dorg.gradle.parallel=false", "-Dorg.gradle.jvmargs=-Xmx2g", "-Dorg.gradle.java.home=$jdk",
-        environment = mapOf("JAVA_HOME" to jdk.toString(), pathKey to "${jdk.resolve("bin")};${System.getenv(pathKey)}"),
-    )
+    try {
+        capture(
+            "jvm-probe.txt", jdk.resolve("bin/java.exe"), "-Dorg.gradle.appname=gradlew", "-jar", root.resolve("gradle/wrapper/gradle-wrapper.jar"),
+            "-p", root.resolve("app/desktop"), "rustCapiProbe", "spotlessCheck", ":core:data:desktopTest", "-PffiLibraryBase64=${encoded(library)}", "-PffiOutputBase64=${encoded(caller)}",
+            "--console=plain", "--no-daemon", "--max-workers=1", "-Dorg.gradle.parallel=false", "-Dorg.gradle.jvmargs=-Xmx2g", "-Dorg.gradle.java.home=$jdk",
+            environment = mapOf("JAVA_HOME" to jdk.toString(), pathKey to "${jdk.resolve("bin")};${System.getenv(pathKey)}"),
+        )
+    } finally {
+        // Keep full migration exceptions even when the actual native test command fails.
+        val reports = output.resolve("data-tests").createDirectories()
+        filesBelow(root.resolve("core/data/build/test-results/desktopTest"), ".xml").forEach { Files.copy(it, reports.resolve(it.fileName)) }
+    }
     val proof = Properties().apply { caller.resolve("ffi.properties").inputStream().use { load(it) } }
     require(proof.getProperty("result") == "PASS" && proof.getProperty("architecture") == "aarch64" && proof.getProperty("os").startsWith("Windows")) { "Caller was not a real Windows ARM64 JVM" }
     require(proof.getProperty("java_version") == "25.0.5.0.2" && Path.of(proof.getProperty("java_home")).toRealPath() == jdk.toRealPath()) { "Caller used a different JVM" }
@@ -143,8 +149,6 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
     val dataSources = listOf("commonTest", "nonAndroidTest", "desktopTest").sumOf { filesBelow(root.resolve("core/data/src/$it"), ".kt").size }
     val dataTests = sharedHostTestEvidence(dataXml.map { Files.readAllBytes(it) }, dataSources)
     verifyDataTests(dataTests)
-    val dataReports = output.resolve("data-tests").createDirectories()
-    dataXml.forEach { Files.copy(it, dataReports.resolve(it.fileName)) }
     val result = mapOf(
         "source_commit" to source, "source_dirty" to dirty, "result" to "PASS", "target" to "aarch64-pc-windows-msvc",
         "jdk_url" to WINDOWS_JDK_URL, "jdk_archive_sha256" to WINDOWS_JDK_SHA256, "java_sha256" to sha256(jdk.resolve("bin/java.exe")),

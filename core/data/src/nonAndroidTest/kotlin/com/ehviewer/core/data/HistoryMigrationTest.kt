@@ -6,6 +6,7 @@ import androidx.sqlite.SQLiteDriver
 import androidx.sqlite.execSQL
 import com.ehviewer.core.data.fixture.schema17Statements
 import com.ehviewer.core.database.EhDatabase
+import com.ehviewer.core.database.OwnedRoomDatabase
 import com.ehviewer.core.database.Schema17to18
 import com.ehviewer.core.domain.GalleryHistoryException
 import com.ehviewer.core.model.BaseGalleryInfo
@@ -19,7 +20,7 @@ import kotlinx.coroutines.test.runTest
 internal data class OwnedDatabaseFile(val path: String, val cleanup: () -> Unit)
 internal expect fun ownedDatabaseFile(): OwnedDatabaseFile
 internal expect fun rawHistoryDriver(): SQLiteDriver
-internal expect fun fileHistoryDatabase(path: String, migrations: List<Migration> = listOf(Schema17to18())): EhDatabase
+internal expect fun fileHistoryDatabase(path: String, migrations: List<Migration> = listOf(Schema17to18())): OwnedRoomDatabase<EhDatabase>
 
 /** Real files and the original 17→18→23 migrations; never use destructive migration fallbacks. */
 class HistoryMigrationTest {
@@ -49,17 +50,19 @@ class HistoryMigrationTest {
             createLegacy(owned.path)
             var db = fileHistoryDatabase(owned.path)
             try {
-                val store = RoomGalleryHistoryStore(db)
+                val store = RoomGalleryHistoryStore(db.database)
                 assertEquals("日本語 history", store.recent().single().title)
-                assertEquals(12, db.progressDao().load(1)?.page)
-                assertNull(db.galleryDao().load(2)) // Original 17→18 removes invalid nullable tokens.
+                assertEquals(12, db.database.progressDao().load(1)?.page)
+                assertNull(db.database.galleryDao().load(2)) // Original 17→18 removes invalid nullable tokens.
+                assertTrue(db.activeConnectionCount > 0)
             } finally {
                 db.close()
+                assertEquals(0, db.activeConnectionCount)
             }
             db = fileHistoryDatabase(owned.path)
             try {
-                assertEquals("日本語 history", RoomGalleryHistoryStore(db).recent().single().title)
-                assertEquals(12, db.progressDao().load(1)?.page)
+                assertEquals("日本語 history", RoomGalleryHistoryStore(db.database).recent().single().title)
+                assertEquals(12, db.database.progressDao().load(1)?.page)
             } finally {
                 db.close()
             }
@@ -86,9 +89,11 @@ class HistoryMigrationTest {
             }
             val db = fileHistoryDatabase(owned.path, listOf(failing))
             try {
-                assertFailsWith<GalleryHistoryException> { RoomGalleryHistoryStore(db).recent() }
+                assertFailsWith<GalleryHistoryException> { RoomGalleryHistoryStore(db.database).recent() }
             } finally {
                 db.close()
+                assertEquals(0, db.activeConnectionCount)
+                db.close() // Closing an owner twice must not close a reused native handle.
             }
             rawHistoryDriver().open(owned.path).use { raw ->
                 assertEquals(17, raw.long("PRAGMA user_version"))
@@ -105,16 +110,17 @@ class HistoryMigrationTest {
         try {
             val original = fileHistoryDatabase(owned.path)
             try {
-                RoomGalleryHistoryStore(original).record(BaseGalleryInfo(gid = 1, token = "0123456789", title = "Future history"))
+                RoomGalleryHistoryStore(original.database).record(BaseGalleryInfo(gid = 1, token = "0123456789", title = "Future history"))
             } finally {
                 original.close()
             }
             rawHistoryDriver().open(owned.path).use { it.execSQL("PRAGMA user_version=24") }
             val db = fileHistoryDatabase(owned.path)
             try {
-                assertFailsWith<GalleryHistoryException> { RoomGalleryHistoryStore(db).recent() }
+                assertFailsWith<GalleryHistoryException> { RoomGalleryHistoryStore(db.database).recent() }
             } finally {
                 db.close()
+                assertEquals(0, db.activeConnectionCount)
             }
             rawHistoryDriver().open(owned.path).use { raw ->
                 assertEquals(24, raw.long("PRAGMA user_version"))

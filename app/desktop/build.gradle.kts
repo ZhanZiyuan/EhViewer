@@ -211,6 +211,27 @@ val selectIntelSkiko = tasks.register<SelectIntelSkiko>("selectIntelSkiko") {
 }
 
 val repositoryRoot = layout.projectDirectory.dir("../..")
+val sqliteSource = configurations.create("desktopSqliteSource") { isTransitive = false }
+val sqliteTarget = when {
+    System.getProperty("os.name").startsWith("Mac") -> "osx"
+    System.getProperty("os.name").startsWith("Windows") -> "windows"
+    System.getProperty("os.name") == "Linux" -> "linux"
+    else -> error("Unsupported desktop SQLite operating system")
+} + "_" + when (System.getProperty("os.arch")) {
+    "aarch64", "arm64" -> "arm64"
+    "amd64", "x86_64" -> "x64"
+    else -> error("Unsupported desktop SQLite architecture")
+}
+val selectDesktopSqlite = tasks.register<SelectDesktopSqlite>("selectDesktopSqlite") {
+    source.from(sqliteSource)
+    target.set(sqliteTarget)
+    sourceSha256.set("e61efb0647288b486e595950724cc53c4f15eeeca03ce2184751d02de3cfaa17")
+    destination.set(layout.buildDirectory.file("native-dependencies/sqlite-bundled-$sqliteTarget-${libs.versions.androidx.sqlite.get()}.jar"))
+}
+configurations.named("runtimeClasspath") {
+    exclude(group = "androidx.sqlite", module = "sqlite-bundled")
+    exclude(group = "androidx.sqlite", module = "sqlite-bundled-jvm")
+}
 val intelMac = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")
 val windowsArm = System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64"
 val prepareDesktopNative = tasks.register<BuildDesktopNative>("prepareDesktopNative") {
@@ -281,6 +302,8 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 dependencies {
+    add(sqliteSource.name, "androidx.sqlite:sqlite-bundled-jvm:${libs.versions.androidx.sqlite.get()}")
+    runtimeOnly(files(selectDesktopSqlite.flatMap { it.destination }))
     implementation(project(":core:network"))
     implementation(project(":core:data"))
     implementation(project(":app:shared"))

@@ -50,6 +50,11 @@ room {
 
 tasks.named<Jar>("desktopJar") { archiveFileName.set("data-jvm.jar") }
 
+tasks.withType<Test>().configureEach {
+    inputs.property("sqliteOperatingSystem", System.getProperty("os.name"))
+    inputs.property("sqliteArchitecture", System.getProperty("os.arch"))
+}
+
 val migrationFixtures = tasks.register<GenerateDatabaseMigrationFixtures>("generateDatabaseMigrationFixtures") {
     historicalSchema.set(layout.projectDirectory.file("schemas/com.ehviewer.core.database.EhDatabase/17.json"))
     outputDirectory.set(layout.buildDirectory.dir("generated/migration-test-fixtures"))

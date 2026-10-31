@@ -6,7 +6,7 @@ import com.ehviewer.core.data.RoomGalleryHistoryStore
 import com.ehviewer.core.database.DataDirectory
 import com.ehviewer.core.database.EhDatabase
 import com.ehviewer.core.database.Schema17to18
-import com.ehviewer.core.database.roomDb
+import com.ehviewer.core.database.ownedRoomDb
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
 import com.ehviewer.core.network.session.NativeSessionVault
@@ -46,7 +46,8 @@ fun galleryApplication() {
     val browserLibrary = resources.resolve(if (windows) "ehviewer_capi.dll" else "libehviewer_rust.${if (System.getProperty("os.name").startsWith("Mac")) "dylib" else "so"}")
     val browsers = DesktopBrowserService(browserLibrary, resources.resolve(if (windows) "ehviewer_browser.exe" else "ehviewer_browser"))
     DataDirectory.configure(applicationData().resolve("database").toString().toPath())
-    val database = roomDb<EhDatabase>("eh.db") { addMigrations(Schema17to18()) }
+    val databaseOwner = ownedRoomDb<EhDatabase>("eh.db") { addMigrations(Schema17to18()) }
+    val database = databaseOwner.database
     val history = RoomGalleryHistoryStore(database)
     try {
         application {
@@ -57,6 +58,6 @@ fun galleryApplication() {
     } finally {
         browsers.close()
         session.close()
-        database.close()
+        databaseOwner.close()
     }
 }

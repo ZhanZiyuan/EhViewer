@@ -10,7 +10,7 @@ import com.ehviewer.core.data.RoomGalleryHistoryStore
 import com.ehviewer.core.database.DataDirectory
 import com.ehviewer.core.database.EhDatabase
 import com.ehviewer.core.database.Schema17to18
-import com.ehviewer.core.database.roomDb
+import com.ehviewer.core.database.ownedRoomDb
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.shared.AppleGalleryLoginBrowser
 import com.ehviewer.shared.GallerySearchScreen
@@ -97,11 +97,12 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                 val session = remember { applicationSession() }
                 val readerState = remember { ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/reader-state")) }
                 val appearance = remember { GalleryAppearanceRepository(AppleSessionVault("${applicationDirectory()}/appearance")) }
-                val database = remember {
+                val databaseOwner = remember {
                     DataDirectory.configure("${applicationDirectory()}/database".toPath())
-                    roomDb<EhDatabase>("eh.db") { addMigrations(Schema17to18()) }
+                    ownedRoomDb<EhDatabase>("eh.db") { addMigrations(Schema17to18()) }
                 }
-                DisposableEffect(database) { onDispose { database.close() } }
+                val database = databaseOwner.database
+                DisposableEffect(databaseOwner) { onDispose { databaseOwner.close() } }
                 val history = remember(database) { RoomGalleryHistoryStore(database) }
                 if (startupRegression) {
                     LaunchedEffect(history) {
