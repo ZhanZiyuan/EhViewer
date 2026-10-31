@@ -14,7 +14,6 @@ import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.session.BrowserSessionCookie
 import com.ehviewer.shared.GalleryLoginBrowser
 import java.nio.file.Path
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
@@ -40,21 +39,26 @@ internal class DesktopBrowserService(private val library: Path, private val bina
     private val calls: BrowserCalls = if (windows) WindowsBrowserCalls(library) else NativeBrowserBridge()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val closing = AtomicBoolean()
-    private val browsers = ConcurrentHashMap.newKeySet<DesktopGalleryLoginBrowser>()
+    private val browsers = mutableSetOf<DesktopGalleryLoginBrowser>()
 
-    fun create(userAgent: String): GalleryLoginBrowser {
+    fun create(userAgent: String): GalleryLoginBrowser = synchronized(browsers) {
         check(!closing.get())
-        return DesktopGalleryLoginBrowser(calls, binary, userAgent, scope) { browsers.remove(it) }.also {
+        DesktopGalleryLoginBrowser(calls, binary, userAgent, scope) { browser ->
+            synchronized(browsers) { browsers.remove(browser) }
+        }.also {
             browsers.add(it)
         }
     }
 
     override fun close() {
         if (!closing.compareAndSet(false, true)) return
+        // Cleanup removes entries on IO threads. Capture ownership under the same
+        // lock as registration/removal, before awaiting any native work.
+        val pending = synchronized(browsers) { browsers.toList() }
         try {
             runBlocking {
                 withTimeout(30_000) {
-                    browsers.toList().forEach { browser ->
+                    pending.forEach { browser ->
                         browser.close()
                         browser.cleanup()
                     }

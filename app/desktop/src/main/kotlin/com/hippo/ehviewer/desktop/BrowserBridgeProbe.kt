@@ -33,8 +33,16 @@ internal fun verifyBrowserBridge(library: Path, binary: Path, cApi: Boolean): Js
         if (serviceSupported) {
             // Exercise the real service's abandoned-composition cleanup: no
             // browser starts, no deferred opening signal can stall app shutdown.
-            DesktopBrowserService(library, binary).use { service ->
-                service.create("EhViewer/uncomposed-browser-regression").close()
+            repeat(64) {
+                val service = DesktopBrowserService(library, binary)
+                service.use {
+                    repeat(16) {
+                        service.create("EhViewer/uncomposed-browser-regression").close()
+                    }
+                }
+                // Shutdown is idempotent and cannot admit new owners afterwards.
+                service.close()
+                check(runCatching { service.create("EhViewer/closed-browser-regression") }.isFailure)
             }
             check(calls.active() == 0)
         }
