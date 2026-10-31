@@ -77,7 +77,8 @@ class SnapshotWorkflowTest(private val scenario: String, private val build: Bool
             assertEquals("", output.readText())
         } else {
             assertEquals(capture.readText(), 0, process.exitValue())
-            assertEquals("build=$build\n", output.readText())
+            val artifactRun = if (build || scenario.startsWith("rerun")) 900 else 101
+            assertEquals("build=$build\nartifact_run_id=$artifactRun\n", output.readText())
         }
     }
 }

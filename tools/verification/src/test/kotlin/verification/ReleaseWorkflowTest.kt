@@ -1,13 +1,11 @@
 package verification
 
-import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
-import kotlin.system.exitProcess
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -94,88 +92,94 @@ class ReleaseWorkflowTest(private val scenario: String, private val expectedErro
         val stateFile = temp.resolve("github.json")
         stateFile.writeText(json(mapOf("scenario" to scenario, "calls" to emptyList<Any>())))
         val bin = Files.createDirectories(temp.resolve("bin"))
-        // This temporary launcher only invokes the Kotlin mock; no shell test file is tracked.
-        val classpath = listOf(
-            ReleaseWorkflowTest::class.java,
-            Options::class.java,
-            Unit::class.java,
-            groovy.json.JsonSlurper::class.java,
-            groovy.json.JsonOutput::class.java,
-            groovy.lang.GroovyObject::class.java,
-        ).map { Path.of(it.protectionDomain.codeSource.location.toURI()).absolutePathString() }.distinct().joinToString(File.pathSeparator)
+        // Each invocation remains a real child process; only the already-loaded Kotlin model is reused.
+        val client = Path.of(System.getProperty("verification.offlineClient"))
+        check(Files.isExecutable(client)) { "Missing compiled offline test client" }
         fun quote(value: String): String = "'" + value.replace("'", "'\\''") + "'"
-        val java = Path.of(System.getProperty("java.home"), "bin/java").absolutePathString()
-        mapOf("gh" to "MockReleaseGitHub", "sha256sum" to "MockReleaseChecksum").forEach { (name, mainClass) ->
+        mapOf("gh" to "gh", "sha256sum" to "checksum").forEach { (name, mode) ->
             bin.resolve(name).apply {
-                writeText("#!/bin/sh\nexec ${quote(java)} -cp ${quote(classpath)} verification.$mainClass \"${'$'}@\"\n")
+                writeText("#!/bin/sh\nexec ${quote(client.absolutePathString())} $mode \"${'$'}@\"\n")
                 check(toFile().setExecutable(true, true))
             }
         }
-        val capture = temp.resolve("output.log")
-        val builder = ProcessBuilder("bash", "-c", script)
-            .directory(temp.toFile()).redirectErrorStream(true).redirectOutput(capture.toFile())
-        builder.environment().apply {
-            this["PATH"] = bin.absolutePathString() + File.pathSeparator + getValue("PATH")
-            this["MOCK_RELEASE_STATE"] = stateFile.absolutePathString()
-            this["GH_TOKEN"] = "offline-test-token"
-            this["GH_REPO"] = "example/offline"
-            this["RELEASE_TAG"] = tag
-            this["SOURCE_SHA"] = RELEASE_SOURCE
-        }
-        val process = builder.start()
-        if (!process.waitFor(60, TimeUnit.SECONDS)) {
-            process.destroyForcibly().waitFor()
-            error("Publish regression timed out: $scenario")
-        }
-        val output = capture.readText()
-        val state = readJson(stateFile)
-        val calls = state.getValue("calls").array().map { call -> call.array().map { it as String } }
-        if (expectedError == null) {
-            assertEquals(output, 0, process.exitValue())
-            assertEquals(RELEASE_SOURCE, state["tag"])
-            assertEquals(true, state["published"])
-            assertEquals(attachments.map { it.getValue("name") }.toSet(), state["assets"].array().toSet())
-            if (scenario.startsWith("draft-")) assertFalse(calls.any { it.take(2) == listOf("release", "create") })
-            if (scenario == "first-publication") {
-                val createTag = calls.indexOfFirst { "POST" in it }
-                val createDraft = calls.indexOfFirst { it.take(2) == listOf("release", "create") }
-                assertTrue(calls.toString(), createTag >= 0 && createTag < createDraft)
+        OfflineProcessServer { mode, arguments, input ->
+            when (mode) {
+                "gh" -> MockReleaseGitHub.respond(arguments, stateFile, tag)
+                "checksum" -> MockReleaseChecksum.respond(arguments, input, temp)
+                else -> error("Unknown offline mode: $mode")
             }
-        } else {
-            assertTrue(output, process.exitValue() != 0)
-            assertTrue(output, output.contains(expectedError))
-            assertFalse(calls.toString(), calls.any { it.take(2) == listOf("release", "edit") })
+        }.use { offline ->
+            val capture = temp.resolve("output.log")
+            val builder = ProcessBuilder("bash", "-c", script)
+                .directory(temp.toFile()).redirectErrorStream(true).redirectOutput(capture.toFile())
+            builder.environment().apply {
+                this["PATH"] = bin.absolutePathString() + java.io.File.pathSeparator + getValue("PATH")
+                this["MOCK_RELEASE_STATE"] = stateFile.absolutePathString()
+                this["MOCK_RELEASE_ENDPOINT"] = offline.endpoint
+                this["MOCK_RELEASE_TOKEN"] = offline.token
+                this["GH_TOKEN"] = "offline-test-token"
+                this["GH_REPO"] = "example/offline"
+                this["RELEASE_TAG"] = tag
+                this["SOURCE_SHA"] = RELEASE_SOURCE
+            }
+            val process = builder.start()
+            if (!process.waitFor(60, TimeUnit.SECONDS)) {
+                process.descendants().use { children -> children.toList().asReversed().forEach { it.destroyForcibly() } }
+                process.destroyForcibly().waitFor()
+                error("Publish regression timed out: $scenario\n${capture.readText()}")
+            }
+            val output = capture.readText()
+            val state = readJson(stateFile)
+            val calls = state.getValue("calls").array().map { call -> call.array().map { it as String } }
+            if (expectedError == null) {
+                assertEquals(output, 0, process.exitValue())
+                assertEquals(RELEASE_SOURCE, state["tag"])
+                assertEquals(true, state["published"])
+                assertEquals(attachments.map { it.getValue("name") }.toSet(), state["assets"].array().toSet())
+                if (scenario.startsWith("draft-")) assertFalse(calls.any { it.take(2) == listOf("release", "create") })
+                if (scenario == "first-publication") {
+                    val createTag = calls.indexOfFirst { "POST" in it }
+                    val createDraft = calls.indexOfFirst { it.take(2) == listOf("release", "create") }
+                    assertTrue(calls.toString(), createTag >= 0 && createTag < createDraft)
+                }
+            } else {
+                assertTrue(output, process.exitValue() != 0)
+                assertTrue(output, output.contains(expectedError))
+                assertFalse(calls.toString(), calls.any { it.take(2) == listOf("release", "edit") })
+            }
+            assertFalse(calls.toString(), calls.any { "PATCH" in it || "DELETE" in it || it.any { arg -> "/commits/" in arg } })
+            if (scenario == "cyclic-tag") {
+                println("cyclic-tag JVM=${System.getProperty("os.arch")}; Java=${System.getProperty("java.version")}; mock API calls=${calls.size}; deadline=60s")
+            }
         }
-        assertFalse(calls.toString(), calls.any { "PATCH" in it || "DELETE" in it || it.any { arg -> "/commits/" in arg } })
     }
 }
 
 /** macOS and Linux expose different checksum CLIs; validate the same real bytes with the JDK. */
-object MockReleaseChecksum {
-    @JvmStatic fun main(args: Array<String>) {
+internal object MockReleaseChecksum {
+    fun respond(args: Array<String>, input: String, directory: Path): OfflineProcessResult {
         check(args.toList() == listOf("-c"))
         var valid = true
-        System.`in`.bufferedReader().forEachLine { line ->
+        val output = StringBuilder()
+        input.reader().buffered().forEachLine { line ->
             val (expected, filename) = line.split("  ", limit = 2)
-            val matches = sha256(Path.of(filename)) == expected
-            println("$filename: ${if (matches) "OK" else "FAILED"}")
+            val matches = sha256(directory.resolve(filename)) == expected
+            output.appendLine("$filename: ${if (matches) "OK" else "FAILED"}")
             valid = valid && matches
         }
-        if (!valid) exitProcess(1)
+        return OfflineProcessResult(if (valid) 0 else 1, output.toString())
     }
 }
 
 /** A process boundary ensures Bash receives realistic exit codes, stdout, stderr and persisted state. */
-object MockReleaseGitHub {
+internal object MockReleaseGitHub {
     private class ApiFailure(val status: Int) : RuntimeException()
 
-    @JvmStatic fun main(args: Array<String>) {
-        val stateFile = Path.of(System.getenv("MOCK_RELEASE_STATE"))
+    fun respond(args: Array<String>, stateFile: Path, tag: String): OfflineProcessResult {
         val state = readJson(stateFile).toMutableMap()
         val calls = state["calls"].array().toMutableList().apply { add(args.toList()) }
         state["calls"] = calls
         val scenario = state.str("scenario")
-        val tag = System.getenv("RELEASE_TAG")
         fun fail(status: Int): Nothing = throw ApiFailure(status)
         fun release(target: String = RELEASE_SOURCE, draft: Boolean = true): Map<String, Any> = mapOf("tag_name" to tag, "target_commitish" to target, "draft" to draft)
         fun initialTag(): String? = when (scenario) {
@@ -255,11 +259,10 @@ object MockReleaseGitHub {
                 }
             }
             stateFile.writeText(json(state))
-            print(output)
+            return OfflineProcessResult(0, output)
         } catch (failure: ApiFailure) {
             stateFile.writeText(json(state))
-            System.err.println("gh: Mock API error (HTTP ${failure.status})")
-            exitProcess(1)
+            return OfflineProcessResult(1, stderr = "gh: Mock API error (HTTP ${failure.status})\n")
         }
     }
 }

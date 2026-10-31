@@ -9,5 +9,3 @@ interface CookieManager {
     fun removeAllCookies()
     fun flush()
 }
-
-expect fun getCookieManager(): CookieManager

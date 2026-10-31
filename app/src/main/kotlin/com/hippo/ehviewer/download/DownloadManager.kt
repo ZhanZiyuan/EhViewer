@@ -101,6 +101,12 @@ object DownloadManager : OnSpiderListener, CoroutineScope {
     private val mutex = Mutex()
 
     private val sortMutex = Mutex()
+
+    /** Snapshot shared UI values while the original list's insertion/removal lock is held. */
+    internal suspend fun <T> mapDownloadInfo(transform: (DownloadInfo) -> T): List<T> = sortMutex.withLock {
+        allInfoList.map(transform)
+    }
+
     private val sortMode
         get() = SortMode.from(Settings.downloadSortMode.value)
 

@@ -1,0 +1,35 @@
+[workspace]
+resolver = "3"
+
+[package]
+name = "ehviewer_browser"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "GPL-3.0-or-later"
+
+[dependencies]
+wry = "=0.57.1"
+tao = "=0.37.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+url = "2.5"
+
+[dev-dependencies]
+ehviewer_browser_client = { path = "../rust/browser" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+webkit2gtk = "=2.0.2"
+webkit2gtk-sys = "=2.0.2"
+soup3 = "=0.5.0"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "=0.6.5"
+objc2-foundation = { version = "=0.3.2", features = ["NSArray", "NSHTTPCookie", "NSDate", "NSRunLoop"] }
+objc2-web-kit = { version = "=0.3.2", features = ["WKWebView", "WKWebsiteDataStore", "WKHTTPCookieStore"] }
+block2 = "=0.6.2"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+webview2-com = "=0.39.1"
+windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }

@@ -10,6 +10,7 @@ use memmap2::{Mmap, MmapMut, MmapOptions};
 use std::ffi::{CStr, CString};
 use std::fs::File;
 use std::io::{Read, Write};
+#[cfg(unix)]
 use std::os::fd::RawFd;
 use std::ptr::NonNull;
 use std::sync::{Arc, Condvar, Mutex, Weak};
@@ -19,7 +20,7 @@ use sys::*;
 
 const OK: i32 = 0;
 const EOF: i32 = 1;
-const REG: libc::mode_t = 0o100000;
+const REG: Mode = 0o100000;
 const POOL_SIZE: usize = 20;
 const MAX_PARALLEL: usize = 4;
 
@@ -735,9 +736,84 @@ impl Writer {
     }
 }
 /// ZIP/store writer. Caller owns fd; reads each input from its current offset and never closes it.
+#[cfg(unix)]
 pub fn write_zip(inputs: &mut [(File, String)], output: RawFd) -> Result<()> {
+    ensure!(output >= 0, "Invalid ZIP output descriptor");
+    write_zip_to(inputs, |a| unsafe { archive_write_open_fd(a, output) })
+}
+
+struct FileOutput<'a> {
+    file: &'a mut File,
+    error: Option<std::io::Error>,
+}
+
+unsafe extern "C" fn write_file(
+    _: *mut Archive,
+    data: *mut std::ffi::c_void,
+    bytes: *const std::ffi::c_void,
+    len: usize,
+) -> isize {
+    // SAFETY: write_zip_file keeps this exclusive context alive until archive_write_free returns.
+    let output = unsafe { &mut *data.cast::<FileOutput<'_>>() };
+    if output.error.is_some() {
+        return -1;
+    }
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        if len > isize::MAX as usize || (len > 0 && bytes.is_null()) {
+            return Err(std::io::Error::other("Invalid libarchive output buffer"));
+        }
+        if len > 0 {
+            // SAFETY: libarchive supplies its live read-only buffer for this callback only.
+            output
+                .file
+                .write_all(unsafe { std::slice::from_raw_parts(bytes.cast(), len) })?;
+        }
+        Ok(())
+    }));
+    match result {
+        Ok(Ok(())) => len as isize,
+        Ok(Err(error)) => {
+            output.error = Some(error);
+            -1
+        }
+        Err(_) => {
+            output.error = Some(std::io::Error::other("ZIP output callback panicked"));
+            -1
+        }
+    }
+}
+
+/// Portable ZIP/store writer. Borrows the output file, preserves its ownership, and writes from
+/// its current offset. Inputs retain the same current-offset semantics as the Unix fd API.
+pub fn write_zip_file(inputs: &mut [(File, String)], output: &mut File) -> Result<()> {
+    let mut context = FileOutput {
+        file: output,
+        error: None,
+    };
+    let result = write_zip_to(inputs, |a| unsafe {
+        archive_write_open2(
+            a,
+            (&mut context as *mut FileOutput<'_>).cast(),
+            None,
+            Some(write_file),
+            None,
+            None,
+        )
+    });
+    // write_zip_to has freed the writer (including any final callback) before context is inspected
+    // or dropped. Preserve the actual I/O error instead of libarchive's generic callback failure.
+    match context.error {
+        Some(error) => Err(error.into()),
+        None => result,
+    }
+}
+
+fn write_zip_to(
+    inputs: &mut [(File, String)],
+    open: impl FnOnce(*mut Archive) -> i32,
+) -> Result<()> {
     ensure!(
-        output >= 0 && inputs.len() <= Limits::default().entries,
+        inputs.len() <= Limits::default().entries,
         "Invalid ZIP writer arguments"
     );
     for (file, name) in inputs.iter() {
@@ -754,7 +830,7 @@ pub fn write_zip(inputs: &mut [(File, String)], output: RawFd) -> Result<()> {
     unsafe {
         writer.check(archive_write_set_format_zip(a))?;
         writer.check(archive_write_zip_set_compression_store(a))?;
-        writer.check(archive_write_open_fd(a, output))?;
+        writer.check(open(a))?;
     }
     for (file, name) in inputs {
         let name = CString::new(name.as_bytes())?;
@@ -773,7 +849,8 @@ pub fn write_zip(inputs: &mut [(File, String)], output: RawFd) -> Result<()> {
         unsafe {
             archive_entry_set_pathname(e.0.as_ptr(), name.as_ptr());
             archive_entry_set_size(e.0.as_ptr(), length as i64);
-            archive_entry_set_filetype(e.0.as_ptr(), REG);
+            // The setter takes unsigned int even where the filetype getter returns a u16 mode.
+            archive_entry_set_filetype(e.0.as_ptr(), 0o100000);
             archive_entry_set_perm(e.0.as_ptr(), 0o644);
             writer.check(archive_write_header(a, e.0.as_ptr()))?;
         }
@@ -884,7 +961,7 @@ mod view_tests {
             std::env::temp_dir().join(format!("ehviewer-readonly-window-{}", std::process::id()));
         std::fs::create_dir_all(&directory).unwrap();
         let archive = directory.join("pages.zip");
-        let output = File::create(&archive).unwrap();
+        let mut output = File::create(&archive).unwrap();
         let mut inputs = (0..12)
             .map(|index| {
                 use std::io::{Seek, SeekFrom};
@@ -897,8 +974,7 @@ mod view_tests {
                 (File::open(path).unwrap(), format!("{index:02}.jpg"))
             })
             .collect::<Vec<_>>();
-        use std::os::fd::AsRawFd;
-        write_zip(&mut inputs, output.as_raw_fd()).unwrap();
+        write_zip_file(&mut inputs, &mut output).unwrap();
         drop(output);
         let file = File::open(&archive).unwrap();
         let len = file.metadata().unwrap().len();

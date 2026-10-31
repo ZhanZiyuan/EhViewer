@@ -13,4 +13,5 @@ class AndroidCookieManager : CookieManager {
     override fun flush() = manager.flush()
 }
 
-actual fun getCookieManager(): CookieManager = AndroidCookieManager()
+// The synchronous WebView bridge belongs to Android; portable sessions use core/network.
+fun getCookieManager(): CookieManager = AndroidCookieManager()

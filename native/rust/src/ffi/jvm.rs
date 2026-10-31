@@ -1,5 +1,10 @@
 #![cfg(feature = "jvm")]
 
+mod account;
+
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+mod browser;
+
 use crate::EhError;
 use crate::img::webp::{create_decoder, get_image_info, pack_image_info};
 use crate::parser::api::parse_vote_tag;
@@ -15,8 +20,10 @@ use crate::parser::torrent::parse_torrent_list;
 #[cfg(feature = "android")]
 use android_logger::Config;
 use anyhow::{Context, Result, ensure};
-use jni::objects::{JByteBuffer, JClass};
-use jni::sys::{JNI_TRUE, JNI_VERSION_1_6, jboolean, jint, jlong, jobject};
+#[cfg(not(target_os = "android"))]
+use jni::objects::JString;
+use jni::objects::{JByteArray, JByteBuffer, JClass, JObject};
+use jni::sys::{JNI_TRUE, JNI_VERSION_1_6, jboolean, jbyteArray, jint, jlong, jobject};
 use jni::{JNIEnv, JavaVM};
 use jni_fn::jni_fn;
 use libwebp_sys::{WebPAnimDecoder, WebPAnimDecoderDelete};
@@ -28,6 +35,93 @@ use std::io::Cursor;
 use std::ptr::slice_from_raw_parts_mut;
 
 use tl::{ParserOptions, VDom};
+
+#[jni_fn("com.ehviewer.core.network.gallery.RustGalleryDecoder")]
+pub fn decodeNative(mut env: JNIEnv, _: JObject, input: JByteArray) -> jbyteArray {
+    jni_throwing(&mut env, |env| {
+        let size = env.get_array_length(&input)?;
+        ensure!(
+            size > 0 && size <= 8 * 1024 * 1024,
+            "Invalid gallery response size"
+        );
+        let borrowed = env.convert_byte_array(input)?;
+        let parsed = ehviewer_core::parser::list::parse_info_list_cbor(&borrowed)
+            .map_err(|_| anyhow::anyhow!("Invalid gallery response"))?;
+        ensure!(parsed.len() <= 8 * 1024 * 1024, "Gallery result size limit");
+        Ok(env.byte_array_from_slice(&parsed)?.into_raw())
+    })
+}
+
+#[jni_fn("com.ehviewer.core.network.gallery.RustGalleryDecoder")]
+pub fn decodeDetailsNative(env: JNIEnv, _: JObject, input: JByteArray) -> jbyteArray {
+    gallery_document(
+        env,
+        input,
+        ehviewer_core::parser::gallery::parse_detail_cbor,
+    )
+}
+
+#[jni_fn("com.ehviewer.core.network.gallery.RustGalleryDecoder")]
+pub fn decodePageNative(env: JNIEnv, _: JObject, input: JByteArray) -> jbyteArray {
+    gallery_document(env, input, ehviewer_core::parser::gallery::parse_page_cbor)
+}
+
+fn gallery_document(
+    mut env: JNIEnv,
+    input: JByteArray,
+    parse: fn(&[u8]) -> Result<Vec<u8>>,
+) -> jbyteArray {
+    jni_throwing(&mut env, |env| {
+        let size = env.get_array_length(&input)?;
+        ensure!(
+            size > 0 && size <= 8 * 1024 * 1024,
+            "Invalid gallery response size"
+        );
+        let borrowed = env.convert_byte_array(input)?;
+        let parsed = parse(&borrowed).map_err(|_| anyhow::anyhow!("Invalid gallery response"))?;
+        ensure!(parsed.len() <= 8 * 1024 * 1024, "Gallery result size limit");
+        Ok(env.byte_array_from_slice(&parsed)?.into_raw())
+    })
+}
+
+#[cfg(not(target_os = "android"))]
+#[jni_fn("com.ehviewer.core.network.session.NativeSessionVault")]
+pub fn readSnapshot(mut env: JNIEnv, _: JObject, directory: JString) -> jbyteArray {
+    jni_throwing(&mut env, |env| {
+        let directory: String = env.get_string(&directory)?.into();
+        let value = ehviewer_session::read(std::path::Path::new(&directory))
+            .map_err(|_| anyhow::anyhow!("Secure session storage failed"))?;
+        match value {
+            Some(bytes) => Ok(env.byte_array_from_slice(&bytes)?.into_raw()),
+            None => Ok(std::ptr::null_mut()),
+        }
+    })
+}
+
+#[cfg(not(target_os = "android"))]
+#[jni_fn("com.ehviewer.core.network.session.NativeSessionVault")]
+pub fn writeSnapshot(mut env: JNIEnv, _: JObject, directory: JString, input: JByteArray) {
+    jni_throwing(&mut env, |env| {
+        let directory: String = env.get_string(&directory)?.into();
+        ensure!(
+            env.get_array_length(&input)? <= 256 * 1024,
+            "Session exceeds the supported size"
+        );
+        let bytes = env.convert_byte_array(input)?;
+        ehviewer_session::write(std::path::Path::new(&directory), &bytes)
+            .map_err(|_| anyhow::anyhow!("Secure session storage failed"))
+    })
+}
+
+#[cfg(not(target_os = "android"))]
+#[jni_fn("com.ehviewer.core.network.session.NativeSessionVault")]
+pub fn clearSnapshot(mut env: JNIEnv, _: JObject, directory: JString) {
+    jni_throwing(&mut env, |env| {
+        let directory: String = env.get_string(&directory)?.into();
+        ehviewer_session::clear(std::path::Path::new(&directory))
+            .map_err(|_| anyhow::anyhow!("Secure session storage failed"))
+    })
+}
 
 #[jni_fn("com.hippo.ehviewer.client.parser.FavoritesParserKt")]
 pub fn parseFav(mut env: JNIEnv, _class: JClass, input: JByteBuffer, limit: jint) -> jint {

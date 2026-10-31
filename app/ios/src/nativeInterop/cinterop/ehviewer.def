@@ -1,0 +1,4 @@
+headers = ehviewer_capi.h
+headerFilter = ehviewer_capi.h
+package = com.hippo.ehviewer.rust.capi
+staticLibraries = libehviewer_capi.a

@@ -1,0 +1,8 @@
+component = "wry"
+version = "0.57.1"
+license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+repository = "https://github.com/tauri-apps/wry"
+registry = "https://crates.io/crates/wry/0.57.1"
+crate_sha256 = "759c50ddad0ef9913bb5496cb9d509a50433a3b78cb0238d61105526589cf0e9"
+usage = "Native desktop WebKit/WebView2 container; no Animeko implementation reused"

@@ -27,9 +27,15 @@ val prepareNativeTestFixtures = tasks.register<NativeTestFixturesTask>("prepareN
     outputDirectory.set(rootProject.layout.projectDirectory.dir(".local-test-fixtures"))
 }
 
+val prepareDatabaseMigrationFixtures = tasks.register<GenerateDatabaseMigrationFixtures>("prepareDatabaseMigrationFixtures") {
+    historicalSchema.set(rootProject.layout.projectDirectory.file("core/data/schemas/com.ehviewer.core.database.EhDatabase/17.json"))
+    outputDirectory.set(layout.buildDirectory.dir("generated/database-migration-test-fixtures"))
+}
+
 androidComponents {
     onVariants(selector().all()) { variant ->
         variant.androidTest?.sources?.assets?.addGeneratedSourceDirectory(prepareNativeTestFixtures) { it.outputDirectory }
+        variant.androidTest?.sources?.java?.addGeneratedSourceDirectory(prepareDatabaseMigrationFixtures) { it.outputDirectory }
     }
 }
 
@@ -190,11 +196,13 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.uiautomator)
+    androidTestImplementation(libs.ktor.client.mock)
 
     implementation(projects.core.common)
     implementation(projects.core.data)
     implementation(projects.core.i18n)
     implementation(projects.core.ui)
+    implementation(projects.app.shared)
 
     // https://developer.android.com/jetpack/androidx/releases/activity
     implementation(libs.androidx.activity.compose)

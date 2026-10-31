@@ -2,22 +2,151 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      full:
+        description: Run all platform regressions and the release dry run
+        type: boolean
+        default: true
 
 permissions:
   contents: read
   actions: read
 
+env:
+  # Fetch the same locked Git dependencies/submodules with system Git, avoiding libgit2 SecureTransport failures.
+  CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/feature/kmp' && github.head_ref != 'feature/kmp' }}
 
 jobs:
+  source_policy:
+    name: ci/source-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      plan: ${{ steps.plan.outputs.plan }}
+      tier: ${{ steps.plan.outputs.tier }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build and test source policy verifier
+        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - name: Plan affected checks from the last successful PR run
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: tools/verification/build/install/verification/bin/verification ci-plan
+      - name: Retain the tested verifier and source-bound check plan once
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: |
+            tools/verification/build/install/
+            tools/verification/build/test-results/
+            tools/verification/build/reports/tests/
+            tools/verification/build/ci-plan.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Audit cumulative target changes without a reference checkout
+        run: |
+          mkdir -p reports
+          tools/verification/build/install/verification/bin/verification source-policy > reports/source-policy.json
+      - name: Validate the current migration phase and retained architecture
+        run: tools/verification/build/install/verification/bin/verification migration-phase > reports/migration-phase.json
+      - name: Retain source boundary evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: source-policy-${{ github.sha }}
+          path: reports/source-policy.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain explicit phase coverage and unfinished categories
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: migration-phase-${{ github.sha }}
+          path: reports/migration-phase.json
+          if-no-files-found: error
+          retention-days: 14
+
+  shared_kmp:
+    needs: [source_policy]
+    name: ci/shared-kmp
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
+      - name: Compile affected shared targets, resources and host tests
+        run: >-
+          ./gradlew :core:common:bundleAndroidMainAar :core:data:bundleAndroidMainAar
+          :core:i18n:bundleAndroidMainAar :core:ui:bundleAndroidMainAar
+          :core:domain:bundleAndroidMainAar :core:domain:desktopJar
+          :core:common:desktopJar :core:common:desktopTest
+          :core:data:desktopJar :core:data:desktopTest
+          :core:common:testAndroidHostTest :core:data:testAndroidHostTest
+          :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest
+          :core:domain:testAndroidHostTest :core:domain:desktopTest
+          :core:network:bundleAndroidMainAar :core:network:desktopJar
+          :core:network:testAndroidHostTest :core:network:desktopTest
+          :app:shared:bundleAndroidMainAar :app:shared:desktopJar
+          :app:shared:testAndroidHostTest :app:shared:desktopTest
+          :core:network:lint :core:network:spotlessCheck :app:shared:lint :app:shared:spotlessCheck
+          --console=plain --no-daemon
+      - name: Verify actual library bytes, Java 17, localization and host receipts
+        run: |
+          mkdir -p reports
+          tools/verification/build/install/verification/bin/verification shared-core --output reports/shared-core > reports/shared-core.json
+      - name: Retain shared libraries and actual test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: shared-core-${{ github.sha }}
+          path: |
+            reports/shared-core.json
+            reports/shared-core/
+          if-no-files-found: error
+          retention-days: 14
+
   android:
+    needs: [source_policy]
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      artifact_run_id: ${{ steps.snapshot.outputs.artifact_run_id }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -34,6 +163,7 @@ jobs:
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ && "$GITHUB_RUN_ID" =~ ^[1-9][0-9]*$ && "$GITHUB_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]] || exit 1
           [[ $(git rev-parse HEAD) == "$SOURCE_SHA" ]] || exit 1
           build=true
+          artifact_run_id="$GITHUB_RUN_ID"
           required=$(jq -n --arg sha "$SOURCE_SHA" '["snapshot-diagnostics-" + $sha] + (["arm64-v8a","armeabi-v7a","universal","x86_64"] | map("snapshot-" + $sha + "-" + .))')
           has_snapshot() {
             gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs/$1/artifacts?per_page=100" > "$RUNNER_TEMP/snapshot-artifacts.json" || exit 1
@@ -53,7 +183,7 @@ jobs:
             jq -r --arg sha "$SOURCE_SHA" --arg repo "$GITHUB_REPOSITORY" ".[] | .workflow_runs[] | $valid_run" "$RUNNER_TEMP/snapshot-runs.json" > "$RUNNER_TEMP/snapshot-runs.txt"
             while IFS= read -r run; do
               [[ "$run" =~ ^[1-9][0-9]*$ ]] || exit 1
-              if has_snapshot "$run"; then build=false; break; fi
+              if has_snapshot "$run"; then build=false; artifact_run_id="$run"; break; fi
             done < "$RUNNER_TEMP/snapshot-runs.txt"
             # A rerun changes the current run's status; inspect completed attempts too.
             if [[ "$build" == true && "$GITHUB_EVENT_NAME" == push ]]; then
@@ -66,7 +196,7 @@ jobs:
             fi
           fi
           if [[ "$build" == false ]]; then echo "Snapshot $SOURCE_SHA is already available; skipping duplicate validation, build and upload."; fi
-          printf 'build=%s\n' "$build" >> "$GITHUB_OUTPUT"
+          printf 'build=%s\nartifact_run_id=%s\n' "$build" "$artifact_run_id" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@v5
         if: steps.snapshot.outputs.build == 'true'
@@ -91,6 +221,7 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo test --locked -p ehviewer_core
+          cargo test --locked -p ehviewer_capi
           cargo test --locked --features jvm --lib
           for target in aarch64-linux-android thumbv7neon-linux-androideabi x86_64-linux-android; do
             cargo clippy --locked --workspace --target "$target" --all-features -- -D warnings
@@ -100,14 +231,22 @@ jobs:
         with:
           validate-wrappers: true
           cache-read-only: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
-      - name: Build and test Kotlin verification tools
-        if: steps.snapshot.outputs.build == 'true'
-        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
       - name: Verify Kotlin boundaries and language policy
         if: steps.snapshot.outputs.build == 'true'
         run: tools/verification/build/install/verification/bin/verification architecture
+      - name: Verify eleven-target delivery contract without production keys
+        if: steps.snapshot.outputs.build == 'true'
+        run: |
+          mkdir -p reports
+          tools/verification/build/install/verification/bin/verification release-contract > reports/release-contract.json
       - name: Restore original signing for trusted builds
-        if: steps.snapshot.outputs.build == 'true' && (github.event_name == 'push' || (github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch')))
+        if: steps.snapshot.outputs.build == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
@@ -128,6 +267,7 @@ jobs:
           ./gradlew :build-logic:convention:check spotlessCheck
           :app:testDebugUnitTest
           :core:common:testAndroidHostTest :core:data:testAndroidHostTest
+          :core:domain:testAndroidHostTest
           :core:i18n:testAndroidHostTest :core:ui:testAndroidHostTest
           :app:lintRelease :app:assembleDebug
           :app:assembleRelease :benchmark:assembleNonMinifiedRelease
@@ -150,14 +290,14 @@ jobs:
           PUBLIC_KEY: ${{ vars.DIAGNOSTICS_PUBLIC_KEY }}
         run: |
           args=(prepare-snapshot --sdk "$ANDROID_HOME" --output release-output/snapshot)
-          if [[ "$GITHUB_EVENT_NAME" == push || ("$GITHUB_REF" == refs/heads/main && "$GITHUB_EVENT_NAME" == workflow_dispatch) ]]; then
+          if [[ "$GITHUB_REF" == refs/heads/main && ("$GITHUB_EVENT_NAME" == push || "$GITHUB_EVENT_NAME" == workflow_dispatch) ]]; then
             [[ -n "$PUBLIC_KEY" ]] || { echo "::error::Snapshot diagnostics encryption key is required."; exit 1; }
             args+=(--private-dir "$RUNNER_TEMP/private-snapshot")
           else
             args+=(--test-signing)
           fi
           tools/verification/build/install/verification/bin/verification "${args[@]}" > reports/snapshot.json
-          if [[ "$GITHUB_EVENT_NAME" == push || ("$GITHUB_REF" == refs/heads/main && "$GITHUB_EVENT_NAME" == workflow_dispatch) ]]; then
+          if [[ "$GITHUB_REF" == refs/heads/main && ("$GITHUB_EVENT_NAME" == push || "$GITHUB_EVENT_NAME" == workflow_dispatch) ]]; then
             if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
               [[ $(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha) == "$GITHUB_SHA" ]] || { echo "::error::Snapshot source was superseded."; exit 1; }
             fi
@@ -168,7 +308,7 @@ jobs:
           fi
       - name: Retain encrypted snapshot diagnostics
         id: snapshot_diagnostics
-        if: steps.snapshot.outputs.build == 'true' && (github.event_name == 'push' || (github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'))
+        if: steps.snapshot.outputs.build == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/upload-artifact@v7
         with:
           name: snapshot-diagnostics-${{ github.sha }}
@@ -239,3 +379,525 @@ jobs:
       - name: Remove runner signing material
         if: steps.snapshot.outputs.build == 'true' && (always())
         run: rm -rf .private-signing "$RUNNER_TEMP/private-snapshot" "$RUNNER_TEMP/snapshot-public.pem"
+
+  ios:
+    # iOS consumes only the source verifier; unrelated desktop jobs must not serialize it.
+    needs: [source_policy]
+    if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.ios.required
+    name: ci/ios
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require ARM64 macOS
+        run: test "$(uname -m)" = arm64
+      - name: Rust Apple targets
+        run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build Kotlin-only Simulator application
+        run: ./gradlew :app:ios:packageSimulatorApp :app:ios:linkDebugExecutableIosArm64 :app:ios:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g -Pkotlin.native.jvmArgs=-Xmx3g
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
+      - name: Launch, render and exercise the real Simulator app
+        run: tools/verification/build/install/verification/bin/verification ios-startup --app app/ios/build/simulator/EhViewer.app --output reports/ios-startup
+      - name: Compile and execute the production domain on an owned iOS Simulator
+        run: tools/verification/build/install/verification/bin/verification ios-domain --output reports/domain-native
+      - name: Retain actual iOS domain compiler, API and test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: domain-native-${{ github.sha }}
+          path: reports/domain-native/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Compile and execute the production filesystem on an owned iOS Simulator
+        run: tools/verification/build/install/verification/bin/verification ios-common --output reports/common-native
+      - name: Retain actual common filesystem compiler, API and test evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: common-native-${{ github.sha }}
+          path: reports/common-native/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain startup evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-startup-${{ github.sha }}
+          path: reports/ios-startup/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain Rust Apple build evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-rust-build-${{ github.sha }}
+          path: app/ios/build/rust/
+          if-no-files-found: error
+          retention-days: 14
+
+  rust_host:
+    name: ci/rust-host (${{ matrix.platform }})
+    needs: [source_policy, shared_kmp]
+    if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.rust_host.required
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux-x86_64
+          - runner: macos-latest
+            platform: macos-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - name: Linux native dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libarchive-dev libwebp-dev dbus gnome-keyring libwebkit2gtk-4.1-dev xvfb xauth
+      - name: macOS native dependencies
+        if: runner.os == 'macOS'
+        run: brew install libarchive webp
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/rust
+          shared-key: desktop-jni-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'native/rust/Cargo.lock') }}
+          save-if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
+      - name: Load Rust JNI, native browser and verify archive ownership in a real desktop JVM
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            pkg-config --atleast-version=2.42 webkit2gtk-4.1
+            dbus-run-session -- xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-native-smoke --output reports/desktop-native
+          else
+            tools/verification/build/install/verification/bin/verification desktop-native-smoke --output reports/desktop-native
+          fi
+      - name: Test the actual macOS Keychain session backend
+        if: runner.os == 'macOS'
+        run: cargo test --manifest-path native/rust/Cargo.toml --locked -p ehviewer_session
+      - name: Test encrypted sessions against an owned Linux Secret Service
+        if: runner.os == 'Linux'
+        env:
+          XDG_DATA_HOME: ${{ runner.temp }}/ehviewer-session-test-data
+          XDG_CONFIG_HOME: ${{ runner.temp }}/ehviewer-session-test-config
+        run: >-
+          dbus-run-session -- bash -euc
+          'printf "%s" "owned-ci-keyring-password" | gnome-keyring-daemon --unlock --components=secrets;
+          cargo test --manifest-path native/rust/Cargo.toml --locked -p ehviewer_session'
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-core-${{ github.sha }}
+          path: ${{ runner.temp }}/shared-common
+      - name: Exercise the actual shared common JAR on this native JVM
+        run: >-
+          tools/verification/build/install/verification/bin/verification common-jvm
+          --input "$RUNNER_TEMP/shared-common" --output reports/desktop-native/common-jvm.json
+      - name: Retain desktop JNI evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-native-${{ matrix.platform }}-${{ github.sha }}
+          path: reports/desktop-native/
+          if-no-files-found: error
+          retention-days: 14
+
+  desktop_intel:
+    needs: [source_policy]
+    if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.desktop_intel.required
+    name: ci/desktop (macos-x86_64-rosetta)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require physical ARM64 and Rosetta
+        run: |
+          test "$(uname -m)" = arm64
+          softwareupdate --install-rosetta --agree-to-license
+          test "$(arch -x86_64 /usr/sbin/sysctl -in sysctl.proc_translated)" = 1
+      - name: Rust Intel target
+        run: rustup target add x86_64-apple-darwin
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25.0.5'
+          architecture: x64
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build actual Intel runtime, Skiko, Rust and DMG on ARM
+        run: ./gradlew :app:desktop:packageDmg :app:desktop:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
+      - name: Mount, install and launch the real DMG twice
+        run: tools/verification/build/install/verification/bin/verification desktop-intel-dmg --dmg app/desktop/build/compose/binaries/main/dmg --output reports/desktop-intel
+      - name: Retain Intel package and measured evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: intel-dmg-on-arm-${{ github.sha }}
+          path: |
+            reports/desktop-intel/
+            app/desktop/build/native-evidence/
+            app/desktop/build/compose/binaries/main/dmg/*.dmg
+            tools/verification/build/test-results/test/
+            tools/verification/build/reports/tests/test/
+          if-no-files-found: error
+          retention-days: 14
+
+  desktop_intel_native:
+    name: ci/desktop (macos-x86_64-native)
+    needs: [source_policy, desktop_intel, shared_kmp]
+    if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.desktop_intel_native.required
+    # Consumption only: the sole product DMG is built above on macos-latest ARM64.
+    runs-on: macos-26-intel
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require native Intel runner
+        run: |
+          test "$RUNNER_ARCH" = X64
+          test "$(uname -m)" = x86_64
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25.0.5'
+          architecture: x64
+      - uses: actions/download-artifact@v8
+        with:
+          name: intel-dmg-on-arm-${{ github.sha }}
+          path: reports/intel-arm-producer
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
+      - name: Install and launch the same ARM-produced DMG on Intel
+        run: >-
+          tools/verification/build/install/verification/bin/verification desktop-intel-native
+          --dmg reports/intel-arm-producer/app/desktop/build/compose/binaries/main/dmg
+          --producer-report reports/intel-arm-producer/reports/desktop-intel/intel-dmg.json
+          --output reports/desktop-intel-native
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-core-${{ github.sha }}
+          path: ${{ runner.temp }}/shared-common
+      - name: Exercise the actual common JAR on the native Intel JVM
+        run: >-
+          tools/verification/build/install/verification/bin/verification common-jvm
+          --input "$RUNNER_TEMP/shared-common" --output reports/desktop-intel-native/common-jvm.json
+      - name: Retain native Intel consumption evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: intel-dmg-native-${{ github.sha }}
+          path: reports/desktop-intel-native/
+          if-no-files-found: error
+          retention-days: 14
+
+  desktop_linux_arm64:
+    name: ci/desktop (linux-aarch64-runtime)
+    needs: [source_policy, shared_kmp]
+    if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.desktop_linux_arm64.required
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require native Linux ARM64 runner
+        run: |
+          test "$RUNNER_ARCH" = ARM64
+          test "$(uname -m)" = aarch64
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25.0.5'
+          architecture: aarch64
+      - name: Native build and display prerequisites
+        run: >-
+          sudo apt-get update && sudo apt-get install -y
+          build-essential cmake pkg-config libarchive-dev binutils libwebkit2gtk-4.1-dev dbus
+          xvfb xauth libx11-6 libxext6 libxi6 libxrender1 libxtst6
+          libgl1 libegl1 libgl1-mesa-dri libfontconfig1 fonts-dejavu-core libasound2t64
+      - name: Rust native target
+        run: rustup show active-toolchain
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build real AArch64 JVM, Skiko and Rust application image
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          ./gradlew -p app/desktop createDistributable spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g 2>&1 | tee reports/desktop-linux-build.log
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
+      - name: Install and launch bundled Linux ARM64 runtime twice
+        env:
+          # Xvfb has no guaranteed GL context. Still draw real Skia frames in both real windows.
+          SKIKO_RENDER_API: SOFTWARE_COMPAT
+        run: >-
+          dbus-run-session -- xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-linux-arm64
+          --image app/desktop/build/compose/binaries/main/app/EhViewer
+          --output reports/desktop-linux-arm64
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-core-${{ github.sha }}
+          path: ${{ runner.temp }}/shared-common
+      - name: Exercise the actual common JAR on the native Linux ARM64 JVM
+        run: >-
+          tools/verification/build/install/verification/bin/verification common-jvm
+          --input "$RUNNER_TEMP/shared-common" --output reports/desktop-linux-arm64/common-jvm.json
+      - name: Retain application image and measured runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-arm64-runtime-${{ github.sha }}
+          path: |
+            reports/desktop-linux-arm64/
+            reports/desktop-linux-build.log
+            app/desktop/build/native-evidence/
+            app/desktop/build/compose/binaries/main/app/EhViewer/
+          if-no-files-found: error
+          retention-days: 14
+
+  windows_native_core:
+    name: ci/rust-native (windows-arm64-core)
+    needs: [source_policy, shared_kmp]
+    if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.windows_native_core.required
+    runs-on: windows-11-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Build real ARM64 codecs and run complete Core and C ABI tests
+        run: .\tools\verification\build\install\verification\bin\verification.bat windows-native-core --output reports/windows-native-core
+      - name: Call real Rust owned results from native Windows ARM64 JVM
+        id: windows_jvm_ffi
+        run: >-
+          .\tools\verification\build\install\verification\bin\verification.bat windows-jvm-ffi
+          --core-report reports/windows-native-core/windows-native-core.json --output reports/windows-jvm-ffi
+      - name: Package and launch the real Windows ARM64 JVM, Skiko and Rust window twice
+        id: windows_desktop
+        run: >-
+          .\tools\verification\build\install\verification\bin\verification.bat desktop-windows-arm64
+          --jvm-report reports/windows-jvm-ffi/windows-jvm-ffi.json
+          --core-report reports/windows-native-core/windows-native-core.json --output reports/desktop-windows-arm64
+      - name: Create and verify the real source-bound Windows ARM64 staging ZIP
+        id: windows_package
+        run: >-
+          .\tools\verification\build\install\verification\bin\verification.bat windows-stage-zip
+          --runtime-report reports/desktop-windows-arm64/windows-arm64-runtime.json
+          --image reports/desktop-windows-arm64/image/EhViewer --output reports/windows-arm64-package
+      - name: Extract the actual ZIP and launch its bundled Windows ARM64 runtime twice
+        id: windows_zip_launch
+        run: >-
+          .\tools\verification\build\install\verification\bin\verification.bat windows-zip-launch
+          --package-report reports/windows-arm64-package/windows-arm64-package.json
+          --runtime-report reports/desktop-windows-arm64/windows-arm64-runtime.json
+          --output reports/windows-arm64-zip-launch
+      - uses: actions/download-artifact@v8
+        with:
+          name: shared-core-${{ github.sha }}
+          path: ${{ runner.temp }}/shared-common
+      - name: Exercise the actual common JAR on the native Windows ARM64 JVM
+        run: >-
+          .\tools\verification\build\install\verification\bin\verification.bat common-jvm
+          --input "$env:RUNNER_TEMP/shared-common" --output reports/windows-native-core/common-jvm.json
+      - name: Retain Windows ARM64 native evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-arm64-core-${{ github.sha }}
+          path: reports/windows-native-core/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain Windows ARM64 JVM FFI evidence
+        if: always() && steps.windows_jvm_ffi.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-arm64-jvm-${{ github.sha }}
+          path: reports/windows-jvm-ffi/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain Windows ARM64 application image and measured window evidence
+        if: always() && steps.windows_desktop.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-arm64-runtime-${{ github.sha }}
+          path: reports/desktop-windows-arm64/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain actual Windows ARM64 ZIP and complete byte inventory
+        if: always() && steps.windows_package.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-arm64-package-${{ github.sha }}
+          path: reports/windows-arm64-package/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain actual ZIP extraction and native Windows launch evidence
+        if: always() && steps.windows_zip_launch.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-arm64-zip-launch-${{ github.sha }}
+          path: |
+            reports/windows-arm64-zip-launch/windows-arm64-zip-launch.json
+            reports/windows-arm64-zip-launch/launch-*/
+            reports/windows-arm64-zip-launch/launch-*.log
+          if-no-files-found: error
+          retention-days: 14
+
+  release_dry_run:
+    name: ci/release-dry-run
+    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core, source_policy, shared_kmp]
+    if: needs.source_policy.outputs.tier == 'full'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version-file: .java-version
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Restore verifier executable permission
+        run: chmod +x tools/verification/build/install/verification/bin/verification
+      - name: Install the original pinned APK verification tools
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" "build-tools;37.0.0" "ndk;29.0.14206865"'
+      - name: Verify actual source-bound packages without production keys or publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANDROID_ARTIFACT_RUN_ID: ${{ needs.android.outputs.artifact_run_id }}
+          GODEBUG: http2client=0
+        run: |
+          mkdir -p reports
+          tools/verification/build/install/verification/bin/verification staged-package-dry-run --repository "$GITHUB_REPOSITORY" --run-id "$GITHUB_RUN_ID" --android-run-id "$ANDROID_ARTIFACT_RUN_ID" --sdk "$ANDROID_HOME" --output reports/staged-dry-run > reports/staged-dry-run.json
+      - name: Retain six actual candidates and complete staged evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: staged-dry-run-${{ github.sha }}
+          path: |
+            reports/staged-dry-run.json
+            reports/staged-dry-run/checked/staged-package.json
+            reports/staged-dry-run/checked/candidate/
+            reports/staged-dry-run/checked/transport/
+            reports/staged-dry-run/input/context.json
+            reports/staged-dry-run/input/archives/*.stderr.log
+          if-no-files-found: error
+          retention-days: 14
+
+  gate:
+    name: ci/gate
+    if: always()
+    needs: [android, ios, rust_host, desktop_intel, desktop_intel_native, desktop_linux_arm64, windows_native_core, source_policy, shared_kmp, release_dry_run]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/download-artifact@v8
+        with:
+          name: verification-tools-${{ github.sha }}
+          path: tools/verification/build
+      - name: Require every check selected by the source-bound plan
+        env:
+          CI_PLAN: ${{ needs.source_policy.outputs.plan }}
+          CI_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          chmod +x tools/verification/build/install/verification/bin/verification
+          tools/verification/build/install/verification/bin/verification ci-gate
+      - name: Record every actual result, including failures
+        if: always()
+        env:
+          CI_RESULTS: ${{ toJSON(needs) }}
+          CI_TIER: ${{ needs.source_policy.outputs.tier }}
+        run: |
+          {
+            # Backticks below are Markdown literals, not command substitutions.
+            # shellcheck disable=SC2016
+            printf '### Actual job results (%s)\n\nSource: `%s`\n\n| Job | Result |\n| --- | --- |\n' "$CI_TIER" "$GITHUB_SHA"
+            jq -r 'to_entries[] | "| \(.key) | \(.value.result) |"' <<< "$CI_RESULTS"
+            printf '\n[Actions run](https://github.com/%s/actions/runs/%s)\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+          } >> "$GITHUB_STEP_SUMMARY"

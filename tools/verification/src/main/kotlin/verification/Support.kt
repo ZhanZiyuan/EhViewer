@@ -34,22 +34,26 @@ fun sha256(path: Path): String {
     return digest.digest().joinToString("") { "%02x".format(it) }
 }
 
-class CommandFailure(val command: List<String>, val output: String) : IllegalStateException(
-    "Command failed: ${command.joinToString(" ")}\n$output",
+class CommandFailure(val command: List<String>, val output: String, val timedOut: Boolean = false) : IllegalStateException(
+    "Command ${if (timedOut) "timed out" else "failed"}: ${command.joinToString(" ")}\n$output",
 )
 
-fun command(vararg args: Any, input: String? = null, timeout: Duration = Duration.ofMinutes(5), mergeError: Boolean = true): String {
+fun command(vararg args: Any, input: String? = null, timeout: Duration = Duration.ofMinutes(5), mergeError: Boolean = true, environment: Map<String, String> = emptyMap()): String {
     val arguments = args.map(Any::toString)
     // Redirect to a file so a verbose child cannot deadlock on a full output pipe.
     val capture = Files.createTempFile("ehviewer-command-", ".log")
     try {
         val builder = ProcessBuilder(arguments).redirectErrorStream(mergeError).redirectOutput(capture.toFile())
+        builder.environment().putAll(environment)
         if (!mergeError) builder.redirectError(ProcessBuilder.Redirect.INHERIT)
         val process = builder.start()
         process.outputStream.bufferedWriter().use { if (input != null) it.write(input) }
         if (!process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
+            // Cargo/compiler grandchildren must not keep running after the owned command times out.
+            val descendants = process.descendants().use { it.toList() }.asReversed()
+            descendants.forEach { it.destroyForcibly() }
             process.destroyForcibly().waitFor()
-            error("Command timed out: ${arguments.first()}")
+            throw CommandFailure(arguments, "Timeout after $timeout\n${capture.readText()}", timedOut = true)
         }
         val output = capture.readText()
         if (process.exitValue() != 0) throw CommandFailure(arguments, output)

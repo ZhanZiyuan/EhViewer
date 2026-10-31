@@ -19,6 +19,7 @@ import androidx.room.execSQL
 import androidx.room.useWriterConnection
 import arrow.fx.coroutines.resource
 import arrow.fx.coroutines.resourceScope
+import com.ehviewer.core.data.RoomGalleryHistoryStore
 import com.ehviewer.core.data.model.asEntity
 import com.ehviewer.core.database.EhDatabase
 import com.ehviewer.core.database.Schema17to18
@@ -46,6 +47,7 @@ object EhDB {
     private val db = roomDb<EhDatabase>(DB_NAME) {
         addMigrations(Schema17to18())
     }
+    val sharedHistory = RoomGalleryHistoryStore(db)
 
     suspend fun putGalleryInfo(galleryInfo: GalleryEntity) {
         db.galleryDao().upsert(galleryInfo)
@@ -61,6 +63,8 @@ object EhDB {
 
     fun getReadProgressFlow(gid: Long) = db.progressDao().getPageFlow(gid)
     suspend fun getReadProgress(gid: Long) = db.progressDao().getPage(gid)
+    suspend fun getReadingPosition(gid: Long) = db.progressDao().load(gid)
+    suspend fun getGalleryInfo(gid: Long) = db.galleryDao().load(gid)
     suspend fun putReadProgress(gid: Long, page: Int) = db.progressDao().upsert(ProgressInfo(gid, page))
     suspend fun clearProgressInfo() = db.progressDao().deleteAll()
 

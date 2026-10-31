@@ -1,0 +1,134 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "f6a8cdf9993ed897d4ef43629e702acf",
+    "entities": [
+      {
+        "tableName": "TASKS",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`gid` INTEGER NOT NULL, `token` TEXT NOT NULL, `title` TEXT NOT NULL, `pages` INTEGER NOT NULL, `restricted` INTEGER NOT NULL, `state` TEXT NOT NULL, `finished` INTEGER NOT NULL, `failure` TEXT, `position` INTEGER NOT NULL, PRIMARY KEY(`gid`))",
+        "fields": [
+          {
+            "fieldPath": "gid",
+            "columnName": "gid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "token",
+            "columnName": "token",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pages",
+            "columnName": "pages",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "restricted",
+            "columnName": "restricted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "finished",
+            "columnName": "finished",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "failure",
+            "columnName": "failure",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "gid"
+          ]
+        }
+      },
+      {
+        "tableName": "PAGES",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`gid` INTEGER NOT NULL, `index` INTEGER NOT NULL, `token` TEXT NOT NULL, `bytes` INTEGER NOT NULL, `sha256` TEXT NOT NULL, PRIMARY KEY(`gid`, `index`), FOREIGN KEY(`gid`) REFERENCES `TASKS`(`gid`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "gid",
+            "columnName": "gid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "index",
+            "columnName": "index",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "token",
+            "columnName": "token",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bytes",
+            "columnName": "bytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sha256",
+            "columnName": "sha256",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "gid",
+            "index"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "TASKS",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "gid"
+            ],
+            "referencedColumns": [
+              "gid"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f6a8cdf9993ed897d4ef43629e702acf')"
+    ]
+  }
+}

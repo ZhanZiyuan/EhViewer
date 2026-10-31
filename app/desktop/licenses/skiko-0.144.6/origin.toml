@@ -1,0 +1,7 @@
+component = "org.jetbrains.skiko:skiko-awt-runtime-macos-x64"
+version = "0.144.6"
+license = "Apache-2.0"
+repository = "https://github.com/JetBrains/skiko"
+commit = "9a5b398bb2044fff7e7a84fbfd6f4b803e4427c0"
+license_source = "https://raw.githubusercontent.com/JetBrains/skiko/9a5b398bb2044fff7e7a84fbfd6f4b803e4427c0/LICENSE"
+notice_source = "https://raw.githubusercontent.com/JetBrains/skiko/9a5b398bb2044fff7e7a84fbfd6f4b803e4427c0/NOTICE"

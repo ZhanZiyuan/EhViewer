@@ -135,6 +135,7 @@ import com.hippo.ehviewer.ui.destinations.HistoryScreenDestination
 import com.hippo.ehviewer.ui.destinations.HomePageScreenDestination
 import com.hippo.ehviewer.ui.destinations.ProgressScreenDestination
 import com.hippo.ehviewer.ui.destinations.SettingsScreenDestination
+import com.hippo.ehviewer.ui.destinations.SharedGalleriesScreenDestination
 import com.hippo.ehviewer.ui.destinations.SignInScreenDestination
 import com.hippo.ehviewer.ui.destinations.SubscriptionScreenDestination
 import com.hippo.ehviewer.ui.destinations.ToplistScreenDestination
@@ -179,6 +180,8 @@ private val navItems = arrayOf<Triple<Direction, Int, ImageVector>>(
     Triple(HistoryScreenDestination, R.string.history, Icons.Default.History),
     Triple(DownloadsScreenDestination, R.string.downloads, Icons.Default.Download),
     Triple(SettingsScreenDestination, R.string.settings, Icons.Default.Settings),
+    // Append so every existing persisted launch-page index keeps its meaning.
+    Triple(SharedGalleriesScreenDestination, R.string.browse_galleries, Icons.Default.Home),
 )
 
 class MainActivity : AppCompatActivity() {

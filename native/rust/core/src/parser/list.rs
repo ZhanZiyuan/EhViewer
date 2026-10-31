@@ -237,3 +237,73 @@ pub fn parse_info_list(dom: &VDom, parser: &Parser) -> Result<GalleryListResult>
         galleryInfoList: info,
     })
 }
+
+/// Reuse the existing gallery parser and CBOR wire model outside the Android in-place JNI buffer.
+/// Unknown/challenge pages stay errors; only an explicit service no-hits response is empty.
+pub fn parse_info_list_cbor(input: &[u8]) -> Result<Vec<u8>> {
+    anyhow::ensure!(
+        !input.is_empty() && input.len() <= 8 * 1024 * 1024,
+        "Invalid HTML length"
+    );
+    let html = std::str::from_utf8(input)?;
+    let dom = tl::parse(html, tl::ParserOptions::default().track_ids())?;
+    anyhow::ensure!(dom.version().is_some(), "Missing gallery document");
+    let result = match parse_info_list(&dom, dom.parser()) {
+        Ok(result) => result,
+        Err(error) => {
+            if matches!(error.downcast_ref::<EhError>(), Some(EhError::NoHits))
+                && html.contains("No hits found")
+            {
+                GalleryListResult {
+                    prev: None,
+                    next: None,
+                    galleryInfoList: Vec::new(),
+                }
+            } else {
+                return Err(error);
+            }
+        }
+    };
+    serde_cbor::to_vec(&result).map_err(Into::into)
+}
+
+#[cfg(test)]
+mod portable_tests {
+    use super::*;
+
+    #[test]
+    fn portable_search_keeps_existing_models_and_two_part_pagination() {
+        let html = br#"<!DOCTYPE html><html><body>
+            <a id="uprev" href="/?prev=12-3">Previous</a><a id="unext" href="/?next=42-7">Next</a>
+            <div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/1/1234567890/">
+            <span class="glink">Shared &amp; tested</span></a></div>
+            <img src="https://ehgt.org/test-thumb.jpg" style="height:100px;width:80px">
+            <div class="cn">Manga</div><div class="ir" style="background-position:0px -1px"></div>
+            </div></div></body></html>"#;
+        let bytes = parse_info_list_cbor(html).unwrap();
+        let actual: serde_json::Value = serde_cbor::from_slice(&bytes).unwrap();
+        assert_eq!(actual["prev"], "12-3");
+        assert_eq!(actual["next"], "42-7");
+        assert_eq!(actual["galleryInfoList"][0]["gid"], 1);
+        assert_eq!(actual["galleryInfoList"][0]["token"], "1234567890");
+        assert_eq!(actual["galleryInfoList"][0]["title"], "Shared & tested");
+        assert_eq!(actual["galleryInfoList"][0]["thumbKey"], "test-thumb.jpg");
+        assert_eq!(actual["galleryInfoList"][0]["thumbHeight"], 100);
+        assert_eq!(actual["galleryInfoList"][0]["thumbWidth"], 80);
+    }
+
+    #[test]
+    fn an_explicit_empty_result_is_distinct_from_invalid_or_challenge_html() {
+        let bytes = parse_info_list_cbor(b"<!DOCTYPE html><html><body>No hits found</body></html>")
+            .unwrap();
+        let actual: serde_json::Value = serde_cbor::from_slice(&bytes).unwrap();
+        assert!(actual["galleryInfoList"].as_array().unwrap().is_empty());
+        for html in [
+            &b"<!DOCTYPE html><html>challenge</html>"[..],
+            &b""[..],
+            &b"\xff"[..],
+        ] {
+            assert!(parse_info_list_cbor(html).is_err());
+        }
+    }
+}

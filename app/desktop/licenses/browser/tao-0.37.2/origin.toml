@@ -1,0 +1,7 @@
+component = "tao"
+version = "0.37.2"
+license = "Apache-2.0"
+repository = "https://github.com/tauri-apps/tao"
+registry = "https://crates.io/crates/tao/0.37.2"
+crate_sha256 = "d5777b06fe6435126ae8d816eba269e050e1e10d302cf5461e9c49eccabc3548"
+usage = "Native desktop browser event loop; no Animeko implementation reused"

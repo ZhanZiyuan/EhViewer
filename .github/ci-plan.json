@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "fast_jobs": ["source_policy", "shared_kmp", "android"],
+  "platform_groups": {
+    "shared": {
+      "patterns": ["^core/", "^app/shared/"],
+      "jobs": ["ios", "rust_host", "desktop_intel", "desktop_intel_native", "desktop_linux_arm64", "windows_native_core"]
+    },
+    "ios": {
+      "patterns": ["^app/ios/"],
+      "jobs": ["ios"]
+    },
+    "desktop": {
+      "patterns": ["^app/desktop/"],
+      "jobs": ["rust_host", "desktop_intel", "desktop_intel_native", "desktop_linux_arm64", "windows_native_core"]
+    }
+  },
+  "full_patterns": [
+    "^\\.github/", "^tools/", "^build-logic/", "^gradle/", "^native/", "^benchmark/",
+    "(^|/)[^/]*\\.gradle\\.kts$", "^gradle\\.properties$", "^gradlew", "^\\.java-version$",
+    "^rust-toolchain\\.toml$", "^vcpkg", "^docs/kmp/milestones/", "^docs/(release|publishing)",
+    "^CHANGELOG", "^changelog/"
+  ],
+  "fast_patterns": ["^app/src/", "^docs/", "^README", "^LICENSE", "^\\.gitignore$", "^\\.editorconfig$"],
+  "dependencies": {
+    "ios": [],
+    "rust_host": ["shared_kmp"],
+    "desktop_intel_native": ["desktop_intel", "shared_kmp"],
+    "desktop_linux_arm64": ["shared_kmp"],
+    "windows_native_core": ["shared_kmp"]
+  },
+  "full_jobs": ["source_policy", "shared_kmp", "android", "ios", "rust_host", "desktop_intel", "desktop_intel_native", "desktop_linux_arm64", "windows_native_core", "release_dry_run"]
+}

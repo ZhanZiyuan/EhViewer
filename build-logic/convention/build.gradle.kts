@@ -4,6 +4,8 @@ plugins {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("androidx.sqlite:sqlite-bundled-jvm:${libs.versions.androidx.sqlite.get()}")
     compileOnly(libs.android.gradlePlugin)
     compileOnly(libs.kotlin.gradlePlugin)
     compileOnly(libs.spotless.gradlePlugin)
@@ -14,6 +16,10 @@ dependencies {
 
 gradlePlugin {
     plugins {
+        register("desktopSqlite") {
+            id = "ehviewer.desktop.sqlite"
+            implementationClass = "DesktopSqliteConventionPlugin"
+        }
         register("androidApplication") {
             id = libs.plugins.ehviewer.android.application.get().pluginId
             implementationClass = "AndroidApplicationConventionPlugin"

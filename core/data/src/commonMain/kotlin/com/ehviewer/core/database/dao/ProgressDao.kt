@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProgressDao {
+    @Query("SELECT * FROM PROGRESS WHERE GID = :gid")
+    suspend fun load(gid: Long): ProgressInfo?
+
     @Query("SELECT IFNULL(PAGE, 0) FROM PROGRESS WHERE GID = :gid")
     suspend fun getPage(gid: Long): Int
 

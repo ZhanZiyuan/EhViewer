@@ -1,5 +1,5 @@
 [workspace]
-members = ["core"]
+members = ["core", "capi", "session", "browser"]
 resolver = "3"
 
 [package]
@@ -29,6 +29,12 @@ image = { default-features = false, version = "0.25" }
 tl = { git = "https://github.com/FooIbar/tl.git", features = ["simd"] }
 libwebp-sys2 = { git = "https://github.com/FooIbar/libwebp-sys2-rs.git", features = ["1_5", "demux", "extern-types"] }
 memmap2 = "0.9"
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+ehviewer_session = { path = "session" }
+
+[target.'cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))'.dependencies]
+ehviewer_browser_client = { path = "browser" }
 
 [profile.release]
 panic = "unwind"
