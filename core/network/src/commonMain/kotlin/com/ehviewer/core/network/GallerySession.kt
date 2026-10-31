@@ -1,5 +1,8 @@
 package com.ehviewer.core.network
 
+import com.ehviewer.core.domain.download.GalleryDownloadStorage
+import com.ehviewer.core.network.download.GalleryDownloadQueue
+import com.ehviewer.core.network.download.networkGalleryDownloadSource
 import com.ehviewer.core.network.gallery.GalleryContentRepository
 import com.ehviewer.core.network.gallery.GalleryDocumentDecoder
 import com.ehviewer.core.network.gallery.GalleryRepository
@@ -8,6 +11,7 @@ import com.ehviewer.core.network.session.GalleryAuthenticationRepository
 import com.ehviewer.core.network.session.PersistentCookieStorage
 import com.ehviewer.core.network.session.SessionVault
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.coroutines.CoroutineScope
 
 expect fun platformNetworkEngine(): HttpClientEngine
 
@@ -21,7 +25,7 @@ class GallerySession(vault: SessionVault, private val decoder: GalleryDocumentDe
         engine.close()
         throw failure
     }
-    var restricted = restricted
+    override var restricted = restricted
         private set
     override var galleries = GalleryRepository(client, decoder, restricted)
         private set
@@ -29,6 +33,11 @@ class GallerySession(vault: SessionVault, private val decoder: GalleryDocumentDe
         private set
     val authentication = GalleryAuthenticationRepository(cookies, userAgent)
     val account = GalleryAccountRepository(cookies, decoder, userAgent)
+
+    fun downloads(storage: GalleryDownloadStorage, scope: CoroutineScope) = GalleryDownloadQueue(storage, scope) { task ->
+        val generation = cookies.authenticationGeneration()
+        networkGalleryDownloadSource(task, GalleryContentRepository(client, decoder, task.restricted)) { cookies.requireGeneration(generation) }
+    }
 
     fun selectSite(restricted: Boolean) {
         this.restricted = restricted

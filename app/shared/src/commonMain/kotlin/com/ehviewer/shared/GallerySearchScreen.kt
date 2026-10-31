@@ -5,6 +5,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,6 +52,9 @@ import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.core.network.GallerySession
+import com.ehviewer.core.network.download.CachedGalleryPages
+import com.ehviewer.core.network.download.GalleryDownloadOpen
+import com.ehviewer.core.network.download.GalleryDownloads
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.gallery.GallerySearchFilters
@@ -70,7 +74,7 @@ private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
-fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, browserFactory: ((String) -> GalleryLoginBrowser)? = null, onReady: () -> Unit = {}) {
+fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, downloads: GalleryDownloads, backgroundDownloadsNote: String? = null, browserFactory: ((String) -> GalleryLoginBrowser)? = null, onReady: () -> Unit = {}) {
     DisposableEffect(session) { onDispose { session.close() } }
     val library = remember(session, history) {
         object : GalleryLibrary by session {
@@ -83,7 +87,7 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
             }
         }
     }
-    GalleryLibraryScreen(library, readerState, appearance, history, accountContent = { changed, back ->
+    GalleryLibraryScreen(library, readerState, appearance, history, downloads, backgroundDownloadsNote = backgroundDownloadsNote, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
     }, onReady = onReady)
 }
@@ -95,6 +99,9 @@ fun GalleryLibraryScreen(
     readerState: ReaderStateStore,
     appearance: GalleryAppearanceStore,
     history: GalleryHistoryStore,
+    downloads: GalleryDownloads,
+    backgroundDownloadsNote: String? = null,
+    onPlatformDownloadOpen: ((Long) -> Unit)? = null,
     onBack: (() -> Unit)? = null,
     onAccount: (() -> Unit)? = null,
     accountContent: (@Composable (onIdentityAction: () -> Unit, onBack: () -> Unit) -> Unit)? = null,
@@ -107,6 +114,22 @@ fun GalleryLibraryScreen(
     var filtersOpen by remember { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var historyOpen by rememberSaveable { mutableStateOf(false) }
+    var downloadsOpen by rememberSaveable { mutableStateOf(false) }
+    var cached by remember { mutableStateOf<CachedGalleryPages?>(null) }
+    var downloadsReady by remember(downloads) { mutableStateOf(false) }
+    var downloadsFailed by remember(downloads) { mutableStateOf(false) }
+    var downloadsAttempt by remember { mutableIntStateOf(0) }
+    LaunchedEffect(downloads, downloadsAttempt) {
+        downloadsFailed = false
+        try {
+            downloads.initialize()
+            downloadsReady = true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            downloadsFailed = true
+        }
+    }
     var themeMode by remember(appearance) { mutableStateOf<GalleryThemeMode?>(null) }
     var appearanceFailed by remember { mutableStateOf(false) }
     var appearanceAttempt by remember { mutableIntStateOf(0) }
@@ -177,6 +200,17 @@ fun GalleryLibraryScreen(
                     }
                     if (account && accountContent != null) {
                         accountContent({
+                            if (downloadsReady) {
+                                scope.launch {
+                                    try {
+                                        downloads.pauseAll()
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (_: Exception) {
+                                        downloadsFailed = true
+                                    }
+                                }
+                            }
                             request?.cancel()
                             generation++
                             selected = null
@@ -190,17 +224,35 @@ fun GalleryLibraryScreen(
                         return@Column
                     }
                     val gallery = selected
+                    if (downloadsOpen) {
+                        val opened = cached
+                        if (opened != null) {
+                            GalleryCachedReaderScreen(session, opened, readerState, onBack = { cached = null })
+                        } else {
+                            GalleryDownloadsScreen(downloads, downloadsReady, downloadsFailed, retry = { downloadsAttempt++ }, backgroundNote = backgroundDownloadsNote, onOpen = {
+                                when (it) {
+                                    is GalleryDownloadOpen.Cached -> {
+                                        history.touch(it.pages.gallery.gid)
+                                        cached = it.pages
+                                    }
+                                    is GalleryDownloadOpen.PlatformReader -> checkNotNull(onPlatformDownloadOpen)(it.gid)
+                                }
+                            }, onBack = { downloadsOpen = false })
+                        }
+                        return@Column
+                    }
                     if (gallery != null) {
-                        GalleryDetailScreen(session, gallery, readerState, backLabel = if (historyOpen) "Back to history" else "Back to search", onBack = { selected = null })
+                        GalleryDetailScreen(session, gallery, readerState, downloads.takeIf { downloadsReady }, onDownloads = { downloadsOpen = true }, backLabel = if (historyOpen) "Back to history" else "Back to search", onBack = { selected = null })
                         return@Column
                     }
                     if (historyOpen) {
                         GalleryHistoryScreen(history, onOpen = { selected = it }, onBack = { historyOpen = false })
                         return@Column
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         onBack?.let { back -> TextButton(onClick = back) { Text("Back") } }
                         Text("EhViewer", style = MaterialTheme.typography.headlineMedium)
+                        TextButton(onClick = { downloadsOpen = true }) { Text("Downloads") }
                         if (onAccount != null || accountContent != null) {
                             TextButton(onClick = {
                                 request?.cancel()

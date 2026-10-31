@@ -24,7 +24,7 @@ import kotlinx.coroutines.withContext
 
 /** Borrow the original application-owned engine, cookies, UA, DNS and Cronet settings. */
 internal class AndroidGalleryLibrary(
-    restricted: Boolean,
+    override val restricted: Boolean,
     client: HttpClient = EhApplication.noRedirectKtorClient,
 ) : GalleryLibrary {
     override val galleries = GalleryRepository(client, RustGalleryDecoder, restricted)

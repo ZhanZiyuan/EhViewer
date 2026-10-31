@@ -9,11 +9,11 @@ import io.ktor.http.Url
 import io.ktor.http.encodedPath
 
 /** Actual gallery metadata, preview-page cursors, image documents and bounded image downloads. */
-class GalleryContentRepository(client: HttpClient, private val decoder: GalleryDocumentDecoder, restricted: Boolean = false) {
+class GalleryContentRepository(client: HttpClient, private val decoder: GalleryDocumentDecoder, restricted: Boolean = false) : GalleryContent {
     private val host = if (restricted) "exhentai.org" else "e-hentai.org"
     private val requests = GalleryRequests(client, host)
 
-    suspend fun details(gid: Long, token: String, previewPage: Int = 0): GalleryDetail {
+    override suspend fun details(gid: Long, token: String, previewPage: Int): GalleryDetail {
         require(gid > 0 && Regex("[a-f0-9]{10}").matches(token) && previewPage >= 0)
         val url = URLBuilder(URLProtocol.HTTPS, host).apply {
             encodedPath = "/g/$gid/$token/"
@@ -25,13 +25,13 @@ class GalleryContentRepository(client: HttpClient, private val decoder: GalleryD
         }
     }
 
-    fun pageUrl(gid: Long, pageToken: String, index: Int): Url {
+    override fun pageUrl(gid: Long, pageToken: String, index: Int): Url {
         require(gid > 0 && Regex("[a-f0-9]{10}").matches(pageToken) && index >= 0)
         return Url("https://$host/s/$pageToken/$gid-${index.toLong() + 1}")
     }
 
     /** Links are untrusted parser output. Navigation stays within this gallery and service. */
-    fun pageIndex(url: String, gid: Long): Int {
+    override fun pageIndex(url: String, gid: Long): Int {
         val parsed = try {
             Url(url)
         } catch (_: Exception) {
@@ -45,7 +45,7 @@ class GalleryContentRepository(client: HttpClient, private val decoder: GalleryD
         return number - 1
     }
 
-    suspend fun page(url: String, gid: Long, reloadKey: String? = null): GalleryImagePage {
+    override suspend fun page(url: String, gid: Long, reloadKey: String?): GalleryImagePage {
         pageIndex(url, gid)
         if (reloadKey != null && (reloadKey.length !in 1..256 || reloadKey.any { it !in '!'..'~' })) invalid()
         val request = URLBuilder(Url(url)).apply { if (reloadKey != null) parameters.append("nl", reloadKey) }.build()
@@ -60,7 +60,7 @@ class GalleryContentRepository(client: HttpClient, private val decoder: GalleryD
         }
     }
 
-    suspend fun image(page: GalleryImagePage, pageUrl: String, gid: Long): ByteArray {
+    override suspend fun image(page: GalleryImagePage, pageUrl: String, gid: Long): ByteArray {
         pageIndex(pageUrl, gid)
         return requests.image(
             try {
@@ -73,7 +73,7 @@ class GalleryContentRepository(client: HttpClient, private val decoder: GalleryD
     }
 
     /** Thumbnails and sprite sheets use the same bounded, validated image transport as reader pages. */
-    suspend fun preview(preview: GalleryPreview, gid: Long, token: String): ByteArray {
+    override suspend fun preview(preview: GalleryPreview, gid: Long, token: String): ByteArray {
         require(gid > 0 && Regex("[a-f0-9]{10}").matches(token) && preview.position >= 0)
         val url = try {
             Url(preview.url)

@@ -2,11 +2,11 @@ package verification
 
 import kotlin.io.path.readText
 
-/** Reviewed M3 targets. A declared surface is not an executed artifact receipt. */
+/** Reviewed M4 targets. A declared surface is not an executed artifact receipt. */
 fun migrationPhaseContract(sourceSha: String, settings: String): Map<String, Any?> {
     require(Regex("[0-9a-f]{40}").matches(sourceSha) && sourceSha != "0".repeat(40)) { "Expected a nonzero full source SHA" }
     val delivery = releaseContract(settings, sourceSha)
-    require(delivery["version"] == "1.15.10" && delivery["android_version_code"] == 180074) { "The reviewed M3 version remains 1.15.10 / 180074; an M8 release freeze requires separate acceptance" }
+    require(delivery["version"] == "1.15.10" && delivery["android_version_code"] == 180074) { "The reviewed M4 version remains 1.15.10 / 180074; an M8 release freeze requires separate acceptance" }
     val surfaces = mapOf(
         "android-arm64" to "TEST_SIGNED_APK_PREFLIGHT",
         "android-armv7" to "TEST_SIGNED_APK_PREFLIGHT",
@@ -23,7 +23,7 @@ fun migrationPhaseContract(sourceSha: String, settings: String): Map<String, Any
     require(surfaces.keys == releaseTargets.map { it.id }.toSet()) { "Every final delivery target needs explicit phase coverage" }
     return mapOf(
         "schema_version" to 1,
-        "milestone" to "M3",
+        "milestone" to "M4",
         "milestone_complete" to false,
         "verification_scope" to "PHASE_DECLARATIONS_ONLY",
         "source_commit" to sourceSha,
@@ -36,8 +36,8 @@ fun migrationPhaseContract(sourceSha: String, settings: String): Map<String, Any
         "common_jvm_evidence_jobs" to listOf("desktop_intel_native", "desktop_linux_arm64", "rust_host", "windows_native_core"),
         "domain_ios_targets" to domainIosTargets,
         "domain_ios_evidence_job" to "ios",
-        "ios_product_domain_integration" to "GALLERY_SEARCH",
-        "desktop_product_domain_integration" to "GALLERY_SEARCH",
+        "ios_product_domain_integration" to "GALLERY_LIBRARY_READER_DOWNLOADS",
+        "desktop_product_domain_integration" to "GALLERY_LIBRARY_READER_DOWNLOADS",
         "pending_check_categories" to emptyMap<String, String>(),
         "staged_candidate_targets" to listOf("android-arm64", "android-armv7", "android-universal", "android-x64", "macos-x64", "windows-arm64"),
         "remaining_final_package_targets" to listOf("ios-arm64", "macos-arm64", "linux-x64", "linux-arm64", "windows-x64"),

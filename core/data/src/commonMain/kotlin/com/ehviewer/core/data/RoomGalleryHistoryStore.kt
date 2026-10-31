@@ -40,4 +40,14 @@ class RoomGalleryHistoryStore(private val database: EhDatabase) : GalleryHistory
         require(gid > 0)
         stored { database.historyDao().deleteByKey(gid) }
     }
+
+    override suspend fun touch(gid: Long) = stored {
+        require(gid > 0)
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                checkNotNull(database.galleryDao().load(gid))
+                database.historyDao().upsert(HistoryInfo(gid))
+            }
+        }
+    }
 }

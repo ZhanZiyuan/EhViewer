@@ -1,8 +1,10 @@
-维护者加速指令已覆盖此前逐提交双事件全量流程：feature/kmp仅PR CI；Fast/Platform/Full按声明式计划执行，Android关键回归始终必需，阶段完成/发布/冻结/合并前全量。CI期间可准备下一本地功能，上一个必需检查成功前不推送下一提交；Actions Summary自动记账，不再为补历史链接单独提交。实现与验收见[ci-plan](ci-plan.md)。保留现有45提交及M0–M2结果，当前M3未完成；本次CI加速之后直接交付Ktor会话→图库搜索→详情→图片→阅读器的产品闭环。
+维护者加速指令已覆盖此前逐提交双事件全量流程：feature/kmp仅PR CI；Fast/Platform/Full按声明式计划执行，Android关键回归始终必需，阶段完成/发布/冻结/合并前全量。CI期间可准备下一本地功能，上一个必需检查成功前不推送下一提交；Actions Summary自动记账，不再为补历史链接单独提交。实现与验收见[ci-plan](ci-plan.md)。原45提交及已通过结果保持不变；Ktor会话→图库搜索→详情→图片→阅读器闭环已经交付，M3阶段门禁已通过，当前推进M4下载/离线与Rust归档。
 
 # 现代化路线与阶段门禁
 
-当前仍为 M3 / IN_PROGRESS，PR #15 始终保持 Draft。搜索/会话、详情/图片、分页/连续/RTL 阅读、账户及浏览器交接、Android 接入、筛选、外观设置与缩略图导航均已逐提交通过完整 CI。最近已验收提交 `6add2aaa38ab6251a3ef6b0f760e5c43579b9b7d` 的 [Full CI](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41137373300) 全部 12 项成功。本切片交付共享历史、原数据库迁移和便携配置，保留 Android 原客户端、Cookie、Room 与 DataStore；真实本地迁移、回滚、手机/平板交互和 iPad 历史/冷启动验收已通过，仍须本提交的完整 CI，尤其 Windows ARM64 SQLite 原生构建及执行；见 [shared-history-and-data.md](shared-history-and-data.md)。后续共享下载与离线阅读在独立开发，不混入历史提交，也不以基础库测试代替五平台 P0。版本到 M8 之前保持 `1.15.10 / 180074`。
+M3 已在 `74a8e933d51de52309c6e38390e89b90abf6321b` 完成阶段门禁：[Full CI41212001274](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41212001274) 全部12项成功，包括原 Android 回归、KMP 编译/契约、实际 iOS 启动和存储迁移、Windows ARM64 SQLite/JNI、桌面包原生消费及无密钥 dry-run。此前源码声明、SQLite 架构/连接所有权、独立构建类路径和浏览器关闭竞态的失败均保留，未跳检查。共享 Ktor/会话/Repository、历史/原迁移/便携配置及参考决策已验收，见 [shared-history-and-data.md](shared-history-and-data.md)。
+
+当前进入 M4 / IN_PROGRESS：交付同一 CMP 下载列表、真实文件/Room、暂停/恢复/删除/重启和离线阅读，随后推进 Rust 归档、部分图片恢复与高级媒体；不把本切片等同完整 M4 或五平台 P0。搜索、详情、阅读器、账户、筛选、外观与预览已逐提交通过 CI。PR #15 始终 Draft，版本到 M8 之前保持 `1.15.10 / 180074`。后续每次改动遵守加速计划，不恢复历史双事件矩阵或额外记账提交。
 
 以下保留各历史时点的范围、结果和未通过记录；其“当前/待验”描述不覆盖以上进度，也不改变维护者的加速计划。
 

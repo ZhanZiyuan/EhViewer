@@ -1,5 +1,7 @@
 # Shared history and portable data
 
+M3 acceptance passed at `74a8e933d51de52309c6e38390e89b90abf6321b`: [full CI41212001274](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41212001274) completed all 12 required jobs, including actual Windows ARM64 SQLite tests and extracted ZIP launches, iOS Native storage/startup, Android regression and the no-key staged dry run. The limitations below remain product-acceptance limits, rather than outstanding M3 infrastructure checks. M4 download/offline work is separate.
+
 The shared Compose library now opens recent reading history, reopens an actual gallery and removes an entry without deleting its saved reading position. Android uses the same `EhDB` database as the original application. Desktop and iOS open the existing `EhDatabase` schema in their application data directory or sandbox; history is recorded only after actual gallery details have been decoded.
 
 `GalleryHistoryStore` is a domain interface. `RoomGalleryHistoryStore` uses the original entities and DAOs, commits metadata and history in one real SQLite transaction, and bounds recent queries to 1–500 entries. The current screen requests the most recent 100; paginated history, full settings parity and complete five-platform product acceptance remain outstanding.

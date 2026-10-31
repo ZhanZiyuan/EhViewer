@@ -2,7 +2,7 @@ package verification
 
 /** The shared cookie and repository suites must execute on both Android Host and desktop JVM. */
 fun verifyNetworkTests(evidence: Map<String, Any?>) {
-    require(evidence["status"] == "PASS" && evidence["executed"] == true && (evidence["tests"] as Number).toInt() >= 71)
+    require(evidence["status"] == "PASS" && evidence["executed"] == true && (evidence["tests"] as Number).toInt() >= 94)
     val suites = evidence["suites"].obj().mapKeys { (name, _) -> name.substringAfterLast('.').substringBefore('[') }
     require(suites.keys.containsAll(setOf("GalleryRepositoryTest", "PersistentCookieStorageTest", "GalleryContentRepositoryTest", "GalleryAuthenticationRepositoryTest", "BrowserSignInTest", "GalleryAccountRepositoryTest", "GallerySearchFiltersTest", "GalleryPreviewRepositoryTest"))) { "Missing actual shared network test suites" }
     require((suites.getValue("GalleryRepositoryTest") as Number).toInt() >= 10 && (suites.getValue("PersistentCookieStorageTest") as Number).toInt() >= 12) { "Incomplete network/session regression" }
@@ -11,6 +11,9 @@ fun verifyNetworkTests(evidence: Map<String, Any?>) {
     require((suites.getValue("GalleryAccountRepositoryTest") as Number).toInt() >= 13) { "Incomplete account initialization and session race regression" }
     require((suites.getValue("GallerySearchFiltersTest") as Number).toInt() >= 6) { "Incomplete shared search filter protocol regression" }
     require((suites.getValue("GalleryPreviewRepositoryTest") as Number).toInt() >= 5) { "Incomplete real thumbnail transport regression" }
+    for ((suite, minimum) in mapOf("GalleryDownloadQueueTest" to 10, "NetworkGalleryDownloadSourceTest" to 9, "DownloadedGalleryContentTest" to 4)) {
+        require((suites[suite] as? Number)?.toInt()?.let { it >= minimum } == true) { "Missing actual download, recovery or offline-page regression: $suite" }
+    }
 }
 
 /** ABI additions preserve all original widths, ownership operations and status codes. */

@@ -1,10 +1,14 @@
 package com.ehviewer.shared
 
+import com.ehviewer.core.domain.download.GalleryDownload
+import com.ehviewer.core.domain.download.GalleryDownloadState
 import com.ehviewer.core.domain.reader.ReadingPosition
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.model.GalleryCommentList
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.model.V1GalleryPreview
+import com.ehviewer.core.network.download.CachedGalleryPages
+import com.ehviewer.core.network.download.DownloadedGalleryContent
 import com.ehviewer.core.network.gallery.GalleryContentRepository
 import com.ehviewer.core.network.gallery.GalleryDocumentDecoder
 import com.ehviewer.core.network.gallery.GalleryImagePage
@@ -13,15 +17,50 @@ import com.ehviewer.core.network.gallery.GallerySearchResult
 import com.ehviewer.core.network.galleryHttpClient
 import com.ehviewer.core.network.session.PersistentCookieStorage
 import com.ehviewer.core.network.session.SessionVault
+import com.ehviewer.shared.reader.CachedReaderStateStore
+import com.ehviewer.shared.reader.ReaderStateRepository
 import com.ehviewer.shared.reader.readingResumeUrl
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlinx.coroutines.test.runTest
 
 class ReadingNavigationTest {
+    @Test fun offlineReadingRoundTripPersistsOnlyAnIndexAndResolvesTheActualOnlineTokenAgain() = runTest {
+        var persisted: ByteArray? = null
+        val state = ReaderStateRepository(object : SessionVault {
+            override suspend fun read() = persisted?.copyOf()
+            override suspend fun write(bytes: ByteArray) {
+                persisted = bytes.copyOf()
+            }
+            override suspend fun clear() {
+                persisted = null
+            }
+        }) { 1234L }
+        state.savePosition(1, 1, "2222222222")
+        val offlineState = CachedReaderStateStore(state)
+        val cached = DownloadedGalleryContent(object : CachedGalleryPages {
+            override val gallery = GalleryDownload(1, "0123456789", "Owned", 6, false, GalleryDownloadState.COMPLETE, 6)
+            override suspend fun read(index: Int): ByteArray = error("Navigation does not fetch images")
+        })
+        val metadata = cached.details(1, "0123456789")
+        assertEquals("ehviewer-cache://gallery/1/1", readingResumeUrl(cached, metadata, offlineState.position(1)!!))
+        assertEquals("2222222222", state.position(1)?.pageToken)
+        offlineState.savePosition(1, 5, "0000000005")
+        assertNull(state.position(1)?.pageToken)
+        assertFalse(persisted!!.decodeToString().contains("ehviewer-cache"))
+        val requests = mutableListOf<String>()
+        val window = initial.copy(previewList = listOf(V1GalleryPreview("", 4, "eeeeeeeeee"), V1GalleryPreview("", 5, "ffffffffff")))
+        withRepository(window, requests) { content ->
+            assertEquals("https://e-hentai.org/s/ffffffffff/1-6", readingResumeUrl(content, initial, state.position(1)!!))
+        }
+        assertEquals(listOf("https://e-hentai.org/g/1/0123456789/?p=2"), requests)
+    }
+
     private val initial = GalleryDetail(
         galleryInfo = BaseGalleryInfo(gid = 1, token = "0123456789", pages = 6),
         tagGroups = emptyList(),

@@ -2,10 +2,12 @@ package com.hippo.ehviewer.desktop
 
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
 import com.ehviewer.core.database.DataDirectory
 import com.ehviewer.core.database.EhDatabase
 import com.ehviewer.core.database.Schema17to18
+import com.ehviewer.core.database.download.DownloadDatabase
 import com.ehviewer.core.database.ownedRoomDb
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
@@ -14,6 +16,11 @@ import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.reader.ReaderStateRepository
 import com.ehviewer.shared.settings.GalleryAppearanceRepository
 import java.nio.file.Path
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
 import okio.Path.Companion.toPath
 
 private fun applicationData(): Path {
@@ -49,13 +56,20 @@ fun galleryApplication() {
     val databaseOwner = ownedRoomDb<EhDatabase>("eh.db") { addMigrations(Schema17to18()) }
     val database = databaseOwner.database
     val history = RoomGalleryHistoryStore(database)
+    val downloadDatabaseOwner = ownedRoomDb<DownloadDatabase>("downloads.db") {}
+    val downloadDatabase = downloadDatabaseOwner.database
+    val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    val downloads = session.downloads(RoomGalleryDownloadStorage(downloadDatabase, applicationData().resolve("downloads").toString().toPath()), scope)
     try {
         application {
             Window(onCloseRequest = ::exitApplication, title = "EhViewer") {
-                GallerySearchScreen(session, readerState, appearance, history, browserFactory = browsers::create)
+                GallerySearchScreen(session, readerState, appearance, history, downloads, browserFactory = browsers::create)
             }
         }
     } finally {
+        runBlocking { downloads.closeAndJoin() }
+        scope.cancel()
+        downloadDatabaseOwner.close()
         browsers.close()
         session.close()
         databaseOwner.close()

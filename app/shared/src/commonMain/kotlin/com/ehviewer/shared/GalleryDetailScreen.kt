@@ -34,6 +34,7 @@ import com.ehviewer.core.domain.reader.ReadingPosition
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.GalleryLibrary
+import com.ehviewer.core.network.download.GalleryDownloads
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.shared.reader.readingResumeUrl
@@ -42,7 +43,7 @@ import kotlinx.coroutines.launch
 
 /** Detail and reader routes retain the original search and detail state when navigating back. */
 @Composable
-internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, backLabel: String = "Back to search", onBack: () -> Unit) {
+internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, downloads: GalleryDownloads?, onDownloads: () -> Unit, backLabel: String = "Back to search", onBack: () -> Unit) {
     var detail by remember(gallery.gid) { mutableStateOf<GalleryDetail?>(null) }
     var failure by remember(gallery.gid) { mutableStateOf<GalleryFailure?>(null) }
     var loading by remember(gallery.gid) { mutableStateOf(false) }
@@ -56,6 +57,8 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     var stateFailure by remember { mutableStateOf(false) }
     var stateAttempt by remember { mutableIntStateOf(0) }
     var opening by remember { mutableStateOf(false) }
+    var addingDownload by remember { mutableStateOf(false) }
+    var downloadFailed by remember { mutableStateOf(false) }
     LaunchedEffect(gallery.gid, reader, stateAttempt) {
         if (reader == null) {
             try {
@@ -120,6 +123,25 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                     Text("${document.pages} pages · ${document.size.orEmpty()} · ${document.language.orEmpty()}", Modifier.padding(vertical = 8.dp))
                     document.uploader?.let { Text("Uploaded by $it") }
                     Text("Rating ${document.rating} (${document.ratingCount})")
+                    if (downloads != null) {
+                        Button(onClick = {
+                            addingDownload = true
+                            downloadFailed = false
+                            scope.launch {
+                                try {
+                                    downloads.enqueue(document, session.restricted)
+                                    onDownloads()
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (_: Exception) {
+                                    downloadFailed = true
+                                } finally {
+                                    addingDownload = false
+                                }
+                            }
+                        }, enabled = !addingDownload) { Text(if (addingDownload) "Adding download…" else "Download gallery") }
+                        if (downloadFailed) Text("The download could not be added. Try again.")
+                    }
                     document.previewList.firstOrNull()?.let { first ->
                         val resume = saved?.takeIf { it.index in 0 until document.pages }
                         Button(onClick = {

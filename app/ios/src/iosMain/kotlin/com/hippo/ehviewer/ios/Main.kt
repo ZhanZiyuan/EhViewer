@@ -4,12 +4,16 @@ package com.hippo.ehviewer.ios
 
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.window.ComposeUIViewController
+import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
 import com.ehviewer.core.database.DataDirectory
 import com.ehviewer.core.database.EhDatabase
 import com.ehviewer.core.database.Schema17to18
+import com.ehviewer.core.database.download.DownloadDatabase
 import com.ehviewer.core.database.ownedRoomDb
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.shared.AppleGalleryLoginBrowser
@@ -31,6 +35,8 @@ import kotlinx.cinterop.get
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.set
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import okio.Path.Companion.toPath
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSBundle
@@ -89,6 +95,7 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
     constructor() : super()
 
     private var appWindow: UIWindow? = null
+    private var pauseDownloads: (() -> Unit)? = null
 
     override fun scene(scene: UIScene, willConnectToSession: UISceneSession, options: UISceneConnectionOptions) {
         val windowScene = scene as? UIWindowScene ?: error("Expected UIWindowScene")
@@ -104,6 +111,32 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                 val database = databaseOwner.database
                 DisposableEffect(databaseOwner) { onDispose { databaseOwner.close() } }
                 val history = remember(database) { RoomGalleryHistoryStore(database) }
+                val downloadDatabaseOwner = remember { ownedRoomDb<DownloadDatabase>("downloads.db") {} }
+                val downloadDatabase = downloadDatabaseOwner.database
+                val scope = rememberCoroutineScope()
+                val downloads = remember(session, downloadDatabase) {
+                    session.downloads(RoomGalleryDownloadStorage(downloadDatabase, "${applicationDirectory()}/downloads".toPath()), scope)
+                }
+                SideEffect {
+                    pauseDownloads = {
+                        scope.launch {
+                            try {
+                                downloads.pauseAll()
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (_: Exception) {
+                                NSLog("EhViewer: downloads could not be paused")
+                            }
+                        }
+                    }
+                }
+                DisposableEffect(downloads) {
+                    onDispose {
+                        pauseDownloads = null
+                        downloads.close()
+                        downloadDatabaseOwner.close()
+                    }
+                }
                 if (startupRegression) {
                     LaunchedEffect(history) {
                         check(verifyHistoryProduct(history) == 3)
@@ -116,7 +149,7 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                         NSLog("EhViewerM1:browser-cookie-ready checks=4")
                     }
                 }
-                GallerySearchScreen(session, readerState, appearance, history, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
+                GallerySearchScreen(session, readerState, appearance, history, downloads, backgroundDownloadsNote = "Downloads pause when you leave the app. Saved pages can be resumed.", browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
             }
             makeKeyAndVisible()
         }
@@ -127,6 +160,7 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
     }
 
     override fun sceneDidEnterBackground(scene: UIScene) {
+        pauseDownloads?.invoke()
         if (startupRegression) NSLog("EhViewerM1:background")
     }
 }

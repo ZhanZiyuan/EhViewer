@@ -8,5 +8,6 @@ class GalleryHistoryException : Exception("Gallery history could not be loaded o
 interface GalleryHistoryStore {
     suspend fun recent(limit: Int = 100): List<BaseGalleryInfo>
     suspend fun record(gallery: GalleryInfo)
+    suspend fun touch(gid: Long)
     suspend fun forget(gid: Long)
 }

@@ -21,6 +21,33 @@ internal expect fun historyTestDatabase(): EhDatabase
 class RoomGalleryHistoryStoreTest {
     private fun gallery(gid: Long, title: String = "History $gid") = BaseGalleryInfo(gid = gid, token = "0123456789", title = title, pages = 42)
 
+    @Test fun offlineReadingRestoresHistoryWithoutReplacingExistingMetadataOrProgress() = runTest {
+        val db = historyTestDatabase()
+        try {
+            val store = RoomGalleryHistoryStore(db)
+            store.record(
+                gallery(1).also {
+                    it.uploader = "Owned uploader"
+                    it.titleJpn = "日本語"
+                    it.simpleTags = listOf("language:english")
+                },
+            )
+            db.progressDao().upsert(ProgressInfo(1, 12))
+            store.forget(1)
+            store.touch(1)
+            val restored = store.recent().single()
+            assertEquals("Owned uploader", restored.uploader)
+            assertEquals("日本語", restored.titleJpn)
+            assertEquals(listOf("language:english"), restored.simpleTags)
+            assertEquals(42, restored.pages)
+            assertEquals(12, db.progressDao().load(1)?.page)
+            assertFailsWith<GalleryHistoryException> { store.touch(2) }
+            assertEquals(listOf(1L), store.recent().map { it.gid })
+        } finally {
+            db.close()
+        }
+    }
+
     @Test fun realRoomMetadataUpdatesAndBoundedHistoryRemainUniqueAndOrdered() = runTest {
         val db = historyTestDatabase()
         try {

@@ -49,7 +49,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val policy = receipt("policy", "source-policy.json")
     require(policy["baseline_commit"] == "423b8af13632896b55780783b54b5f720ec4c9dd" && policy["untracked_files"].array().isEmpty()) { "Source boundary receipt changed" }
     val phase = receipt("phase", "migration-phase.json", false)
-    require(phase["milestone"] == "M3" && phase["version"] == version && phase["android_version_code"] == code && phase["retained_architecture_checks"].obj()["result"] == "PASS" && phase["shared_module_targets"].obj()["domain"].array() == portableDomainTargets && phase["shared_module_targets"].obj()["common"].array() == portableCommonTargets) { "Expected the reviewed M3 common/domain/retained architecture/version checks" }
+    require(phase["milestone"] == "M4" && phase["version"] == version && phase["android_version_code"] == code && phase["retained_architecture_checks"].obj()["result"] == "PASS" && phase["shared_module_targets"].obj()["domain"].array() == portableDomainTargets && phase["shared_module_targets"].obj()["common"].array() == portableCommonTargets) { "Expected the reviewed M4 common/domain/retained architecture/version checks" }
     val shared = receipt("shared", "shared-core.json", false)
     require(shared["schema_version"] == SHARED_SCHEMA && shared["shared_library_artifacts_verified"] == true && shared["version"] == version && shared["android_version_code"] == code && shared["targets"].array() == listOf("android")) { "Shared artifact scope changed" }
     require(shared["modules"].obj().keys == sharedArtifactModules.toSet() && shared["verification_scope"] == SHARED_SCOPE) { "Unexpected shared module inventory" }
@@ -309,7 +309,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     retain("windows-arm64", archive)
     require(assets.size == 6 && candidate.toFile().listFiles()!!.map { it.name }.toSet() == assets.map { it.str("file") }.toSet()) { "Expected exactly six current-stage candidate files" }
     val result = mapOf(
-        "schema_version" to 6, "verification_scope" to "M3_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
+        "schema_version" to 6, "verification_scope" to "M4_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
         "version" to version, "android_version_code" to code, "run_id" to run["id"], "run_head_sha" to run["head_sha"], "android_artifact_run_id" to context["android_run"].obj()["id"],
         "upstream_jobs" to stagedUpstreamJobs.sorted(), "artifact_inputs" to plan.map { mapOf("role" to it.role, "artifact_id" to it.id, "run_id" to it.runId, "run_head_sha" to it.run["head_sha"], "digest" to it.metadata["digest"]) },
         "candidate_assets" to assets, "staged_package_bytes_verified" to true, "candidate_android_version_name" to "$version-SNAPSHOT", "android_production_certificate_required" to trustedMain, "android_apk_checks" to verifiedApks,

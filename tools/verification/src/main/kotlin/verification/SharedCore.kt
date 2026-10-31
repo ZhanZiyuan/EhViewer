@@ -188,7 +188,7 @@ fun verifyProductTestReceipts(shared: Map<String, Any?>, artifacts: Path, reposi
 fun verifyReaderTests(tests: Map<String, Any?>) {
     require(tests["status"] == "PASS" && tests["executed"] == true)
     val suites = tests["suites"].obj().mapKeys { it.key.substringAfterLast('.').substringBefore('[') }
-    for ((name, minimum) in mapOf("GalleryImageLimitsTest" to 2, "ReaderStateRepositoryTest" to 9, "ReaderPageWindowTest" to 6, "ReadingNavigationTest" to 3, "GalleryAppearanceRepositoryTest" to 6, "GalleryPreviewCacheTest" to 5)) {
+    for ((name, minimum) in mapOf("GalleryImageLimitsTest" to 2, "ReaderStateRepositoryTest" to 9, "ReaderPageWindowTest" to 6, "ReadingNavigationTest" to 4, "GalleryAppearanceRepositoryTest" to 6, "GalleryPreviewCacheTest" to 5)) {
         require((suites[name] as? Number)?.toInt()?.let { it >= minimum } == true) { "Required shared reader behavior was not tested: $name" }
     }
 }
@@ -298,8 +298,8 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         "portable_common_targets" to portableCommonTargets,
         "legacy_shared_modules" to listOf("i18n", "ui"), "portable_data_targets" to portableDomainTargets,
         "portable_domain_targets" to listOf("android", "jvm"), "domain_ios_targets" to domainIosTargets,
-        "domain_ios_evidence" to "SEPARATE_REQUIRED_CI_IOS_JOB", "ios_product_domain_integration" to "GALLERY_SEARCH",
-        "desktop_product_domain_integration" to "GALLERY_SEARCH",
+        "domain_ios_evidence" to "SEPARATE_REQUIRED_CI_IOS_JOB", "ios_product_domain_integration" to "GALLERY_LIBRARY_READER_DOWNLOADS",
+        "desktop_product_domain_integration" to "GALLERY_LIBRARY_READER_DOWNLOADS",
         "legacy_desktop_ios_shared_targets" to "NOT_INTEGRATED", "final_delivery_assets_verified" to false, "product_p0_verified" to false, "publish_enabled" to false,
     ).also { verifyProductTestReceipts(it, output) }
 }

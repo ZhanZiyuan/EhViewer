@@ -22,7 +22,7 @@ class ProductTestReceiptsTest {
             val directory = repository.resolve(if (name == "network") "core/network/src/commonTest" else "app/shared/src/commonTest")
             Files.createDirectories(directory)
             repeat(count) { Files.writeString(directory.resolve("Source$it.kt"), "// Unit-test inventory fixture\n") }
-            val suites = if (name == "network") mapOf("GalleryRepositoryTest" to 10, "PersistentCookieStorageTest" to 12, "GalleryContentRepositoryTest" to 10, "GalleryAuthenticationRepositoryTest" to 8, "BrowserSignInTest" to 7, "GalleryAccountRepositoryTest" to 13, "GallerySearchFiltersTest" to 6, "GalleryPreviewRepositoryTest" to 5) else mapOf("GalleryImageLimitsTest" to 2, "ReaderStateRepositoryTest" to 9, "ReaderPageWindowTest" to 6, "ReadingNavigationTest" to 3, "GalleryAppearanceRepositoryTest" to 6, "GalleryPreviewCacheTest" to 5)
+            val suites = if (name == "network") mapOf("GalleryRepositoryTest" to 10, "PersistentCookieStorageTest" to 12, "GalleryContentRepositoryTest" to 10, "GalleryAuthenticationRepositoryTest" to 8, "BrowserSignInTest" to 7, "GalleryAccountRepositoryTest" to 13, "GallerySearchFiltersTest" to 6, "GalleryPreviewRepositoryTest" to 5, "GalleryDownloadQueueTest" to 10, "NetworkGalleryDownloadSourceTest" to 9, "DownloadedGalleryContentTest" to 4) else mapOf("GalleryImageLimitsTest" to 2, "ReaderStateRepositoryTest" to 9, "ReaderPageWindowTest" to 6, "ReadingNavigationTest" to 4, "GalleryAppearanceRepositoryTest" to 6, "GalleryPreviewCacheTest" to 5)
             fun receipt(target: String): Map<String, Any?> {
                 val output = artifacts.resolve("tests/$target")
                 Files.createDirectories(output)

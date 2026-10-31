@@ -10,9 +10,9 @@ class MigrationPhaseTest {
     private val settings = "val releaseVersion = \"1.15.10\"\nversionCode = 180074\n"
     private fun report() = migrationPhaseContract(source, settings)
 
-    @Test fun currentCoverageCannotClaimM3OrFinalAssetsAccepted() {
+    @Test fun currentCoverageCannotClaimM4OrFinalAssetsAccepted() {
         val report = report()
-        assertEquals("M3", report["milestone"])
+        assertEquals("M4", report["milestone"])
         for (key in listOf("milestone_complete", "artifacts_verified", "product_p0_verified", "publish_enabled")) assertEquals(key, false, report[key])
     }
 
@@ -39,8 +39,8 @@ class MigrationPhaseTest {
         assertEquals("ios", report["domain_ios_evidence_job"])
     }
 
-    @Test fun searchIntegrationDoesNotClaimCompleteProductAcceptance() {
-        for (key in listOf("ios_product_domain_integration", "desktop_product_domain_integration")) assertEquals("GALLERY_SEARCH", report()[key])
+    @Test fun downloadIntegrationDoesNotClaimCompleteProductAcceptance() {
+        for (key in listOf("ios_product_domain_integration", "desktop_product_domain_integration")) assertEquals("GALLERY_LIBRARY_READER_DOWNLOADS", report()[key])
         assertEquals(false, report()["product_p0_verified"])
     }
 
