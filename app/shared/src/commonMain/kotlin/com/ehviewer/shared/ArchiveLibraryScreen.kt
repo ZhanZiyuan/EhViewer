@@ -43,6 +43,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAndImport: suspend () -> ArchiveBook?, pickAndImportDirectory: suspend () -> ArchiveBook?, readingState: (ArchiveBook) -> ReaderStateStore, onBack: () -> Unit) {
     var books by remember(library) { mutableStateOf<List<ArchiveBook>>(emptyList()) }
+    var unavailableCopies by remember(library) { mutableIntStateOf(0) }
     var selected by remember(library) { mutableStateOf<ArchiveBook?>(null) }
     var document by remember(library) { mutableStateOf<ArchiveDocument?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -73,7 +74,9 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
         try {
             val book = selected
             if (book == null) {
-                books = library.recent()
+                val snapshot = library.inspect()
+                books = snapshot.books
+                unavailableCopies = snapshot.unavailableCopies
             } else {
                 val opened = library.open(book)
                 owners += opened
@@ -104,7 +107,9 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
                 if (scope.isActive && selected == null) {
                     withContext(NonCancellable) {
                         try {
-                            books = library.recent()
+                            val snapshot = library.inspect()
+                            books = snapshot.books
+                            unavailableCopies = snapshot.unavailableCopies
                         } catch (_: Exception) {
                             failure = true
                         }
@@ -167,7 +172,11 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
             TextButton(onClick = { perform { pickAndImport()?.let { selected = it } } }, enabled = !busy && !loading) { Text("Import comic archive") }
             TextButton(onClick = { perform { pickAndImportDirectory()?.let { selected = it } } }, enabled = !busy && !loading) { Text("Import image folder") }
             if (busy) TextButton(onClick = { request?.cancel() }) { Text("Cancel import") }
-            if (!loading && books.isEmpty()) Text("No local comics yet.")
+            if (unavailableCopies > 0) {
+                Text("$unavailableCopies local copies could not be read. Their files have been kept; other comics are available below.")
+                TextButton(onClick = { attempt++ }, enabled = !busy && !loading) { Text("Retry unavailable copies") }
+            }
+            if (!loading && books.isEmpty() && unavailableCopies == 0) Text("No local comics yet.")
             LazyColumn(Modifier.weight(1f)) {
                 items(books, key = { it.id }) { item ->
                     Column {
@@ -178,7 +187,9 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
                             TextButton(onClick = {
                                 perform {
                                     library.remove(item)
-                                    books = library.recent()
+                                    val snapshot = library.inspect()
+                                    books = snapshot.books
+                                    unavailableCopies = snapshot.unavailableCopies
                                 }
                             }, enabled = !busy) { Text("Delete local copy") }
                         }

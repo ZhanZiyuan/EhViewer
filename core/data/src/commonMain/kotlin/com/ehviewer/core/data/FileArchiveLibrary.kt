@@ -8,11 +8,13 @@ import com.ehviewer.core.domain.reader.ArchiveDocumentFactory
 import com.ehviewer.core.domain.reader.ArchiveException
 import com.ehviewer.core.domain.reader.ArchiveFailure
 import com.ehviewer.core.domain.reader.ArchiveLibrary
+import com.ehviewer.core.domain.reader.ArchiveLibrarySnapshot
 import com.ehviewer.core.domain.reader.DirectoryImage
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -92,6 +94,26 @@ class FileArchiveLibrary(private val directory: Path, private val factory: Archi
         val folders = files.list(directory).filter { Regex("[a-f0-9]{64}").matches(it.name) }
         check(folders.size <= 500)
         folders.map(::metadata).sortedWith(compareBy<ArchiveBook> { it.title }.thenBy { it.id })
+    }
+
+    override suspend fun inspect(): ArchiveLibrarySnapshot = stored {
+        root()
+        val folders = files.list(directory).filter { Regex("[a-f0-9]{64}").matches(it.name) }
+        check(folders.size <= 500)
+        val books = mutableListOf<ArchiveBook>()
+        var unavailable = 0
+        for (folder in folders) {
+            currentCoroutineContext().ensureActive()
+            try {
+                books += metadata(folder)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                unavailable++
+            }
+        }
+        currentCoroutineContext().ensureActive()
+        ArchiveLibrarySnapshot(books.sortedWith(compareBy<ArchiveBook> { it.title }.thenBy { it.id }), unavailable)
     }
 
     override suspend fun importFile(path: String, title: String): ArchiveBook = stored {
@@ -270,15 +292,24 @@ class FileArchiveLibrary(private val directory: Path, private val factory: Archi
         files.deleteRecursively(folder(book.id), mustExist = true)
     }
 
-    override suspend fun close() = withContext(Dispatchers.IO) {
+    override suspend fun close() = withContext(Dispatchers.IO + NonCancellable) {
+        var failed = false
         val owners = mutex.withLock {
             closed = true
-            leases.values.flatten().also { list -> list.forEach { it.close() } }
+            leases.values.flatten().also { list ->
+                list.forEach {
+                    try {
+                        it.close()
+                    } catch (_: Exception) {
+                        failed = true
+                    }
+                }
+            }
         }
         // A desktop DLL owner may be released only after already admitted IO calls have ended.
-        while (owners.any { !it.isReleased }) {
-            if (owners.any { it.isReleaseFailed }) throw ArchiveException(ArchiveFailure.STORAGE)
+        while (owners.any { !it.isReleased && !it.isReleaseFailed }) {
             delay(10)
         }
+        if (failed || owners.any { it.isReleaseFailed }) throw ArchiveException(ArchiveFailure.STORAGE)
     }
 }

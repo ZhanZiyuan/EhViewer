@@ -21,6 +21,35 @@ import org.junit.runner.RunWith
 /** Actual APK JNI, immutable copies, Rust extraction, Bitmap pixels and persisted library reopen. */
 @RunWith(AndroidJUnit4::class)
 class ArchiveImportIntegrationTest {
+    @Test fun damagedPrivateMetadataIsReportedWhileOtherBooksStillDecodeThroughRealJni() = runBlocking {
+        System.loadLibrary("ehviewer")
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val root = File(context.cacheDir, "archive-recovery-product-${UUID.randomUUID()}").apply { check(mkdirs()) }
+        val input = File(root, "Owned source.cbz").apply { writeBytes(archiveProductFixture()) }
+        val books = File(root, "books")
+        val library = FileArchiveLibrary(books.toOkioPath(), NativeArchiveBridge::open)
+        try {
+            val book = library.importFile(input.absolutePath, "Healthy owned archive")
+            val damaged = File(books, "d".repeat(64)).apply { check(mkdir()) }
+            val damagedMetadata = byteArrayOf(0xff.toByte(), 1)
+            File(damaged, "book.cbor").writeBytes(damagedMetadata)
+            val inspected = library.inspect()
+            assertEquals(listOf(book), inspected.books)
+            assertEquals(1, inspected.unavailableCopies)
+            assertEquals(3, verifyArchiveProduct(library.open(book)))
+            assertArrayEquals(damagedMetadata, File(damaged, "book.cbor").readBytes())
+            assertArrayEquals(archiveProductFixture(), input.readBytes())
+            check(damaged.deleteRecursively())
+            assertEquals(0, library.inspect().unavailableCopies)
+            library.remove(book)
+            assertTrue(library.inspect().books.isEmpty())
+        } finally {
+            library.close()
+            assertEquals(0 to 0, NativeArchiveBridge.activeResources())
+            check(root.deleteRecursively())
+        }
+    }
+
     @Test fun realImageFolderUsesBoundedAndroidEnumerationAndTheSharedOfflineReader() = runBlocking {
         System.loadLibrary("ehviewer")
         val context = InstrumentationRegistry.getInstrumentation().targetContext

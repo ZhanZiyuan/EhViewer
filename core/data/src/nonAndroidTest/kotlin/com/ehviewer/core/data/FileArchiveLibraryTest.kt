@@ -19,6 +19,8 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
@@ -37,6 +39,7 @@ class FileArchiveLibraryTest {
         val live = AtomicInt(0)
         var onOpen: () -> Unit = {}
         var onRead: () -> Unit = {}
+        var onClose: () -> Unit = {}
         override fun open(path: String): ArchiveDocument {
             val data = FileSystem.SYSTEM.read(path.toPath()) { readByteArray() }
             live.addAndFetch(1)
@@ -56,9 +59,92 @@ class FileArchiveLibraryTest {
                     if (!closed) {
                         closed = true
                         live.addAndFetch(-1)
+                        onClose()
                     }
                 }
             }
+        }
+    }
+
+    @Test fun aFailedCloseStillDrainsAnotherAdmittedReadBeforeReportingSanitizedFailure() = runTest {
+        val owned = ownedDatabaseFile()
+        val input = owned.path.toPath()
+        val root = (owned.path + "-close-books").toPath()
+        val factory = Factory()
+        val library = FileArchiveLibrary(root, factory)
+        val releaseRead = CompletableDeferred<Unit>()
+        try {
+            files.write(input) { writeUtf8("First owned input") }
+            val first = library.importFile(input.toString(), "First")
+            files.write(input) { writeUtf8("Second owned input") }
+            val second = library.importFile(input.toString(), "Second")
+            val one = library.open(first)
+            val two = library.open(second)
+            val readStarted = CompletableDeferred<Unit>()
+            factory.onRead = {
+                readStarted.complete(Unit)
+                runBlocking { releaseRead.await() }
+            }
+            val reading = async(Dispatchers.Default) { two.read(0) }
+            readStarted.await()
+            val attempts = AtomicInt(0)
+            val firstCloseFailed = CompletableDeferred<Unit>()
+            factory.onClose = {
+                if (attempts.addAndFetch(1) == 1) {
+                    firstCloseFailed.complete(Unit)
+                    throw IOException("private-owned-close-path")
+                }
+            }
+            val closing = async { runCatching { library.close() } }
+            firstCloseFailed.await()
+            assertFalse(closing.isCompleted)
+            releaseRead.complete(Unit)
+            assertEquals("Second owned input", reading.await().decodeToString())
+            val error = assertFailsWith<ArchiveException> { closing.await().getOrThrow() }
+            assertEquals(ArchiveFailure.STORAGE, error.failure)
+            assertNull(error.cause)
+            assertFalse(error.toString().contains("private-owned"))
+            assertEquals(2, attempts.load())
+            assertEquals(0, factory.live.load())
+            assertEquals(ArchiveFailure.CLOSED, assertFailsWith<ArchiveException> { one.read(0) }.failure)
+            assertEquals(ArchiveFailure.CLOSED, assertFailsWith<ArchiveException> { two.read(0) }.failure)
+            assertEquals("Second owned input", files.read(input) { readUtf8() })
+            assertTrue(files.exists(root / first.id / "archive.bin"))
+            assertTrue(files.exists(root / second.id / "archive.bin"))
+        } finally {
+            releaseRead.complete(Unit)
+            factory.onClose = {}
+            // A failed owner remains explicitly failed even after all other owners were drained.
+            runCatching { library.close() }
+            files.deleteRecursively(root, mustExist = false)
+            owned.cleanup()
+        }
+    }
+
+    @Test fun cancelledCallerStillClosesAllAdmittedDocumentsBeforeReturning() = runTest {
+        val owned = ownedDatabaseFile()
+        val input = owned.path.toPath()
+        val root = (owned.path + "-cancel-close-books").toPath()
+        val factory = Factory()
+        val library = FileArchiveLibrary(root, factory)
+        files.write(input) { writeUtf8("Owned input") }
+        try {
+            val book = library.importFile(input.toString(), "Owned")
+            val document = library.open(book)
+            val caller = Job()
+            assertFailsWith<CancellationException> {
+                withContext(caller) {
+                    currentCoroutineContext().cancel()
+                    library.close()
+                }
+            }
+            assertEquals(0, factory.live.load())
+            assertEquals(ArchiveFailure.CLOSED, assertFailsWith<ArchiveException> { document.read(0) }.failure)
+            assertEquals("Owned input", files.read(input) { readUtf8() })
+        } finally {
+            library.close()
+            files.deleteRecursively(root, mustExist = false)
+            owned.cleanup()
         }
     }
 

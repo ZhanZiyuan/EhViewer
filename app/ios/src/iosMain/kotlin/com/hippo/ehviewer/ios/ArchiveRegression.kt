@@ -46,6 +46,16 @@ internal suspend fun verifyAppleArchives(applicationDirectory: String): Int {
         val second = FileArchiveLibrary(directory / "books", AppleArchiveFactory)
         reopened = second
         check(second.recent() == listOf(book, directoryBook))
+        val damaged = directory / "books" / "d".repeat(64)
+        files.createDirectory(damaged)
+        val damagedMetadata = byteArrayOf(0xff.toByte(), 1)
+        files.write(damaged / "book.cbor") { write(damagedMetadata) }
+        val inspected = second.inspect()
+        check(inspected.books == listOf(book, directoryBook) && inspected.unavailableCopies == 1)
+        check(files.read(damaged / "book.cbor") { readByteArray() }.contentEquals(damagedMetadata))
+        check(verifyArchiveProduct(second.open(directoryBook)) == 3)
+        files.deleteRecursively(damaged, mustExist = true)
+        check(second.inspect().unavailableCopies == 0)
         check(second.importFile(input.toString(), "Duplicate keeps original title") == book)
         check(verifyArchiveProduct(second.open(book)) == 3)
         check(second.importDirectory(imageDirectory.toString(), "Keep original directory title") == directoryBook)

@@ -34,8 +34,16 @@ data class DirectoryImage(val extension: String, val bytes: Long, val sha256: St
     }
 }
 
+/** Unreadable copies stay on disk; one damaged index must not hide other local books. */
+data class ArchiveLibrarySnapshot(val books: List<ArchiveBook>, val unavailableCopies: Int) {
+    init {
+        require(unavailableCopies >= 0 && books.size + unavailableCopies <= 500)
+    }
+}
+
 interface ArchiveLibrary {
     suspend fun recent(): List<ArchiveBook>
+    suspend fun inspect(): ArchiveLibrarySnapshot
 
     /** Copy the selected regular file; never give an external provider's mutable file to mmap. */
     suspend fun importFile(path: String, title: String): ArchiveBook
