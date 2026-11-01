@@ -18,6 +18,8 @@ permissions:
 env:
   # Fetch the same locked Git dependencies/submodules with system Git, avoiding libgit2 SecureTransport failures.
   CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+  # Save only this repository's active KMP PR caches; GitHub isolates PR caches from main.
+  EHVIEWER_TRUSTED_KMP_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 15 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feature/kmp' }}
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -43,7 +45,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           validate-wrappers: true
-          cache-read-only: true
+          cache-read-only: ${{ env.EHVIEWER_TRUSTED_KMP_PR != 'true' }}
       - name: Build and test source policy verifier
         run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
       - name: Plan affected checks from the last successful PR run
@@ -103,7 +105,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           validate-wrappers: true
-          cache-read-only: true
+          cache-read-only: ${{ env.EHVIEWER_TRUSTED_KMP_PR != 'true' }}
       - uses: actions/download-artifact@v8
         with:
           name: verification-tools-${{ github.sha }}
@@ -214,7 +216,7 @@ jobs:
         with:
           workspaces: native/rust
           shared-key: ${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'native/rust/Cargo.lock') }}
-          save-if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+          save-if: ${{ env.EHVIEWER_TRUSTED_KMP_PR == 'true' || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main') }}
       - name: Rust format, Core/JNI tests and Android Clippy
         if: steps.snapshot.outputs.build == 'true'
         working-directory: native/rust
@@ -230,7 +232,7 @@ jobs:
         if: steps.snapshot.outputs.build == 'true'
         with:
           validate-wrappers: true
-          cache-read-only: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
+          cache-read-only: ${{ env.EHVIEWER_TRUSTED_KMP_PR != 'true' && (github.event_name == 'pull_request' || github.ref != 'refs/heads/main') }}
       - uses: actions/download-artifact@v8
         with:
           name: verification-tools-${{ github.sha }}
@@ -403,7 +405,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           validate-wrappers: true
-          cache-read-only: true
+          cache-read-only: ${{ env.EHVIEWER_TRUSTED_KMP_PR != 'true' }}
       - name: Build Kotlin-only Simulator application
         run: ./gradlew :app:ios:packageSimulatorApp :app:ios:linkDebugExecutableIosArm64 :app:ios:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g -Pkotlin.native.jvmArgs=-Xmx3g
       - name: Build optimized unsigned IPA with an isolated compiler heap
@@ -489,11 +491,11 @@ jobs:
         with:
           workspaces: native/rust
           shared-key: desktop-jni-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('rust-toolchain.toml', 'native/rust/Cargo.lock') }}
-          save-if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+          save-if: ${{ env.EHVIEWER_TRUSTED_KMP_PR == 'true' || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main') }}
       - uses: gradle/actions/setup-gradle@v6
         with:
           validate-wrappers: true
-          cache-read-only: true
+          cache-read-only: ${{ env.EHVIEWER_TRUSTED_KMP_PR != 'true' }}
       - uses: actions/download-artifact@v8
         with:
           name: verification-tools-${{ github.sha }}
@@ -528,7 +530,19 @@ jobs:
         run: >-
           tools/verification/build/install/verification/bin/verification common-jvm
           --input "$RUNNER_TEMP/shared-common" --output reports/desktop-native/common-jvm.json
-      - name: Retain desktop JNI evidence
+      - name: Build the actual native ARM64 DMG
+        if: runner.os == 'macOS'
+        run: >-
+          ./gradlew -p app/desktop packageDmg spotlessCheck -Pehviewer.desktopOnly=true
+          --console=plain --no-daemon --max-workers=1
+          -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g
+      - name: Install the ARM64 DMG and exercise its bundled runtime twice
+        if: runner.os == 'macOS'
+        run: >-
+          tools/verification/build/install/verification/bin/verification desktop-arm64-dmg
+          --dmg app/desktop/build/compose/binaries/main/dmg
+          --output reports/desktop-native/arm64-dmg > reports/desktop-native/arm64-dmg-result.json
+      - name: Retain desktop JNI evidence and the tested ARM64 DMG
         if: always()
         uses: actions/upload-artifact@v7
         with:
@@ -563,7 +577,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           validate-wrappers: true
-          cache-read-only: true
+          cache-read-only: ${{ env.EHVIEWER_TRUSTED_KMP_PR != 'true' }}
       - name: Build actual Intel runtime, Skiko, Rust and DMG on ARM
         run: ./gradlew :app:desktop:packageDmg :app:desktop:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g
       - uses: actions/download-artifact@v8
@@ -616,7 +630,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           validate-wrappers: true
-          cache-read-only: true
+          cache-read-only: ${{ env.EHVIEWER_TRUSTED_KMP_PR != 'true' }}
       - uses: actions/download-artifact@v8
         with:
           name: verification-tools-${{ github.sha }}
@@ -677,7 +691,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           validate-wrappers: true
-          cache-read-only: true
+          cache-read-only: ${{ env.EHVIEWER_TRUSTED_KMP_PR != 'true' }}
       - name: Build real AArch64 JVM, Skiko and Rust application image
         run: |
           set -euo pipefail
@@ -732,7 +746,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           validate-wrappers: true
-          cache-read-only: true
+          cache-read-only: ${{ env.EHVIEWER_TRUSTED_KMP_PR != 'true' }}
       - uses: actions/download-artifact@v8
         with:
           name: verification-tools-${{ github.sha }}
@@ -836,7 +850,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           validate-wrappers: true
-          cache-read-only: true
+          cache-read-only: ${{ env.EHVIEWER_TRUSTED_KMP_PR != 'true' }}
       - uses: actions/download-artifact@v8
         with:
           name: verification-tools-${{ github.sha }}
@@ -853,7 +867,7 @@ jobs:
         run: |
           mkdir -p reports
           tools/verification/build/install/verification/bin/verification staged-package-dry-run --repository "$GITHUB_REPOSITORY" --run-id "$GITHUB_RUN_ID" --android-run-id "$ANDROID_ARTIFACT_RUN_ID" --sdk "$ANDROID_HOME" --output reports/staged-dry-run > reports/staged-dry-run.json
-      - name: Retain seven actual candidates and complete staged evidence
+      - name: Retain eight actual candidates and complete staged evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:

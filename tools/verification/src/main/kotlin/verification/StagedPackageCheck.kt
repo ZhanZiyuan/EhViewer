@@ -237,8 +237,9 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val producer = receipt("intel-producer", "reports/desktop-intel/intel-dmg.json")
     val consumer = receipt("intel-consumer", "intel-dmg.json")
     val dmg = path("intel-producer", "app/desktop/build/compose/binaries/main/dmg/EhViewer-$version.dmg")
-    verifyIntelProducer(producer, source, sha256(dmg))
-    require(consumer["dmg_sha256"] == sha256(dmg) && consumer["producer_report_sha256"] == sha256(producerFile) && consumer["physical_host"] == "x86_64" && consumer["target"] == "x86_64-apple-darwin" && consumer["execution_mode"] == "native-intel" && consumer["physical_intel_hardware"] == "PASS" && consumer["rosetta_probe"] in setOf("", "0") && consumer["arm_hardware_probe"] in setOf("", "0") && consumer.str("cpu_brand").contains("Intel")) { "Native Intel did not consume the actual ARM-produced DMG" }
+    val intelDigest = sha256(dmg)
+    verifyIntelProducer(producer, source, intelDigest)
+    require(consumer["dmg_sha256"] == intelDigest && consumer["producer_report_sha256"] == sha256(producerFile) && consumer["physical_host"] == "x86_64" && consumer["target"] == "x86_64-apple-darwin" && consumer["execution_mode"] == "native-intel" && consumer["physical_intel_hardware"] == "PASS" && consumer["rosetta_probe"] in setOf("", "0") && consumer["arm_hardware_probe"] in setOf("", "0") && consumer.str("cpu_brand").contains("Intel")) { "Native Intel did not consume the actual ARM-produced DMG" }
     fun intelInventory(value: Map<String, Any?>): Map<String, Any?> = value["checks"].obj().filterKeys { it !in setOf("launches", "native_files", "installed_notices") } + listOf("native_files", "installed_notices").associateWith { key -> value["checks"].obj()[key].array().map(Any?::obj).associateBy { it.str("path") } }
     require(intelInventory(producer) == intelInventory(consumer)) { "Actual Intel producer/consumer native inventories differ" }
     for (proof in listOf(producer, consumer)) {
@@ -258,7 +259,30 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         val signature = ByteBuffer.allocate(4)
         require(channel.size() > 512 && channel.read(signature, channel.size() - 512) == 4 && signature.array().decodeToString() == "koly") { "Expected actual UDIF DMG bytes" }
     }
-    retain("macos-x64", dmg)
+    retain("macos-x64", dmg, expectedSha256 = intelDigest)
+
+    val armDmg = path("macos-host", "arm64-dmg/EhViewer-$version-macos-arm64.dmg")
+    val armProducer = receipt("macos-host", "arm64-dmg/arm64-dmg.json")
+    val armDigest = sha256(armDmg)
+    verifyArm64Producer(armProducer, source, armDigest)
+    val armChecks = armProducer["checks"].obj()
+    require(armProducer["jdk"] == "25.0.5" && armChecks["version"] == version && armChecks["native_files"].array().size == 33 && armChecks["jar_native_libraries"] == 1 && armChecks["installed_notices"].array().size == expectedDesktopNativeNoticeCount()) { "Incomplete reviewed ARM64 installed runtime inventory" }
+    val armNativeFiles = armChecks["native_files"].array().map(Any?::obj)
+    require(armNativeFiles.map { it.str("path") }.toSet().size == armNativeFiles.size)
+    val armBrowserDigest = armNativeFiles.single { it.str("path").endsWith("/resources/ehviewer_browser") }.str("sha256")
+    val armLaunches = armChecks["launches"].array().map(Any?::obj)
+    require(armLaunches.size == 2) { "Expected two actual installed ARM64 launcher executions" }
+    for (launch in armLaunches) {
+        verifyDesktopBrowserReceipt(launch["native_browser"].obj(), setOf("arm64", "aarch64"), "JNI", armChecks.str("rust_sha256"), armBrowserDigest)
+        require(launch["gallery_product_checks"] == 5 && launch["account_product_checks"] == 4 && launch["history_product_checks"] == 3 && launch["archive_product_checks"] == 9 && launch["language_product_checks"] == 4 && launch["rust_hash_results"] == 100 && launch["bundled_runtime"] == "PASS" && (launch["compose_frames"] as Number).toInt() > 0) { "Incomplete actual ARM64 package business/Compose regressions" }
+    }
+    val armRegression = armChecks["jni_regression_external_test_jdk"].obj()
+    require((armRegression["ownership_checks"] as Number).toInt() >= 4170 && armRegression["archive_cases"] == 13 && armRegression["fixture_baseline"] == "8fdfb6c5550fab506759a5587b1c8ee4050f507e") { "Incomplete actual ARM64 installed JNI/archive regression" }
+    FileChannel.open(armDmg).use { channel ->
+        val signature = ByteBuffer.allocate(4)
+        require(channel.size() > 512 && channel.read(signature, channel.size() - 512) == 4 && signature.array().decodeToString() == "koly") { "Expected actual ARM64 UDIF DMG bytes" }
+    }
+    retain("macos-arm64", armDmg, expectedSha256 = armDigest)
 
     val packagedFile = path("windows-package", "windows-arm64-package.json")
     val packaged = receipt("windows-package", "windows-arm64-package.json", false)
@@ -319,9 +343,9 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val ipa = verifyUnsignedIosIpa(ipaFile, source, version, code)
     require(JsonSlurper().parseText(json(ipa)).obj() == ipaProducer - "archive_sha256") { "Actual IPA differs from the clean same-source producer checks" }
     retain("ios-arm64", ipaFile, expectedSha256 = ipaProducer.str("archive_sha256"))
-    require(assets.size == 7 && candidate.toFile().listFiles()!!.map { it.name }.toSet() == assets.map { it.str("file") }.toSet()) { "Expected exactly seven current-stage candidate files" }
+    require(assets.size == 8 && candidate.toFile().listFiles()!!.map { it.name }.toSet() == assets.map { it.str("file") }.toSet()) { "Expected exactly eight current-stage candidate files" }
     val result = mapOf(
-        "schema_version" to 7, "verification_scope" to "M5_M6_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
+        "schema_version" to 8, "verification_scope" to "M5_M6_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
         "version" to version, "android_version_code" to code, "run_id" to run["id"], "run_head_sha" to run["head_sha"], "android_artifact_run_id" to context["android_run"].obj()["id"],
         "upstream_jobs" to stagedUpstreamJobs.sorted(), "artifact_inputs" to plan.map { mapOf("role" to it.role, "artifact_id" to it.id, "run_id" to it.runId, "run_head_sha" to it.run["head_sha"], "digest" to it.metadata["digest"]) },
         "candidate_assets" to assets, "staged_package_bytes_verified" to true, "candidate_android_version_name" to "$version-SNAPSHOT", "android_production_certificate_required" to trustedMain, "android_apk_checks" to verifiedApks,
@@ -332,7 +356,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         "common_native" to nativeCommon, "common_native_receipt_verified" to true, "common_ios_targets" to domainIosTargets,
         "ios_product_domain_integration" to "GALLERY_LIBRARY_READER_DOWNLOADS",
         "remaining_final_targets" to releaseTargets.filter { target -> assets.none { it["target"] == target.id } }.map { mapOf("target" to it.id, "file" to it.fileName(version), "final_package" to "NOT_INTEGRATED") },
-        "linux_arm64_transport_permissions" to "NOT_PRESERVED; ORIGINAL_RUNNER_EXECUTION_VERIFIED_SEPARATELY", "ios_unsigned_ipa" to ipaProducer, "development_signed_device" to "NOT_VERIFIED",
+        "linux_arm64_transport_permissions" to "NOT_PRESERVED; ORIGINAL_RUNNER_EXECUTION_VERIFIED_SEPARATELY", "ios_unsigned_ipa" to ipaProducer, "macos_arm64_dmg" to armProducer, "development_signed_device" to "NOT_VERIFIED",
         "minimum_systems" to "NOT_VERIFIED", "hardware_acceleration" to "NOT_VERIFIED", "complete_license_sbom" to "NOT_VERIFIED", "product_p0_verified" to false, "all_eleven_assets_verified" to false, "publish_enabled" to false,
     )
     owned.resolve("staged-package.json").writeText(json(result))

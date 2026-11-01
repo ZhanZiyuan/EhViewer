@@ -84,10 +84,20 @@ abstract class BuildDesktopNative : DefaultTask() {
             "-DWEBP_BUILD_WEBPMUX=OFF", "-DWEBP_BUILD_EXTRAS=OFF",
         )
         run("webp", repo, "cmake", "--build", webpBuild.absolutePath, "--target", "webp", "webpdemux", "--parallel", "4")
+        // Use Apple's system archive ABI, as the Intel package already does.
+        // An inherited Homebrew LIBRARY_PATH must not bind the shipped dylib to /opt/homebrew.
+        val appleLibraries = if (mac) {
+            run("apple-sdk", repo, "xcrun", "--sdk", "macosx", "--show-sdk-path")
+            val libraries = File(logs.resolve("apple-sdk.log").readText().trim()).resolve("usr/lib")
+            check(libraries.resolve("libarchive.tbd").isFile) { "Missing Apple system archive SDK stub" }
+            arrayOf("-L", "native=${libraries.absolutePath}")
+        } else {
+            emptyArray()
+        }
         run(
             "rust", repo, "cargo", "rustc", "--manifest-path", repo.resolve("native/rust/Cargo.toml").absolutePath,
             "--locked", "--lib", "--features", "jvm", "--crate-type", "cdylib", "--target", target.get(),
-            "--", "-L", "native=${webpBuild.absolutePath}", "-C",
+            "--", *appleLibraries, "-L", "native=${webpBuild.absolutePath}", "-C",
             if (mac) "link-arg=-Wl,-install_name,@rpath/libehviewer_rust.dylib" else "link-arg=-Wl,-soname,libehviewer_rust.so",
             *if (mac) emptyArray() else arrayOf("-C", "link-arg=-Wl,-z,defs"),
         )
@@ -160,13 +170,15 @@ abstract class BuildNativeBrowser : DefaultTask() {
     }
 }
 
-/** Select the published Intel entries; the original checksummed cache stays untouched. */
-abstract class SelectIntelSkiko : DefaultTask() {
+/** Select only the target Apple natives; the original checksummed upstream cache stays untouched. */
+abstract class SelectAppleSkiko : DefaultTask() {
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val source: ConfigurableFileCollection
 
     @get:Input abstract val sourceSha256: Property<String>
+
+    @get:Input abstract val targetArchitecture: Property<String>
 
     @get:OutputFile abstract val destination: RegularFileProperty
 
@@ -187,8 +199,10 @@ abstract class SelectIntelSkiko : DefaultTask() {
         val output = destination.get().asFile.also { it.parentFile.mkdirs() }
         ZipFile(original).use { zip ->
             val entries = zip.entries().asSequence().toList()
-            check(entries.any { it.name == "libskiko-macos-x64.dylib" })
-            val rejected = setOf("libskiko-macos-arm64.dylib", "libskiko-macos-arm64.dylib.sha256")
+            val selected = targetArchitecture.get().also { require(it in setOf("arm64", "x64")) }
+            check(entries.any { it.name == "libskiko-macos-$selected.dylib" })
+            val other = if (selected == "arm64") "x64" else "arm64"
+            val rejected = setOf("libskiko-macos-$other.dylib", "libskiko-macos-$other.dylib.sha256")
             check(entries.map { it.name }.containsAll(rejected))
             ZipOutputStream(output.outputStream()).use { result ->
                 for (entry in entries.filter { it.name !in rejected }) {
@@ -201,15 +215,18 @@ abstract class SelectIntelSkiko : DefaultTask() {
     }
 }
 
-val skikoSource = configurations.create("intelSkikoSource") { isTransitive = false }
-val selectIntelSkiko = tasks.register<SelectIntelSkiko>("selectIntelSkiko") {
+val mac = System.getProperty("os.name").startsWith("Mac")
+val intelMac = mac && System.getProperty("os.arch") in setOf("x86_64", "amd64")
+val appleArchitecture = if (intelMac) "x64" else "arm64"
+val skikoSource = configurations.create("appleSkikoSource") { isTransitive = false }
+val selectAppleSkiko = tasks.register<SelectAppleSkiko>("selectAppleSkiko") {
     source.from(skikoSource)
-    sourceSha256.set("aacb31a5d2a70197abe18f9e81698eef15c83435791d4c487a2ffe139913762e")
-    destination.set(layout.buildDirectory.file("native-dependencies/skiko-awt-runtime-macos-x64-${libs.versions.skiko.get()}.jar"))
+    targetArchitecture.set(appleArchitecture)
+    sourceSha256.set(if (intelMac) "aacb31a5d2a70197abe18f9e81698eef15c83435791d4c487a2ffe139913762e" else "aec37b44e8dabf4de620068146769655748be3971bf868614e5ec6b240b2ac35")
+    destination.set(layout.buildDirectory.file("native-dependencies/skiko-awt-runtime-macos-$appleArchitecture-${libs.versions.skiko.get()}.jar"))
 }
 
 val repositoryRoot = layout.projectDirectory.dir("../..")
-val intelMac = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")
 val windowsArm = System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64"
 val prepareDesktopNative = tasks.register<BuildDesktopNative>("prepareDesktopNative") {
     val machine = if (System.getProperty("os.arch") in setOf("aarch64", "arm64")) "aarch64" else "x86_64"
@@ -286,10 +303,12 @@ dependencies {
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.compose.material3)
     implementation(compose.desktop.currentOs) {
-        if (intelMac) exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-x64")
+        if (mac) exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-$appleArchitecture")
     }
-    add(skikoSource.name, libs.skiko.macos.x64)
-    if (intelMac) runtimeOnly(files(selectIntelSkiko.flatMap { it.destination }))
+    if (mac) {
+        add(skikoSource.name, if (intelMac) libs.skiko.macos.x64 else libs.skiko.macos.arm64)
+        runtimeOnly(files(selectAppleSkiko.flatMap { it.destination }))
+    }
 }
 
 val androidBuild = repositoryRoot.file("app/build.gradle.kts")

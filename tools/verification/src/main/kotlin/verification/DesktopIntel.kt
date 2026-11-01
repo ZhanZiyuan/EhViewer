@@ -20,12 +20,15 @@ import kotlin.io.path.readBytes
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
-/** Reject renamed, fat, ARM, truncated or non-executable objects in the Intel distribution. */
-fun verifyIntelMachO(header: ByteArray) {
+/** Reject renamed, fat, foreign or truncated objects for the actual Apple target. */
+fun verifyMacMachO(header: ByteArray, arm64: Boolean) {
     require(header.size >= 32) { "Truncated Mach-O" }
     val data = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN)
-    require(data.getInt(0) == 0xfeedfacf.toInt() && data.getInt(4) == 0x1000007 && data.getInt(12) in setOf(2, 6)) { "Expected thin x86_64 Mach-O executable/library" }
+    val cpu = if (arm64) 0x100000c else 0x1000007
+    require(data.getInt(0) == 0xfeedfacf.toInt() && data.getInt(4) == cpu && data.getInt(12) in setOf(2, 6)) { "Expected thin matching-architecture Mach-O executable/library" }
 }
+
+fun verifyIntelMachO(header: ByteArray) = verifyMacMachO(header, arm64 = false)
 
 /** Check the retained upstream texts in the installed app, after jpackage has copied resources. */
 fun expectedDesktopNativeNoticeCount(): Int = 6 + listOf("session", "browser").sumOf { filesBelow(root.resolve("app/desktop/licenses/$it"), "").size }
@@ -59,15 +62,30 @@ fun verifyIntelProducer(proof: Map<String, Any?>, sourceCommit: String, dmgSha25
     require(proof.str("dmg_sha256") == dmgSha256) { "Consumer DMG differs from the ARM producer's tested bytes" }
 }
 
+/** ARM packages require native ARM execution, independently of the Intel/Rosetta contract. */
+fun verifyArm64Producer(proof: Map<String, Any?>, sourceCommit: String, dmgSha256: String) {
+    require(proof["result"] == "PASS" && proof["source_commit"] == sourceCommit && proof["source_dirty"] == false) { "Expected a clean successful same-source ARM producer" }
+    require(proof["physical_host"] == "arm64" && proof["artifact_build_host"] == "arm64" && proof["arm_hardware_probe"] == "1" && proof["target"] == "aarch64-apple-darwin") { "Expected physical Apple ARM production" }
+    require(proof["execution_mode"] == "native-arm64" && proof["rosetta_probe"] in setOf("", "0")) { "ARM package must execute natively" }
+    require(proof["dmg_sha256"] == dmgSha256) { "ARM DMG differs from tested producer bytes" }
+}
+
 /** A producer report selects native Intel consumption of the very same ARM-built DMG. */
-fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null): Map<String, Any?> {
+fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null): Map<String, Any?> = desktopMacDmg(dmgInput, output, producerReport, arm64 = false)
+
+fun desktopArm64Dmg(dmgInput: Path, output: Path): Map<String, Any?> = desktopMacDmg(dmgInput, output, null, arm64 = true)
+
+private fun desktopMacDmg(dmgInput: Path, output: Path, producerReport: Path?, arm64: Boolean): Map<String, Any?> {
     val dmg = if (Files.isDirectory(dmgInput)) dmgInput.listDirectoryEntries("*.dmg").single() else dmgInput
-    require(System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")) { "Run with the real Intel JDK" }
+    val architectures = if (arm64) setOf("aarch64", "arm64") else setOf("x86_64", "amd64")
+    require(System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in architectures) { "Run with the actual target JDK" }
     val nativeIntel = producerReport != null
     val armHardware = command("sysctl", "-in", "hw.optional.arm64").trim()
-    val translated = command("arch", "-x86_64", "/usr/sbin/sysctl", "-in", "sysctl.proc_translated").trim()
+    val translated = if (arm64) command("sysctl", "-in", "sysctl.proc_translated").trim() else command("arch", "-x86_64", "/usr/sbin/sysctl", "-in", "sysctl.proc_translated").trim()
     val cpuBrand = command("sysctl", "-n", "machdep.cpu.brand_string").trim()
-    if (nativeIntel) {
+    if (arm64) {
+        require(!nativeIntel && armHardware == "1" && translated in setOf("", "0") && command("uname", "-m").trim() == "arm64") { "ARM64 verification requires native Apple ARM execution" }
+    } else if (nativeIntel) {
         // Intel kernels may omit ARM/Rosetta OIDs. -i ignores an unknown OID, not other failures.
         require(armHardware in setOf("", "0") && translated in setOf("", "0") && cpuBrand.contains("Intel", ignoreCase = true)) { "Native Intel verification requires Intel hardware without ARM/Rosetta translation" }
     } else {
@@ -78,8 +96,9 @@ fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null):
     val sourceCommit = command("git", "rev-parse", "HEAD").trim()
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
+    val dmgDigest = sha256(dmg)
     val producer = producerReport?.let { path ->
-        readJson(path).also { verifyIntelProducer(it, sourceCommit, sha256(dmg)) }
+        readJson(path).also { verifyIntelProducer(it, sourceCommit, dmgDigest) }
     }
     FileChannel.open(dmg).use { channel ->
         require(channel.size() > 512) { "Truncated DMG" }
@@ -113,12 +132,12 @@ fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null):
             val contents = app.resolve("Contents")
             val notices = desktopNativeNotices(contents)
             val launcher = contents.resolve("MacOS").resolve(plist.str("CFBundleExecutable"))
-            launcher.inputStream().use { verifyIntelMachO(it.readNBytes(32)) }
+            launcher.inputStream().use { verifyMacMachO(it.readNBytes(32), arm64) }
             val rust = contents.resolve("app/resources/libehviewer_rust.dylib")
-            rust.inputStream().use { verifyIntelMachO(it.readNBytes(32)) }
+            rust.inputStream().use { verifyMacMachO(it.readNBytes(32), arm64) }
             val bundledHome = contents.resolve("runtime/Contents/Home")
             val jvm = bundledHome.resolve("lib/server/libjvm.dylib")
-            jvm.inputStream().use { verifyIntelMachO(it.readNBytes(32)) }
+            jvm.inputStream().use { verifyMacMachO(it.readNBytes(32), arm64) }
             require(bundledHome.resolve("lib/modules").isRegularFile()) { "Missing jlink runtime modules" }
             val nativeFiles = mutableListOf<Map<String, Any?>>()
             Files.walk(app).use { paths ->
@@ -126,7 +145,7 @@ fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null):
                     require(path.toRealPath().startsWith(app.toRealPath())) { "Bundle symlink escapes the installed app" }
                     val header = path.inputStream().use { it.readNBytes(32) }
                     if (header.size >= 4 && ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN).getInt(0) == 0xfeedfacf.toInt()) {
-                        verifyIntelMachO(header)
+                        verifyMacMachO(header, arm64)
                         val identities = capture("native-identity-${nativeFiles.size}.txt", "otool", "-D", path)
                             .lineSequence().drop(1).map(String::trim).filter { it.isNotEmpty() }.toSet()
                         require(identities.all { it.startsWith('@') || it == "./${path.name}" || it == path.name }) { "Native install name contains an external path: ${path.name}" }
@@ -140,14 +159,14 @@ fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null):
                 }
             }
             val skiko = contents.resolve("app").listDirectoryEntries("libskiko*.dylib").single()
-            skiko.inputStream().use { verifyIntelMachO(it.readNBytes(32)) }
+            skiko.inputStream().use { verifyMacMachO(it.readNBytes(32), arm64) }
             var jarNatives = 0
             contents.resolve("app").listDirectoryEntries("*.jar").forEach { jar ->
                 ZipFile(jar.toFile()).use { zip ->
                     zip.entries().asSequence().filter { !it.isDirectory && it.name.substringAfterLast('.') in setOf("dylib", "jnilib", "so", "dll") }.forEach { entry ->
                         require(entry.name.substringAfterLast('.') in setOf("dylib", "jnilib")) { "Foreign native in ${jar.name}!/${entry.name}" }
                         try {
-                            zip.getInputStream(entry).use { verifyIntelMachO(it.readNBytes(32)) }
+                            zip.getInputStream(entry).use { verifyMacMachO(it.readNBytes(32), arm64) }
                         } catch (failure: IllegalArgumentException) {
                             throw IllegalArgumentException("Wrong architecture in ${jar.name}!/${entry.name}", failure)
                         }
@@ -159,7 +178,7 @@ fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null):
                 val proofDirectory = output.resolve("launch-$attempt")
                 capture("launch-$attempt.log", launcher, "--m1-smoke", proofDirectory, timeout = Duration.ofMinutes(2))
                 val proof = Properties().apply { proofDirectory.resolve("launcher.properties").inputStream().use(::load) }
-                require(proof.getProperty("architecture") in setOf("x86_64", "amd64"))
+                require(proof.getProperty("architecture") in architectures)
                 require(Path.of(proof.getProperty("java_home")).toRealPath() == bundledHome.toRealPath()) { "Launcher used an external JVM" }
                 require(proof.getProperty("java_version") == System.getProperty("java.version")) { "Unexpected bundled JVM version" }
                 require(proof.getProperty("rust_hash_results").toInt() == 100 && proof.getProperty("compose_frames").toInt() > 0 && proof.getProperty("window_showing") == "true")
@@ -168,7 +187,7 @@ fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null):
                 require(proof.getProperty("history_product_checks") == "3") { "Packaged native Room history regression did not execute" }
                 require(proof.getProperty("language_product_checks") == "4") { "Packaged language resources did not execute" }
                 require(proof.getProperty("archive_product_checks") == "9") { "Packaged private archive/directory import/pixel/reopen regression did not execute" }
-                val browser = desktopBrowserReceipt(proofDirectory, rust, contents.resolve("app/resources/ehviewer_browser"), setOf("x86_64", "amd64"), "JNI")
+                val browser = desktopBrowserReceipt(proofDirectory, rust, contents.resolve("app/resources/ehviewer_browser"), architectures, "JNI")
                 mapOf("native_browser" to browser, "gallery_product_checks" to 5, "account_product_checks" to 4, "history_product_checks" to 3, "archive_product_checks" to 9, "language_product_checks" to 4, "rust_hash_results" to proof.getProperty("rust_hash_results").toInt(), "compose_frames" to proof.getProperty("compose_frames").toInt(), "bundled_runtime" to "PASS")
             }
             val dependencyLog = capture("rust-dependencies.txt", "otool", "-L", rust)
@@ -187,15 +206,27 @@ fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null):
     }
     val result = mapOf(
         "source_commit" to sourceCommit, "source_dirty" to dirty,
-        "result" to "PASS", "physical_host" to if (nativeIntel) "x86_64" else "arm64", "target" to "x86_64-apple-darwin", "rosetta_probe" to translated,
-        "cpu_brand" to cpuBrand, "arm_hardware_probe" to armHardware, "execution_mode" to if (nativeIntel) "native-intel" else "rosetta",
-        "jdk" to System.getProperty("java.version"), "dmg_sha256" to sha256(dmg), "checks" to checks,
+        "result" to "PASS", "physical_host" to if (nativeIntel) "x86_64" else "arm64", "target" to if (arm64) "aarch64-apple-darwin" else "x86_64-apple-darwin", "rosetta_probe" to translated,
+        "cpu_brand" to cpuBrand, "arm_hardware_probe" to armHardware,
+        "execution_mode" to if (arm64) {
+            "native-arm64"
+        } else if (nativeIntel) {
+            "native-intel"
+        } else {
+            "rosetta"
+        },
+        "jdk" to System.getProperty("java.version"), "dmg_sha256" to dmgDigest, "checks" to checks,
         "macos" to command("sw_vers", "-productVersion").trim(), "xcode" to command("xcodebuild", "-version").trim(),
         "rust" to (producer?.str("rust") ?: command("rustc", "--version").trim()), "cmake" to (producer?.str("cmake") ?: command("cmake", "--version").lineSequence().first()),
         "build_tools_origin" to if (nativeIntel) "validated-arm-producer-report" else "local-arm-build-host",
         "producer_report_sha256" to producerReport?.let(::sha256), "artifact_build_host" to "arm64",
         "physical_intel_hardware" to if (nativeIntel) "PASS" else "NOT_VERIFIED", "signing_notarization" to "NOT_VERIFIED", "desktop_p0" to "NOT_VERIFIED",
     )
-    output.resolve("intel-dmg.json").writeText(json(result))
+    if (arm64) {
+        val retained = output.resolve("EhViewer-${checks.str("version")}-macos-arm64.dmg")
+        Files.copy(dmg, retained)
+        require(sha256(retained) == dmgDigest) { "Retained ARM64 DMG differs from installed/tested bytes" }
+    }
+    output.resolve(if (arm64) "arm64-dmg.json" else "intel-dmg.json").writeText(json(result))
     return result
 }

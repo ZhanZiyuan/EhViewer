@@ -26,16 +26,16 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 
-/** A real M1 window/native runtime probe. Shared reader and desktop P0 arrive in M5. */
+/** Normal shared product entry, with a separate measured packaged-runtime regression mode. */
 fun main(arguments: Array<String>) {
     if (arguments.isEmpty()) {
         galleryApplication()
         return
     }
-    val macIntel = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64")
+    val mac = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64", "aarch64", "arm64")
     val linuxArm = System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") == "aarch64"
     val windowsArm = System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64"
-    check(macIntel || linuxArm || windowsArm) { "This M1 probe supports macOS Intel, Linux ARM64 and Windows ARM64" }
+    check(mac || linuxArm || windowsArm) { "Packaged regression supports macOS Intel/ARM64, Linux ARM64 and Windows ARM64" }
     val report = when {
         arguments.isEmpty() -> null
         arguments.size == 2 && arguments[0] == "--m1-smoke" -> Path.of(arguments[1])
@@ -44,11 +44,11 @@ fun main(arguments: Array<String>) {
     }
     val nativeRoot = Path.of(checkNotNull(System.getProperty("compose.application.resources.dir")))
     val owned = if (windowsArm) verifyOwnedCapi(nativeRoot.resolve("ehviewer_capi.dll")) else null
-    val completed = owned?.completed ?: verifyUnixJni(nativeRoot, macIntel)
+    val completed = owned?.completed ?: verifyUnixJni(nativeRoot, mac)
     val galleryChecks = verifyGalleryProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder) + verifyAnimatedGalleryProduct()
     val accountChecks = verifyAccountProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder)
     val historyChecks = verifyDesktopHistory()
-    val browserLibrary = nativeRoot.resolve(if (windowsArm) "ehviewer_capi.dll" else "libehviewer_rust.${if (macIntel) "dylib" else "so"}")
+    val browserLibrary = nativeRoot.resolve(if (windowsArm) "ehviewer_capi.dll" else "libehviewer_rust.${if (mac) "dylib" else "so"}")
     val archiveChecks = verifyDesktopArchives(browserLibrary)
     val languageChecks = verifyDesktopLanguage()
     val browserProof = verifyBrowserBridge(browserLibrary, nativeRoot.resolve(if (windowsArm) "ehviewer_browser.exe" else "ehviewer_browser"), windowsArm)
@@ -104,8 +104,8 @@ fun main(arguments: Array<String>) {
     }
 }
 
-private fun verifyUnixJni(nativeRoot: Path, macIntel: Boolean): Int {
-    System.load(nativeRoot.resolve("libehviewer_rust.${if (macIntel) "dylib" else "so"}").toAbsolutePath().toString())
+private fun verifyUnixJni(nativeRoot: Path, mac: Boolean): Int {
+    System.load(nativeRoot.resolve("libehviewer_rust.${if (mac) "dylib" else "so"}").toAbsolutePath().toString())
     val sample = Files.createTempFile("ehviewer-m1-core-", ".txt")
     var completed = 0
     try {

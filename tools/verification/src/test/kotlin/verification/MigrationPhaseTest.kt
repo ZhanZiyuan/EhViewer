@@ -50,12 +50,13 @@ class MigrationPhaseTest {
         assertEquals(releaseTargets.map { it.id }.toSet(), targets.map { it.str("id") }.toSet())
         targets.forEach { assertEquals("NOT_VERIFIED", it["final_delivery_acceptance"]) }
         assertEquals("NOT_INTEGRATED", targets.single { it["id"] == "windows-x64" }["available_ci_surface"])
-        for (id in listOf("macos-arm64", "linux-x64")) assertEquals("HOST_JNI_ONLY", targets.single { it["id"] == id }["available_ci_surface"])
+        assertEquals("HOST_JNI_ONLY", targets.single { it["id"] == "linux-x64" }["available_ci_surface"])
+        assertEquals("SOURCE_BOUND_DMG_AND_NATIVE_ARM64_LAUNCH_SPIKE", targets.single { it["id"] == "macos-arm64" }["available_ci_surface"])
     }
 
-    @Test fun sevenCandidatesKeepFinalDeliveryAndSignedDeviceAcceptanceOpen() {
-        assertEquals(7, report()["staged_candidate_targets"].array().size)
-        assertEquals(4, report()["remaining_final_package_targets"].array().size)
+    @Test fun eightCandidatesKeepFinalDeliveryAndSignedDeviceAcceptanceOpen() {
+        assertEquals(8, report()["staged_candidate_targets"].array().size)
+        assertEquals(3, report()["remaining_final_package_targets"].array().size)
         assertEquals("SOURCE_BOUND_UNSIGNED_IPA_AND_ARM64_SIMULATOR_SPIKE", report()["target_coverage"].array().map(Any?::obj).single { it["id"] == "ios-arm64" }["available_ci_surface"])
     }
 

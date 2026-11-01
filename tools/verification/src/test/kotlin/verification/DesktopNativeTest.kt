@@ -33,4 +33,20 @@ class DesktopNativeTest {
         assertTrue(runCatching { verifyDesktopLibrary(ByteArray(20), "x86_64-unknown-linux-gnu") }.isFailure)
         assertTrue(runCatching { verifyDesktopLibrary(header(false), "aarch64-pc-windows-msvc") }.isFailure)
     }
+
+    @Test fun bothApplePackagesRejectTheOtherCpuAndRetainExecutableAndLibraryChecks() {
+        val arm = header(true)
+        val intel = arm.copyOf().also { ByteBuffer.wrap(it).order(ByteOrder.LITTLE_ENDIAN).putInt(4, 0x1000007) }
+        for (type in listOf(2, 6)) {
+            ByteBuffer.wrap(arm).order(ByteOrder.LITTLE_ENDIAN).putInt(12, type)
+            ByteBuffer.wrap(intel).order(ByteOrder.LITTLE_ENDIAN).putInt(12, type)
+            verifyMacMachO(arm, arm64 = true)
+            verifyIntelMachO(intel)
+            assertTrue(runCatching { verifyMacMachO(intel, arm64 = true) }.isFailure)
+            assertTrue(runCatching { verifyIntelMachO(arm) }.isFailure)
+        }
+        assertTrue(runCatching { verifyMacMachO(arm.copyOf(20), arm64 = true) }.isFailure)
+        val objectFile = arm.copyOf().also { ByteBuffer.wrap(it).order(ByteOrder.LITTLE_ENDIAN).putInt(12, 1) }
+        assertTrue(runCatching { verifyMacMachO(objectFile, arm64 = true) }.isFailure)
+    }
 }
