@@ -1,10 +1,10 @@
 package com.ehviewer.shared.reader
 
-import androidx.compose.ui.graphics.ImageBitmap
 import com.ehviewer.core.domain.reader.ReadingPosition
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.GalleryLibrary
-import com.ehviewer.shared.decodeGalleryImage
+import com.ehviewer.shared.GalleryMedia
+import com.ehviewer.shared.decodeGalleryMedia
 
 /** Real network/decoder factory; lightweight navigation keys are bounded separately from image pixels. */
 internal class GalleryPageSource(private val session: GalleryLibrary, private val detail: GalleryDetail, initial: String) {
@@ -17,7 +17,7 @@ internal class GalleryPageSource(private val session: GalleryLibrary, private va
         known[session.content.pageIndex(initial, detail.gid)] = initial
     }
 
-    suspend fun load(index: Int): ReaderPage<ImageBitmap> {
+    suspend fun load(index: Int): ReaderPage<GalleryMedia> {
         val url = known[index] ?: readingResumeUrl(session.content, detail, ReadingPosition(detail.gid, index, null, 0)).also { known[index] = it }
         val page = session.content.page(url, detail.gid, reload.remove(index))
         retryKeys[index] = page.skipHathKey
@@ -28,8 +28,8 @@ internal class GalleryPageSource(private val session: GalleryLibrary, private va
             retryKeys.remove(key)
             reload.remove(key)
         }
-        val bitmap = decodeGalleryImage(session.content.image(page, url, detail.gid))
-        return ReaderPage(url, bitmap, bitmap.width.toLong() * bitmap.height * 4)
+        val media = decodeGalleryMedia(session.content.image(page, url, detail.gid))
+        return ReaderPage(url, media, media.bytes)
     }
 
     fun retry(index: Int) {

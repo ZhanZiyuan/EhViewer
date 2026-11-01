@@ -1,6 +1,5 @@
 package com.ehviewer.shared
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -30,7 +29,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.isSpecified
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -38,7 +36,6 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import com.ehviewer.core.domain.reader.ReaderPreferences
@@ -62,7 +59,7 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
     var reloadKey by remember(url) { mutableStateOf<String?>(null) }
     var original by remember(url) { mutableStateOf(false) }
     var document by remember { mutableStateOf<GalleryImagePage?>(null) }
-    var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    var bitmap by remember { mutableStateOf<GalleryMedia?>(null) }
     var failure by remember { mutableStateOf<GalleryFailure?>(null) }
     var loading by remember { mutableStateOf(false) }
     var attempt by remember { mutableIntStateOf(0) }
@@ -140,7 +137,7 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
             val page = session.content.page(currentUrl, detail.gid, reloadKey)
             document = page
             val bytes = if (original) session.content.originalImage(page, currentUrl, detail.gid) else session.content.image(page, currentUrl, detail.gid)
-            bitmap = decodeGalleryImage(bytes)
+            bitmap = decodeGalleryMedia(bytes)
             saveProgress()
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -222,7 +219,7 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
             contentAlignment = Alignment.Center,
         ) {
             bitmap?.let { image ->
-                Image(
+                GalleryMediaImage(
                     image,
                     "Gallery page ${index + 1}",
                     Modifier.fillMaxSize().graphicsLayer {
@@ -231,7 +228,6 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                         translationX = pan.x
                         translationY = pan.y
                     },
-                    contentScale = ContentScale.Fit,
                 )
             }
         }

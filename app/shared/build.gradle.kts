@@ -14,6 +14,8 @@ kotlin {
     // Both Skia-backed targets compile the same actual decoder, while Android uses BitmapFactory.
     sourceSets.getByName("desktopMain").kotlin.srcDir("src/skiaMain/kotlin")
     sourceSets.getByName("iosMain").kotlin.srcDir("src/skiaMain/kotlin")
+    sourceSets.getByName("desktopTest").kotlin.srcDir("src/skiaTest/kotlin")
+    sourceSets.getByName("iosTest").kotlin.srcDir("src/skiaTest/kotlin")
     sourceSets.commonMain.dependencies {
         api(projects.core.network)
         implementation(libs.compose.multiplatform.ui)
@@ -21,7 +23,15 @@ kotlin {
         implementation(libs.compose.multiplatform.runtime)
         implementation(libs.compose.material3)
         implementation(libs.compose.ui.backhandler)
+        implementation(libs.androidx.lifecycle.compose)
         implementation(libs.serialization.json)
+    }
+    sourceSets.androidMain.dependencies {
+        implementation(project.dependencies.platform(libs.coil.bom))
+        implementation(libs.coil.compose)
+    }
+    sourceSets.getByName("desktopTest").dependencies {
+        implementation(compose.desktop.currentOs)
     }
     sourceSets.commonTest.dependencies {
         implementation(kotlin("test"))

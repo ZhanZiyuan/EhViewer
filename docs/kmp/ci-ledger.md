@@ -4,6 +4,8 @@ M0 / GATE_PASSED；M1 / GATE_PASSED（2f00e595c）；M2 / GATE_PASSED（17a17e28
 
 ## 已有基线
 
+M4 原图子任务：`079bf4ee1dc1d9b960c0964847f8379e4f7e6bfd`，`feat(reader): load original images through the shared client`，已通过 [Full CI41274652972](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41274652972) 全部12项、release dry-run 与 `ci/gate`。手机和平板各39项仪器测试、108项共享网络及原图/显示图像素和 Room 进度本地通过；同一英文 Draft PR 已记录并读回。该结果随本次实际动图/阅读器功能收录，不生成记账专用提交。动图设计、失败及当前验证边界见 [shared-animated-media.md](shared-animated-media.md)。
+
 M4 归档导入子任务：`c1b9c0a19d72ea8f636138da12dc229046968a8b`，`feat(kmp): import local archives into the shared reader`，已通过 [Full CI41270720264](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41270720264) 全部12项、release dry-run 与 `ci/gate`。Desktop/iOS 普通 CBZ 选择、真实图片、进程恢复和 iPad 横屏已验证；正确密码手动输入仍未验证，原生 AES 回归通过。灰色图标误判已用实际导入时间戳纠正，未提交错误修复。该记录随后续原图功能收录，不生成历史补链专用提交。
 
 M4 下载子任务：`817f2f685f92d881f71b83181627bc6d3e715b93`，`feat(kmp): download galleries and resume offline reading`，已通过 [Full CI41217474471](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41217474471) 全部12项，包括原 Android、各平台实际消费、无生产密钥 dry-run 和 `ci/gate`。同一英文 Draft PR 已记录并读回。随后才准备本次归档实现；新增 SHA 检查仍由 Actions Summary 自动记录，本文不生成单独记账提交。归档设计及当前本地证据见 [shared-archive-library.md](shared-archive-library.md)。M4 整体仍 IN_PROGRESS。

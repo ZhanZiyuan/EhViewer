@@ -11,6 +11,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
 import com.ehviewer.shared.verifyAccountProduct
+import com.ehviewer.shared.verifyAnimatedGalleryProduct
 import com.ehviewer.shared.verifyGalleryProduct
 import com.hippo.ehviewer.jni.sha1
 import java.io.FileDescriptor
@@ -42,7 +43,7 @@ fun main(arguments: Array<String>) {
     val nativeRoot = Path.of(checkNotNull(System.getProperty("compose.application.resources.dir")))
     val owned = if (windowsArm) verifyOwnedCapi(nativeRoot.resolve("ehviewer_capi.dll")) else null
     val completed = owned?.completed ?: verifyUnixJni(nativeRoot, macIntel)
-    val galleryChecks = verifyGalleryProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder)
+    val galleryChecks = verifyGalleryProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder) + verifyAnimatedGalleryProduct()
     val accountChecks = verifyAccountProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder)
     val historyChecks = verifyDesktopHistory()
     val browserLibrary = nativeRoot.resolve(if (windowsArm) "ehviewer_capi.dll" else "libehviewer_rust.${if (macIntel) "dylib" else "so"}")

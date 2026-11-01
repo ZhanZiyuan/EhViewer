@@ -2,9 +2,12 @@ package com.hippo.ehviewer.ui.screen
 
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Point
+import android.os.SystemClock
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.Lifecycle
 import androidx.room.Room
 import androidx.sqlite.driver.AndroidSQLiteDriver
 import androidx.test.core.app.ActivityScenario
@@ -39,11 +42,13 @@ import java.io.File
 import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.io.encoding.Base64
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -65,6 +70,9 @@ class GalleryPreviewIntegrationTest {
     private val title = "Preview integration fixture"
     private val png = Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGP4z8AAQv8BD/kD/YURmXYAAAAASUVORK5CYII=")
     private val originalPng = Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAADklEQVR4XmNg+A+CQAAAF/IF+w/LXpgAAAAASUVORK5CYII=")
+    private val animatedGif = Base64.decode("R0lGODlhAgABAPAAAP8AAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQADAAAACwAAAAAAgABAAACAgQKACH5BAASAAAALAAAAAACAAEAgAAA/wAAAAICBAoAOw==")
+    private val animatedWebp = Base64.decode("UklGRoQAAABXRUJQVlA4WAoAAAACAAAAAQAAAAAAQU5JTQYAAAD/////AABBTk1GKAAAAAAAAAAAAAEAAAAAAHgAAAJWUDhMDwAAAC8BAAAABxD9j/4HIqL/AQBBTk1GKAAAAAAAAAAAAAEAAAAAALQAAABWUDhMDwAAAC8BAAAABxDR//4HIqL/AQA=")
+    private val brokenWebp = animatedWebp.copyOf().apply { fill(0, 130, 139) }
 
     private fun detail(page: Int): String {
         val previews = (if (page == 0) 0..1 else 2..2).joinToString("") { index ->
@@ -194,6 +202,7 @@ class GalleryPreviewIntegrationTest {
                 restore(updateIntervalDays)
                 restore(launchPage)
                 restore(readingMode)
+                restore(continuousReadingRtl)
             }
             Settings.appLinkVerifyTip = tip
             with(Settings) {
@@ -215,10 +224,26 @@ class GalleryPreviewIntegrationTest {
         val location = with(Settings) { listOf(downloadScheme, downloadAuthority, downloadPath, downloadQuery, downloadFragment) }
         val tip = Settings.appLinkVerifyTip
         val requests = Collections.synchronizedList(mutableListOf<String>())
+        val originalBytes = AtomicReference(originalPng)
+        val displayBytes = AtomicReference(png)
         val engine = MockEngine { request ->
             requests += request.url.encodedPath + "?" + request.url.parameters["p"]?.let { "p=$it" }.orEmpty()
             when {
-                request.url.host == "ehgt.org" -> respond(if (request.url.encodedPath == "/original.png") originalPng else png, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
+                request.url.host == "ehgt.org" -> {
+                    val bytes = when (request.url.encodedPath) {
+                        "/original.png" -> originalBytes.get()
+                        "/2.png" -> displayBytes.get()
+                        else -> png
+                    }
+                    val type = if (bytes === animatedGif) {
+                        "image/gif"
+                    } else if (bytes === animatedWebp || bytes === brokenWebp) {
+                        "image/webp"
+                    } else {
+                        "image/png"
+                    }
+                    respond(bytes, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, type))
+                }
                 request.url.encodedPath == "/" -> respond("""<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/0.png" style="height:100px;width:80px"><div class="cn">Manga</div><div class="ir" style="background-position:0px -1px"></div></div></div></body></html>""")
                 request.url.encodedPath.startsWith("/g/") -> respond(detail(request.url.parameters["p"]?.toInt() ?: 0))
                 request.url.encodedPath == "/s/3333333333/$gid-3" -> respond("""<!DOCTYPE html><html><body><img id="img" src="https://ehgt.org/2.png"><a id="prev" href="https://e-hentai.org/s/2222222222/$gid-2">Previous</a><a href="https://e-hentai.org/fullimg/$gid/3333333333">Original</a></body></html>""")
@@ -274,6 +299,81 @@ class GalleryPreviewIntegrationTest {
                         }
                     }
                 }
+                fun waitForAnimatedPixels(label: String) = runBlocking {
+                    try {
+                        withTimeout(10_000) {
+                            var previous = -1
+                            var transitions = 0
+                            while (transitions < 4) {
+                                val screenshot = checkNotNull(device.takeScreenshot())
+                                val color = try {
+                                    try {
+                                        device.findObject(By.desc("Gallery page 3"))?.visibleCenter?.let { screenshot.getPixel(it.x, it.y) }
+                                    } catch (_: StaleObjectException) {
+                                        null
+                                    }
+                                } finally {
+                                    screenshot.recycle()
+                                }
+                                if (color != null) {
+                                    val red = Color.red(color)
+                                    val blue = Color.blue(color)
+                                    val frame = when {
+                                        red > 200 && blue < 30 -> 0
+                                        blue > 200 && red < 30 -> 1
+                                        else -> -1
+                                    }
+                                    if (frame >= 0 && frame != previous) {
+                                        if (previous >= 0) transitions++
+                                        previous = frame
+                                    }
+                                }
+                                delay(40)
+                            }
+                        }
+                    } catch (timeout: TimeoutCancellationException) {
+                        val image = checkNotNull(device.takeScreenshot())
+                        try {
+                            File(context.cacheDir, "animation-failure-$gid.png").outputStream().use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                        } finally {
+                            image.recycle()
+                        }
+                        device.dumpWindowHierarchy(File(context.cacheDir, "animation-failure-$gid.xml"))
+                        throw AssertionError("$label did not render four actual frame transitions", timeout)
+                    }
+                }
+                fun waitForPausedPoster(center: Point) = runBlocking {
+                    try {
+                        withTimeout(10_000) {
+                            var stableSince = 0L
+                            while (true) {
+                                val screenshot = checkNotNull(device.takeScreenshot())
+                                val color = try {
+                                    screenshot.getPixel(center.x, center.y)
+                                } finally {
+                                    screenshot.recycle()
+                                }
+                                val now = SystemClock.uptimeMillis()
+                                if (Color.red(color) > Color.blue(color) + 30 && Color.red(color) > Color.green(color) + 30) {
+                                    if (stableSince == 0L) stableSince = now
+                                    if (now - stableSince >= 600) break
+                                } else {
+                                    stableSince = 0L
+                                }
+                                delay(37)
+                            }
+                        }
+                    } catch (timeout: TimeoutCancellationException) {
+                        val image = checkNotNull(device.takeScreenshot())
+                        try {
+                            File(context.cacheDir, "animation-failure-$gid.png").outputStream().use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                        } finally {
+                            image.recycle()
+                        }
+                        device.dumpWindowHierarchy(File(context.cacheDir, "animation-failure-$gid.xml"))
+                        throw AssertionError("Paused activity did not expose the expected poster", timeout)
+                    }
+                }
                 click("Search")
                 click(title)
                 click("Browse page previews")
@@ -291,6 +391,32 @@ class GalleryPreviewIntegrationTest {
                 assertTrue(requests.any { it == "/fullimg/$gid/3333333333?" })
                 click("Use display image")
                 assertTrue("Display image did not render again", device.wait(Until.hasObject(By.desc("Gallery page 3")), 15_000))
+                waitForImagePixels(original = false)
+                for (animation in listOf(animatedGif, animatedWebp)) {
+                    originalBytes.set(animation)
+                    click("Load original image")
+                    waitForAnimatedPixels(if (animation === animatedGif) "GIF original" else "WebP original")
+                    if (animation === animatedWebp) {
+                        val center = checkNotNull(device.findObject(By.desc("Gallery page 3"))).visibleCenter
+                        scenario.moveToState(Lifecycle.State.STARTED)
+                        waitForPausedPoster(center)
+                        scenario.moveToState(Lifecycle.State.RESUMED)
+                        waitForAnimatedPixels("WebP after resume")
+                    }
+                    click("Use display image")
+                    waitForImagePixels(original = false)
+                }
+                originalBytes.set(brokenWebp)
+                click("Load original image")
+                assertTrue("Broken later frame did not report a recoverable error", device.wait(Until.hasObject(By.text("Animation could not be played. Retry animation")), 10_000))
+                click("Use display image")
+                waitForImagePixels(original = false)
+                displayBytes.set(animatedWebp)
+                click("Continuous reading")
+                assertTrue("Continuous reader moved away from the selected last page", device.wait(Until.hasObject(By.text("3 / 3")), 10_000))
+                waitForAnimatedPixels("WebP continuous")
+                displayBytes.set(png)
+                click("Paged reading")
                 waitForImagePixels(original = false)
                 runBlocking {
                     withTimeout(10_000) { while (EhDB.getReadingPosition(gid)?.page != 2) delay(25) }
@@ -331,6 +457,7 @@ class GalleryPreviewIntegrationTest {
                 restore(updateIntervalDays)
                 restore(launchPage)
                 restore(readingMode)
+                restore(continuousReadingRtl)
             }
             Settings.appLinkVerifyTip = tip
             with(Settings) {

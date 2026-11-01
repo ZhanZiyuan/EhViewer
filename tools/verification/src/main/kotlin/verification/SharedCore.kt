@@ -175,20 +175,21 @@ fun verifyProductTestReceipts(shared: Map<String, Any?>, artifacts: Path, reposi
         val jvm = sharedHostTestEvidence(filesBelow(artifacts.resolve("tests/$name-jvm"), ".xml").map(Path::readBytes), sources)
         val android = sharedHostTestEvidence(filesBelow(artifacts.resolve("tests/$name"), ".xml").map(Path::readBytes), sources)
         require(jvm == value.obj()["host_tests"] && android == shared["modules"].obj().getValue(name).obj()["host_tests"]) { "Actual product test receipts differ from producer evidence or same-source tests" }
-        for (tests in listOf(jvm, android)) {
+        for ((tests, skia) in listOf(jvm to true, android to false)) {
             if (name == "network") {
                 verifyNetworkTests(tests)
             } else {
-                verifyReaderTests(tests)
+                verifyReaderTests(tests, skia)
             }
         }
     }
 }
 
-fun verifyReaderTests(tests: Map<String, Any?>) {
+fun verifyReaderTests(tests: Map<String, Any?>, skia: Boolean = true) {
     require(tests["status"] == "PASS" && tests["executed"] == true)
     val suites = tests["suites"].obj().mapKeys { it.key.substringAfterLast('.').substringBefore('[') }
-    for ((name, minimum) in mapOf("GalleryImageLimitsTest" to 2, "ReaderStateRepositoryTest" to 9, "ReaderPageWindowTest" to 6, "ReadingNavigationTest" to 4, "GalleryAppearanceRepositoryTest" to 6, "GalleryPreviewCacheTest" to 5)) {
+    val required = mapOf("GalleryImageLimitsTest" to 2, "ReaderStateRepositoryTest" to 9, "ReaderPageWindowTest" to 6, "ReadingNavigationTest" to 4, "GalleryAppearanceRepositoryTest" to 6, "GalleryPreviewCacheTest" to 5, "GalleryMediaTest" to 8) + if (skia) mapOf("SkiaGalleryMediaTest" to 7) else mapOf("GalleryAnimationLeaseTest" to 2)
+    for ((name, minimum) in required) {
         require((suites[name] as? Number)?.toInt()?.let { it >= minimum } == true) { "Required shared reader behavior was not tested: $name" }
     }
 }

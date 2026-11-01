@@ -116,7 +116,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         require(host["target"] == if (role == "linux-host") "x86_64-unknown-linux-gnu" else "aarch64-apple-darwin") { "Host JNI target differs" }
         require(host["jvm_architecture"] == if (role == "linux-host") "amd64" else "aarch64") { "Host JNI JVM architecture differs" }
         require(host["checks"].obj()["ownership_checks"] == 4170 && host["checks"].obj()["archive_cases"] == 13) { "Incomplete host JNI regression" }
-        require(host["gallery_product_checks"] == 3 && host["account_product_checks"] == 3 && host["history_product_checks"] == 3 && host["archive_product_checks"] == 3) { "Missing actual host gallery/account/history/archive runtime checks" }
+        require(host["gallery_product_checks"] == 5 && host["account_product_checks"] == 3 && host["history_product_checks"] == 3 && host["archive_product_checks"] == 3) { "Missing actual host gallery/account/history/archive runtime checks" }
         val browser = host["native_browser"].obj()
         verifyDesktopBrowserReceipt(browser, setOf(host.str("jvm_architecture")), "JNI", host.str("library_sha256"), browser.str("browser_executable_sha256"))
         require(readJson(path(role, "native-browser.json")) == browser) { "Browser receipt differs from host summary" }
@@ -128,7 +128,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     require(
         linuxChecks["launches"].array().all {
             val proof = it.obj()
-            proof["gallery_product_checks"] == 3 && proof["account_product_checks"] == 3 && proof["history_product_checks"] == 3 && proof["archive_product_checks"] == 3 && proof["rust_hash_results"] == 100 && (proof["compose_frames"] as Number).toInt() > 0 && proof["bundled_runtime"] == "PASS" && proof["render_api"] == "SOFTWARE_COMPAT"
+            proof["gallery_product_checks"] == 5 && proof["account_product_checks"] == 3 && proof["history_product_checks"] == 3 && proof["archive_product_checks"] == 3 && proof["rust_hash_results"] == 100 && (proof["compose_frames"] as Number).toInt() > 0 && proof["bundled_runtime"] == "PASS" && proof["render_api"] == "SOFTWARE_COMPAT"
         },
     ) { "Both original Linux windows must pass" }
     val image = path("linux-runtime", "app/desktop/build/compose/binaries/main/app/EhViewer")
@@ -160,7 +160,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val dataXml = filesBelow(path("ios", "."), ".xml").filter { it.fileName.toString().startsWith("data-") }
     val dataSources = listOf("commonTest", "nonAndroidTest", "iosTest").sumOf { filesBelow(root.resolve("core/data/src/$it"), ".kt").size }
     require(sharedHostTestEvidence(dataXml.map(Path::readBytes), dataSources) == iosData - setOf("execution", "test_executable_sha256")) { "Actual Native database XML differs from its producer receipt" }
-    require(ios["gallery_product_checks_by_launch"].array() == listOf(3, 3)) { "Missing actual iOS detail/page/image decoder checks" }
+    require(ios["gallery_product_checks_by_launch"].array() == listOf(5, 5)) { "Missing actual iOS detail/page/static and animated image checks" }
     require(ios["account_product_checks_by_launch"].array() == listOf(3, 3)) { "Missing actual iOS account decoder checks" }
     require(ios["history_product_checks_by_launch"].array() == listOf(3, 3)) { "Missing actual iOS native database runtime checks" }
     require(ios["archive_product_checks_by_launch"].array() == listOf(3, 3)) { "Missing actual iOS private archive runtime checks" }
@@ -246,7 +246,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         require(
             checks["version"] == version && checks["launches"].array().size == 2 && checks["launches"].array().all {
                 val launch = it.obj()
-                launch["gallery_product_checks"] == 3 && launch["account_product_checks"] == 3 && launch["history_product_checks"] == 3 && launch["archive_product_checks"] == 3 && launch["rust_hash_results"] == 100 && launch["bundled_runtime"] == "PASS" && (launch["compose_frames"] as Number).toInt() > 0
+                launch["gallery_product_checks"] == 5 && launch["account_product_checks"] == 3 && launch["history_product_checks"] == 3 && launch["archive_product_checks"] == 3 && launch["rust_hash_results"] == 100 && launch["bundled_runtime"] == "PASS" && (launch["compose_frames"] as Number).toInt() > 0
             },
         ) { "Incomplete actual Intel package launches" }
     }
@@ -291,7 +291,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     }
     require(launch["launches"].array().size == 2 && launch["extracted_file_count"] == manifest["files"].array().size && launch["native_files_verified"] == native.size) { "Incomplete extracted Windows package proof" }
     fun windowsWindow(proof: Map<String, Any?>) {
-        require(proof["gallery_product_checks"] == "3") { "Missing actual Windows detail/page/image decoder checks" }
+        require(proof["gallery_product_checks"] == "5") { "Missing actual Windows detail/page/static and animated image checks" }
         require(proof["account_product_checks"] == "3") { "Missing actual Windows account decoder checks" }
         require(proof["history_product_checks"] == "3") { "Missing actual Windows native Room history checks" }
         require(proof["archive_product_checks"] == "3") { "Missing actual Windows private archive runtime checks" }

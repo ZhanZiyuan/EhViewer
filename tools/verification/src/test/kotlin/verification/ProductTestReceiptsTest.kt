@@ -26,7 +26,8 @@ class ProductTestReceiptsTest {
             fun receipt(target: String): Map<String, Any?> {
                 val output = artifacts.resolve("tests/$target")
                 Files.createDirectories(output)
-                val files = suites.map { (suite, cases) ->
+                val media = if (name == "network") emptyMap() else mapOf("GalleryMediaTest" to 8) + if (target.endsWith("-jvm")) mapOf("SkiaGalleryMediaTest" to 7) else mapOf("GalleryAnimationLeaseTest" to 2)
+                val files = (suites + media).map { (suite, cases) ->
                     val file = output.resolve("TEST-$suite.xml")
                     val tests = (1..cases).joinToString("") { "<testcase name=\"case$it\"/>" }
                     Files.writeString(file, "<testsuite name=\"com.ehviewer.$suite\" tests=\"$cases\" failures=\"0\" errors=\"0\" skipped=\"0\">$tests</testsuite>")
@@ -59,5 +60,17 @@ class ProductTestReceiptsTest {
         val image = case.artifacts.resolve("tests/shared-ui/TEST-GalleryImageLimitsTest.xml")
         Files.writeString(image, Files.readString(image).replace("skipped=\"0\"", "skipped=\"1\""))
         assertThrows(IllegalArgumentException::class.java) { verifyProductTestReceipts(case.proof, case.artifacts, case.repository) }
+    }
+
+    @Test fun platformMediaSuitesAreMandatoryOnTheirActualDecoderHosts() {
+        val case = fixture()
+        val jvm = case.proof["product_jvm"].obj().getValue("shared-ui").obj()["host_tests"].obj()
+        val android = case.proof["modules"].obj().getValue("shared-ui").obj()["host_tests"].obj()
+        verifyReaderTests(jvm)
+        verifyReaderTests(android, false)
+        for ((receipt, missing, skia) in listOf(Triple(jvm, "SkiaGalleryMediaTest", true), Triple(android, "GalleryAnimationLeaseTest", false), Triple(jvm, "GalleryMediaTest", true))) {
+            val incomplete = receipt + ("suites" to receipt["suites"].obj().filterKeys { !it.endsWith(missing) })
+            assertThrows(IllegalArgumentException::class.java) { verifyReaderTests(incomplete, skia) }
+        }
     }
 }

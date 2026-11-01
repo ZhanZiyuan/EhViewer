@@ -64,7 +64,7 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
         "-Pehviewer.desktopOnly=true", "-PgalleryRegressionLibrary=$library", "--console=plain", "--no-daemon",
         timeout = Duration.ofMinutes(10),
     )
-    require(gallery.lineSequence().count { it == "Gallery product regression passed: 3 checks" } == 1) { "Production JNI/model/image decoder regression did not execute" }
+    require(gallery.lineSequence().count { it == "Gallery product regression passed: 5 checks" } == 1) { "Production JNI/model/static and animated image regression did not execute" }
     require(gallery.lineSequence().count { it == "Account product regression passed: 3 checks" } == 1) { "Production JNI account decoder regression did not execute" }
     require(gallery.lineSequence().count { it == "History product regression passed: 3 checks" } == 1) { "Production Room/native history regression did not execute" }
     require(gallery.lineSequence().count { it == "Archive product regression passed: 3 checks" } == 1) { "Real private archive import, pixel and reopen regression did not execute" }
@@ -90,7 +90,7 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
         "target" to target, "jvm_architecture" to System.getProperty("os.arch"), "jvm_version" to System.getProperty("java.version"),
         "rust" to command("rustc", "--version").trim(), "library_sha256" to sha256(library), "result" to "PASS",
         "checks" to results, "packaged_runtime" to "NOT_VERIFIED", "ios_c_abi" to "NOT_VERIFIED",
-        "gallery_product_checks" to 3,
+        "gallery_product_checks" to 5,
         "account_product_checks" to 3,
         "history_product_checks" to 3,
         "archive_product_checks" to 3,

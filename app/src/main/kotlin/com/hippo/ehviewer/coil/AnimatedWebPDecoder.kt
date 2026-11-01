@@ -11,13 +11,19 @@ import coil3.decode.ImageSource
 import coil3.fetch.SourceFetchResult
 import coil3.gif.isAnimatedWebP
 import coil3.request.Options
+import com.ehviewer.shared.GalleryAnimationLease
+import com.ehviewer.shared.galleryAnimationLeaseKey
 import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import okio.FileSystem
 
-class AnimatedWebPDecoder(private val source: ByteBuffer) : Decoder {
-    override suspend fun decode() = DecodeResult(AnimatedWebPDrawable(source).asImage(), false)
+class AnimatedWebPDecoder(private val source: ByteBuffer, private val lease: GalleryAnimationLease? = null) : Decoder {
+    override suspend fun decode(): DecodeResult {
+        val drawable = if (lease == null) AnimatedWebPDrawable(source) else AnimatedWebPDrawable(source) { lease.notifyFailure() }
+        lease?.own(drawable)
+        return DecodeResult(drawable.asImage(), false)
+    }
 
     object Factory : Decoder.Factory {
         override fun create(
@@ -25,7 +31,7 @@ class AnimatedWebPDecoder(private val source: ByteBuffer) : Decoder {
             options: Options,
             imageLoader: ImageLoader,
         ) = if (DecodeUtils.isAnimatedWebP(result.source.source())) {
-            result.source.toByteBufferOrNull()?.let { AnimatedWebPDecoder(it) }
+            result.source.toByteBufferOrNull()?.let { AnimatedWebPDecoder(it, options.extras[galleryAnimationLeaseKey]) }
         } else {
             null
         }

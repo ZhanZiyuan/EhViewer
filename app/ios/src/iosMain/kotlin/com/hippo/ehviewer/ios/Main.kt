@@ -23,6 +23,7 @@ import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.reader.ReaderStateRepository
 import com.ehviewer.shared.settings.GalleryAppearanceRepository
 import com.ehviewer.shared.verifyAccountProduct
+import com.ehviewer.shared.verifyAnimatedGalleryProduct
 import com.ehviewer.shared.verifyAppleBrowserCookieTransfer
 import com.ehviewer.shared.verifyGalleryProduct
 import com.ehviewer.shared.verifyHistoryProduct
@@ -87,8 +88,8 @@ class EhViewerDelegate : UIResponder, UIApplicationDelegateProtocol {
             NSLog("EhViewerM1:cold-start")
             val rust = verifyRustInterop()
             NSLog("EhViewerM1:rust-ffi-ready completed=${rust.completed} live=${rust.live}")
-            check(verifyGalleryProduct(NativeGalleryDecoder) == 3)
-            NSLog("EhViewerM3:gallery-product checks=3")
+            check(verifyGalleryProduct(NativeGalleryDecoder) + verifyAnimatedGalleryProduct() == 5)
+            NSLog("EhViewerM3:gallery-product checks=5")
             check(verifyAccountProduct(NativeGalleryDecoder) == 3)
             NSLog("EhViewerM3:account-product checks=3")
         }
