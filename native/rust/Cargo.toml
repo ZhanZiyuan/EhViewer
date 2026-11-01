@@ -11,12 +11,13 @@ edition = "2024"
 crate-type = ["staticlib"]
 
 [features]
-jvm = ["dep:jni", "dep:jni_fn"]
+jvm = ["dep:jni", "dep:jni_fn", "dep:ehviewer_capi"]
 android = ["dep:ndk", "jvm", "ndk/bitmap", "dep:android_logger"]
 android-26 = ["android", "ndk/api-level-26"]
 
 [dependencies]
 ehviewer_core = { path = "core" }
+ehviewer_capi = { path = "capi", optional = true }
 anyhow = "1.0"
 jni = { version = "0.21", optional = true }
 jni_fn = { version = "0.1", optional = true }

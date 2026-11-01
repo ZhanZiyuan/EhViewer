@@ -3,6 +3,7 @@
 use std::{collections::BTreeMap, panic::AssertUnwindSafe, sync::Mutex};
 
 mod account;
+pub mod archive;
 
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 mod browser;
@@ -20,6 +21,7 @@ pub const EHV_NO_SESSION: i32 = 9;
 const MAX_INPUT: usize = 8 << 20;
 const MAX_BUFFERS: usize = 4096;
 const MAX_OWNED_BYTES: usize = 32 << 20;
+const FIRST_ARCHIVE_HANDLE: u64 = 1 << 60;
 
 struct Registry {
     next: u64,
@@ -46,6 +48,9 @@ fn retain(bytes: Vec<u8>) -> Result<u64, i32> {
         return Err(EHV_LIMIT);
     }
     let id = registry.next;
+    if id >= FIRST_ARCHIVE_HANDLE {
+        return Err(EHV_LIMIT);
+    }
     registry.next = id.checked_add(1).ok_or(EHV_LIMIT)?;
     registry.buffers.insert(id, bytes.into_boxed_slice());
     Ok(id)
@@ -338,7 +343,7 @@ pub unsafe extern "C" fn ehv_active_buffers(count: *mut usize) -> i32 {
 mod tests {
     use super::*;
     use std::ptr::{null, null_mut};
-    static SERIAL: Mutex<()> = Mutex::new(());
+    pub(super) static SERIAL: Mutex<()> = Mutex::new(());
 
     fn acquire(bytes: &[u8]) -> u64 {
         let mut handle = 0;

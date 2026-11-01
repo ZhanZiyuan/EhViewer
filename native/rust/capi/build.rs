@@ -5,6 +5,7 @@ fn main() {
     let output = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     println!("cargo:rerun-if-changed=src/lib.rs");
     println!("cargo:rerun-if-changed=src/account.rs");
+    println!("cargo:rerun-if-changed=src/archive.rs");
     println!("cargo:rerun-if-changed=src/browser.rs");
     println!("cargo:rerun-if-changed=cbindgen.toml");
     let mut config = cbindgen::Config::from_file(root.join("cbindgen.toml"))

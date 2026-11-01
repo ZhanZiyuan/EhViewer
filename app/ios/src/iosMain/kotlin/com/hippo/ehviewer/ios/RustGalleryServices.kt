@@ -42,7 +42,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.decodeFromByteArray
 
-private fun copyOwned(handle: ULong, maximum: Int): ByteArray = memScoped {
+internal fun copyOwned(handle: ULong, maximum: Int): ByteArray = memScoped {
     require(handle != 0uL)
     try {
         val count = alloc<ULongVar>()

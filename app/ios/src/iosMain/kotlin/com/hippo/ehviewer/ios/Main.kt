@@ -8,6 +8,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.window.ComposeUIViewController
+import com.ehviewer.core.data.FileArchiveLibrary
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
 import com.ehviewer.core.database.DataDirectory
@@ -17,6 +18,7 @@ import com.ehviewer.core.database.download.DownloadDatabase
 import com.ehviewer.core.database.ownedRoomDb
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.shared.AppleGalleryLoginBrowser
+import com.ehviewer.shared.ArchiveLibraryScreen
 import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.reader.ReaderStateRepository
 import com.ehviewer.shared.settings.GalleryAppearanceRepository
@@ -36,6 +38,11 @@ import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.set
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import okio.Path.Companion.toPath
 import platform.Foundation.NSApplicationSupportDirectory
@@ -117,6 +124,21 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                 val downloads = remember(session, downloadDatabase) {
                     session.downloads(RoomGalleryDownloadStorage(downloadDatabase, "${applicationDirectory()}/downloads".toPath()), scope)
                 }
+                val archives = remember { FileArchiveLibrary("${applicationDirectory()}/local-library".toPath(), AppleArchiveFactory) }
+                val archivePicker = remember { AppleArchivePicker { appWindow?.rootViewController } }
+                DisposableEffect(archives, archivePicker) {
+                    onDispose {
+                        archivePicker.close()
+                        val cleanup = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+                        cleanup.launch {
+                            try {
+                                archives.close()
+                            } finally {
+                                cleanup.cancel()
+                            }
+                        }
+                    }
+                }
                 SideEffect {
                     pauseDownloads = {
                         scope.launch {
@@ -141,6 +163,8 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                     LaunchedEffect(history) {
                         check(verifyHistoryProduct(history) == 3)
                         NSLog("EhViewerM1:history-product-ready checks=3")
+                        check(verifyAppleArchives(applicationDirectory()) == 3)
+                        NSLog("EhViewerM1:archive-product-ready checks=3")
                     }
                 }
                 if (startupRegression) {
@@ -149,7 +173,9 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                         NSLog("EhViewerM1:browser-cookie-ready checks=4")
                     }
                 }
-                GallerySearchScreen(session, readerState, appearance, history, downloads, backgroundDownloadsNote = "Downloads pause when you leave the app. Saved pages can be resumed.", browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
+                GallerySearchScreen(session, readerState, appearance, history, downloads, backgroundDownloadsNote = "Downloads pause when you leave the app. Saved pages can be resumed.", archiveContent = { back ->
+                    ArchiveLibraryScreen(archives, session, pickAndImport = { archivePicker.pickAndImport(archives) }, readingState = { book -> ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/archive-reading-state/${book.id}")) }, onBack = back)
+                }, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
             }
             makeKeyAndVisible()
         }

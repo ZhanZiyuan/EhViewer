@@ -2,6 +2,11 @@
 
 package com.hippo.ehviewer.desktop
 
+import com.ehviewer.core.domain.reader.ArchiveDocument
+import com.ehviewer.core.domain.reader.ArchiveDocumentFactory
+import com.ehviewer.core.domain.reader.ArchiveException
+import com.ehviewer.core.domain.reader.ArchiveFailure
+import com.ehviewer.core.domain.reader.archiveFailure
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.core.network.gallery.GalleryDocumentDecoder
@@ -21,6 +26,7 @@ import java.lang.foreign.ValueLayout.JAVA_BYTE
 import java.lang.foreign.ValueLayout.JAVA_INT
 import java.lang.foreign.ValueLayout.JAVA_LONG
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.cbor.Cbor
@@ -51,6 +57,88 @@ private class NativeCall(private val symbols: CapiSymbols, val arena: Arena) {
 
 private fun <T> nativeCall(library: Path, block: (NativeCall) -> T): T = openCapi(library.toRealPath()).use { symbols ->
     Arena.ofConfined().use { arena -> block(NativeCall(symbols, arena)) }
+}
+
+/** The main-thread DLL owner outlives every library document; individual calls use confined arenas. */
+internal class WindowsArchiveFactory(private val library: Path) : ArchiveDocumentFactory, AutoCloseable {
+    private val owner = openCapi(library.toRealPath())
+
+    fun activeResources(): Pair<Int, Int> = nativeCall(library) { call ->
+        val archives = call.arena.allocate(JAVA_LONG)
+        val buffers = call.arena.allocate(JAVA_LONG)
+        check(call.function("ehv_active_archives", FunctionDescriptor.of(JAVA_INT, ADDRESS)).invokeWithArguments(archives) == 0)
+        check(call.function("ehv_active_buffers", FunctionDescriptor.of(JAVA_INT, ADDRESS)).invokeWithArguments(buffers) == 0)
+        Math.toIntExact(archives.get(JAVA_LONG, 0)) to Math.toIntExact(buffers.get(JAVA_LONG, 0))
+    }
+
+    override fun open(path: String): ArchiveDocument = nativeCall(library) { call ->
+        val encoded = path.encodeToByteArray()
+        require(encoded.size in 1..65536)
+        val output = call.arena.allocate(JAVA_LONG)
+        val open = call.function("ehv_archive_open", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS))
+        val status = open.invokeWithArguments(call.bytes(encoded), encoded.size.toLong(), output) as Int
+        if (status != 0) archiveFailure(status)
+        val handle = output.get(JAVA_LONG, 0)
+        try {
+            val count = call.arena.allocate(JAVA_INT)
+            val password = call.arena.allocate(JAVA_BYTE)
+            val info = call.function("ehv_archive_info", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, ADDRESS))
+            val result = info.invokeWithArguments(handle, count, password) as Int
+            if (result != 0) archiveFailure(result)
+            val pages = count.get(JAVA_INT, 0)
+            check(pages in 1..100_000)
+            Document(handle, pages, password.get(JAVA_BYTE, 0).toInt() == 1)
+        } catch (failure: Throwable) {
+            call.function("ehv_archive_close", FunctionDescriptor.of(JAVA_INT, JAVA_LONG)).invokeWithArguments(handle)
+            throw failure
+        }
+    }
+
+    private inner class Document(handle: Long, override val pageCount: Int, override val needsPassword: Boolean) : ArchiveDocument {
+        private val owned = AtomicLong(handle)
+        private fun active() = owned.get().also { if (it == 0L) throw ArchiveException(ArchiveFailure.CLOSED) }
+
+        private fun page(symbol: String, index: Int, limit: Long): ByteArray = nativeCall(library) { call ->
+            require(index in 0 until pageCount)
+            val output = call.arena.allocate(JAVA_LONG)
+            val function = call.function(symbol, FunctionDescriptor.of(JAVA_INT, JAVA_LONG, JAVA_INT, ADDRESS))
+            val status = function.invokeWithArguments(active(), index, output) as Int
+            if (status != 0) archiveFailure(status)
+            call.copyOwned(output.get(JAVA_LONG, 0), limit).also { active() }
+        }
+
+        override fun read(index: Int): ByteArray = page("ehv_archive_read", index, 32L * 1024 * 1024)
+        override fun extension(index: Int): String = page("ehv_archive_extension", index, 32).decodeToString(throwOnInvalidSequence = true)
+
+        override fun providePassword(password: String): Boolean {
+            val encoded = password.encodeToByteArray()
+            require(encoded.size <= 4096)
+            try {
+                return nativeCall(library) { call ->
+                    val output = call.arena.allocate(JAVA_BYTE)
+                    val function = call.function("ehv_archive_password", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS))
+                    val status = function.invokeWithArguments(active(), call.bytes(encoded), encoded.size.toLong(), output) as Int
+                    if (status != 0) archiveFailure(status)
+                    active()
+                    output.get(JAVA_BYTE, 0).toInt() == 1
+                }
+            } finally {
+                encoded.fill(0)
+            }
+        }
+
+        override fun close() {
+            val handle = owned.getAndSet(0)
+            if (handle != 0L) {
+                nativeCall(library) { call ->
+                    val status = call.function("ehv_archive_close", FunctionDescriptor.of(JAVA_INT, JAVA_LONG)).invokeWithArguments(handle) as Int
+                    if (status != 0) archiveFailure(status)
+                }
+            }
+        }
+    }
+
+    override fun close() = owner.close()
 }
 
 private class WindowsSessionVault(private val library: Path, directory: Path) : SessionVault {

@@ -74,7 +74,7 @@ private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
-fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, downloads: GalleryDownloads, backgroundDownloadsNote: String? = null, browserFactory: ((String) -> GalleryLoginBrowser)? = null, onReady: () -> Unit = {}) {
+fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, downloads: GalleryDownloads, backgroundDownloadsNote: String? = null, archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null, browserFactory: ((String) -> GalleryLoginBrowser)? = null, onReady: () -> Unit = {}) {
     DisposableEffect(session) { onDispose { session.close() } }
     val library = remember(session, history) {
         object : GalleryLibrary by session {
@@ -87,7 +87,7 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
             }
         }
     }
-    GalleryLibraryScreen(library, readerState, appearance, history, downloads, backgroundDownloadsNote = backgroundDownloadsNote, accountContent = { changed, back ->
+    GalleryLibraryScreen(library, readerState, appearance, history, downloads, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
     }, onReady = onReady)
 }
@@ -105,6 +105,7 @@ fun GalleryLibraryScreen(
     onBack: (() -> Unit)? = null,
     onAccount: (() -> Unit)? = null,
     accountContent: (@Composable (onIdentityAction: () -> Unit, onBack: () -> Unit) -> Unit)? = null,
+    archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null,
     onReady: () -> Unit = {},
 ) {
     var query by rememberSaveable { mutableStateOf("") }
@@ -115,6 +116,7 @@ fun GalleryLibraryScreen(
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var historyOpen by rememberSaveable { mutableStateOf(false) }
     var downloadsOpen by rememberSaveable { mutableStateOf(false) }
+    var archivesOpen by rememberSaveable { mutableStateOf(false) }
     var cached by remember { mutableStateOf<CachedGalleryPages?>(null) }
     var downloadsReady by remember(downloads) { mutableStateOf(false) }
     var downloadsFailed by remember(downloads) { mutableStateOf(false) }
@@ -224,6 +226,10 @@ fun GalleryLibraryScreen(
                         return@Column
                     }
                     val gallery = selected
+                    if (archivesOpen && archiveContent != null) {
+                        archiveContent { archivesOpen = false }
+                        return@Column
+                    }
                     if (downloadsOpen) {
                         val opened = cached
                         if (opened != null) {
@@ -253,6 +259,7 @@ fun GalleryLibraryScreen(
                         onBack?.let { back -> TextButton(onClick = back) { Text("Back") } }
                         Text("EhViewer", style = MaterialTheme.typography.headlineMedium)
                         TextButton(onClick = { downloadsOpen = true }) { Text("Downloads") }
+                        if (archiveContent != null) TextButton(onClick = { archivesOpen = true }) { Text("Local library") }
                         if (onAccount != null || accountContent != null) {
                             TextButton(onClick = {
                                 request?.cancel()

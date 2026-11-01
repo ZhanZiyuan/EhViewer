@@ -6,6 +6,8 @@ M3 已在 `74a8e933d51de52309c6e38390e89b90abf6321b` 完成阶段门禁：[Full 
 
 当前进入 M4 / IN_PROGRESS：交付同一 CMP 下载列表、真实文件/Room、暂停/恢复/删除/重启和离线阅读，随后推进 Rust 归档、部分图片恢复与高级媒体；不把本切片等同完整 M4 或五平台 P0。搜索、详情、阅读器、账户、筛选、外观与预览已逐提交通过 CI。PR #15 始终 Draft，版本到 M8 之前保持 `1.15.10 / 180074`。后续每次改动遵守加速计划，不恢复历史双事件矩阵或额外记账提交。
 
+下载提交 `817f2f685f92d881f71b83181627bc6d3e715b93` 的 [Full CI41217474471](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41217474471) 全部12项成功。当前独立交付本地归档导入与同一 CMP 阅读器：真实 Rust C ABI/JNI、Apple 静态 libarchive/liblzma、私有副本、AES 解密、图片及重开回归，设计/Animeko 参考差异/许可证/实际验证边界见 [shared-archive-library.md](shared-archive-library.md)。其新 SHA 必需 CI 仍须单独通过；M4 不标记完成。
+
 以下保留各历史时点的范围、结果和未通过记录；其“当前/待验”描述不覆盖以上进度，也不改变维护者的加速计划。
 
 本轮先交付 iOS 原生浏览器登录入口：共享 CMP 导航和确认，Kotlin/Native 嵌入独立 WKWebView，无 Swift/自维护 JavaScript。真实 HttpOnly Cookie 交接在公共 KMP 检查身份、范围、期限及会话代次后才原子写入 Keychain；取消不写入。网络 Android/JVM/Native 各 46、阅读器各 20、真实 WebKit/Keychain 双冷启动及原 Android 验收任务通过，iPhone/iPad 官方验证页、窄屏/横屏和取消已测。托管 CI 仍需独立验证；网站验证码/真实账号、桌面与 Android 浏览器接入、配置与数据迁移仍待完成，M3 不标记完成。参见[浏览器切片的参考、验证与限制](browser-sign-in.md)。

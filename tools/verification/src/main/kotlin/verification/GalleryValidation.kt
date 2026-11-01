@@ -2,7 +2,7 @@ package verification
 
 /** The shared cookie and repository suites must execute on both Android Host and desktop JVM. */
 fun verifyNetworkTests(evidence: Map<String, Any?>) {
-    require(evidence["status"] == "PASS" && evidence["executed"] == true && (evidence["tests"] as Number).toInt() >= 94)
+    require(evidence["status"] == "PASS" && evidence["executed"] == true && (evidence["tests"] as Number).toInt() >= 100)
     val suites = evidence["suites"].obj().mapKeys { (name, _) -> name.substringAfterLast('.').substringBefore('[') }
     require(suites.keys.containsAll(setOf("GalleryRepositoryTest", "PersistentCookieStorageTest", "GalleryContentRepositoryTest", "GalleryAuthenticationRepositoryTest", "BrowserSignInTest", "GalleryAccountRepositoryTest", "GallerySearchFiltersTest", "GalleryPreviewRepositoryTest"))) { "Missing actual shared network test suites" }
     require((suites.getValue("GalleryRepositoryTest") as Number).toInt() >= 10 && (suites.getValue("PersistentCookieStorageTest") as Number).toInt() >= 12) { "Incomplete network/session regression" }
@@ -11,7 +11,7 @@ fun verifyNetworkTests(evidence: Map<String, Any?>) {
     require((suites.getValue("GalleryAccountRepositoryTest") as Number).toInt() >= 13) { "Incomplete account initialization and session race regression" }
     require((suites.getValue("GallerySearchFiltersTest") as Number).toInt() >= 6) { "Incomplete shared search filter protocol regression" }
     require((suites.getValue("GalleryPreviewRepositoryTest") as Number).toInt() >= 5) { "Incomplete real thumbnail transport regression" }
-    for ((suite, minimum) in mapOf("GalleryDownloadQueueTest" to 10, "NetworkGalleryDownloadSourceTest" to 9, "DownloadedGalleryContentTest" to 4)) {
+    for ((suite, minimum) in mapOf("GalleryDownloadQueueTest" to 10, "NetworkGalleryDownloadSourceTest" to 9, "DownloadedGalleryContentTest" to 4, "ArchiveGalleryContentTest" to 6)) {
         require((suites[suite] as? Number)?.toInt()?.let { it >= minimum } == true) { "Missing actual download, recovery or offline-page regression: $suite" }
     }
 }
@@ -34,6 +34,13 @@ fun verifyGalleryCapiHeader(header: String) {
         "int32_tehv_session_read(constuint8_t*directory,size_tlength,uint64_t*handle);",
         "int32_tehv_session_write(constuint8_t*directory,size_tlength,constuint8_t*input,size_tsize);",
         "int32_tehv_session_clear(constuint8_t*directory,size_tlength);",
+        "int32_tehv_archive_open(constuint8_t*path,size_tlength,uint64_t*output);",
+        "int32_tehv_archive_info(uint64_thandle,uint32_t*pages,uint8_t*needs_password);",
+        "int32_tehv_archive_password(uint64_thandle,constuint8_t*input,size_tlength,uint8_t*accepted);",
+        "int32_tehv_archive_extension(uint64_thandle,uint32_tindex,uint64_t*output);",
+        "int32_tehv_archive_read(uint64_thandle,uint32_tindex,uint64_t*output);",
+        "int32_tehv_archive_close(uint64_thandle);",
+        "int32_tehv_active_archives(size_t*count);",
     )
     prototypes.forEach { prototype -> require(Regex(Regex.escape(prototype)).findAll(declarations).count() == 1) { "Missing, duplicated or changed Rust C ABI signature" } }
     listOf("OK", "INVALID_ARGUMENT", "INVALID_HANDLE", "BUFFER_TOO_SMALL", "LIMIT", "INTERNAL", "PANIC", "PARSE", "STORAGE", "NO_SESSION").forEachIndexed { code, name ->
@@ -41,4 +48,4 @@ fun verifyGalleryCapiHeader(header: String) {
     }
 }
 
-const val MINIMUM_NATIVE_SESSION_PASSES = 55
+const val MINIMUM_NATIVE_SESSION_PASSES = 62

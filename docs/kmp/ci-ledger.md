@@ -4,6 +4,8 @@ M0 / GATE_PASSED；M1 / GATE_PASSED（2f00e595c）；M2 / GATE_PASSED（17a17e28
 
 ## 已有基线
 
+M4 下载子任务：`817f2f685f92d881f71b83181627bc6d3e715b93`，`feat(kmp): download galleries and resume offline reading`，已通过 [Full CI41217474471](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41217474471) 全部12项，包括原 Android、各平台实际消费、无生产密钥 dry-run 和 `ci/gate`。同一英文 Draft PR 已记录并读回。随后才准备本次归档实现；新增 SHA 检查仍由 Actions Summary 自动记录，本文不生成单独记账提交。归档设计及当前本地证据见 [shared-archive-library.md](shared-archive-library.md)。M4 整体仍 IN_PROGRESS。
+
 | SHA | 来源 | CI | Release | 结论 |
 |---|---|---|---|---|
 | `423b8af13632896b55780783b54b5f720ec4c9dd` | 刷新后的 origin/main | [39199763664](https://github.com/ZhanZiyuan/EhViewer/actions/runs/39199763664) push SUCCESS | [39201331638](https://github.com/ZhanZiyuan/EhViewer/actions/runs/39201331638) workflow_run SUCCESS | 真实历史基线，不替代新 SHA 验证 |

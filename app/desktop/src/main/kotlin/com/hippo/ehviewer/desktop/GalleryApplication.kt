@@ -2,6 +2,7 @@ package com.hippo.ehviewer.desktop
 
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.ehviewer.core.data.FileArchiveLibrary
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
 import com.ehviewer.core.database.DataDirectory
@@ -9,9 +10,12 @@ import com.ehviewer.core.database.EhDatabase
 import com.ehviewer.core.database.Schema17to18
 import com.ehviewer.core.database.download.DownloadDatabase
 import com.ehviewer.core.database.ownedRoomDb
+import com.ehviewer.core.domain.reader.ArchiveDocumentFactory
 import com.ehviewer.core.network.GallerySession
+import com.ehviewer.core.network.archive.NativeArchiveBridge
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
 import com.ehviewer.core.network.session.NativeSessionVault
+import com.ehviewer.shared.ArchiveLibraryScreen
 import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.reader.ReaderStateRepository
 import com.ehviewer.shared.settings.GalleryAppearanceRepository
@@ -60,14 +64,25 @@ fun galleryApplication() {
     val downloadDatabase = downloadDatabaseOwner.database
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     val downloads = session.downloads(RoomGalleryDownloadStorage(downloadDatabase, applicationData().resolve("downloads").toString().toPath()), scope)
+    val windowsArchives = if (windows) WindowsArchiveFactory(resources.resolve("ehviewer_capi.dll")) else null
+    val archives = FileArchiveLibrary(applicationData().resolve("local-library").toString().toPath(), windowsArchives ?: ArchiveDocumentFactory(NativeArchiveBridge::open))
     try {
         application {
             Window(onCloseRequest = ::exitApplication, title = "EhViewer") {
-                GallerySearchScreen(session, readerState, appearance, history, downloads, browserFactory = browsers::create)
+                GallerySearchScreen(session, readerState, appearance, history, downloads, archiveContent = { back ->
+                    ArchiveLibraryScreen(archives, session, pickAndImport = {
+                        pickComicArchive()?.let { archives.importFile(it.toString(), it.fileName.toString().replace('\n', ' ').replace('\r', ' ').take(1024)) }
+                    }, readingState = { book ->
+                        val directory = applicationData().resolve("archive-reading-state").resolve(book.id)
+                        if (windows) windowsReaderState(resources.resolve("ehviewer_capi.dll"), directory) else ReaderStateRepository(NativeSessionVault(directory.toString()))
+                    }, onBack = back)
+                }, browserFactory = browsers::create)
             }
         }
     } finally {
         runBlocking { downloads.closeAndJoin() }
+        runBlocking { archives.close() }
+        windowsArchives?.close()
         scope.cancel()
         downloadDatabaseOwner.close()
         browsers.close()

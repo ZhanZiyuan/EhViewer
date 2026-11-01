@@ -615,6 +615,7 @@ dependencies = [
  "android_logger",
  "anyhow",
  "ehviewer_browser_client",
+ "ehviewer_capi",
  "ehviewer_core",
  "ehviewer_session",
  "image",

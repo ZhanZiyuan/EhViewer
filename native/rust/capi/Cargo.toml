@@ -4,7 +4,7 @@ version = "0.0.0"
 edition = "2024"
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 ehviewer_core = { path = "../core" }
