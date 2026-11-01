@@ -2,6 +2,7 @@ package com.hippo.ehviewer.desktop
 
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.ehviewer.core.data.DataStoreLanguageStore
 import com.ehviewer.core.data.FileArchiveLibrary
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
@@ -19,7 +20,10 @@ import com.ehviewer.shared.ArchiveLibraryScreen
 import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.reader.ReaderStateRepository
 import com.ehviewer.shared.settings.GalleryAppearanceRepository
+import com.ehviewer.shared.settings.GalleryLanguageSettings
+import com.ehviewer.shared.settings.galleryResourceLanguageTag
 import java.nio.file.Path
+import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -57,6 +61,10 @@ fun galleryApplication() {
     val browserLibrary = resources.resolve(if (windows) "ehviewer_capi.dll" else "libehviewer_rust.${if (System.getProperty("os.name").startsWith("Mac")) "dylib" else "so"}")
     val browsers = DesktopBrowserService(browserLibrary, resources.resolve(if (windows) "ehviewer_browser.exe" else "ehviewer_browser"))
     DataDirectory.configure(applicationData().resolve("database").toString().toPath())
+    val systemLanguage = Locale.getDefault().toLanguageTag()
+    val language = GalleryLanguageSettings(DataStoreLanguageStore()) { tag ->
+        Locale.setDefault(Locale.forLanguageTag(galleryResourceLanguageTag(tag ?: systemLanguage)))
+    }
     val databaseOwner = ownedRoomDb<EhDatabase>("eh.db") { addMigrations(Schema17to18()) }
     val database = databaseOwner.database
     val history = RoomGalleryHistoryStore(database)
@@ -69,7 +77,7 @@ fun galleryApplication() {
     try {
         application {
             Window(onCloseRequest = ::exitApplication, title = "EhViewer") {
-                GallerySearchScreen(session, readerState, appearance, history, downloads, archiveContent = { back ->
+                GallerySearchScreen(session, readerState, appearance, history, downloads, language, archiveContent = { back ->
                     ArchiveLibraryScreen(archives, session, pickAndImport = {
                         pickComicArchive()?.let { archives.importFile(it.toString(), it.fileName.toString().replace('\n', ' ').replace('\r', ' ').take(1024)) }
                     }, pickAndImportDirectory = {

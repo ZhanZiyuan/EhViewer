@@ -21,6 +21,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_animation_failed
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -88,7 +90,7 @@ internal fun GalleryMediaImage(media: GalleryMedia, description: String, modifie
         Image(painter, description, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
         if (failed) {
             TextButton(onClick = { attempt++ }, modifier = Modifier.align(Alignment.BottomCenter)) {
-                Text("Animation could not be played. Retry animation")
+                Text(galleryString(Res.string.gallery_animation_failed))
             }
         }
     }

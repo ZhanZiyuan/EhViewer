@@ -38,12 +38,31 @@ import com.ehviewer.core.network.download.GalleryDownloads
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.shared.reader.readingResumeUrl
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_back_search
+import ehviewer.app.shared.generated.resources.gallery_continue_reading
+import ehviewer.app.shared.generated.resources.gallery_download_add
+import ehviewer.app.shared.generated.resources.gallery_download_add_failed
+import ehviewer.app.shared.generated.resources.gallery_download_adding
+import ehviewer.app.shared.generated.resources.gallery_favorite_add
+import ehviewer.app.shared.generated.resources.gallery_favorite_edit
+import ehviewer.app.shared.generated.resources.gallery_gallery_metadata
+import ehviewer.app.shared.generated.resources.gallery_history_unavailable
+import ehviewer.app.shared.generated.resources.gallery_page_number
+import ehviewer.app.shared.generated.resources.gallery_pages
+import ehviewer.app.shared.generated.resources.gallery_previews_browse
+import ehviewer.app.shared.generated.resources.gallery_rating
+import ehviewer.app.shared.generated.resources.gallery_read_gallery
+import ehviewer.app.shared.generated.resources.gallery_read_start
+import ehviewer.app.shared.generated.resources.gallery_refresh
+import ehviewer.app.shared.generated.resources.gallery_retry
+import ehviewer.app.shared.generated.resources.gallery_uploaded_by
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /** Detail and reader routes retain the original search and detail state when navigating back. */
 @Composable
-internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, downloads: GalleryDownloads?, onDownloads: () -> Unit, backLabel: String = "Back to search", onBack: () -> Unit) {
+internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, downloads: GalleryDownloads?, onDownloads: () -> Unit, backLabel: String? = null, onBack: () -> Unit) {
     var detail by remember(gallery.gid) { mutableStateOf<GalleryDetail?>(null) }
     var failure by remember(gallery.gid) { mutableStateOf<GalleryFailure?>(null) }
     var loading by remember(gallery.gid) { mutableStateOf(false) }
@@ -112,25 +131,25 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onBack) { Text(backLabel) }
-            TextButton(onClick = { attempt++ }, enabled = !loading) { Text("Refresh") }
+            TextButton(onClick = onBack) { Text(backLabel ?: galleryString(Res.string.gallery_back_search)) }
+            TextButton(onClick = { attempt++ }, enabled = !loading) { Text(galleryString(Res.string.gallery_refresh)) }
         }
         Text(document?.title ?: gallery.title.orEmpty(), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(vertical = 12.dp))
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         failure?.let { GalleryError(it) { attempt++ } }
         if (stateFailure) {
             Row {
-                Text("Reading history is unavailable.", Modifier.weight(1f))
-                TextButton(onClick = { stateAttempt++ }) { Text("Retry") }
+                Text(galleryString(Res.string.gallery_history_unavailable), Modifier.weight(1f))
+                TextButton(onClick = { stateAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
             }
         }
         if (document != null) {
             LazyColumn(Modifier.weight(1f), state = previewsState) {
                 item {
-                    Text("${document.pages} pages · ${document.size.orEmpty()} · ${document.language.orEmpty()}", Modifier.padding(vertical = 8.dp))
-                    document.uploader?.let { Text("Uploaded by $it") }
-                    Text("Rating ${document.rating} (${document.ratingCount})")
-                    Button(onClick = { editingFavorite = true }) { Text(if (document.favoriteSlot in 0..9) "Edit favorite" else "Add to favorites") }
+                    Text(galleryString(Res.string.gallery_gallery_metadata, document.pages, document.size.orEmpty(), document.language.orEmpty()), Modifier.padding(vertical = 8.dp))
+                    document.uploader?.let { Text(galleryString(Res.string.gallery_uploaded_by, it)) }
+                    Text(galleryString(Res.string.gallery_rating, document.rating, document.ratingCount))
+                    Button(onClick = { editingFavorite = true }) { Text(if (document.favoriteSlot in 0..9) galleryString(Res.string.gallery_favorite_edit) else galleryString(Res.string.gallery_favorite_add)) }
                     if (downloads != null) {
                         Button(onClick = {
                             addingDownload = true
@@ -147,8 +166,8 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                                     addingDownload = false
                                 }
                             }
-                        }, enabled = !addingDownload) { Text(if (addingDownload) "Adding download…" else "Download gallery") }
-                        if (downloadFailed) Text("The download could not be added. Try again.")
+                        }, enabled = !addingDownload) { Text(if (addingDownload) galleryString(Res.string.gallery_download_adding) else galleryString(Res.string.gallery_download_add)) }
+                        if (downloadFailed) Text(galleryString(Res.string.gallery_download_add_failed))
                     }
                     document.previewList.firstOrNull()?.let { first ->
                         val resume = saved?.takeIf { it.index in 0 until document.pages }
@@ -165,8 +184,8 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                                     opening = false
                                 }
                             }
-                        }, enabled = !opening, modifier = Modifier.padding(vertical = 12.dp)) { Text(if (resume == null) "Read gallery" else "Continue reading · page ${resume.index + 1}") }
-                        if (resume != null) TextButton(onClick = { reader = session.content.pageUrl(document.gid, first.pToken, first.position).toString() }) { Text("Read from start") }
+                        }, enabled = !opening, modifier = Modifier.padding(vertical = 12.dp)) { Text(if (resume == null) galleryString(Res.string.gallery_read_gallery) else galleryString(Res.string.gallery_continue_reading, resume.index + 1)) }
+                        if (resume != null) TextButton(onClick = { reader = session.content.pageUrl(document.gid, first.pToken, first.position).toString() }) { Text(galleryString(Res.string.gallery_read_start)) }
                     }
                 }
                 items(document.tagGroups) { group ->
@@ -174,13 +193,13 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                 }
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Pages", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
-                        TextButton(onClick = { browsingPreviews = true }) { Text("Browse page previews") }
+                        Text(galleryString(Res.string.gallery_pages), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
+                        TextButton(onClick = { browsingPreviews = true }) { Text(galleryString(Res.string.gallery_previews_browse)) }
                     }
                 }
                 items(document.previewList, key = { it.position }) { preview ->
                     ListItem(
-                        headlineContent = { Text("Page ${preview.position + 1}") },
+                        headlineContent = { Text(galleryString(Res.string.gallery_page_number, preview.position + 1)) },
                         modifier = Modifier.clickable { reader = session.content.pageUrl(document.gid, preview.pToken, preview.position).toString() },
                     )
                     HorizontalDivider()
@@ -194,6 +213,6 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
 internal fun GalleryError(failure: GalleryFailure, retry: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
         Text(failure.userMessage(), Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
-        TextButton(onClick = retry) { Text("Retry") }
+        TextButton(onClick = retry) { Text(galleryString(Res.string.gallery_retry)) }
     }
 }

@@ -22,6 +22,10 @@
 # Ktor logger
 -dontwarn org.slf4j.impl.StaticLoggerBinder
 
+# CMP resources 1.11.1 optionally reads instrumented assets and catches NoClassDefFoundError.
+# Production assets use its manifest ContentProvider; keep other missing-class errors fatal.
+-dontwarn androidx.test.platform.app.InstrumentationRegistry
+
 # https://issuetracker.google.com/222232895
 -dontwarn androidx.window.extensions.**
 -dontwarn androidx.window.sidecar.Sidecar*

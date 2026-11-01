@@ -67,6 +67,7 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
     require(gallery.lineSequence().count { it == "Gallery product regression passed: 5 checks" } == 1) { "Production JNI/model/static and animated image regression did not execute" }
     require(gallery.lineSequence().count { it == "Account product regression passed: 4 checks" } == 1) { "Production JNI account/favorite decoder regression did not execute" }
     require(gallery.lineSequence().count { it == "History product regression passed: 3 checks" } == 1) { "Production Room/native history regression did not execute" }
+    require(gallery.lineSequence().count { it == "Language product regression passed: 4 checks" } == 1) { "Actual shared resources did not execute" }
     require(gallery.lineSequence().count { it == "Archive product regression passed: 9 checks" } == 1) { "Real private archive/directory import, pixel and reopen regression did not execute" }
     val browserManifest = root.resolve("native/browser/Cargo.toml")
     capture("browser-unit-tests.log", "cargo", "test", "--manifest-path", browserManifest, "--locked", "--bin", "ehviewer_browser", timeout = Duration.ofMinutes(15))
@@ -94,6 +95,7 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
         "account_product_checks" to 4,
         "history_product_checks" to 3,
         "archive_product_checks" to 9,
+        "language_product_checks" to 4,
         "native_browser" to browserProof,
     )
     output.resolve("desktop-native.json").writeText(json(result))

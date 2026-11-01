@@ -281,6 +281,7 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":app:shared"))
     implementation(libs.serialization.json)
+    implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.compose.material3)
     implementation(compose.desktop.currentOs) {
         if (intelMac) exclude(group = "org.jetbrains.skiko", module = "skiko-awt-runtime-macos-x64")

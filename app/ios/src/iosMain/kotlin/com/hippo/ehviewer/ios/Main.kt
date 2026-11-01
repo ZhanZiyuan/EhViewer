@@ -5,9 +5,13 @@ package com.hippo.ehviewer.ios
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.ComposeUIViewController
+import com.ehviewer.core.data.DataStoreLanguageStore
 import com.ehviewer.core.data.FileArchiveLibrary
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
@@ -22,6 +26,7 @@ import com.ehviewer.shared.ArchiveLibraryScreen
 import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.reader.ReaderStateRepository
 import com.ehviewer.shared.settings.GalleryAppearanceRepository
+import com.ehviewer.shared.settings.GalleryLanguageSettings
 import com.ehviewer.shared.verifyAccountProduct
 import com.ehviewer.shared.verifyAnimatedGalleryProduct
 import com.ehviewer.shared.verifyAppleBrowserCookieTransfer
@@ -117,6 +122,16 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                     ownedRoomDb<EhDatabase>("eh.db") { addMigrations(Schema17to18()) }
                 }
                 val database = databaseOwner.database
+                val language = remember { GalleryLanguageSettings(DataStoreLanguageStore(), AppleGalleryLanguage()::apply) }
+                var languageVerified by remember { mutableStateOf(!startupRegression) }
+                if (startupRegression) {
+                    LaunchedEffect(language) {
+                        val checks = verifyAppleLanguageProduct(language)
+                        check(checks == 4)
+                        NSLog("EhViewerM1:language-product-ready checks=$checks")
+                        languageVerified = true
+                    }
+                }
                 DisposableEffect(databaseOwner) { onDispose { databaseOwner.close() } }
                 val history = remember(database) { RoomGalleryHistoryStore(database) }
                 val downloadDatabaseOwner = remember { ownedRoomDb<DownloadDatabase>("downloads.db") {} }
@@ -178,9 +193,11 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                         NSLog("EhViewerM1:browser-cookie-ready checks=4")
                     }
                 }
-                GallerySearchScreen(session, readerState, appearance, history, downloads, backgroundDownloadsNote = "Downloads pause when you leave the app. Saved pages can be resumed.", archiveContent = { back ->
-                    ArchiveLibraryScreen(archives, session, pickAndImport = { archivePicker.pickAndImport(archives) }, pickAndImportDirectory = { archivePicker.pickAndImport(archives, directory = true) }, pickAndExport = { book -> archivePicker.pickAndExport(archives, book) }, readingState = { book -> ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/archive-reading-state/${book.id}")) }, onBack = back, shareComic = { book -> archiveShare.share(archives, book) })
-                }, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
+                if (languageVerified) {
+                    GallerySearchScreen(session, readerState, appearance, history, downloads, language, backgroundDownloadsNote = true, archiveContent = { back ->
+                        ArchiveLibraryScreen(archives, session, pickAndImport = { archivePicker.pickAndImport(archives) }, pickAndImportDirectory = { archivePicker.pickAndImport(archives, directory = true) }, pickAndExport = { book -> archivePicker.pickAndExport(archives, book) }, readingState = { book -> ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/archive-reading-state/${book.id}")) }, onBack = back, shareComic = { book -> archiveShare.share(archives, book) })
+                    }, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
+                }
             }
             makeKeyAndVisible()
         }

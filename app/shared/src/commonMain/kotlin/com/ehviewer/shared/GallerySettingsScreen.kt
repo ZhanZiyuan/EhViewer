@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.ehviewer.core.domain.AppLanguageException
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
@@ -34,9 +35,37 @@ import com.ehviewer.core.domain.reader.ReadingDirection
 import com.ehviewer.core.domain.reader.ReadingLayout
 import com.ehviewer.shared.settings.GalleryAppearanceException
 import com.ehviewer.shared.settings.GalleryAppearanceStore
+import com.ehviewer.shared.settings.GalleryLanguageSettings
 import com.ehviewer.shared.settings.GalleryThemeMode
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_appearance
+import ehviewer.app.shared.generated.resources.gallery_appearance_loading
+import ehviewer.app.shared.generated.resources.gallery_appearance_retry
+import ehviewer.app.shared.generated.resources.gallery_appearance_save_failed
+import ehviewer.app.shared.generated.resources.gallery_appearance_unavailable
+import ehviewer.app.shared.generated.resources.gallery_back
+import ehviewer.app.shared.generated.resources.gallery_language
+import ehviewer.app.shared.generated.resources.gallery_language_current
+import ehviewer.app.shared.generated.resources.gallery_language_loading
+import ehviewer.app.shared.generated.resources.gallery_language_reload
+import ehviewer.app.shared.generated.resources.gallery_language_save_failed
+import ehviewer.app.shared.generated.resources.gallery_language_system
+import ehviewer.app.shared.generated.resources.gallery_language_unavailable
+import ehviewer.app.shared.generated.resources.gallery_reading
+import ehviewer.app.shared.generated.resources.gallery_reading_continuous
+import ehviewer.app.shared.generated.resources.gallery_reading_ltr
+import ehviewer.app.shared.generated.resources.gallery_reading_paged
+import ehviewer.app.shared.generated.resources.gallery_reading_preferences_reload
+import ehviewer.app.shared.generated.resources.gallery_reading_preferences_save_failed
+import ehviewer.app.shared.generated.resources.gallery_reading_preferences_unavailable
+import ehviewer.app.shared.generated.resources.gallery_reading_rtl
+import ehviewer.app.shared.generated.resources.gallery_settings
+import ehviewer.app.shared.generated.resources.gallery_theme_dark
+import ehviewer.app.shared.generated.resources.gallery_theme_light
+import ehviewer.app.shared.generated.resources.gallery_theme_system
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.StringResource
 
 /** The same settings controls persist through the actual platform adapters used by the reader. */
 @Composable
@@ -45,14 +74,21 @@ internal fun GallerySettingsScreen(
     readerState: ReaderStateStore,
     mode: GalleryThemeMode?,
     appearanceFailed: Boolean,
+    language: GalleryLanguageSettings,
+    languageTag: String?,
+    languageReady: Boolean,
+    languageFailed: Boolean,
+    onLanguageChanged: (String?) -> Unit,
+    onRetryLanguage: () -> Unit,
     onModeChanged: (GalleryThemeMode) -> Unit,
     onRetryAppearance: () -> Unit,
     onBack: () -> Unit,
 ) {
     var preferences by remember { mutableStateOf<ReaderPreferences?>(null) }
-    var failure by remember { mutableStateOf<String?>(null) }
+    var failure by remember { mutableStateOf<StringResource?>(null) }
     var attempt by remember { mutableIntStateOf(0) }
     var busy by remember { mutableStateOf(false) }
+    var languageSaveFailed by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(readerState, attempt) {
         try {
@@ -61,7 +97,7 @@ internal fun GallerySettingsScreen(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: ReaderStateException) {
-            failure = "Reading preferences are unavailable."
+            failure = Res.string.gallery_reading_preferences_unavailable
         }
     }
     fun perform(action: suspend () -> Unit) {
@@ -74,9 +110,11 @@ internal fun GallerySettingsScreen(
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: GalleryAppearanceException) {
-                failure = "Appearance could not be saved. Retry when storage is available."
+                failure = Res.string.gallery_appearance_save_failed
             } catch (_: ReaderStateException) {
-                failure = "Reading preferences could not be saved."
+                failure = Res.string.gallery_reading_preferences_save_failed
+            } catch (_: AppLanguageException) {
+                languageSaveFailed = true
             } finally {
                 busy = false
             }
@@ -85,22 +123,50 @@ internal fun GallerySettingsScreen(
     BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("Back") }
-            Text("Settings", style = MaterialTheme.typography.headlineSmall)
+            TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back)) }
+            Text(galleryString(Res.string.gallery_settings), style = MaterialTheme.typography.headlineSmall)
         }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Appearance", style = MaterialTheme.typography.titleMedium)
+            Text(galleryString(Res.string.gallery_language), style = MaterialTheme.typography.titleMedium)
+            if (!languageReady || languageSaveFailed) {
+                Text(
+                    galleryString(
+                        when {
+                            languageSaveFailed -> Res.string.gallery_language_save_failed
+                            languageFailed -> Res.string.gallery_language_unavailable
+                            else -> Res.string.gallery_language_loading
+                        },
+                    ),
+                )
+                if (languageFailed || languageSaveFailed) {
+                    TextButton(onClick = {
+                        languageSaveFailed = false
+                        onRetryLanguage()
+                    }, enabled = !busy) { Text(galleryString(Res.string.gallery_language_reload)) }
+                }
+            }
+            val languages = listOf(null to galleryString(Res.string.gallery_language_system), "en" to "English", "zh-CN" to "简体中文", "zh-TW" to "繁體中文", "ja" to "日本語")
+            for ((tag, label) in languages) {
+                SettingsChoice(label, languageReady && tag == languageTag, !busy && languageReady && !languageSaveFailed) {
+                    perform {
+                        language.setTag(tag)
+                        onLanguageChanged(tag)
+                    }
+                }
+            }
+            if (languageReady && languages.none { it.first == languageTag }) Text(galleryString(Res.string.gallery_language_current, languageTag.orEmpty()))
+            Text(galleryString(Res.string.gallery_appearance), style = MaterialTheme.typography.titleMedium)
             if (mode == null) {
-                Text(if (appearanceFailed) "Appearance settings are unavailable." else "Loading appearance…")
-                if (appearanceFailed) TextButton(onClick = onRetryAppearance) { Text("Retry appearance") }
+                Text(if (appearanceFailed) galleryString(Res.string.gallery_appearance_unavailable) else galleryString(Res.string.gallery_appearance_loading))
+                if (appearanceFailed) TextButton(onClick = onRetryAppearance) { Text(galleryString(Res.string.gallery_appearance_retry)) }
             }
             for (value in GalleryThemeMode.entries) {
                 SettingsChoice(
                     when (value) {
-                        GalleryThemeMode.SYSTEM -> "System theme"
-                        GalleryThemeMode.LIGHT -> "Light theme"
-                        GalleryThemeMode.DARK -> "Dark theme"
+                        GalleryThemeMode.SYSTEM -> galleryString(Res.string.gallery_theme_system)
+                        GalleryThemeMode.LIGHT -> galleryString(Res.string.gallery_theme_light)
+                        GalleryThemeMode.DARK -> galleryString(Res.string.gallery_theme_dark)
                     },
                     selected = mode == value,
                     enabled = !busy && mode != null,
@@ -111,21 +177,21 @@ internal fun GallerySettingsScreen(
                     }
                 }
             }
-            Text("Reading", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
+            Text(galleryString(Res.string.gallery_reading), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
             val current = preferences
             if (current != null) {
                 fun update(changed: ReaderPreferences) = perform {
                     readerState.setPreferences(changed)
                     preferences = changed
                 }
-                SettingsChoice("Paged reading", current.layout == ReadingLayout.PAGED, !busy) { update(current.copy(layout = ReadingLayout.PAGED)) }
-                SettingsChoice("Continuous reading", current.layout == ReadingLayout.CONTINUOUS, !busy) { update(current.copy(layout = ReadingLayout.CONTINUOUS)) }
-                SettingsChoice("Left to right", current.direction == ReadingDirection.LEFT_TO_RIGHT, !busy) { update(current.copy(direction = ReadingDirection.LEFT_TO_RIGHT)) }
-                SettingsChoice("Right to left", current.direction == ReadingDirection.RIGHT_TO_LEFT, !busy) { update(current.copy(direction = ReadingDirection.RIGHT_TO_LEFT)) }
+                SettingsChoice(galleryString(Res.string.gallery_reading_paged), current.layout == ReadingLayout.PAGED, !busy) { update(current.copy(layout = ReadingLayout.PAGED)) }
+                SettingsChoice(galleryString(Res.string.gallery_reading_continuous), current.layout == ReadingLayout.CONTINUOUS, !busy) { update(current.copy(layout = ReadingLayout.CONTINUOUS)) }
+                SettingsChoice(galleryString(Res.string.gallery_reading_ltr), current.direction == ReadingDirection.LEFT_TO_RIGHT, !busy) { update(current.copy(direction = ReadingDirection.LEFT_TO_RIGHT)) }
+                SettingsChoice(galleryString(Res.string.gallery_reading_rtl), current.direction == ReadingDirection.RIGHT_TO_LEFT, !busy) { update(current.copy(direction = ReadingDirection.RIGHT_TO_LEFT)) }
             }
             failure?.let { error ->
-                Text(error, color = MaterialTheme.colorScheme.error)
-                TextButton(onClick = { attempt++ }) { Text("Reload preferences") }
+                Text(galleryString(error), color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = { attempt++ }) { Text(galleryString(Res.string.gallery_reading_preferences_reload)) }
             }
         }
     }

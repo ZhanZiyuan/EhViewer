@@ -2,11 +2,11 @@ package verification
 
 import kotlin.io.path.readText
 
-/** Reviewed M4 targets. A declared surface is not an executed artifact receipt. */
+/** Reviewed M5 targets. A declared surface is not an executed artifact receipt. */
 fun migrationPhaseContract(sourceSha: String, settings: String): Map<String, Any?> {
     require(Regex("[0-9a-f]{40}").matches(sourceSha) && sourceSha != "0".repeat(40)) { "Expected a nonzero full source SHA" }
     val delivery = releaseContract(settings, sourceSha)
-    require(delivery["version"] == "1.15.10" && delivery["android_version_code"] == 180074) { "The reviewed M4 version remains 1.15.10 / 180074; an M8 release freeze requires separate acceptance" }
+    require(delivery["version"] == "1.15.10" && delivery["android_version_code"] == 180074) { "The reviewed M5 version remains 1.15.10 / 180074; an M8 release freeze requires separate acceptance" }
     val surfaces = mapOf(
         "android-arm64" to "TEST_SIGNED_APK_PREFLIGHT",
         "android-armv7" to "TEST_SIGNED_APK_PREFLIGHT",
@@ -23,7 +23,7 @@ fun migrationPhaseContract(sourceSha: String, settings: String): Map<String, Any
     require(surfaces.keys == releaseTargets.map { it.id }.toSet()) { "Every final delivery target needs explicit phase coverage" }
     return mapOf(
         "schema_version" to 1,
-        "milestone" to "M4",
+        "milestone" to "M5",
         "milestone_complete" to false,
         "verification_scope" to "PHASE_DECLARATIONS_ONLY",
         "source_commit" to sourceSha,

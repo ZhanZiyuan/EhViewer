@@ -49,7 +49,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val policy = receipt("policy", "source-policy.json")
     require(policy["baseline_commit"] == "423b8af13632896b55780783b54b5f720ec4c9dd" && policy["untracked_files"].array().isEmpty()) { "Source boundary receipt changed" }
     val phase = receipt("phase", "migration-phase.json", false)
-    require(phase["milestone"] == "M4" && phase["version"] == version && phase["android_version_code"] == code && phase["retained_architecture_checks"].obj()["result"] == "PASS" && phase["shared_module_targets"].obj()["domain"].array() == portableDomainTargets && phase["shared_module_targets"].obj()["common"].array() == portableCommonTargets) { "Expected the reviewed M4 common/domain/retained architecture/version checks" }
+    require(phase["milestone"] == "M5" && phase["version"] == version && phase["android_version_code"] == code && phase["retained_architecture_checks"].obj()["result"] == "PASS" && phase["shared_module_targets"].obj()["domain"].array() == portableDomainTargets && phase["shared_module_targets"].obj()["common"].array() == portableCommonTargets) { "Expected the reviewed M5 common/domain/retained architecture/version checks" }
     val shared = receipt("shared", "shared-core.json", false)
     require(shared["schema_version"] == SHARED_SCHEMA && shared["shared_library_artifacts_verified"] == true && shared["version"] == version && shared["android_version_code"] == code && shared["targets"].array() == listOf("android")) { "Shared artifact scope changed" }
     require(shared["modules"].obj().keys == sharedArtifactModules.toSet() && shared["verification_scope"] == SHARED_SCOPE) { "Unexpected shared module inventory" }
@@ -164,6 +164,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     require(ios["account_product_checks_by_launch"].array() == listOf(4, 4)) { "Missing actual iOS account/favorite decoder checks" }
     require(ios["history_product_checks_by_launch"].array() == listOf(3, 3)) { "Missing actual iOS native database runtime checks" }
     require(ios["archive_product_checks_by_launch"].array() == listOf(9, 9)) { "Missing actual iOS private archive/directory runtime checks" }
+    require(ios["language_product_checks_by_launch"].array() == listOf(4, 4)) { "Missing actual packaged iOS language resources" }
     require(ios["archive_share_checks_by_launch"].array() == listOf(4, 4)) { "Missing actual UIKit archive sharing failure/cancellation/retry checks" }
     require(ios["browser_cookie_checks_by_launch"].array() == listOf(4, 4)) { "Missing actual WebKit cookie transfer checks" }
     val iosSession = ios["session_backend_tests"].obj()
@@ -247,7 +248,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         require(
             checks["version"] == version && checks["launches"].array().size == 2 && checks["launches"].array().all {
                 val launch = it.obj()
-                launch["gallery_product_checks"] == 5 && launch["account_product_checks"] == 4 && launch["history_product_checks"] == 3 && launch["archive_product_checks"] == 9 && launch["rust_hash_results"] == 100 && launch["bundled_runtime"] == "PASS" && (launch["compose_frames"] as Number).toInt() > 0
+                launch["gallery_product_checks"] == 5 && launch["account_product_checks"] == 4 && launch["history_product_checks"] == 3 && launch["archive_product_checks"] == 9 && launch["language_product_checks"] == 4 && launch["rust_hash_results"] == 100 && launch["bundled_runtime"] == "PASS" && (launch["compose_frames"] as Number).toInt() > 0
             },
         ) { "Incomplete actual Intel package launches" }
     }
@@ -295,6 +296,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         require(proof["gallery_product_checks"] == "5") { "Missing actual Windows detail/page/static and animated image checks" }
         require(proof["account_product_checks"] == "4") { "Missing actual Windows account/favorite decoder checks" }
         require(proof["history_product_checks"] == "3") { "Missing actual Windows native Room history checks" }
+        require(proof["language_product_checks"] == "4") { "Missing actual packaged language resources" }
         require(proof["archive_product_checks"] == "9") { "Missing actual Windows private archive/directory runtime checks" }
         require(proof["application_version"] == version && proof["architecture"] == "aarch64" && proof["java_version"] == "25.0.5.0.2" && proof["windows_code_page"] == "65001" && proof["native_encoding"] == "UTF-8" && proof["render_api"] == "SOFTWARE_COMPAT" && proof["rust_hash_results"] == "2000" && proof["rust_active_results"] == "0" && proof["rust_ownership_errors"] == "PASS" && proof["rust_library_closed"] == "PASS" && proof["window_showing"] == "true" && proof.str("compose_frames").toInt() > 0) { "Incomplete original Windows window/ownership check" }
     }

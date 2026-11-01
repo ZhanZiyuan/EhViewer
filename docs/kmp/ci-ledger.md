@@ -1043,6 +1043,8 @@ The same unpublished CI acceleration change now replaces Native-wide --rerun-tas
 
 ### M5 sharing: failed hosted gate and isolated Apple linker recovery
 
+Recovery accepted at `cc319108dfd2623997b19ab18bb5a3ebfb567b0f`: [Full PR CI 41327346328](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41327346328) completed SUCCESS. The exact head/event and exact twelve completed successful jobs were independently checked, including Rosetta DMG production, native Intel consumption, iOS, release dry-run and `ci/gate`. Sharing is accepted at this repair SHA; the parent's failed run remains failed. The same English PR #15 was read back with Draft=true and this head. New language work is prepared locally as allowed by the acceleration plan; its own acceptance is not inferred from this repair gate.
+
 Latest accepted feature: export SHA `34e4d1370883d4cab55e3e1c24b506504067d9fd`, [Full CI 41316218855](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41316218855), exact 12 required jobs SUCCESS. M3 and M4 remain accepted at their previously recorded gates; M5 remains incomplete.
 
 Sharing SHA `d8cd2dc9175eb4fd44b1c3c1d6d6925a1f52d45f`: [Full CI 41321457014](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41321457014) completed FAILURE. Eight jobs succeeded, including Android/shared/iOS. The ARM-produced Intel DMG job failed after an Apple clang 21/Xcode 26.6 SIGSEGV while linking the host `zmij` build script; its Intel consumer had no producer receipt, `ci/gate` failed, and release dry-run was skipped. Those failures remain authoritative; no passing release preflight is claimed. Local sharing acceptance and preserved failed local runs are recorded in [ios-archive-sharing.md](ios-archive-sharing.md).

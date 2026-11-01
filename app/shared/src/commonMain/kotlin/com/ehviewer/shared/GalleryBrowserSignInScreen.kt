@@ -25,6 +25,11 @@ import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.session.BrowserSessionCookie
 import com.ehviewer.core.network.session.BrowserSignInTransaction
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_back
+import ehviewer.app.shared.generated.resources.gallery_browser_incomplete
+import ehviewer.app.shared.generated.resources.gallery_browser_instructions
+import ehviewer.app.shared.generated.resources.gallery_session_use
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -58,7 +63,7 @@ internal fun GalleryBrowserSignInScreen(session: GallerySession, factory: (Strin
         val browser = if (transaction != null) remember(transaction) { factory(session.userAgent) } else null
         if (browser != null) DisposableEffect(browser) { onDispose { browser.close() } }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = ::back) { Text("Back") }
+            TextButton(onClick = ::back) { Text(galleryString(Res.string.gallery_back)) }
             Button(enabled = browser != null && !busy, onClick = {
                 operation = scope.launch {
                     busy = true
@@ -76,11 +81,11 @@ internal fun GalleryBrowserSignInScreen(session: GallerySession, factory: (Strin
                         busy = false
                     }
                 }
-            }) { Text("Use this session") }
+            }) { Text(galleryString(Res.string.gallery_session_use)) }
         }
-        Text("Complete sign-in on the official website, then use this session. Closing this screen discards the browser session.")
+        Text(galleryString(Res.string.gallery_browser_instructions))
         if (busy || transaction == null && failure == null) LinearProgressIndicator(Modifier.fillMaxWidth())
-        failure?.let { Text(if (it == GalleryFailure.AUTHENTICATION) "Complete sign-in before using this session." else it.userMessage(), color = MaterialTheme.colorScheme.error) }
+        failure?.let { Text(if (it == GalleryFailure.AUTHENTICATION) galleryString(Res.string.gallery_browser_incomplete) else it.userMessage(), color = MaterialTheme.colorScheme.error) }
         browser?.Content(Modifier.fillMaxWidth().weight(1f))
     }
 }

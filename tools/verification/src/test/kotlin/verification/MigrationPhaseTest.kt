@@ -10,9 +10,9 @@ class MigrationPhaseTest {
     private val settings = "val releaseVersion = \"1.15.10\"\nversionCode = 180074\n"
     private fun report() = migrationPhaseContract(source, settings)
 
-    @Test fun currentCoverageCannotClaimM4OrFinalAssetsAccepted() {
+    @Test fun currentCoverageCannotClaimM5OrFinalAssetsAccepted() {
         val report = report()
-        assertEquals("M4", report["milestone"])
+        assertEquals("M5", report["milestone"])
         for (key in listOf("milestone_complete", "artifacts_verified", "product_p0_verified", "publish_enabled")) assertEquals(key, false, report[key])
     }
 

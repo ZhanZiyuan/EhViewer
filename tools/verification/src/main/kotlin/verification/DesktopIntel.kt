@@ -166,9 +166,10 @@ fun desktopIntelDmg(dmgInput: Path, output: Path, producerReport: Path? = null):
                 require(proof.getProperty("gallery_product_checks") == "5") { "Packaged detail/page/static and animated image regression did not execute" }
                 require(proof.getProperty("account_product_checks") == "4") { "Packaged account/favorite decoder regression did not execute" }
                 require(proof.getProperty("history_product_checks") == "3") { "Packaged native Room history regression did not execute" }
+                require(proof.getProperty("language_product_checks") == "4") { "Packaged language resources did not execute" }
                 require(proof.getProperty("archive_product_checks") == "9") { "Packaged private archive/directory import/pixel/reopen regression did not execute" }
                 val browser = desktopBrowserReceipt(proofDirectory, rust, contents.resolve("app/resources/ehviewer_browser"), setOf("x86_64", "amd64"), "JNI")
-                mapOf("native_browser" to browser, "gallery_product_checks" to 5, "account_product_checks" to 4, "history_product_checks" to 3, "archive_product_checks" to 9, "rust_hash_results" to proof.getProperty("rust_hash_results").toInt(), "compose_frames" to proof.getProperty("compose_frames").toInt(), "bundled_runtime" to "PASS")
+                mapOf("native_browser" to browser, "gallery_product_checks" to 5, "account_product_checks" to 4, "history_product_checks" to 3, "archive_product_checks" to 9, "language_product_checks" to 4, "rust_hash_results" to proof.getProperty("rust_hash_results").toInt(), "compose_frames" to proof.getProperty("compose_frames").toInt(), "bundled_runtime" to "PASS")
             }
             val dependencyLog = capture("rust-dependencies.txt", "otool", "-L", rust)
             require(!dependencyLog.contains("/opt/homebrew") && !dependencyLog.contains("/Users/runner") && !dependencyLog.contains(root.toString())) { "Native library depends on a build-machine path" }

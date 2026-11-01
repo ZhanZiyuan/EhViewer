@@ -26,11 +26,12 @@ fun AnimatedVisibilityScope.SharedGalleriesScreen(navigator: DestinationsNavigat
     val site by Settings.gallerySite.collectAsState()
     val signedIn by Settings.hasSignedIn.collectAsState()
     val appearance = remember { AndroidGalleryAppearanceStore() }
+    val language = remember { androidGalleryLanguageSettings() }
     val scope = rememberCoroutineScope()
     val downloads = remember { AndroidGalleryDownloads(scope) }
     key(site, signedIn) {
         val library = remember { AndroidGalleryLibrary(site == EhUrl.SITE_EX) }
-        GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, onPlatformDownloadOpen = { gid ->
+        GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, language, onPlatformDownloadOpen = { gid ->
             with(navigator) { navToReader(checkNotNull(DownloadManager.getDownloadInfo(gid)).galleryInfo) }
         }, onBack = { navigator.popBackStack() }, onAccount = { navigator.navigate(EhScreenDestination) })
     }

@@ -256,6 +256,7 @@ val simulatorBundle = layout.buildDirectory.dir("simulator/EhViewer.app")
 val stageSimulatorApp = tasks.register<Sync>("stageSimulatorApp") {
     dependsOn("linkDebugExecutableIosSimulatorArm64")
     into(simulatorBundle)
+    from(tasks.named("iosSimulatorArm64AggregateResources")) { into("compose-resources") }
     from(layout.buildDirectory.file("bin/iosSimulatorArm64/debugExecutable/EhViewer.kexe")) {
         rename { "EhViewer" }
         filePermissions { unix("rwxr-xr-x") }

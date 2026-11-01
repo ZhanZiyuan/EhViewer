@@ -48,6 +48,20 @@ import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GalleryRequestException
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_back
+import ehviewer.app.shared.generated.resources.gallery_display_image
+import ehviewer.app.shared.generated.resources.gallery_gallery_page
+import ehviewer.app.shared.generated.resources.gallery_next_page
+import ehviewer.app.shared.generated.resources.gallery_original_image
+import ehviewer.app.shared.generated.resources.gallery_previous_page
+import ehviewer.app.shared.generated.resources.gallery_reading_continuous
+import ehviewer.app.shared.generated.resources.gallery_reading_ltr
+import ehviewer.app.shared.generated.resources.gallery_reading_preferences_unavailable
+import ehviewer.app.shared.generated.resources.gallery_reading_progress_save_failed
+import ehviewer.app.shared.generated.resources.gallery_reading_rtl
+import ehviewer.app.shared.generated.resources.gallery_reset_zoom
+import ehviewer.app.shared.generated.resources.gallery_retry
 import kotlin.math.min
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -116,7 +130,7 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
     if (preferences.layout == ReadingLayout.CONTINUOUS) {
         val start = remember(preferences.layout) { currentUrl }
         Column(Modifier.fillMaxSize()) {
-            if (preferencesFailure) ReaderStateError("Reading preferences are unavailable.") { preferencesAttempt++ }
+            if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
             GalleryContinuousReader(session, detail, start, readerState, onBack, onPaged = { position ->
                 if (!settingsSaving) changePreferences(preferences.copy(layout = ReadingLayout.PAGED)) { url = position }
             })
@@ -163,26 +177,26 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
         }.focusable(),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("Back") }
+            TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back)) }
             Text("${index + 1} / ${detail.pages}")
             TextButton(onClick = {
                 zoom = 1f
                 pan = Offset.Zero
-            }) { Text("Reset zoom") }
+            }) { Text(galleryString(Res.string.gallery_reset_zoom)) }
         }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if (preferencesFailure) ReaderStateError("Reading preferences are unavailable.") { preferencesAttempt++ }
-        if (saveFailure) ReaderStateError("Reading progress could not be saved.") { scope.launch { saveProgress() } }
+        if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
+        if (saveFailure) ReaderStateError(galleryString(Res.string.gallery_reading_progress_save_failed)) { scope.launch { saveProgress() } }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = { changePreferences(preferences.copy(layout = ReadingLayout.CONTINUOUS)) }, enabled = !settingsSaving) { Text("Continuous reading") }
+            TextButton(onClick = { changePreferences(preferences.copy(layout = ReadingLayout.CONTINUOUS)) }, enabled = !settingsSaving) { Text(galleryString(Res.string.gallery_reading_continuous)) }
             TextButton(onClick = {
                 val changed = preferences.copy(direction = if (rtl) ReadingDirection.LEFT_TO_RIGHT else ReadingDirection.RIGHT_TO_LEFT)
                 changePreferences(changed)
-            }, enabled = !settingsSaving) { Text(if (rtl) "Right to left" else "Left to right") }
+            }, enabled = !settingsSaving) { Text(if (rtl) galleryString(Res.string.gallery_reading_rtl) else galleryString(Res.string.gallery_reading_ltr)) }
         }
         if (original || document?.originImageUrl != null) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = { original = !original }, enabled = !loading) { Text(if (original) "Use display image" else "Load original image") }
+                TextButton(onClick = { original = !original }, enabled = !loading) { Text(if (original) galleryString(Res.string.gallery_display_image) else galleryString(Res.string.gallery_original_image)) }
             }
         }
         failure?.let {
@@ -221,7 +235,7 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
             bitmap?.let { image ->
                 GalleryMediaImage(
                     image,
-                    "Gallery page ${index + 1}",
+                    galleryString(Res.string.gallery_gallery_page, index + 1),
                     Modifier.fillMaxSize().graphicsLayer {
                         scaleX = zoom
                         scaleY = zoom
@@ -233,11 +247,11 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             if (rtl) {
-                ReaderPageButton("Next page", next) { url = it }
-                ReaderPageButton("Previous page", previous) { url = it }
+                ReaderPageButton(galleryString(Res.string.gallery_next_page), next) { url = it }
+                ReaderPageButton(galleryString(Res.string.gallery_previous_page), previous) { url = it }
             } else {
-                ReaderPageButton("Previous page", previous) { url = it }
-                ReaderPageButton("Next page", next) { url = it }
+                ReaderPageButton(galleryString(Res.string.gallery_previous_page), previous) { url = it }
+                ReaderPageButton(galleryString(Res.string.gallery_next_page), next) { url = it }
             }
         }
     }
@@ -252,6 +266,6 @@ private fun ReaderPageButton(label: String, target: String?, navigate: (String) 
 private fun ReaderStateError(message: String, retry: () -> Unit) {
     Row(Modifier.fillMaxWidth()) {
         Text(message, Modifier.weight(1f))
-        TextButton(onClick = retry) { Text("Retry") }
+        TextButton(onClick = retry) { Text(galleryString(Res.string.gallery_retry)) }
     }
 }

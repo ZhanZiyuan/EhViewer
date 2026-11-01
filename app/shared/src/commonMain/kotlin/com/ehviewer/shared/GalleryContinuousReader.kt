@@ -40,6 +40,13 @@ import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.shared.reader.GalleryPageSource
 import com.ehviewer.shared.reader.ReaderPageState
 import com.ehviewer.shared.reader.ReaderPageWindow
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_back
+import ehviewer.app.shared.generated.resources.gallery_gallery_page
+import ehviewer.app.shared.generated.resources.gallery_page_number
+import ehviewer.app.shared.generated.resources.gallery_reading_paged
+import ehviewer.app.shared.generated.resources.gallery_reading_progress_save_failed
+import ehviewer.app.shared.generated.resources.gallery_retry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -86,14 +93,14 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
     }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onBack) { Text("Back") }
+            TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back)) }
             Text("${index + 1} / ${detail.pages}")
-            TextButton(onClick = { current?.page?.url?.let(onPaged) }, enabled = current != null) { Text("Paged reading") }
+            TextButton(onClick = { current?.page?.url?.let(onPaged) }, enabled = current != null) { Text(galleryString(Res.string.gallery_reading_paged)) }
         }
         if (saveFailure) {
             Row {
-                Text("Reading progress could not be saved.", Modifier.weight(1f))
-                TextButton(onClick = { saveAttempt++ }) { Text("Retry") }
+                Text(galleryString(Res.string.gallery_reading_progress_save_failed), Modifier.weight(1f))
+                TextButton(onClick = { saveAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
             }
         }
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
@@ -108,13 +115,13 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
                     Box(Modifier.fillMaxWidth().heightIn(min = if (page == detail.pages - 1) viewportHeight else 0.dp)) {
                         Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).aspectRatio(ratio)) {
                             when (state) {
-                                is ReaderPageState.Ready -> GalleryMediaImage(state.page.value, "Gallery page ${page + 1}", Modifier.fillMaxSize(), visible = visible)
+                                is ReaderPageState.Ready -> GalleryMediaImage(state.page.value, galleryString(Res.string.gallery_gallery_page, page + 1), Modifier.fillMaxSize(), visible = visible)
                                 is ReaderPageState.Failed -> GalleryError(state.failure) {
                                     source.retry(page)
                                     window.retry(page)
                                 }
                                 else -> Column(Modifier.fillMaxWidth()) {
-                                    Text("Page ${page + 1}")
+                                    Text(galleryString(Res.string.gallery_page_number, page + 1))
                                     if (state == ReaderPageState.Loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                                 }
                             }

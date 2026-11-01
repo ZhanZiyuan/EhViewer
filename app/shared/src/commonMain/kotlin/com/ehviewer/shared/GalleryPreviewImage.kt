@@ -25,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import com.ehviewer.core.model.GalleryPreview
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_preview_page
+import ehviewer.app.shared.generated.resources.gallery_preview_retry
 import kotlinx.coroutines.CancellationException
 
 @Composable
@@ -48,9 +51,9 @@ internal fun GalleryPreviewImage(preview: GalleryPreview, cache: GalleryPreviewC
         val image = painter
         val error = failure
         if (image != null) {
-            Image(image, "Preview of page ${preview.position + 1}", Modifier.fillMaxWidth(), contentScale = ContentScale.Fit)
+            Image(image, galleryString(Res.string.gallery_preview_page, preview.position + 1), Modifier.fillMaxWidth(), contentScale = ContentScale.Fit)
         } else if (error != null) {
-            TextButton(onClick = { attempt++ }) { Text("${error.userMessage()} Retry preview") }
+            TextButton(onClick = { attempt++ }) { Text(galleryString(Res.string.gallery_preview_retry, error.userMessage())) }
         } else {
             CircularProgressIndicator()
         }

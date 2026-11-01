@@ -1,5 +1,7 @@
 # Animeko → EhViewer 只读参考审计
 
+M5 共享语言设置：只读参考 `app/shared/app-platform/src/androidMain/kotlin/platform/AppLocaleController.kt` 与 `app/shared/application/src/iosMain/kotlin/ios/IosResourceEnvironment.kt` 的平台边界。EhViewer 保留原 AppCompat，独立实现原子偏好、公共资源 API、中文 script/region 适配和 iOS 语言覆盖归属；拒绝内部不可见 API、替换原 Android 控制器和 AGPL 实现。目标文件、采用/改造/拒绝、Apache-2.0 资源运行时及实测状态见 [shared-language-settings.md](shared-language-settings.md)。参考快照 SHA 仍不可核实，未写入、构建或格式化；M5 尚未完成。
+
 M5 系统分享：按需只读复阅 `app/shared/app-platform/src/commonMain/kotlin/platform/features/PlatformComponentAccessors.kt`，仅采用平台能力与共享界面的边界。EhViewer 目标为 `ArchiveLibraryScreen.kt`、iOS `AppleArchiveShare.kt` 和入口接线；改造为真实归档快照、UIKit 生命周期与 iPad 窗口锚点，拒绝空操作回退、服务查找和无关媒体行为。没有复制 AGPL 源码/资源/依赖。实际验证、原生 API 资料及待验范围见 [ios-archive-sharing.md](ios-archive-sharing.md)；参考快照仍不可核实 SHA、始终只读，M5 未完成。
 
 Android 共享业务接入：只读复阅 `docs/contributing/architecture.md:112–153` 的 UI→领域→数据→平台责任划分；目标为 `core/network/.../GalleryLibrary.kt`、共同 `GalleryLibraryScreen`、Android `AndroidGalleryLibrary.kt` 和 `SharedGalleriesScreen.kt`。采用共享 CMP 界面与平台数据适配边界，改造为借用 EhViewer 自有 HTTP/Cookie/Room/DataStore，拒绝替换存量数据库、复制参考 Repository/DI/依赖集。全部独立 Kotlin 实现，无 AGPL 精确复用。实际手机/平板同 APK 各 32 项仪器测试（含真实显示旋转和账户导航）、455 任务完整 Android 回归、Desktop 公共测试/JNI 及 iOS 重编译/双冷启动/60 网络/20 阅读测试通过；真实 Android 站点交互与本功能 SHA 托管门禁仍待验，M3 未完成。设计差异、许可处理与结果范围见[账号与 Android 集成](account-initialization.md)。参考快照无写入、构建或格式化。

@@ -39,6 +39,27 @@ import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.session.GalleryAccountOverview
 import com.ehviewer.core.network.session.RestrictedSiteAccess
 import com.ehviewer.core.network.session.SessionStorageException
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_account
+import ehviewer.app.shared.generated.resources.gallery_account_refresh
+import ehviewer.app.shared.generated.resources.gallery_back
+import ehviewer.app.shared.generated.resources.gallery_browser_sign_in
+import ehviewer.app.shared.generated.resources.gallery_favorite_categories
+import ehviewer.app.shared.generated.resources.gallery_password
+import ehviewer.app.shared.generated.resources.gallery_restricted_available
+import ehviewer.app.shared.generated.resources.gallery_restricted_check_failed
+import ehviewer.app.shared.generated.resources.gallery_restricted_unavailable
+import ehviewer.app.shared.generated.resources.gallery_session_retry
+import ehviewer.app.shared.generated.resources.gallery_sign_in
+import ehviewer.app.shared.generated.resources.gallery_sign_in_failed
+import ehviewer.app.shared.generated.resources.gallery_sign_in_title
+import ehviewer.app.shared.generated.resources.gallery_sign_out
+import ehviewer.app.shared.generated.resources.gallery_signed_in
+import ehviewer.app.shared.generated.resources.gallery_site_eh_selected
+import ehviewer.app.shared.generated.resources.gallery_site_eh_use
+import ehviewer.app.shared.generated.resources.gallery_site_ex_selected
+import ehviewer.app.shared.generated.resources.gallery_site_ex_use
+import ehviewer.app.shared.generated.resources.gallery_username
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -129,25 +150,25 @@ internal fun GalleryAccountScreen(session: GallerySession, browserFactory: ((Str
     BackHandler(onBack = ::back)
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = ::back) { Text("Back") }
-            Text("Account", style = MaterialTheme.typography.headlineSmall)
+            TextButton(onClick = ::back) { Text(galleryString(Res.string.gallery_back)) }
+            Text(galleryString(Res.string.gallery_account), style = MaterialTheme.typography.headlineSmall)
         }
         Column(Modifier.widthIn(max = 560.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if (checking || busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             failure?.let { error ->
-                Text(if (error == GalleryFailure.AUTHENTICATION) "Sign-in failed or the session has expired. Check your details and try again." else error.userMessage(), color = MaterialTheme.colorScheme.error)
+                Text(if (error == GalleryFailure.AUTHENTICATION) galleryString(Res.string.gallery_sign_in_failed) else error.userMessage(), color = MaterialTheme.colorScheme.error)
             }
             when (signedIn) {
                 true -> {
-                    Text(overview?.profile?.displayName ?: "Signed in", style = MaterialTheme.typography.titleLarge)
+                    Text(overview?.profile?.displayName ?: galleryString(Res.string.gallery_signed_in), style = MaterialTheme.typography.titleLarge)
                     overview?.let { account ->
-                        Text("Favorite categories", style = MaterialTheme.typography.titleMedium)
+                        Text(galleryString(Res.string.gallery_favorite_categories), style = MaterialTheme.typography.titleMedium)
                         account.favoriteCategories.forEachIndexed { index, name -> Text("${index + 1}. $name") }
                         Text(
                             when (account.restrictedAccess) {
-                                RestrictedSiteAccess.AVAILABLE -> "Restricted site available"
-                                RestrictedSiteAccess.UNAVAILABLE -> "Restricted site is unavailable for this session"
-                                RestrictedSiteAccess.UNKNOWN -> "Restricted site could not be checked. Refresh to try again."
+                                RestrictedSiteAccess.AVAILABLE -> galleryString(Res.string.gallery_restricted_available)
+                                RestrictedSiteAccess.UNAVAILABLE -> galleryString(Res.string.gallery_restricted_unavailable)
+                                RestrictedSiteAccess.UNKNOWN -> galleryString(Res.string.gallery_restricted_check_failed)
                             },
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -155,39 +176,39 @@ internal fun GalleryAccountScreen(session: GallerySession, browserFactory: ((Str
                                 onIdentityAction()
                                 session.selectSite(false)
                                 restricted = false
-                            }) { Text(if (restricted) "Use E-Hentai" else "E-Hentai selected") }
+                            }) { Text(if (restricted) galleryString(Res.string.gallery_site_eh_use) else galleryString(Res.string.gallery_site_eh_selected)) }
                             TextButton(enabled = !busy && !checking && !restricted && account.restrictedAccess == RestrictedSiteAccess.AVAILABLE, onClick = {
                                 onIdentityAction()
                                 session.selectSite(true)
                                 restricted = true
-                            }) { Text(if (restricted) "ExHentai selected" else "Use ExHentai") }
+                            }) { Text(if (restricted) galleryString(Res.string.gallery_site_ex_selected) else galleryString(Res.string.gallery_site_ex_use)) }
                         }
                     }
                     TextButton(onClick = {
                         overview = null
                         checkAttempt++
-                    }, enabled = !busy && !checking) { Text("Refresh account") }
-                    Button(onClick = { perform(signOut = true) }, enabled = !busy && !checking) { Text("Sign out") }
+                    }, enabled = !busy && !checking) { Text(galleryString(Res.string.gallery_account_refresh)) }
+                    Button(onClick = { perform(signOut = true) }, enabled = !busy && !checking) { Text(galleryString(Res.string.gallery_sign_out)) }
                 }
                 false -> {
-                    Text("Sign in to your account")
-                    OutlinedTextField(username, { username = it.take(256) }, Modifier.fillMaxWidth(), enabled = !busy, label = { Text("Username") }, singleLine = true, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = ImeAction.Next))
+                    Text(galleryString(Res.string.gallery_sign_in_title))
+                    OutlinedTextField(username, { username = it.take(256) }, Modifier.fillMaxWidth(), enabled = !busy, label = { Text(galleryString(Res.string.gallery_username)) }, singleLine = true, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, imeAction = ImeAction.Next))
                     OutlinedTextField(
-                        password, { password = it.take(4096) }, Modifier.fillMaxWidth(), enabled = !busy, label = { Text("Password") }, singleLine = true,
+                        password, { password = it.take(4096) }, Modifier.fillMaxWidth(), enabled = !busy, label = { Text(galleryString(Res.string.gallery_password)) }, singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { if (!busy && username.isNotBlank() && password.isNotEmpty()) perform(signOut = false) }),
                     )
-                    Button(onClick = { perform(signOut = false) }, enabled = !busy && !checking && username.isNotBlank() && password.isNotEmpty()) { Text("Sign in") }
+                    Button(onClick = { perform(signOut = false) }, enabled = !busy && !checking && username.isNotBlank() && password.isNotEmpty()) { Text(galleryString(Res.string.gallery_sign_in)) }
                     if (browserFactory != null) {
                         TextButton(enabled = !busy && !checking, onClick = {
                             password = ""
                             onIdentityAction()
                             browser = true
-                        }) { Text("Sign in with browser") }
+                        }) { Text(galleryString(Res.string.gallery_browser_sign_in)) }
                     }
                 }
-                null -> if (!checking) TextButton(onClick = { checkAttempt++ }) { Text("Retry saved session") }
+                null -> if (!checking) TextButton(onClick = { checkAttempt++ }) { Text(galleryString(Res.string.gallery_session_retry)) }
             }
         }
     }

@@ -7,6 +7,11 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// The same module is built from the repository and the standalone Desktop root.
+compose.resources {
+    packageOfResClass = "ehviewer.app.shared.generated.resources"
+}
+
 kotlin {
     jvm("desktop") { compilerOptions.jvmTarget.set(JvmTarget.JVM_17) }
     iosArm64()
@@ -21,6 +26,7 @@ kotlin {
         implementation(libs.compose.multiplatform.ui)
         implementation(libs.compose.multiplatform.foundation)
         implementation(libs.compose.multiplatform.runtime)
+        implementation(libs.compose.multiplatform.resources)
         implementation(libs.compose.material3)
         implementation(libs.compose.ui.backhandler)
         implementation(libs.androidx.lifecycle.compose)

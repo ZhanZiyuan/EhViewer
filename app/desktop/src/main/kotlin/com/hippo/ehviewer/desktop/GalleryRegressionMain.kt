@@ -20,8 +20,11 @@ fun main(arguments: Array<String>) {
     check(verifyAccountProduct(decoder) == 4)
     check(verifyDesktopHistory() == 3)
     check(verifyDesktopArchives(library) == 9)
+    val languageChecks = verifyDesktopLanguage()
+    check(languageChecks == 4)
     println("Gallery product regression passed: 5 checks")
     println("Account product regression passed: 4 checks")
     println("History product regression passed: 3 checks")
     println("Archive product regression passed: 9 checks")
+    println("Language product regression passed: $languageChecks checks")
 }

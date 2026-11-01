@@ -34,6 +34,16 @@ import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryFavoriteState
 import com.ehviewer.core.network.gallery.GalleryFavoritesRepository
 import com.ehviewer.core.network.gallery.GalleryRequestException
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_cancel
+import ehviewer.app.shared.generated.resources.gallery_category
+import ehviewer.app.shared.generated.resources.gallery_favorite
+import ehviewer.app.shared.generated.resources.gallery_favorite_editor
+import ehviewer.app.shared.generated.resources.gallery_favorite_note
+import ehviewer.app.shared.generated.resources.gallery_favorite_reload
+import ehviewer.app.shared.generated.resources.gallery_favorite_remove
+import ehviewer.app.shared.generated.resources.gallery_favorite_save
+import ehviewer.app.shared.generated.resources.gallery_favorite_uncertain
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
@@ -94,17 +104,19 @@ internal fun GalleryFavoriteDialog(repository: GalleryFavoritesRepository, gid: 
             }
         }
     }
+    val editorDescription = galleryString(Res.string.gallery_favorite_editor)
+    val noteDescription = galleryString(Res.string.gallery_favorite_note)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Favorite") },
+        title = { Text(galleryString(Res.string.gallery_favorite)) },
         text = {
-            Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()).semantics { contentDescription = "Favorite editor" }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()).semantics { contentDescription = editorDescription }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (loading || busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 failure?.let { Text(it.userMessage(), color = MaterialTheme.colorScheme.error) }
-                if (requiresReload) Text("The favorite state could not be confirmed. Reload before continuing.")
-                if (!loading) TextButton(onClick = { attempt++ }, enabled = !busy) { Text("Reload favorite") }
+                if (requiresReload) Text(galleryString(Res.string.gallery_favorite_uncertain))
+                if (!loading) TextButton(onClick = { attempt++ }, enabled = !busy) { Text(galleryString(Res.string.gallery_favorite_reload)) }
                 if (current != null) {
-                    Text("Category")
+                    Text(galleryString(Res.string.gallery_category))
                     current.categories.forEachIndexed { index, category ->
                         Row(Modifier.fillMaxWidth().selectable(selected == index, enabled = !busy && !loading, role = Role.RadioButton) { selected = index }, verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(selected == index, onClick = null, enabled = !busy && !loading)
@@ -114,17 +126,17 @@ internal fun GalleryFavoriteDialog(repository: GalleryFavoritesRepository, gid: 
                     OutlinedTextField(
                         value = note,
                         onValueChange = { note = it },
-                        label = { Text("Favorite note") },
+                        label = { Text(galleryString(Res.string.gallery_favorite_note)) },
                         supportingText = { Text("${note.length} / ${current.note.maximumCharacters}") },
                         isError = !validNote,
                         enabled = !busy && !loading,
-                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Favorite note" },
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = noteDescription },
                     )
-                    if (current.category != null) TextButton(onClick = { submit(null) }, enabled = !busy && !loading && !requiresReload && validNote) { Text("Remove favorite") }
+                    if (current.category != null) TextButton(onClick = { submit(null) }, enabled = !busy && !loading && !requiresReload && validNote) { Text(galleryString(Res.string.gallery_favorite_remove)) }
                 }
             }
         },
-        confirmButton = { Button(onClick = { submit(selected) }, enabled = current != null && !busy && !loading && !requiresReload && validNote) { Text("Save favorite") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { Button(onClick = { submit(selected) }, enabled = current != null && !busy && !loading && !requiresReload && validNote) { Text(galleryString(Res.string.gallery_favorite_save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(galleryString(Res.string.gallery_cancel)) } },
     )
 }

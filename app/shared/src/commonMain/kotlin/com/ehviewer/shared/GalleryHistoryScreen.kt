@@ -24,6 +24,13 @@ import androidx.compose.ui.backhandler.BackHandler
 import com.ehviewer.core.domain.GalleryHistoryException
 import com.ehviewer.core.domain.GalleryHistoryStore
 import com.ehviewer.core.model.BaseGalleryInfo
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_back_search
+import ehviewer.app.shared.generated.resources.gallery_history_empty
+import ehviewer.app.shared.generated.resources.gallery_history_remove
+import ehviewer.app.shared.generated.resources.gallery_history_title
+import ehviewer.app.shared.generated.resources.gallery_history_unavailable
+import ehviewer.app.shared.generated.resources.gallery_retry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -50,16 +57,16 @@ internal fun GalleryHistoryScreen(store: GalleryHistoryStore, onOpen: (BaseGalle
     }
     BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize()) {
-        TextButton(onClick = onBack) { Text("Back to search") }
-        Text("Reading history")
+        TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back_search)) }
+        Text(galleryString(Res.string.gallery_history_title))
         if (loading || deleting) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (failed) {
             Row {
-                Text("Reading history is unavailable.", Modifier.weight(1f))
-                TextButton(onClick = { attempt++ }, enabled = !loading && !deleting) { Text("Retry") }
+                Text(galleryString(Res.string.gallery_history_unavailable), Modifier.weight(1f))
+                TextButton(onClick = { attempt++ }, enabled = !loading && !deleting) { Text(galleryString(Res.string.gallery_retry)) }
             }
         } else if (!loading && entries.isEmpty()) {
-            Text("No reading history yet.")
+            Text(galleryString(Res.string.gallery_history_empty))
         }
         LazyColumn(Modifier.weight(1f)) {
             items(entries, key = { it.gid }) { gallery ->
@@ -83,7 +90,7 @@ internal fun GalleryHistoryScreen(store: GalleryHistoryStore, onOpen: (BaseGalle
                                     }
                                 }
                             }
-                        }, enabled = !deleting && !loading) { Text("Remove from history") }
+                        }, enabled = !deleting && !loading) { Text(galleryString(Res.string.gallery_history_remove)) }
                     },
                 )
             }

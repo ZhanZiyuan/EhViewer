@@ -30,6 +30,38 @@ import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.core.network.archive.ArchiveGalleryContent
 import com.ehviewer.shared.reader.CachedReaderStateStore
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_archive_password
+import ehviewer.app.shared.generated.resources.gallery_archive_password_failed
+import ehviewer.app.shared.generated.resources.gallery_archive_unlock
+import ehviewer.app.shared.generated.resources.gallery_back
+import ehviewer.app.shared.generated.resources.gallery_back_library
+import ehviewer.app.shared.generated.resources.gallery_comic_delete
+import ehviewer.app.shared.generated.resources.gallery_comic_export
+import ehviewer.app.shared.generated.resources.gallery_comic_read
+import ehviewer.app.shared.generated.resources.gallery_comic_share
+import ehviewer.app.shared.generated.resources.gallery_export_cancel
+import ehviewer.app.shared.generated.resources.gallery_export_cancelled
+import ehviewer.app.shared.generated.resources.gallery_export_cancelled_partial
+import ehviewer.app.shared.generated.resources.gallery_export_failed
+import ehviewer.app.shared.generated.resources.gallery_export_saved
+import ehviewer.app.shared.generated.resources.gallery_import_cancel
+import ehviewer.app.shared.generated.resources.gallery_library_empty
+import ehviewer.app.shared.generated.resources.gallery_library_import_archive
+import ehviewer.app.shared.generated.resources.gallery_library_import_folder
+import ehviewer.app.shared.generated.resources.gallery_library_open_failed
+import ehviewer.app.shared.generated.resources.gallery_library_retry_unavailable
+import ehviewer.app.shared.generated.resources.gallery_library_state_failed
+import ehviewer.app.shared.generated.resources.gallery_library_unavailable
+import ehviewer.app.shared.generated.resources.gallery_local_library
+import ehviewer.app.shared.generated.resources.gallery_page_count
+import ehviewer.app.shared.generated.resources.gallery_page_count_protected
+import ehviewer.app.shared.generated.resources.gallery_retry
+import ehviewer.app.shared.generated.resources.gallery_sharing_cancel
+import ehviewer.app.shared.generated.resources.gallery_sharing_cancelled
+import ehviewer.app.shared.generated.resources.gallery_sharing_cancelled_partial
+import ehviewer.app.shared.generated.resources.gallery_sharing_completed
+import ehviewer.app.shared.generated.resources.gallery_sharing_failed
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -38,6 +70,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.StringResource
 
 /** One local-library/password/reader UI; platforms supply only their real file chooser and vault. */
 private enum class ArchiveTransfer { EXPORT, SHARE }
@@ -54,7 +87,7 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
     var busy by remember { mutableStateOf(false) }
     var transfer by remember { mutableStateOf<ArchiveTransfer?>(null) }
     var transferFailed by remember { mutableStateOf<ArchiveTransfer?>(null) }
-    var transferMessage by remember { mutableStateOf<String?>(null) }
+    var transferMessage by remember { mutableStateOf<StringResource?>(null) }
     var request by remember { mutableStateOf<Job?>(null) }
     var unlocked by remember(selected) { mutableStateOf(false) }
     var password by remember(selected) { mutableStateOf("") }
@@ -132,11 +165,11 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
             try {
                 val completed = action(item)
                 transferMessage = when (kind) {
-                    ArchiveTransfer.EXPORT -> if (completed) "Export saved." else "Export cancelled."
-                    ArchiveTransfer.SHARE -> if (completed) "Sharing completed." else "Sharing cancelled."
+                    ArchiveTransfer.EXPORT -> if (completed) Res.string.gallery_export_saved else Res.string.gallery_export_cancelled
+                    ArchiveTransfer.SHARE -> if (completed) Res.string.gallery_sharing_completed else Res.string.gallery_sharing_cancelled
                 }
             } catch (cancelled: CancellationException) {
-                transferMessage = if (kind == ArchiveTransfer.EXPORT) "Export cancelled. An incomplete copy may remain at the chosen destination." else "Sharing cancelled. Check the chosen app before trying again."
+                transferMessage = if (kind == ArchiveTransfer.EXPORT) Res.string.gallery_export_cancelled_partial else Res.string.gallery_sharing_cancelled_partial
                 throw cancelled
             } catch (error: Exception) {
                 transferFailed = kind
@@ -177,10 +210,10 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
             return
         }
         Column(Modifier.fillMaxSize()) {
-            TextButton(onClick = ::back) { Text("Back to local library") }
+            TextButton(onClick = ::back) { Text(galleryString(Res.string.gallery_back_library)) }
             if (stateFailed) {
-                Text("Saved reading state could not be opened. Existing files have been kept.")
-                TextButton(onClick = { stateAttempt++ }) { Text("Retry") }
+                Text(galleryString(Res.string.gallery_library_state_failed))
+                TextButton(onClick = { stateAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
             } else {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
             }
@@ -188,49 +221,49 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
         return
     }
     Column(Modifier.fillMaxSize()) {
-        TextButton(onClick = ::back) { Text(if (book == null) "Back" else "Back to local library") }
-        Text(book?.title ?: "Local library")
+        TextButton(onClick = ::back) { Text(if (book == null) galleryString(Res.string.gallery_back) else galleryString(Res.string.gallery_back_library)) }
+        Text(book?.title ?: galleryString(Res.string.gallery_local_library))
         if (loading || busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (failure) {
             Text(
                 when (transferFailed) {
-                    ArchiveTransfer.EXPORT -> "Export could not finish. Existing comics have been kept; an incomplete copy may remain at the chosen destination. Choose a new name and export again."
-                    ArchiveTransfer.SHARE -> "The system could not finish sharing. Existing comics have been kept; check the chosen app before trying again."
-                    null -> "The local comic could not be opened or updated. Return to the library and try again."
+                    ArchiveTransfer.EXPORT -> galleryString(Res.string.gallery_export_failed)
+                    ArchiveTransfer.SHARE -> galleryString(Res.string.gallery_sharing_failed)
+                    null -> galleryString(Res.string.gallery_library_open_failed)
                 },
             )
-            TextButton(onClick = { attempt++ }, enabled = !busy) { Text("Retry") }
+            TextButton(onClick = { attempt++ }, enabled = !busy) { Text(galleryString(Res.string.gallery_retry)) }
         }
-        transferMessage?.let { Text(it) }
+        transferMessage?.let { Text(galleryString(it)) }
         if (book == null) {
-            TextButton(onClick = { perform { pickAndImport()?.let { selected = it } } }, enabled = !busy && !loading) { Text("Import comic archive") }
-            TextButton(onClick = { perform { pickAndImportDirectory()?.let { selected = it } } }, enabled = !busy && !loading) { Text("Import image folder") }
+            TextButton(onClick = { perform { pickAndImport()?.let { selected = it } } }, enabled = !busy && !loading) { Text(galleryString(Res.string.gallery_library_import_archive)) }
+            TextButton(onClick = { perform { pickAndImportDirectory()?.let { selected = it } } }, enabled = !busy && !loading) { Text(galleryString(Res.string.gallery_library_import_folder)) }
             if (busy) {
                 TextButton(onClick = { request?.cancel() }) {
                     Text(
                         when (transfer) {
-                            ArchiveTransfer.EXPORT -> "Cancel export"
-                            ArchiveTransfer.SHARE -> "Cancel sharing"
-                            null -> "Cancel import"
+                            ArchiveTransfer.EXPORT -> galleryString(Res.string.gallery_export_cancel)
+                            ArchiveTransfer.SHARE -> galleryString(Res.string.gallery_sharing_cancel)
+                            null -> galleryString(Res.string.gallery_import_cancel)
                         },
                     )
                 }
             }
             if (unavailableCopies > 0) {
-                Text("$unavailableCopies local copies could not be read. Their files have been kept; other comics are available below.")
-                TextButton(onClick = { attempt++ }, enabled = !busy && !loading) { Text("Retry unavailable copies") }
+                Text(galleryString(Res.string.gallery_library_unavailable, unavailableCopies))
+                TextButton(onClick = { attempt++ }, enabled = !busy && !loading) { Text(galleryString(Res.string.gallery_library_retry_unavailable)) }
             }
-            if (!loading && books.isEmpty() && unavailableCopies == 0) Text("No local comics yet.")
+            if (!loading && books.isEmpty() && unavailableCopies == 0) Text(galleryString(Res.string.gallery_library_empty))
             LazyColumn(Modifier.weight(1f)) {
                 items(books, key = { it.id }) { item ->
                     Column {
                         Text(item.title)
-                        Text("${item.pages} pages" + if (item.encrypted) " · Password protected" else "")
+                        Text(galleryString(if (item.encrypted) Res.string.gallery_page_count_protected else Res.string.gallery_page_count, item.pages))
                         FlowRow {
-                            TextButton(onClick = { selected = item }, enabled = !busy) { Text("Read comic") }
-                            TextButton(onClick = { transferComic(item, ArchiveTransfer.EXPORT, pickAndExport) }, enabled = !busy) { Text("Export comic") }
+                            TextButton(onClick = { selected = item }, enabled = !busy) { Text(galleryString(Res.string.gallery_comic_read)) }
+                            TextButton(onClick = { transferComic(item, ArchiveTransfer.EXPORT, pickAndExport) }, enabled = !busy) { Text(galleryString(Res.string.gallery_comic_export)) }
                             shareComic?.let { share ->
-                                TextButton(onClick = { transferComic(item, ArchiveTransfer.SHARE, share) }, enabled = !busy) { Text("Share comic") }
+                                TextButton(onClick = { transferComic(item, ArchiveTransfer.SHARE, share) }, enabled = !busy) { Text(galleryString(Res.string.gallery_comic_share)) }
                             }
                             TextButton(onClick = {
                                 perform {
@@ -239,7 +272,7 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
                                     books = snapshot.books
                                     unavailableCopies = snapshot.unavailableCopies
                                 }
-                            }, enabled = !busy) { Text("Delete local copy") }
+                            }, enabled = !busy) { Text(galleryString(Res.string.gallery_comic_delete)) }
                         }
                     }
                 }
@@ -248,8 +281,8 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
             OutlinedTextField(password, {
                 password = it.take(4096)
                 passwordFailed = false
-            }, label = { Text("Archive password") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, enabled = !busy)
-            if (passwordFailed) Text("The password was not accepted. Try again.")
+            }, label = { Text(galleryString(Res.string.gallery_archive_password)) }, visualTransformation = PasswordVisualTransformation(), singleLine = true, enabled = !busy)
+            if (passwordFailed) Text(galleryString(Res.string.gallery_archive_password_failed))
             TextButton(onClick = {
                 val candidate = password
                 perform {
@@ -257,7 +290,7 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
                     unlocked = accepted
                     passwordFailed = !accepted
                 }
-            }, enabled = !busy) { Text("Unlock archive") }
+            }, enabled = !busy) { Text(galleryString(Res.string.gallery_archive_unlock)) }
         }
     }
 }

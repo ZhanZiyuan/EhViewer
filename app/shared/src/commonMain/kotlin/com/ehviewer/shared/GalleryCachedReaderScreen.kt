@@ -19,6 +19,10 @@ import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.core.network.download.CachedGalleryPages
 import com.ehviewer.core.network.download.DownloadedGalleryContent
 import com.ehviewer.shared.reader.CachedReaderStateStore
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_back
+import ehviewer.app.shared.generated.resources.gallery_download_open_failed
+import ehviewer.app.shared.generated.resources.gallery_retry
 import kotlinx.coroutines.CancellationException
 
 /** Reuse paged/continuous UI and preferences; local keys must never overwrite service resume tokens. */
@@ -52,10 +56,10 @@ internal fun GalleryCachedReaderScreen(library: GalleryLibrary, pages: CachedGal
         GalleryReaderScreen(offline, opened.first, opened.second, state, onBack)
     } else {
         Column(Modifier.fillMaxSize()) {
-            TextButton(onClick = onBack) { Text("Back") }
+            TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back)) }
             if (failed) {
-                Text("This download could not be opened. Saved pages have been kept.")
-                TextButton(onClick = { attempt++ }) { Text("Retry") }
+                Text(galleryString(Res.string.gallery_download_open_failed))
+                TextButton(onClick = { attempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
             } else {
                 LinearProgressIndicator()
             }

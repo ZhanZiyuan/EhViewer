@@ -84,6 +84,8 @@ class AboutUpdateTest {
         Settings.edit(blocking = true) {
             it[needSignIn] = false
             it[updateIntervalDays] = 0
+            // The shared search has its own Settings action; this test targets the original updater.
+            it[launchPage] = 0
         }
         try {
             // MainActivity is singleTask. Give this test its own fresh activity stack without
@@ -144,6 +146,7 @@ class AboutUpdateTest {
                 }
                 restore(needSignIn)
                 restore(updateIntervalDays)
+                restore(launchPage)
                 restore(useCIUpdateChannel)
             }
             with(Settings) {

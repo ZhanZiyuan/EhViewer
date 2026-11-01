@@ -221,6 +221,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         logStart = Instant.now()
         val (firstPid, firstStderr) = launch("first-cold-start")
         awaitMarkers("first-render", firstPid, firstStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "browser-cookie-ready checks=4" to 1, "history-product-ready checks=3" to 1, "archive-product-ready checks=9" to 1, "active" to 1)
+        awaitMarkers("first-language", firstPid, firstStderr, "language-product-ready checks=4" to 1)
         awaitMarkers("first-archive-share", firstPid, firstStderr, "archive-share-ready checks=4" to 1)
         command("xcrun", "simctl", "io", device, "screenshot", output.resolve("startup.png"))
         require(output.resolve("startup.png").fileSize() > 0)
@@ -240,6 +241,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         val (secondPid, secondStderr) = launch("second-cold-start")
         check(secondPid != firstPid) { "Second cold start reused the terminated PID" }
         awaitMarkers("second-render", secondPid, secondStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "browser-cookie-ready checks=4" to 1, "history-product-ready checks=3" to 1, "archive-product-ready checks=9" to 1, "active" to 1)
+        awaitMarkers("second-language", secondPid, secondStderr, "language-product-ready checks=4" to 1)
         awaitMarkers("second-archive-share", secondPid, secondStderr, "archive-share-ready checks=4" to 1)
         val rustResults = listOf(rustInteropResults(firstStderr.readText()), rustInteropResults(secondStderr.readText()))
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM3:gallery-product checks=5").findAll(stderr.readText()).count() == 1) { "Actual iOS detail/page/static and animated image regression did not execute" }
@@ -247,6 +249,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM1:history-product-ready checks=3").findAll(stderr.readText()).count() == 1) { "Actual iOS native Room history regression did not execute" }
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM1:archive-product-ready checks=9").findAll(stderr.readText()).count() == 1) { "Actual iOS private archive/directory import/pixel/reopen regression did not execute" }
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM1:archive-share-ready checks=4").findAll(stderr.readText()).count() == 1) { "Actual UIKit archive sharing failure/cancellation/retry regression did not execute" }
+        for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM1:language-product-ready checks=4").findAll(stderr.readText()).count() == 1) { "Actual packaged CMP language resources did not execute" }
         val lifecycle = logs("lifecycle")
         output.resolve("lifecycle.log").writeText(lifecycle)
         val unified = iosUnifiedLifecycle(lifecycle, firstPid, secondPid)
@@ -269,6 +272,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             "history_product_checks_by_launch" to listOf(3, 3),
             "archive_product_checks_by_launch" to listOf(9, 9),
             "archive_share_checks_by_launch" to listOf(4, 4),
+            "language_product_checks_by_launch" to listOf(4, 4),
             "browser_cookie_checks_by_launch" to listOf(4, 4),
             "unified_log_lifecycle" to unified,
         )

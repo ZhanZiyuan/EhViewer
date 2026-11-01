@@ -29,6 +29,13 @@ import com.ehviewer.core.model.GalleryPreview
 import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_back_details
+import ehviewer.app.shared.generated.resources.gallery_page_number
+import ehviewer.app.shared.generated.resources.gallery_previews_empty
+import ehviewer.app.shared.generated.resources.gallery_previews_next
+import ehviewer.app.shared.generated.resources.gallery_previews_previous
+import ehviewer.app.shared.generated.resources.gallery_previews_title
 import kotlinx.coroutines.CancellationException
 
 internal fun previewPageCount(detail: GalleryDetail): Int {
@@ -87,22 +94,22 @@ internal fun GalleryPreviewScreen(session: GalleryLibrary, detail: GalleryDetail
     }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onBack) { Text("Back to details") }
-            Text("Page previews")
+            TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back_details)) }
+            Text(galleryString(Res.string.gallery_previews_title))
         }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         failure?.let { GalleryError(it) { attempt++ } }
-        if (count == 0 && !loading && failure == null) Text("No page previews are available.")
+        if (count == 0 && !loading && failure == null) Text(galleryString(Res.string.gallery_previews_empty))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = { onPage(loadedPage - 1) }, enabled = !loading && loadedPage > 0) { Text("Previous previews") }
+            TextButton(onClick = { onPage(loadedPage - 1) }, enabled = !loading && loadedPage > 0) { Text(galleryString(Res.string.gallery_previews_previous)) }
             Text(if (count == 0) "0 / 0" else "${loadedPage + 1} / $count")
-            TextButton(onClick = { onPage(loadedPage + 1) }, enabled = !loading && loadedPage + 1 < count) { Text("Next previews") }
+            TextButton(onClick = { onPage(loadedPage + 1) }, enabled = !loading && loadedPage + 1 < count) { Text(galleryString(Res.string.gallery_previews_next)) }
         }
         LazyVerticalGrid(GridCells.Adaptive(140.dp), Modifier.weight(1f), state = grid) {
             items(previews, key = { it.position }) { preview ->
                 Column(Modifier.padding(4.dp).clickable(enabled = !loading) { onOpen(preview) }) {
                     GalleryPreviewImage(preview, cache)
-                    Text("Page ${preview.position + 1}", Modifier.padding(4.dp))
+                    Text(galleryString(Res.string.gallery_page_number, preview.position + 1), Modifier.padding(4.dp))
                 }
             }
         }

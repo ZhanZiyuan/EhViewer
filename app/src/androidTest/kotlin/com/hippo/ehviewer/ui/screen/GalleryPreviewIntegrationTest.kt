@@ -155,7 +155,7 @@ class GalleryPreviewIntegrationTest {
         fun click(text: String) = requireNotNull(device.wait(Until.findObject(By.text(text)), 15_000)).click()
         fun waitFor(state: GalleryDownloadState) = runBlocking { withTimeout(15_000) { while (downloads.tasks.value.singleOrNull()?.state != state) delay(25) } }
         fun attach(scenario: ActivityScenario<MainActivity>) = scenario.onActivity { activity ->
-            activity.setContent { GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads) }
+            activity.setContent { GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() }) }
         }
         runBlocking { assertNull(EhDB.getGalleryInfo(gid)) }
         downloadLocation = File(owned, "legacy").apply { check(mkdirs()) }.toOkioPath()
@@ -313,7 +313,7 @@ class GalleryPreviewIntegrationTest {
                     activity.setContent {
                         val scope = rememberCoroutineScope()
                         val downloads = remember { AndroidGalleryDownloads(scope) }
-                        GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads)
+                        GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() })
                     }
                 }
                 fun click(text: String) = requireNotNull(device.wait(Until.findObject(By.text(text)), 15_000)).click()
