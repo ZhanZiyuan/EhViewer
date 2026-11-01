@@ -1,3 +1,4 @@
+import com.ehviewer.NativeBuildCommand
 import groovy.json.JsonSlurper
 import java.net.URI
 import java.security.MessageDigest
@@ -53,15 +54,9 @@ abstract class BuildDesktopNative : DefaultTask() {
         ) { "The native Rust target must match this Desktop JDK and operating system" }
         val repo = repository.get().asFile
         val logs = evidence.get().asFile.also { it.mkdirs() }
+        val nativeCommand = NativeBuildCommand(logs)
         fun run(name: String, directory: File, vararg arguments: String) {
-            val log = logs.resolve("$name.log")
-            val process = ProcessBuilder(arguments.toList()).directory(directory)
-                .redirectErrorStream(true).redirectOutput(log).start()
-            if (!process.waitFor(15, TimeUnit.MINUTES)) {
-                process.destroyForcibly().waitFor()
-                error("Desktop native command timed out: $name")
-            }
-            check(process.exitValue() == 0) { "$name failed: ${log.readText()}" }
+            nativeCommand.run(name, directory, arguments.toList(), retryAppleLinkerCrash = mac && name == "rust")
         }
         val archive = temporaryDir.resolve("webp.tar.gz")
         if (!archive.isFile) {
