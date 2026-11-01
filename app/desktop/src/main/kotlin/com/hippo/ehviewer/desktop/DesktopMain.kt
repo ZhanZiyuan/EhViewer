@@ -4,9 +4,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
@@ -52,7 +54,8 @@ fun main(arguments: Array<String>) {
     val browserProof = verifyBrowserBridge(browserLibrary, nativeRoot.resolve(if (windowsArm) "ehviewer_browser.exe" else "ehviewer_browser"), windowsArm)
     val frames = AtomicInteger()
     application {
-        Window(onCloseRequest = ::exitApplication, title = "EhViewer · M1 desktop runtime") {
+        val icon = remember { BitmapPainter(desktopApplicationIcon()) }
+        Window(onCloseRequest = ::exitApplication, title = "EhViewer · M1 desktop runtime", icon = icon) {
             Box(
                 Modifier.fillMaxSize().drawWithContent {
                     drawContent()

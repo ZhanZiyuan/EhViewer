@@ -16,6 +16,10 @@ dependencies {
 
 gradlePlugin {
     plugins {
+        register("platformIcons") {
+            id = "ehviewer.platform.icons"
+            implementationClass = "PlatformIconsConventionPlugin"
+        }
         register("desktopSqlite") {
             id = "ehviewer.desktop.sqlite"
             implementationClass = "DesktopSqliteConventionPlugin"

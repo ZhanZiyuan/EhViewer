@@ -1,5 +1,7 @@
 package com.hippo.ehviewer.desktop
 
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.ehviewer.core.data.DataStoreLanguageStore
@@ -76,7 +78,8 @@ fun galleryApplication() {
     val archives = FileArchiveLibrary(applicationData().resolve("local-library").toString().toPath(), windowsArchives ?: ArchiveDocumentFactory(NativeArchiveBridge::open))
     try {
         application {
-            Window(onCloseRequest = ::exitApplication, title = "EhViewer") {
+            val icon = remember { BitmapPainter(desktopApplicationIcon()) }
+            Window(onCloseRequest = ::exitApplication, title = "EhViewer", icon = icon) {
                 GallerySearchScreen(session, readerState, appearance, history, downloads, language, archiveContent = { back ->
                     ArchiveLibraryScreen(archives, session, pickAndImport = {
                         pickComicArchive()?.let { archives.importFile(it.toString(), it.fileName.toString().replace('\n', ' ').replace('\r', ' ').take(1024)) }

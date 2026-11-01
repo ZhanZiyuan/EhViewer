@@ -2,7 +2,6 @@ package com.hippo.ehviewer.desktop
 
 import java.awt.EventQueue
 import java.awt.FileDialog
-import java.awt.Frame
 import java.nio.file.Path
 import javax.swing.JFileChooser
 import javax.swing.SwingUtilities
@@ -11,25 +10,15 @@ import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /** Native chooser only; copying, validation and persistence belong to the common library. */
-internal suspend fun pickComicArchive(): Path? = suspendCancellableCoroutine { continuation ->
-    EventQueue.invokeLater {
-        if (!continuation.isActive) return@invokeLater
-        var picker: FileDialog? = null
-        try {
-            val dialog = FileDialog(null as Frame?, "Import comic archive", FileDialog.LOAD)
-            picker = dialog
-            continuation.invokeOnCancellation { EventQueue.invokeLater { dialog.dispose() } }
-            dialog.isVisible = true
-            if (continuation.isActive) continuation.resume(dialog.file?.let { Path.of(dialog.directory, it) })
-        } catch (failure: Exception) {
-            if (continuation.isActive) continuation.resumeWithException(failure)
-        } finally {
-            picker?.dispose()
-        }
-    }
+internal suspend fun pickComicArchive(): Path? = chooseNativeFile("Import comic archive", FileDialog.LOAD)
+
+internal suspend fun pickImageDirectory(): Path? = if (System.getProperty("os.name").startsWith("Mac")) {
+    chooseNativeFile("Import image folder", FileDialog.LOAD, selectDirectory = true)
+} else {
+    pickSwingImageDirectory()
 }
 
-internal suspend fun pickImageDirectory(): Path? = suspendCancellableCoroutine { continuation ->
+private suspend fun pickSwingImageDirectory(): Path? = suspendCancellableCoroutine { continuation ->
     EventQueue.invokeLater {
         if (!continuation.isActive) return@invokeLater
         val picker = JFileChooser().apply {

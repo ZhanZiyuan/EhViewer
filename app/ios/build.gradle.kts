@@ -1,3 +1,6 @@
+import com.ehviewer.CompileAppleAppIcons
+import com.ehviewer.GeneratePlatformIcons
+import com.ehviewer.MergeAppleIconInfo
 import groovy.json.JsonSlurper
 import java.io.File
 import java.net.URI
@@ -10,6 +13,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.spotless)
+    id("ehviewer.platform.icons")
 }
 
 /** The same immutable libarchive/XZ versions already selected by Android; no maintained C sources. */
@@ -253,10 +257,22 @@ kotlin {
 
 val androidVersionSource = providers.fileContents(rootProject.layout.projectDirectory.file("app/build.gradle.kts")).asText
 val simulatorBundle = layout.buildDirectory.dir("simulator/EhViewer.app")
+val platformIcons = tasks.named<GeneratePlatformIcons>("generatePlatformIcons")
+val simulatorIcons = tasks.register<CompileAppleAppIcons>("compileSimulatorIcons") {
+    catalog.set(platformIcons.flatMap { it.destination.dir("AppIcons.xcassets") })
+    sdk.set("iphonesimulator")
+    destination.set(layout.buildDirectory.dir("compiled-icons/simulator"))
+}
+tasks.register<CompileAppleAppIcons>("compileDeviceIcons") {
+    catalog.set(platformIcons.flatMap { it.destination.dir("AppIcons.xcassets") })
+    sdk.set("iphoneos")
+    destination.set(layout.buildDirectory.dir("compiled-icons/device"))
+}
 val stageSimulatorApp = tasks.register<Sync>("stageSimulatorApp") {
     dependsOn("linkDebugExecutableIosSimulatorArm64")
     into(simulatorBundle)
     from(tasks.named("iosSimulatorArm64AggregateResources")) { into("compose-resources") }
+    from(simulatorIcons.flatMap { it.destination }) { include("Assets.car", "*.png") }
     from(layout.buildDirectory.file("bin/iosSimulatorArm64/debugExecutable/EhViewer.kexe")) {
         rename { "EhViewer" }
         filePermissions { unix("rwxr-xr-x") }
@@ -270,6 +286,13 @@ val stageSimulatorApp = tasks.register<Sync>("stageSimulatorApp") {
     from(rootProject.layout.projectDirectory.dir("app/desktop/licenses/session")) { into("licenses/session") }
     from(layout.buildDirectory.dir("rust/aarch64-apple-ios-sim/dependencies/licenses")) { into("licenses/archive") }
     from(rootProject.layout.projectDirectory.file("LICENSE")) { into("licenses/EhViewer") }
+    doLast(
+        MergeAppleIconInfo(
+            simulatorIcons.get().destination.file("PartialInfo.plist").get().asFile,
+            simulatorBundle.get().asFile,
+            layout.buildDirectory.dir("icon-evidence/simulator").get().asFile,
+        ),
+    )
 }
 
 tasks.register<Exec>("packageSimulatorApp") {

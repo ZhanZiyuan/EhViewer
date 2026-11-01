@@ -1,3 +1,4 @@
+import com.ehviewer.GeneratePlatformIcons
 import com.ehviewer.NativeBuildCommand
 import groovy.json.JsonSlurper
 import java.net.URI
@@ -20,6 +21,7 @@ plugins {
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.spotless)
     id("ehviewer.desktop.sqlite")
+    id("ehviewer.platform.icons")
 }
 
 /** M1 desktop runtime probes. Third-party sources and all outputs stay in the build tree. */
@@ -342,6 +344,13 @@ tasks.register<JavaExec>("browserHandoffRegression") {
 }
 
 val regressionLibrary = providers.gradleProperty("galleryRegressionLibrary")
+val platformIcons = tasks.named<GeneratePlatformIcons>("generatePlatformIcons")
+val windowIcon = tasks.register<Sync>("stageWindowIcon") {
+    from(platformIcons.flatMap { it.destination }) { include("EhViewer.png") }
+    into(layout.buildDirectory.dir("window-icon"))
+}
+sourceSets["main"].resources.srcDir(windowIcon)
+
 tasks.register<JavaExec>("galleryProductRegression") {
     group = "verification"
     description = "Decode real Rust documents and platform image pixels using production shared code"
@@ -366,9 +375,12 @@ compose.desktop {
             appResourcesRootDir.set(desktopProductResources)
             licenseFile.set(repositoryRoot.file("LICENSE"))
             macOS {
+                iconFile.set(platformIcons.flatMap { it.destination.file("EhViewer.icns") })
                 bundleID = "moe.tarsin.ehviewer.m1"
                 minimumSystemVersion = "11.0"
             }
+            windows { iconFile.set(platformIcons.flatMap { it.destination.file("EhViewer.ico") }) }
+            linux { iconFile.set(platformIcons.flatMap { it.destination.file("EhViewer.png") }) }
         }
     }
 }
