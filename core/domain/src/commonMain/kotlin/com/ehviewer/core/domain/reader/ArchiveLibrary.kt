@@ -21,11 +21,25 @@ fun interface ArchiveDocumentFactory {
     fun open(path: String): ArchiveDocument
 }
 
+/** Private image-directory manifest; filenames and external paths are never used as storage keys. */
+@Serializable
+data class DirectoryImage(val extension: String, val bytes: Long, val sha256: String) {
+    fun validate() {
+        require(extension in EXTENSIONS && bytes in 1..MAX_IMAGE_BYTES && Regex("[a-f0-9]{64}").matches(sha256))
+    }
+
+    companion object {
+        const val MAX_IMAGE_BYTES = 32L * 1024 * 1024
+        val EXTENSIONS = setOf("jpeg", "jpg", "png", "gif", "webp", "bmp", "ico", "wbmp", "heic", "heif", "avif")
+    }
+}
+
 interface ArchiveLibrary {
     suspend fun recent(): List<ArchiveBook>
 
     /** Copy the selected regular file; never give an external provider's mutable file to mmap. */
     suspend fun importFile(path: String, title: String): ArchiveBook
+    suspend fun importDirectory(path: String, title: String): ArchiveBook
     suspend fun open(book: ArchiveBook): ArchiveDocument
     suspend fun remove(book: ArchiveBook)
     suspend fun close()

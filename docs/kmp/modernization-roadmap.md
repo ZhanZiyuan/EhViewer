@@ -4,7 +4,7 @@
 
 M3 已在 `74a8e933d51de52309c6e38390e89b90abf6321b` 完成阶段门禁：[Full CI41212001274](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41212001274) 全部12项成功，包括原 Android 回归、KMP 编译/契约、实际 iOS 启动和存储迁移、Windows ARM64 SQLite/JNI、桌面包原生消费及无密钥 dry-run。此前源码声明、SQLite 架构/连接所有权、独立构建类路径和浏览器关闭竞态的失败均保留，未跳检查。共享 Ktor/会话/Repository、历史/原迁移/便携配置及参考决策已验收，见 [shared-history-and-data.md](shared-history-and-data.md)。
 
-当前进入 M4 / IN_PROGRESS：交付同一 CMP 下载列表、真实文件/Room、暂停/恢复/删除/重启和离线阅读，随后推进 Rust 归档、部分图片恢复与高级媒体；不把本切片等同完整 M4 或五平台 P0。搜索、详情、阅读器、账户、筛选、外观与预览已逐提交通过 CI。PR #15 始终 Draft，版本到 M8 之前保持 `1.15.10 / 180074`。后续每次改动遵守加速计划，不恢复历史双事件矩阵或额外记账提交。
+当前 M4 / IN_PROGRESS：下载、Rust 归档、原图/动图及部分图片续传已逐提交通过全部12项 Full CI；最新续传为 `a6870162b` / [CI41284515896](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41284515896)。当前图片目录导入复用私有书库和同一 CMP 阅读器，Android 手机/平板各43项、JVM45数据、Native39数据/118网络/47阅读器及原Android完整门禁本地通过；普通 iPad 系统目录选择、真实两页与进程重启恢复第2页已验证。目录功能仍须自己的托管门禁，后续收敛异常中断与书库故障恢复，再验收M4，详见 [image-directory-reading.md](image-directory-reading.md)。PR #15 始终 Draft，版本到 M8 之前保持 `1.15.10 / 180074`。后续每次改动遵守加速计划，不恢复历史双事件矩阵或额外记账提交。
 
 当前图片恢复：从“只复用已完成页面”扩展为强 ETag/If-Range、真实文件分块校验和暂停/重启后的当前图片续传；无安全验证器时保留完整下载。复用原队列与 Room，未改 Rust ABI/数据库版本/生产签名。重定向回归同时修复旧签名查询参数向新地址沿用的问题。118项网络、35项JVM数据、241项工具回归与522任务Android门禁本地通过，手机/平板同APK对各42项成功；Native实际118网络/47阅读器/29数据、Keychain和双冷启动也通过。新SHA托管验证待闭合，不能据此标记M4完成。恢复顺序、参考边界和性能限制见 [partial-image-recovery.md](partial-image-recovery.md)。
 

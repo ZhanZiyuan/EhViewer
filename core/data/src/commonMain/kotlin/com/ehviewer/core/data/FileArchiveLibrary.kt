@@ -8,6 +8,7 @@ import com.ehviewer.core.domain.reader.ArchiveDocumentFactory
 import com.ehviewer.core.domain.reader.ArchiveException
 import com.ehviewer.core.domain.reader.ArchiveFailure
 import com.ehviewer.core.domain.reader.ArchiveLibrary
+import com.ehviewer.core.domain.reader.DirectoryImage
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +36,7 @@ class FileArchiveLibrary(private val directory: Path, private val factory: Archi
     private val mutex = Mutex()
     private val cbor = Cbor { encodeDefaults = true }
     private val leases = mutableMapOf<String, MutableList<ArchiveLease>>()
+    private val directories = DirectoryImages(files)
     private var closed = false
 
     init {
@@ -73,8 +75,15 @@ class FileArchiveLibrary(private val directory: Path, private val factory: Archi
         check(info.isRegularFile && info.symlinkTarget == null && info.size?.let { it in 1..16384 } == true)
         val book = cbor.decodeFromByteArray<ArchiveBook>(files.read(file) { readByteArray() }).also { it.validate() }
         check(book.id == folder.name)
-        val archive = files.metadata(folder / "archive.bin")
-        check(archive.isRegularFile && archive.symlinkTarget == null && archive.size == book.bytes)
+        val archive = files.metadataOrNull(folder / "archive.bin")
+        val images = files.metadataOrNull(folder / DirectoryImages.MANIFEST)
+        check((archive == null) != (images == null))
+        if (archive != null) {
+            check(archive.isRegularFile && archive.symlinkTarget == null && archive.size == book.bytes)
+        } else {
+            checkNotNull(images)
+            check(!book.encrypted && images.isRegularFile && images.symlinkTarget == null && images.size?.let { it in 1..DirectoryImages.MAX_MANIFEST_BYTES } == true)
+        }
         return book
     }
 
@@ -149,7 +158,52 @@ class FileArchiveLibrary(private val directory: Path, private val factory: Archi
         }
     }
 
-    private suspend fun verifyContent(book: ArchiveBook) {
+    override suspend fun importDirectory(path: String, title: String): ArchiveBook = stored {
+        require(title.isNotBlank() && title.length <= 1024 && title.none { it == '\u0000' || it == '\n' || it == '\r' })
+        root()
+        val input = path.toPath().also { require(it.isAbsolute) }
+        val info = files.metadata(input)
+        require(info.isDirectory && info.symlinkTarget == null)
+        val count = files.list(directory).count { Regex("[a-f0-9]{64}").matches(it.name) }
+        check(count <= 500)
+        val temporary = directory / ".import-${Uuid.random()}"
+        check(!files.exists(temporary))
+        files.createDirectory(temporary)
+        var failure: Throwable? = null
+        try {
+            val book = directories.copy(input, temporary, title)
+            currentCoroutineContext().ensureActive()
+            val target = folder(book.id)
+            if (files.exists(target)) {
+                return@stored metadata(target).also { existing ->
+                    val records = verifyContent(existing)
+                    if (records != null) directories.verifyAll(target, records)
+                }
+            }
+            if (count == 500) throw ArchiveException(ArchiveFailure.LIMIT)
+            val encoded = cbor.encodeToByteArray(book)
+            check(encoded.size <= 16384)
+            files.openReadWrite(temporary / "book.cbor", mustCreate = true).use { handle ->
+                handle.sink().buffer().use { it.write(encoded) }
+                handle.flush()
+            }
+            currentCoroutineContext().ensureActive()
+            files.atomicMove(temporary, target)
+            book
+        } catch (caught: Throwable) {
+            failure = caught
+            throw caught
+        } finally {
+            try {
+                if (files.exists(temporary)) files.deleteRecursively(temporary)
+            } catch (cleanup: Exception) {
+                if (failure != null) failure.addSuppressed(cleanup) else throw cleanup
+            }
+        }
+    }
+
+    private suspend fun verifyContent(book: ArchiveBook): List<DirectoryImage>? {
+        if (files.exists(folder(book.id) / DirectoryImages.MANIFEST)) return directories.manifest(folder(book.id), book)
         val hash = HashingSource.sha256(files.source(folder(book.id) / "archive.bin"))
         hash.buffer().use { source ->
             val chunk = Buffer()
@@ -165,6 +219,7 @@ class FileArchiveLibrary(private val directory: Path, private val factory: Archi
             check(read == book.bytes)
         }
         if (hash.hash.hex() != book.id) throw ArchiveException(ArchiveFailure.INVALID_ARCHIVE)
+        return null
     }
 
     override suspend fun open(book: ArchiveBook): ArchiveDocument {
@@ -173,9 +228,9 @@ class FileArchiveLibrary(private val directory: Path, private val factory: Archi
             stored {
                 book.validate()
                 check(metadata(folder(book.id)) == book)
-                verifyContent(book)
+                val directoryImages = verifyContent(book)
                 currentCoroutineContext().ensureActive()
-                val document = factory.open((folder(book.id) / "archive.bin").toString())
+                val document = if (directoryImages == null) factory.open((folder(book.id) / "archive.bin").toString()) else directories.open(folder(book.id), directoryImages)
                 opened = document
                 check(document.pageCount == book.pages && document.needsPassword == book.encrypted)
                 val lease = ArchiveLease(document)
@@ -204,7 +259,14 @@ class FileArchiveLibrary(private val directory: Path, private val factory: Archi
         owners?.removeAll { it.isReleased }
         if (!owners.isNullOrEmpty()) throw ArchiveException(ArchiveFailure.IN_USE)
         // A failure to delete a locked archive must not first remove its metadata.
-        files.delete(folder(book.id) / "archive.bin", mustExist = true)
+        if (files.exists(folder(book.id) / "archive.bin")) {
+            files.delete(folder(book.id) / "archive.bin", mustExist = true)
+        } else {
+            for (index in 0 until book.pages) {
+                currentCoroutineContext().ensureActive()
+                files.delete(DirectoryImages.page(folder(book.id), index), mustExist = false)
+            }
+        }
         files.deleteRecursively(folder(book.id), mustExist = true)
     }
 

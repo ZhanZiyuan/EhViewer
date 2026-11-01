@@ -21,6 +21,36 @@ import org.junit.runner.RunWith
 /** Actual APK JNI, immutable copies, Rust extraction, Bitmap pixels and persisted library reopen. */
 @RunWith(AndroidJUnit4::class)
 class ArchiveImportIntegrationTest {
+    @Test fun realImageFolderUsesBoundedAndroidEnumerationAndTheSharedOfflineReader() = runBlocking {
+        System.loadLibrary("ehviewer")
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val root = File(context.cacheDir, "directory-product-${UUID.randomUUID()}").apply { check(mkdirs()) }
+        val fixture = File(root, "Owned source.cbz").apply { writeBytes(archiveProductFixture()) }
+        val images = NativeArchiveBridge.open(fixture.absolutePath).use { it.read(0) to it.read(1) }
+        val input = File(root, "Image folder 资料").apply { check(mkdirs()) }
+        File(input, "10.png").writeBytes(images.second)
+        File(input, "2.png").writeBytes(images.first)
+        var library = FileArchiveLibrary(File(root, "books").toOkioPath(), NativeArchiveBridge::open)
+        try {
+            val book = library.importDirectory(input.absolutePath, "Owned image directory")
+            assertEquals(2, book.pages)
+            assertEquals(3, verifyArchiveProduct(library.open(book)))
+            library.close()
+            library = FileArchiveLibrary(File(root, "books").toOkioPath(), NativeArchiveBridge::open)
+            assertEquals(listOf(book), library.recent())
+            assertEquals(book, library.importDirectory(input.absolutePath, "Keep original directory title"))
+            assertEquals(3, verifyArchiveProduct(library.open(book)))
+            library.remove(book)
+            assertTrue(library.recent().isEmpty())
+            assertArrayEquals(images.first, File(input, "2.png").readBytes())
+            assertArrayEquals(images.second, File(input, "10.png").readBytes())
+        } finally {
+            library.close()
+            assertEquals(0 to 0, NativeArchiveBridge.activeResources())
+            check(root.deleteRecursively())
+        }
+    }
+
     @Test fun realPrivateImportNaturalOrderPixelsReopenAndDeletePreserveOriginalInput() = runBlocking {
         System.loadLibrary("ehviewer")
         val context = InstrumentationRegistry.getInstrumentation().targetContext

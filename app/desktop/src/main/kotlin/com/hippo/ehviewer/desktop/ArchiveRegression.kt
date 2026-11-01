@@ -33,16 +33,27 @@ private fun verifyArchiveLibrary(factory: ArchiveDocumentFactory): Int = runBloc
         val book = first.importFile(input.toString(), "Owned archive regression")
         check(book.pages == 2 && book.bytes == original.size.toLong() && !book.encrypted)
         check(verifyArchiveProduct(first.open(book)) == 3)
+        val images = factory.open(input.toString()).use { it.read(0) to it.read(1) }
+        val imageDirectory = Files.createDirectory(directory.resolve("Image folder 资料"))
+        Files.write(imageDirectory.resolve("10.png"), images.second)
+        Files.write(imageDirectory.resolve("2.png"), images.first)
+        val directoryBook = first.importDirectory(imageDirectory.toString(), "Owned directory regression")
+        check(verifyArchiveProduct(first.open(directoryBook)) == 3)
         first.close()
         val second = FileArchiveLibrary(directory.resolve("books").toOkioPath(), factory)
         reopened = second
-        check(second.recent() == listOf(book))
+        check(second.recent() == listOf(book, directoryBook))
         check(second.importFile(input.toString(), "Duplicate must keep the original title") == book)
         check(verifyArchiveProduct(second.open(book)) == 3)
+        check(second.importDirectory(imageDirectory.toString(), "Keep the original folder title") == directoryBook)
+        check(verifyArchiveProduct(second.open(directoryBook)) == 3)
+        second.remove(directoryBook)
         second.remove(book)
         check(second.recent().isEmpty())
         check(Files.readAllBytes(input).contentEquals(original))
-        3
+        check(Files.readAllBytes(imageDirectory.resolve("2.png")).contentEquals(images.first))
+        check(Files.readAllBytes(imageDirectory.resolve("10.png")).contentEquals(images.second))
+        6
     } finally {
         first.close()
         reopened?.close()

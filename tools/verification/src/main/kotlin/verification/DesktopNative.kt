@@ -67,7 +67,7 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
     require(gallery.lineSequence().count { it == "Gallery product regression passed: 5 checks" } == 1) { "Production JNI/model/static and animated image regression did not execute" }
     require(gallery.lineSequence().count { it == "Account product regression passed: 3 checks" } == 1) { "Production JNI account decoder regression did not execute" }
     require(gallery.lineSequence().count { it == "History product regression passed: 3 checks" } == 1) { "Production Room/native history regression did not execute" }
-    require(gallery.lineSequence().count { it == "Archive product regression passed: 3 checks" } == 1) { "Real private archive import, pixel and reopen regression did not execute" }
+    require(gallery.lineSequence().count { it == "Archive product regression passed: 6 checks" } == 1) { "Real private archive/directory import, pixel and reopen regression did not execute" }
     val browserManifest = root.resolve("native/browser/Cargo.toml")
     capture("browser-unit-tests.log", "cargo", "test", "--manifest-path", browserManifest, "--locked", "--bin", "ehviewer_browser", timeout = Duration.ofMinutes(15))
     capture("browser-clippy.log", "cargo", "clippy", "--manifest-path", browserManifest, "--locked", "--all-targets", "--", "-D", "warnings", timeout = Duration.ofMinutes(10))
@@ -93,7 +93,7 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
         "gallery_product_checks" to 5,
         "account_product_checks" to 3,
         "history_product_checks" to 3,
-        "archive_product_checks" to 3,
+        "archive_product_checks" to 6,
         "native_browser" to browserProof,
     )
     output.resolve("desktop-native.json").writeText(json(result))

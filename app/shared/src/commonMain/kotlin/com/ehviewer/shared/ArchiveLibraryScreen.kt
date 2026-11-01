@@ -34,12 +34,14 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** One local-library/password/reader UI; platforms supply only their real file chooser and vault. */
 @Composable
-fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAndImport: suspend () -> ArchiveBook?, readingState: (ArchiveBook) -> ReaderStateStore, onBack: () -> Unit) {
+fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAndImport: suspend () -> ArchiveBook?, pickAndImportDirectory: suspend () -> ArchiveBook?, readingState: (ArchiveBook) -> ReaderStateStore, onBack: () -> Unit) {
     var books by remember(library) { mutableStateOf<List<ArchiveBook>>(emptyList()) }
     var selected by remember(library) { mutableStateOf<ArchiveBook?>(null) }
     var document by remember(library) { mutableStateOf<ArchiveDocument?>(null) }
@@ -98,8 +100,17 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
             } catch (_: Exception) {
                 failure = true
             } finally {
-                busy = false
                 password = ""
+                if (scope.isActive && selected == null) {
+                    withContext(NonCancellable) {
+                        try {
+                            books = library.recent()
+                        } catch (_: Exception) {
+                            failure = true
+                        }
+                    }
+                }
+                busy = false
             }
         }
     }
@@ -149,20 +160,21 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
         Text(book?.title ?: "Local library")
         if (loading || busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (failure) {
-            Text("The archive could not be opened or updated. Return to the library and try again.")
+            Text("The local comic could not be opened or updated. Return to the library and try again.")
             TextButton(onClick = { attempt++ }, enabled = !busy) { Text("Retry") }
         }
         if (book == null) {
             TextButton(onClick = { perform { pickAndImport()?.let { selected = it } } }, enabled = !busy && !loading) { Text("Import comic archive") }
+            TextButton(onClick = { perform { pickAndImportDirectory()?.let { selected = it } } }, enabled = !busy && !loading) { Text("Import image folder") }
             if (busy) TextButton(onClick = { request?.cancel() }) { Text("Cancel import") }
-            if (!loading && books.isEmpty()) Text("No local archives yet.")
+            if (!loading && books.isEmpty()) Text("No local comics yet.")
             LazyColumn(Modifier.weight(1f)) {
                 items(books, key = { it.id }) { item ->
                     Column {
                         Text(item.title)
                         Text("${item.pages} pages" + if (item.encrypted) " · Password protected" else "")
                         Row {
-                            TextButton(onClick = { selected = item }, enabled = !busy) { Text("Read archive") }
+                            TextButton(onClick = { selected = item }, enabled = !busy) { Text("Read comic") }
                             TextButton(onClick = {
                                 perform {
                                     library.remove(item)

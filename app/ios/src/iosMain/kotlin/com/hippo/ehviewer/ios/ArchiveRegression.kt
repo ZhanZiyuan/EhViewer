@@ -35,16 +35,28 @@ internal suspend fun verifyAppleArchives(applicationDirectory: String): Int {
         val book = first.importFile(input.toString(), "Owned archive regression")
         check(book.pages == 2 && book.bytes == fixture.size.toLong() && !book.encrypted)
         check(verifyArchiveProduct(first.open(book)) == 3)
+        val images = AppleArchiveFactory.open(input.toString()).use { it.read(0) to it.read(1) }
+        val imageDirectory = directory / "Image folder 资料"
+        files.createDirectory(imageDirectory)
+        files.write(imageDirectory / "10.png") { write(images.second) }
+        files.write(imageDirectory / "2.png") { write(images.first) }
+        val directoryBook = first.importDirectory(imageDirectory.toString(), "Owned directory regression")
+        check(verifyArchiveProduct(first.open(directoryBook)) == 3)
         first.close()
         val second = FileArchiveLibrary(directory / "books", AppleArchiveFactory)
         reopened = second
-        check(second.recent() == listOf(book))
+        check(second.recent() == listOf(book, directoryBook))
         check(second.importFile(input.toString(), "Duplicate keeps original title") == book)
         check(verifyArchiveProduct(second.open(book)) == 3)
+        check(second.importDirectory(imageDirectory.toString(), "Keep original directory title") == directoryBook)
+        check(verifyArchiveProduct(second.open(directoryBook)) == 3)
+        second.remove(directoryBook)
         second.remove(book)
         check(second.recent().isEmpty())
         check(files.read(input) { readByteArray() }.contentEquals(fixture))
-        return 3
+        check(files.read(imageDirectory / "2.png") { readByteArray() }.contentEquals(images.first))
+        check(files.read(imageDirectory / "10.png") { readByteArray() }.contentEquals(images.second))
+        return 6
     } finally {
         first.close()
         reopened?.close()

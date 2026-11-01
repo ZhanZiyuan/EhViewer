@@ -9,25 +9,27 @@ import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.AtomicReference
 
 /** Do not remove a backing file until every already admitted native call has ended. */
-internal class ArchiveLease(private val document: ArchiveDocument) : ArchiveDocument {
+internal class ArchiveLease(document: ArchiveDocument) : ArchiveDocument {
     private data class State(val closed: Boolean = false, val calls: Int = 0)
     private val state = AtomicReference(State())
     private val releasing = AtomicBoolean(false)
     private val released = AtomicBoolean(false)
     private val releaseFailed = AtomicBoolean(false)
+    private val owner = AtomicReference<ArchiveDocument?>(document)
     val isReleased: Boolean get() = released.load()
     val isReleaseFailed: Boolean get() = releaseFailed.load()
+    internal val retainsDocument: Boolean get() = owner.load() != null
     override val pageCount = document.pageCount
     override val needsPassword = document.needsPassword
 
-    private fun <T> call(block: () -> T): T {
+    private fun <T> call(block: (ArchiveDocument) -> T): T {
         while (true) {
             val before = state.load()
             if (before.closed) throw ArchiveException(ArchiveFailure.CLOSED)
             if (state.compareAndSet(before, before.copy(calls = before.calls + 1))) break
         }
         try {
-            return block()
+            return block(checkNotNull(owner.load()))
         } finally {
             while (true) {
                 val before = state.load()
@@ -43,7 +45,8 @@ internal class ArchiveLease(private val document: ArchiveDocument) : ArchiveDocu
     private fun release() {
         if (releasing.compareAndSet(false, true)) {
             try {
-                document.close()
+                checkNotNull(owner.load()).close()
+                owner.store(null)
                 released.store(true)
             } catch (failure: Throwable) {
                 releaseFailed.store(true)
@@ -52,9 +55,9 @@ internal class ArchiveLease(private val document: ArchiveDocument) : ArchiveDocu
         }
     }
 
-    override fun read(index: Int): ByteArray = call { document.read(index) }
-    override fun extension(index: Int): String = call { document.extension(index) }
-    override fun providePassword(password: String): Boolean = call { document.providePassword(password) }
+    override fun read(index: Int): ByteArray = call { it.read(index) }
+    override fun extension(index: Int): String = call { it.extension(index) }
+    override fun providePassword(password: String): Boolean = call { it.providePassword(password) }
 
     override fun close() {
         while (true) {
