@@ -1,6 +1,6 @@
 # 逐 SHA CI / CD 证据
 
-M0 / GATE_PASSED；M1 / GATE_PASSED（2f00e595c）；M2 / GATE_PASSED（17a17e282）；M3 / GATE_PASSED（`74a8e933d51de52309c6e38390e89b90abf6321b`，[Full CI41212001274](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41212001274) 全部12项成功）；M4 / IN_PROGRESS。仅 `feature/kmp` → `main` 的同一 Draft PR；不改 Ready、不合并、不创建 tag/Release。稳定版本冻结 `1.15.10 / 180074`，M8 才独立准备 `1.16.0`。本阶段摘要随实际下载功能提交收录；逐 SHA 检查继续由 Actions Summary 自动记账，不新增历史链接专用提交。
+M0 / GATE_PASSED；M1 / GATE_PASSED（2f00e595c）；M2 / GATE_PASSED（17a17e282）；M3 / GATE_PASSED（`74a8e933d51de52309c6e38390e89b90abf6321b`，[Full CI41212001274](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41212001274)）；M4 / GATE_PASSED（`bc4a84cadd80aaea7ae946d26f9fb2559c269ea1`，[Full CI41294257357](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41294257357)），各阶段最终运行均恰好12项必需任务成功。M5 / IN_PROGRESS，当前共享收藏功能及验证范围见 [shared-favorites.md](shared-favorites.md)。仅 `feature/kmp` → `main` 的同一 Draft PR；不改 Ready、不合并、不创建 tag/Release。稳定版本冻结 `1.15.10 / 180074`，M8 才独立准备 `1.16.0`。本阶段摘要随真实产品功能收录；逐 SHA 检查继续由 Actions Summary 自动记账，不新增历史链接专用提交。下文保留历史时点记录，不覆盖本段当前状态。
 
 ## 已有基线
 

@@ -4,6 +4,7 @@ package com.hippo.ehviewer.ios
 
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.gallery.GalleryDocumentDecoder
+import com.ehviewer.core.network.gallery.GalleryFavoriteNote
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GallerySearchResult
 import com.ehviewer.core.network.session.GalleryAccountProfile
@@ -16,6 +17,7 @@ import com.hippo.ehviewer.rust.capi.ehv_buffer_copy
 import com.hippo.ehviewer.rust.capi.ehv_buffer_free
 import com.hippo.ehviewer.rust.capi.ehv_parse_account_config
 import com.hippo.ehviewer.rust.capi.ehv_parse_account_profile
+import com.hippo.ehviewer.rust.capi.ehv_parse_favorite_note
 import com.hippo.ehviewer.rust.capi.ehv_parse_gallery_detail
 import com.hippo.ehviewer.rust.capi.ehv_parse_gallery_list
 import com.hippo.ehviewer.rust.capi.ehv_parse_gallery_page
@@ -65,6 +67,7 @@ object NativeGalleryDecoder : GalleryDocumentDecoder {
     override fun decodeProfileLink(html: ByteArray): String? = cbor.decodeFromByteArray(parse(html, 3))
     override fun decodeProfile(html: ByteArray): GalleryAccountProfile = cbor.decodeFromByteArray(parse(html, 4))
     override fun decodeUserConfig(html: ByteArray): List<String> = cbor.decodeFromByteArray(parse(html, 5))
+    override fun decodeFavoriteNote(html: ByteArray): GalleryFavoriteNote = cbor.decodeFromByteArray<GalleryFavoriteNote>(parse(html, 6)).also { it.validate() }
 
     private fun parse(html: ByteArray, kind: Int): ByteArray = memScoped {
         require(html.isNotEmpty() && html.size <= 8 * 1024 * 1024)
@@ -77,6 +80,7 @@ object NativeGalleryDecoder : GalleryDocumentDecoder {
                 3 -> ehv_parse_profile_link(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
                 4 -> ehv_parse_account_profile(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
                 5 -> ehv_parse_account_config(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
+                6 -> ehv_parse_favorite_note(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
                 else -> error("Unknown account document kind")
             }
             check(status == EHV_OK) { "Invalid gallery response" }

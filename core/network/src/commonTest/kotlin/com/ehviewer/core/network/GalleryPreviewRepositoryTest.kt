@@ -34,6 +34,7 @@ class GalleryPreviewRepositoryTest {
         override fun decodeProfileLink(html: ByteArray): String? = error("No HTML decoding expected")
         override fun decodeProfile(html: ByteArray): GalleryAccountProfile = error("No HTML decoding expected")
         override fun decodeUserConfig(html: ByteArray): List<String> = error("No HTML decoding expected")
+        override fun decodeFavoriteNote(html: ByteArray): com.ehviewer.core.network.gallery.GalleryFavoriteNote = error("No favorite request expected")
     }
 
     @Test fun publicAndRestrictedPreviewsUseRealGalleryRefererAndDoNotLeakIdentityToCdn() = runTest {

@@ -41,7 +41,7 @@ fun windowsPackagedLaunches(image: Path, output: Path, version: String): List<Ma
         require(Path.of(proof.getProperty("rust_library")).toRealPath() == rust.toRealPath()) { "Caller loaded a different Rust DLL" }
         require(proof.getProperty("application_version") == version && proof.getProperty("rust_hash_results") == "2000" && proof.getProperty("rust_active_results") == "0") { "Incomplete packaged Rust ownership calls" }
         require(proof.getProperty("gallery_product_checks") == "5") { "Packaged detail/page/static and animated image regression did not execute" }
-        require(proof.getProperty("account_product_checks") == "3") { "Packaged account decoder regression did not execute" }
+        require(proof.getProperty("account_product_checks") == "4") { "Packaged account/favorite decoder regression did not execute" }
         require(proof.getProperty("history_product_checks") == "3") { "Packaged native Room history regression did not execute" }
         require(proof.getProperty("archive_product_checks") == "6") { "Packaged private archive/directory import/pixel/reopen regression did not execute" }
         desktopBrowserReceipt(report, rust, image.resolve("app/resources/ehviewer_browser.exe"), setOf("aarch64"), "C_ABI")

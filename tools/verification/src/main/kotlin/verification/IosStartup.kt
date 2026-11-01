@@ -241,7 +241,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         awaitMarkers("second-render", secondPid, secondStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "browser-cookie-ready checks=4" to 1, "history-product-ready checks=3" to 1, "archive-product-ready checks=6" to 1, "active" to 1)
         val rustResults = listOf(rustInteropResults(firstStderr.readText()), rustInteropResults(secondStderr.readText()))
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM3:gallery-product checks=5").findAll(stderr.readText()).count() == 1) { "Actual iOS detail/page/static and animated image regression did not execute" }
-        for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM3:account-product checks=3").findAll(stderr.readText()).count() == 1) { "Actual iOS account decoder regression did not execute" }
+        for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM3:account-product checks=4").findAll(stderr.readText()).count() == 1) { "Actual iOS account/favorite decoder regression did not execute" }
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM1:history-product-ready checks=3").findAll(stderr.readText()).count() == 1) { "Actual iOS native Room history regression did not execute" }
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM1:archive-product-ready checks=6").findAll(stderr.readText()).count() == 1) { "Actual iOS private archive/directory import/pixel/reopen regression did not execute" }
         val lifecycle = logs("lifecycle")
@@ -262,7 +262,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             "compose_ready" to "PASS", "development_signed_device" to "NOT_VERIFIED",
             "rust_c_abi" to "PASS", "rust_completed_results_by_launch" to rustResults, "rust_live_results_after_probe" to 0,
             "gallery_product_checks_by_launch" to listOf(5, 5),
-            "account_product_checks_by_launch" to listOf(3, 3),
+            "account_product_checks_by_launch" to listOf(4, 4),
             "history_product_checks_by_launch" to listOf(3, 3),
             "archive_product_checks_by_launch" to listOf(6, 6),
             "browser_cookie_checks_by_launch" to listOf(4, 4),

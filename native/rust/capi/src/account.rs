@@ -1,5 +1,22 @@
 use super::*;
 
+/// Parse a favorite note into the existing bounded owned-buffer ABI.
+/// # Safety
+/// input borrows length readable bytes; handle is a disjoint writable u64 slot.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ehv_parse_favorite_note(
+    input: *const u8,
+    length: usize,
+    handle: *mut u64,
+) -> i32 {
+    // SAFETY: preserve the existing input and result ownership contract.
+    unsafe {
+        parse_document(input, length, handle, |bytes| {
+            ehviewer_core::parser::account::parse_favorite_note_cbor(bytes).map_err(|_| EHV_PARSE)
+        })
+    }
+}
+
 /// Parse the signed-in forum profile link (CBOR null for a guest forum page).
 /// # Safety
 /// input borrows length readable bytes; handle is a disjoint writable u64 slot.

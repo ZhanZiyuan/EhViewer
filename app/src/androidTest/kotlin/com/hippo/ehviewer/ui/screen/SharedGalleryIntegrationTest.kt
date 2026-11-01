@@ -125,7 +125,7 @@ class SharedGalleryIntegrationTest {
 
     @Test fun sharedModelsAndImagesUseTheActualPackagedRustAndAndroidDecoder() {
         assertEquals(3, verifyGalleryProduct(RustGalleryDecoder))
-        assertEquals(3, verifyAccountProduct(RustGalleryDecoder))
+        assertEquals(4, verifyAccountProduct(RustGalleryDecoder))
     }
 
     @Test fun sharedAndLegacyReadersUseTheSameActualRoomRowsAndAtomicPreferences() = runBlocking {

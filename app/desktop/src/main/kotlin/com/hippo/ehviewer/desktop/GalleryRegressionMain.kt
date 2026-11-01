@@ -17,11 +17,11 @@ fun main(arguments: Array<String>) {
         RustGalleryDecoder
     }
     check(verifyGalleryProduct(decoder) + verifyAnimatedGalleryProduct() == 5)
-    check(verifyAccountProduct(decoder) == 3)
+    check(verifyAccountProduct(decoder) == 4)
     check(verifyDesktopHistory() == 3)
     check(verifyDesktopArchives(library) == 6)
     println("Gallery product regression passed: 5 checks")
-    println("Account product regression passed: 3 checks")
+    println("Account product regression passed: 4 checks")
     println("History product regression passed: 3 checks")
     println("Archive product regression passed: 6 checks")
 }

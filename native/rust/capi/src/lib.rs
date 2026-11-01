@@ -442,6 +442,7 @@ mod tests {
                 ))
                 .collect::<String>()
         );
+        let favorite = b"<!DOCTYPE html><textarea name=\"favnote\">Owned &amp; readable</textarea>";
         for (parse, input) in [
             (
                 account::ehv_parse_profile_link
@@ -450,6 +451,7 @@ mod tests {
             ),
             (account::ehv_parse_account_profile, forum.as_slice()),
             (account::ehv_parse_account_config, config.as_bytes()),
+            (account::ehv_parse_favorite_note, favorite.as_slice()),
         ] {
             let mut handle = 0;
             assert_eq!(
@@ -482,6 +484,7 @@ mod tests {
             account::ehv_parse_profile_link,
             account::ehv_parse_account_profile,
             account::ehv_parse_account_config,
+            account::ehv_parse_favorite_note,
         ] {
             let mut handle = 999;
             assert_eq!(

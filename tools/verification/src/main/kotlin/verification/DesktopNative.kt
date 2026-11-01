@@ -65,7 +65,7 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
         timeout = Duration.ofMinutes(10),
     )
     require(gallery.lineSequence().count { it == "Gallery product regression passed: 5 checks" } == 1) { "Production JNI/model/static and animated image regression did not execute" }
-    require(gallery.lineSequence().count { it == "Account product regression passed: 3 checks" } == 1) { "Production JNI account decoder regression did not execute" }
+    require(gallery.lineSequence().count { it == "Account product regression passed: 4 checks" } == 1) { "Production JNI account/favorite decoder regression did not execute" }
     require(gallery.lineSequence().count { it == "History product regression passed: 3 checks" } == 1) { "Production Room/native history regression did not execute" }
     require(gallery.lineSequence().count { it == "Archive product regression passed: 6 checks" } == 1) { "Real private archive/directory import, pixel and reopen regression did not execute" }
     val browserManifest = root.resolve("native/browser/Cargo.toml")
@@ -91,7 +91,7 @@ fun desktopNativeSmoke(output: Path): Map<String, Any?> {
         "rust" to command("rustc", "--version").trim(), "library_sha256" to sha256(library), "result" to "PASS",
         "checks" to results, "packaged_runtime" to "NOT_VERIFIED", "ios_c_abi" to "NOT_VERIFIED",
         "gallery_product_checks" to 5,
-        "account_product_checks" to 3,
+        "account_product_checks" to 4,
         "history_product_checks" to 3,
         "archive_product_checks" to 6,
         "native_browser" to browserProof,

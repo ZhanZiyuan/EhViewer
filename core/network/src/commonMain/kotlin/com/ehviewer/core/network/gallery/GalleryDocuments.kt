@@ -8,6 +8,14 @@ import kotlinx.serialization.Serializable
 interface GalleryDocumentDecoder : GalleryListDecoder, GalleryAccountDecoder {
     fun decodeDetails(html: ByteArray): GalleryDetail
     fun decodePage(html: ByteArray): GalleryImagePage
+    fun decodeFavoriteNote(html: ByteArray): GalleryFavoriteNote
+}
+
+@Serializable
+data class GalleryFavoriteNote(val note: String, val maximumCharacters: Int) {
+    fun validate() {
+        require(maximumCharacters in 1..4096 && note.length <= maximumCharacters && '\u0000' !in note)
+    }
 }
 
 @Serializable

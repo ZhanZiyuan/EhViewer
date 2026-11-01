@@ -57,9 +57,87 @@ pub fn parse_user_config_cbor(input: &[u8]) -> Result<Vec<u8>> {
     encode(categories)
 }
 
+#[derive(Serialize)]
+#[allow(non_snake_case)]
+struct FavoriteNote {
+    note: String,
+    maximumCharacters: u32,
+}
+
+/// Read the existing popup's textarea without losing numeric entities or literal markup.
+/// The limit is a client resource budget, further restricted by an advertised maxlength.
+pub fn parse_favorite_note_cbor(input: &[u8]) -> Result<Vec<u8>> {
+    let dom = document(input)?;
+    let parser = dom.parser();
+    let mut areas = dom
+        .query_selector("textarea")
+        .context("Missing favorite note")?;
+    let area = areas
+        .next()
+        .and_then(|node| node.get(parser))
+        .and_then(tl::Node::as_tag)
+        .context("Missing favorite note")?;
+    ensure!(areas.next().is_none(), "Ambiguous favorite note");
+    ensure!(
+        crate::get_tag_attr(area, "name").is_none_or(|name| name == "favnote"),
+        "Unexpected favorite textarea"
+    );
+    let maximum = crate::get_tag_attr(area, "maxlength")
+        .map(str::parse::<u32>)
+        .transpose()?
+        .unwrap_or(4096)
+        .min(4096);
+    ensure!(maximum > 0, "Invalid favorite note limit");
+    let raw = area.inner_html(parser);
+    let note = super::utils::unescape(&raw)?
+        .replace("\r\n", "\n")
+        .replace('\r', "\n");
+    ensure!(
+        !note.contains('\0') && note.encode_utf16().count() <= maximum as usize,
+        "Favorite note exceeds the supported limit"
+    );
+    encode(FavoriteNote {
+        note,
+        maximumCharacters: maximum,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn favorite_note_preserves_entities_unicode_newlines_and_its_declared_limit() {
+        let html = "<!DOCTYPE html><html><body><textarea name=\"favnote\" maxlength=\"200\">A &amp; B &#x1F4D6; &#20013; &lt;b&gt;\r\nsecond</textarea></body></html>";
+        let result: std::collections::BTreeMap<String, serde_cbor::Value> =
+            serde_cbor::from_slice(&parse_favorite_note_cbor(html.as_bytes()).unwrap()).unwrap();
+        assert_eq!(
+            result.get("note"),
+            Some(&serde_cbor::Value::Text("A & B 📖 中 <b>\nsecond".into()))
+        );
+        assert_eq!(
+            result.get("maximumCharacters"),
+            Some(&serde_cbor::Value::Integer(200))
+        );
+        assert!(parse_favorite_note_cbor(b"<!DOCTYPE html><textarea></textarea>").is_ok());
+    }
+
+    #[test]
+    fn favorite_note_rejects_ambiguous_wrong_and_over_budget_documents() {
+        for html in [
+            "<!DOCTYPE html><textarea name=\"reply\">wrong field</textarea>".to_string(),
+            "<!DOCTYPE html><textarea></textarea><textarea></textarea>".into(),
+            "<!DOCTYPE html><textarea maxlength=\"0\"></textarea>".into(),
+            "<!DOCTYPE html><textarea maxlength=\"invalid\"></textarea>".into(),
+            "<!DOCTYPE html><textarea maxlength=\"1\">&#x1F4D6;</textarea>".into(),
+            format!("<!DOCTYPE html><textarea>{}</textarea>", "x".repeat(4097)),
+            "<!DOCTYPE html><textarea>&unknown;</textarea>".into(),
+            "<!DOCTYPE html><body>Sign in</body>".into(),
+        ] {
+            assert!(parse_favorite_note_cbor(html.as_bytes()).is_err());
+        }
+        assert!(parse_favorite_note_cbor(&[255, 0, 255]).is_err());
+    }
 
     #[test]
     fn original_forum_parser_preserves_name_avatar_and_guest_state() {

@@ -10,6 +10,7 @@ import com.ehviewer.core.domain.reader.archiveFailure
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.core.network.gallery.GalleryDocumentDecoder
+import com.ehviewer.core.network.gallery.GalleryFavoriteNote
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GallerySearchResult
 import com.ehviewer.core.network.session.GalleryAccountProfile
@@ -179,6 +180,7 @@ internal class WindowsGalleryDecoder(private val library: Path) : GalleryDocumen
     override fun decodeProfileLink(html: ByteArray): String? = cbor.decodeFromByteArray(parse("ehv_parse_profile_link", html))
     override fun decodeProfile(html: ByteArray): GalleryAccountProfile = cbor.decodeFromByteArray(parse("ehv_parse_account_profile", html))
     override fun decodeUserConfig(html: ByteArray): List<String> = cbor.decodeFromByteArray(parse("ehv_parse_account_config", html))
+    override fun decodeFavoriteNote(html: ByteArray): GalleryFavoriteNote = cbor.decodeFromByteArray<GalleryFavoriteNote>(parse("ehv_parse_favorite_note", html)).also { it.validate() }
 
     private fun parse(symbol: String, html: ByteArray): ByteArray = nativeCall(library) { call ->
         require(html.isNotEmpty() && html.size <= 8 * 1024 * 1024)

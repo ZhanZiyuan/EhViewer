@@ -45,6 +45,7 @@ class NetworkGalleryDownloadSourceTest {
         override fun decodeProfileLink(html: ByteArray): String? = error("No account request expected")
         override fun decodeProfile(html: ByteArray): GalleryAccountProfile = error("No account request expected")
         override fun decodeUserConfig(html: ByteArray): List<String> = error("No account request expected")
+        override fun decodeFavoriteNote(html: ByteArray): com.ehviewer.core.network.gallery.GalleryFavoriteNote = error("No favorite request expected")
         override fun decode(html: ByteArray) = GallerySearchResult(null, null, emptyList())
         override fun decodeDetails(html: ByteArray): GalleryDetail {
             val window = html.decodeToString().removePrefix("detail:").toIntOrNull() ?: return gallery

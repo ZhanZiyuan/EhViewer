@@ -1,6 +1,8 @@
-维护者加速指令已覆盖此前逐提交双事件全量流程：feature/kmp仅PR CI；Fast/Platform/Full按声明式计划执行，Android关键回归始终必需，阶段完成/发布/冻结/合并前全量。CI期间可准备下一本地功能，上一个必需检查成功前不推送下一提交；Actions Summary自动记账，不再为补历史链接单独提交。实现与验收见[ci-plan](ci-plan.md)。原45提交及已通过结果保持不变；Ktor会话→图库搜索→详情→图片→阅读器闭环已经交付，M3阶段门禁已通过，当前推进M4下载/离线与Rust归档。
+维护者加速指令已覆盖此前逐提交双事件全量流程：feature/kmp仅PR CI；Fast/Platform/Full按声明式计划执行，Android关键回归始终必需，阶段完成/发布/冻结/合并前全量。CI期间可准备下一本地功能，上一个必需检查成功前不推送下一提交；Actions Summary自动记账，不再为补历史链接单独提交。实现与验收见[ci-plan](ci-plan.md)。原45提交及已通过结果保持不变；Ktor会话→图库搜索→详情→图片→阅读器闭环已经交付，M0–M4阶段门禁已通过，当前推进M5共享CMP产品交互。
 
 # 现代化路线与阶段门禁
+
+当前 M0–M4 / GATE_PASSED；M4 最终提交 `bc4a84cadd80aaea7ae946d26f9fb2559c269ea1` 的 [Full CI41294257357](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41294257357) 已独立核对恰好12项必需任务全部完成且成功，包括 Android、iOS、桌面/Rust 架构、dry-run 与 `ci/gate`。目录导入前序 `cf918f0c9` 的 [Full CI41290808176](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41290808176) 亦全部成功。下载/归档/媒体、取消/故障/所有权检测阶段门禁已闭合，同一英文 Draft PR 已记录清单。现在进入 M5 共享产品交互，先交付共享收藏编辑器；实际全平台 P0、性能、11包和最终1.16.0仍未完成。下面原有时点记录保留，不覆盖本段当前状态。
 
 M3 已在 `74a8e933d51de52309c6e38390e89b90abf6321b` 完成阶段门禁：[Full CI41212001274](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41212001274) 全部12项成功，包括原 Android 回归、KMP 编译/契约、实际 iOS 启动和存储迁移、Windows ARM64 SQLite/JNI、桌面包原生消费及无密钥 dry-run。此前源码声明、SQLite 架构/连接所有权、独立构建类路径和浏览器关闭竞态的失败均保留，未跳检查。共享 Ktor/会话/Repository、历史/原迁移/便携配置及参考决策已验收，见 [shared-history-and-data.md](shared-history-and-data.md)。
 

@@ -7,6 +7,15 @@ use jni::{
 use jni_fn::jni_fn;
 
 #[jni_fn("com.ehviewer.core.network.gallery.RustGalleryDecoder")]
+pub fn decodeFavoriteNoteNative(env: JNIEnv, _: JObject, input: JByteArray) -> jbyteArray {
+    gallery_document(
+        env,
+        input,
+        ehviewer_core::parser::account::parse_favorite_note_cbor,
+    )
+}
+
+#[jni_fn("com.ehviewer.core.network.gallery.RustGalleryDecoder")]
 pub fn decodeProfileLinkNative(env: JNIEnv, _: JObject, input: JByteArray) -> jbyteArray {
     gallery_document(
         env,

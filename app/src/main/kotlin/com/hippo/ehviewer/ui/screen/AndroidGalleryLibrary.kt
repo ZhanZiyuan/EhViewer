@@ -7,9 +7,11 @@ import com.ehviewer.core.domain.reader.ReadingDirection
 import com.ehviewer.core.domain.reader.ReadingLayout
 import com.ehviewer.core.domain.reader.ReadingPosition
 import com.ehviewer.core.model.GalleryDetail
+import com.ehviewer.core.network.EhCookieStore
 import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.core.network.gallery.GalleryContentRepository
 import com.ehviewer.core.network.gallery.GalleryFailure
+import com.ehviewer.core.network.gallery.GalleryFavoritesRepository
 import com.ehviewer.core.network.gallery.GalleryRepository
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
@@ -18,6 +20,7 @@ import com.hippo.ehviewer.EhDB
 import com.hippo.ehviewer.Settings
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingModeType
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.cookies.CookiesStorage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,9 +29,11 @@ import kotlinx.coroutines.withContext
 internal class AndroidGalleryLibrary(
     override val restricted: Boolean,
     client: HttpClient = EhApplication.noRedirectKtorClient,
+    cookies: CookiesStorage = EhCookieStore,
 ) : GalleryLibrary {
     override val galleries = GalleryRepository(client, RustGalleryDecoder, restricted)
     override val content = GalleryContentRepository(client, RustGalleryDecoder, restricted)
+    override val favorites = GalleryFavoritesRepository(client, cookies, RustGalleryDecoder, restricted)
     private var current: GalleryDetail? = null
     val readerState: ReaderStateStore = AndroidReadingState { current }
 

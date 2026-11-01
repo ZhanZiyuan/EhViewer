@@ -59,6 +59,7 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     var opening by remember { mutableStateOf(false) }
     var addingDownload by remember { mutableStateOf(false) }
     var downloadFailed by remember { mutableStateOf(false) }
+    var editingFavorite by remember(gallery.gid, session.restricted) { mutableStateOf(false) }
     LaunchedEffect(gallery.gid, reader, stateAttempt) {
         if (reader == null) {
             try {
@@ -103,6 +104,12 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
         }, onBack = { browsingPreviews = false })
         return
     }
+    if (editingFavorite) {
+        GalleryFavoriteDialog(session.favorites, gallery.gid, gallery.token, onUpdated = {
+            editingFavorite = false
+            attempt++
+        }, onDismiss = { editingFavorite = false })
+    }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             TextButton(onClick = onBack) { Text(backLabel) }
@@ -123,6 +130,7 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                     Text("${document.pages} pages · ${document.size.orEmpty()} · ${document.language.orEmpty()}", Modifier.padding(vertical = 8.dp))
                     document.uploader?.let { Text("Uploaded by $it") }
                     Text("Rating ${document.rating} (${document.ratingCount})")
+                    Button(onClick = { editingFavorite = true }) { Text(if (document.favoriteSlot in 0..9) "Edit favorite" else "Add to favorites") }
                     if (downloads != null) {
                         Button(onClick = {
                             addingDownload = true
