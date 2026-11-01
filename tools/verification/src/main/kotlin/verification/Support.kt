@@ -81,7 +81,7 @@ class Options(args: List<String>) {
             val key = args[index++]
             if (key.startsWith("--")) {
                 require(!flags.containsKey(key)) { "Duplicate option: $key" }
-                flags[key] = if (key in setOf("--debug", "--test-signing", "--samples", "--cpu-samples", "--phase-samples", "--mutate", "--readonly")) "true" else args.getOrNull(index++) ?: error("Missing $key value")
+                flags[key] = if (key in setOf("--debug", "--test-signing", "--samples", "--cpu-samples", "--phase-samples", "--mutate", "--readonly", "--allow-dirty")) "true" else args.getOrNull(index++) ?: error("Missing $key value")
             } else {
                 positional += key
             }

@@ -15,6 +15,10 @@ fun main(args: Array<String>) {
         "common-jvm-probe" -> commonJvmLinkProbe(options.path("--jar"))
         "release-contract" -> verifyReleaseContract(if (options.has("--tag")) options.get("--tag") else null)
         "ios-startup" -> iosStartup(options.path("--app"), options.path("--output"), if (options.has("--runtime")) options.get("--runtime") else null)
+        "ios-ipa" -> {
+            require(options.positional.isEmpty()) { "Expected exactly one IPA input" }
+            stageUnsignedIosIpa(options.path("--ipa"), options.path("--output"), options.has("--allow-dirty"))
+        }
         "ios-domain" -> iosDomainNative(options.path("--output"))
         "ios-domain-artifact" -> checkedDomainNativeArtifact(options.path("--input"))
         "ios-common" -> iosNativeLibrary(options.path("--output"), commonNativeSpec)

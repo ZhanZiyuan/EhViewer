@@ -53,9 +53,10 @@ class MigrationPhaseTest {
         for (id in listOf("macos-arm64", "linux-x64")) assertEquals("HOST_JNI_ONLY", targets.single { it["id"] == id }["available_ci_surface"])
     }
 
-    @Test fun onlySixCandidatesAreCurrentlyIntegrated() {
-        assertEquals(6, report()["staged_candidate_targets"].array().size)
-        assertEquals(5, report()["remaining_final_package_targets"].array().size)
+    @Test fun sevenCandidatesKeepFinalDeliveryAndSignedDeviceAcceptanceOpen() {
+        assertEquals(7, report()["staged_candidate_targets"].array().size)
+        assertEquals(4, report()["remaining_final_package_targets"].array().size)
+        assertEquals("SOURCE_BOUND_UNSIGNED_IPA_AND_ARM64_SIMULATOR_SPIKE", report()["target_coverage"].array().map(Any?::obj).single { it["id"] == "ios-arm64" }["available_ci_surface"])
     }
 
     @Test fun invalidSourceCannotProducePhaseEvidence() {

@@ -127,7 +127,10 @@ fun nativeLibraryKlibEvidence(bytes: ByteArray, target: String, compiler: String
 }
 
 /** The Native test must be an actual thin ARM64 iOS Simulator executable. */
-fun verifyDomainSimulatorMachO(bytes: ByteArray): Map<String, Any?> {
+fun verifyDomainSimulatorMachO(bytes: ByteArray): Map<String, Any?> = verifyAppleArm64Executable(bytes, simulator = true)
+
+/** Parse the actual load commands; a filename or ARM64 header alone cannot identify iOS. */
+fun verifyAppleArm64Executable(bytes: ByteArray, simulator: Boolean): Map<String, Any?> {
     require(bytes.size >= 32)
     val b = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
     require(b.getInt(0) == 0xfeedfacf.toInt() && b.getInt(4) == 0x0100000c && b.getInt(12) == 2) { "Expected a thin ARM64 Mach-O executable" }
@@ -142,10 +145,10 @@ fun verifyDomainSimulatorMachO(bytes: ByteArray): Map<String, Any?> {
         val size = b.getInt(offset + 4)
         require(size >= 8 && size % 8 == 0 && size <= 32 + commandBytes - offset)
         if (b.getInt(offset) == 0x32) {
-            require(platform == null && size >= 24 && b.getInt(offset + 8) == 7) { "Expected exactly one iOS Simulator build platform" }
+            require(platform == null && size >= 24 && b.getInt(offset + 8) == if (simulator) 7 else 2) { "Expected exactly one matching iOS build platform" }
             platform = mapOf(
                 "architecture" to "arm64",
-                "platform" to "IOSSIMULATOR",
+                "platform" to if (simulator) "IOSSIMULATOR" else "IOS",
                 "declared_minimum_ios" to version(b.getInt(offset + 12)),
                 "sdk" to version(b.getInt(offset + 16)),
             )
@@ -153,7 +156,7 @@ fun verifyDomainSimulatorMachO(bytes: ByteArray): Map<String, Any?> {
         offset += size
     }
     require(offset == 32 + commandBytes)
-    return requireNotNull(platform) { "Missing actual iOS Simulator build platform" }
+    return requireNotNull(platform) { "Missing actual iOS build platform" }
 }
 
 fun verifyDomainNativeApiDump(text: String) {

@@ -1,6 +1,7 @@
 import com.ehviewer.CompileAppleAppIcons
 import com.ehviewer.GeneratePlatformIcons
-import com.ehviewer.MergeAppleIconInfo
+import com.ehviewer.MergeAppleAppInfo
+import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import java.io.File
 import java.net.URI
@@ -263,7 +264,7 @@ val simulatorIcons = tasks.register<CompileAppleAppIcons>("compileSimulatorIcons
     sdk.set("iphonesimulator")
     destination.set(layout.buildDirectory.dir("compiled-icons/simulator"))
 }
-tasks.register<CompileAppleAppIcons>("compileDeviceIcons") {
+val deviceIcons = tasks.register<CompileAppleAppIcons>("compileDeviceIcons") {
     catalog.set(platformIcons.flatMap { it.destination.dir("AppIcons.xcassets") })
     sdk.set("iphoneos")
     destination.set(layout.buildDirectory.dir("compiled-icons/device"))
@@ -287,8 +288,8 @@ val stageSimulatorApp = tasks.register<Sync>("stageSimulatorApp") {
     from(layout.buildDirectory.dir("rust/aarch64-apple-ios-sim/dependencies/licenses")) { into("licenses/archive") }
     from(rootProject.layout.projectDirectory.file("LICENSE")) { into("licenses/EhViewer") }
     doLast(
-        MergeAppleIconInfo(
-            simulatorIcons.get().destination.file("PartialInfo.plist").get().asFile,
+        MergeAppleAppInfo(
+            listOf(simulatorIcons.get().destination.file("PartialInfo.plist").get().asFile),
             simulatorBundle.get().asFile,
             layout.buildDirectory.dir("icon-evidence/simulator").get().asFile,
         ),
@@ -298,6 +299,85 @@ val stageSimulatorApp = tasks.register<Sync>("stageSimulatorApp") {
 tasks.register<Exec>("packageSimulatorApp") {
     dependsOn(stageSimulatorApp)
     commandLine("codesign", "--force", "--sign", "-", simulatorBundle.get().asFile.absolutePath)
+}
+
+/** Source metadata is part of the real bundle; no signing identity or production secret is used. */
+abstract class WriteApplePackageSource : DefaultTask() {
+    @get:Input abstract val sourceCommit: Property<String>
+
+    @get:Input abstract val sourceDirty: Property<Boolean>
+
+    @get:Input abstract val applicationVersion: Property<String>
+
+    @get:Input abstract val androidVersionCode: Property<Int>
+
+    @get:OutputFile abstract val destination: RegularFileProperty
+
+    @TaskAction fun write() {
+        val source = sourceCommit.get()
+        require(Regex("[0-9a-f]{40}").matches(source) && source != "0".repeat(40))
+        val output = destination.get().asFile.also { it.parentFile.mkdirs() }
+        output.writeText(
+            JsonOutput.toJson(
+                mapOf(
+                    "schema_version" to 1,
+                    "source_commit" to source,
+                    "source_dirty" to sourceDirty.get(),
+                    "version" to applicationVersion.get(),
+                    "android_version_code" to androidVersionCode.get(),
+                    "build_type" to "RELEASE",
+                    "signing" to "UNSIGNED_NOT_DIRECTLY_INSTALLABLE",
+                ),
+            ) + "\n",
+        )
+    }
+}
+
+val deviceSource = tasks.register<WriteApplePackageSource>("writeDevicePackageSource") {
+    sourceCommit.set(providers.exec { commandLine("git", "rev-parse", "HEAD") }.standardOutput.asText.map(String::trim))
+    sourceDirty.set(providers.exec { commandLine("git", "status", "--porcelain", "--untracked-files=all") }.standardOutput.asText.map { it.isNotBlank() })
+    applicationVersion.set(androidVersionSource.map { Regex("val releaseVersion = \"([^\"]+)\"").find(it)!!.groupValues[1] })
+    androidVersionCode.set(androidVersionSource.map { Regex("versionCode = (\\d+)").find(it)!!.groupValues[1].toInt() })
+    destination.set(layout.buildDirectory.file("device-source/EhViewerBuild.json"))
+}
+val deviceBundle = layout.buildDirectory.dir("device/EhViewer.app")
+val stageDeviceApp = tasks.register<Sync>("stageDeviceApp") {
+    dependsOn("linkReleaseExecutableIosArm64")
+    inputs.file("DeviceInfo.plist")
+    into(deviceBundle)
+    from(tasks.named("iosArm64AggregateResources")) { into("compose-resources") }
+    from(deviceIcons.flatMap { it.destination }) { include("Assets.car", "*.png") }
+    from(deviceSource.flatMap { it.destination })
+    from(layout.buildDirectory.file("bin/iosArm64/releaseExecutable/EhViewer.kexe")) {
+        rename { "EhViewer" }
+        filePermissions { unix("rwxr-xr-x") }
+    }
+    from("Info.plist") {
+        expand("appVersion" to deviceSource.get().applicationVersion.get(), "buildVersion" to deviceSource.get().androidVersionCode.get().toString())
+    }
+    from(rootProject.layout.projectDirectory.dir("app/desktop/licenses/session")) { into("licenses/session") }
+    from(layout.buildDirectory.dir("rust/aarch64-apple-ios/dependencies/licenses")) { into("licenses/archive") }
+    from(rootProject.layout.projectDirectory.file("LICENSE")) { into("licenses/EhViewer") }
+    doLast(
+        MergeAppleAppInfo(
+            listOf(deviceIcons.get().destination.file("PartialInfo.plist").get().asFile, file("DeviceInfo.plist")),
+            deviceBundle.get().asFile,
+            layout.buildDirectory.dir("icon-evidence/device").get().asFile,
+        ),
+    )
+}
+tasks.register<Zip>("packageUnsignedIpa") {
+    dependsOn(stageDeviceApp)
+    from(deviceBundle) {
+        into("Payload/EhViewer.app")
+        filePermissions { unix("rw-r--r--") }
+        filesMatching("EhViewer") { permissions { unix("rwxr-xr-x") } }
+    }
+    destinationDirectory.set(layout.buildDirectory.dir("packages"))
+    archiveFileName.set(deviceSource.flatMap { it.applicationVersion }.map { "EhViewer-$it-arm64-unsigned.ipa" })
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+    duplicatesStrategy = DuplicatesStrategy.FAIL
 }
 
 spotless {

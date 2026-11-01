@@ -386,7 +386,7 @@ jobs:
     if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.ios.required
     name: ci/ios
     runs-on: macos-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
         with:
@@ -406,6 +406,8 @@ jobs:
           cache-read-only: true
       - name: Build Kotlin-only Simulator application
         run: ./gradlew :app:ios:packageSimulatorApp :app:ios:linkDebugExecutableIosArm64 :app:ios:spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g -Pkotlin.native.jvmArgs=-Xmx3g
+      - name: Build optimized unsigned IPA with an isolated compiler heap
+        run: ./gradlew :app:ios:packageUnsignedIpa --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx4g
       - uses: actions/download-artifact@v8
         with:
           name: verification-tools-${{ github.sha }}
@@ -414,6 +416,8 @@ jobs:
         run: chmod +x tools/verification/build/install/verification/bin/verification
       - name: Launch, render and exercise the real Simulator app
         run: tools/verification/build/install/verification/bin/verification ios-startup --app app/ios/build/simulator/EhViewer.app --output reports/ios-startup
+      - name: Inspect the real optimized unsigned iPhone and iPad IPA
+        run: tools/verification/build/install/verification/bin/verification ios-ipa --ipa app/ios/build/packages/*.ipa --output reports/ios-startup/unsigned-ipa > reports/ios-unsigned-ipa.json
       - name: Compile and execute the production domain on an owned iOS Simulator
         run: tools/verification/build/install/verification/bin/verification ios-domain --output reports/domain-native
       - name: Retain actual iOS domain compiler, API and test evidence
@@ -849,7 +853,7 @@ jobs:
         run: |
           mkdir -p reports
           tools/verification/build/install/verification/bin/verification staged-package-dry-run --repository "$GITHUB_REPOSITORY" --run-id "$GITHUB_RUN_ID" --android-run-id "$ANDROID_ARTIFACT_RUN_ID" --sdk "$ANDROID_HOME" --output reports/staged-dry-run > reports/staged-dry-run.json
-      - name: Retain six actual candidates and complete staged evidence
+      - name: Retain seven actual candidates and complete staged evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:

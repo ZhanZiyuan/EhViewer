@@ -12,7 +12,7 @@ fun migrationPhaseContract(sourceSha: String, settings: String): Map<String, Any
         "android-armv7" to "TEST_SIGNED_APK_PREFLIGHT",
         "android-universal" to "TEST_SIGNED_APK_PREFLIGHT",
         "android-x64" to "TEST_SIGNED_APK_PREFLIGHT",
-        "ios-arm64" to "DEVICE_BUILD_AND_ARM64_SIMULATOR_SPIKE",
+        "ios-arm64" to "SOURCE_BOUND_UNSIGNED_IPA_AND_ARM64_SIMULATOR_SPIKE",
         "macos-x64" to "ARM_PRODUCED_DMG_ROSETTA_AND_INTEL_CONSUMPTION_SPIKE",
         "macos-arm64" to "HOST_JNI_ONLY",
         "linux-x64" to "HOST_JNI_ONLY",
@@ -39,8 +39,8 @@ fun migrationPhaseContract(sourceSha: String, settings: String): Map<String, Any
         "ios_product_domain_integration" to "GALLERY_LIBRARY_READER_DOWNLOADS",
         "desktop_product_domain_integration" to "GALLERY_LIBRARY_READER_DOWNLOADS",
         "pending_check_categories" to emptyMap<String, String>(),
-        "staged_candidate_targets" to listOf("android-arm64", "android-armv7", "android-universal", "android-x64", "macos-x64", "windows-arm64"),
-        "remaining_final_package_targets" to listOf("ios-arm64", "macos-arm64", "linux-x64", "linux-arm64", "windows-x64"),
+        "staged_candidate_targets" to listOf("android-arm64", "android-armv7", "android-universal", "android-x64", "ios-arm64", "macos-x64", "windows-arm64"),
+        "remaining_final_package_targets" to listOf("macos-arm64", "linux-x64", "linux-arm64", "windows-x64"),
         "target_coverage" to releaseTargets.map {
             mapOf("id" to it.id, "available_ci_surface" to surfaces.getValue(it.id), "final_delivery_acceptance" to "NOT_VERIFIED")
         },

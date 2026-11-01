@@ -37,10 +37,12 @@ abstract class CompileAppleAppIcons : DefaultTask() {
     }
 }
 
-class MergeAppleIconInfo(private val partial: File, private val app: File, private val evidence: File) : Action<Task>, java.io.Serializable {
+class MergeAppleAppInfo(private val partials: List<File>, private val app: File, private val evidence: File) : Action<Task>, java.io.Serializable {
     override fun execute(task: Task) {
         // PlistBuddy parses its own command string, so quote this filename independently of any shell.
-        val quoted = partial.absolutePath.replace("\\", "\\\\").replace("\"", "\\\"")
-        NativeBuildCommand(evidence).run("merge-icon-info", app, listOf("/usr/libexec/PlistBuddy", "-c", "Merge \"$quoted\"", app.resolve("Info.plist").absolutePath))
+        partials.forEachIndexed { index, partial ->
+            val quoted = partial.absolutePath.replace("\\", "\\\\").replace("\"", "\\\"")
+            NativeBuildCommand(evidence).run("merge-app-info-$index", app, listOf("/usr/libexec/PlistBuddy", "-c", "Merge \"$quoted\"", app.resolve("Info.plist").absolutePath))
+        }
     }
 }
