@@ -1,6 +1,7 @@
 package com.hippo.ehviewer.ui.screen
 
 import android.content.Intent
+import android.content.res.Configuration
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -90,10 +91,20 @@ class SharedGalleryIntegrationTest {
                 requireNotNull(device.wait(Until.findObject(By.text("Dark theme")), 5_000)).click()
                 runBlocking {
                     withTimeout(10_000) {
-                        while (AndroidGalleryAppearanceStore().mode() != GalleryThemeMode.DARK) delay(25)
+                        // The existing observer applies the system theme after the preference write.
+                        // Back must target the activity whose actual UI configuration has settled.
+                        while (true) {
+                            var applied = false
+                            scenario.onActivity { activity ->
+                                applied = activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES && AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_YES
+                            }
+                            if (applied && AndroidGalleryAppearanceStore().mode() == GalleryThemeMode.DARK) break
+                            delay(25)
+                        }
                     }
                     assertEquals(AppCompatDelegate.MODE_NIGHT_YES, Settings.snapshot()[Settings.theme])
                 }
+                instrumentation.waitForIdleSync()
                 device.pressBack()
                 searchIsVisible()
                 requireNotNull(device.wait(Until.findObject(By.text("Account")), 5_000)).click()

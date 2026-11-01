@@ -40,8 +40,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** One local-library/password/reader UI; platforms supply only their real file chooser and vault. */
+private enum class ArchiveTransfer { EXPORT, SHARE }
+
 @Composable
-fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAndImport: suspend () -> ArchiveBook?, pickAndImportDirectory: suspend () -> ArchiveBook?, pickAndExport: suspend (ArchiveBook) -> Boolean, readingState: (ArchiveBook) -> ReaderStateStore, onBack: () -> Unit) {
+fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAndImport: suspend () -> ArchiveBook?, pickAndImportDirectory: suspend () -> ArchiveBook?, pickAndExport: suspend (ArchiveBook) -> Boolean, readingState: (ArchiveBook) -> ReaderStateStore, onBack: () -> Unit, shareComic: (suspend (ArchiveBook) -> Boolean)? = null) {
     var books by remember(library) { mutableStateOf<List<ArchiveBook>>(emptyList()) }
     var unavailableCopies by remember(library) { mutableIntStateOf(0) }
     var selected by remember(library) { mutableStateOf<ArchiveBook?>(null) }
@@ -50,9 +52,9 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
     var failure by remember { mutableStateOf(false) }
     var attempt by remember { mutableIntStateOf(0) }
     var busy by remember { mutableStateOf(false) }
-    var exporting by remember { mutableStateOf(false) }
-    var exportFailed by remember { mutableStateOf(false) }
-    var exportMessage by remember { mutableStateOf<String?>(null) }
+    var transfer by remember { mutableStateOf<ArchiveTransfer?>(null) }
+    var transferFailed by remember { mutableStateOf<ArchiveTransfer?>(null) }
+    var transferMessage by remember { mutableStateOf<String?>(null) }
     var request by remember { mutableStateOf<Job?>(null) }
     var unlocked by remember(selected) { mutableStateOf(false) }
     var password by remember(selected) { mutableStateOf("") }
@@ -98,8 +100,8 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
         if (busy) return
         busy = true
         failure = false
-        exportFailed = false
-        exportMessage = null
+        transferFailed = null
+        transferMessage = null
         request = scope.launch {
             try {
                 block()
@@ -121,6 +123,26 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
                     }
                 }
                 busy = false
+            }
+        }
+    }
+    fun transferComic(item: ArchiveBook, kind: ArchiveTransfer, action: suspend (ArchiveBook) -> Boolean) {
+        perform {
+            transfer = kind
+            try {
+                val completed = action(item)
+                transferMessage = when (kind) {
+                    ArchiveTransfer.EXPORT -> if (completed) "Export saved." else "Export cancelled."
+                    ArchiveTransfer.SHARE -> if (completed) "Sharing completed." else "Sharing cancelled."
+                }
+            } catch (cancelled: CancellationException) {
+                transferMessage = if (kind == ArchiveTransfer.EXPORT) "Export cancelled. An incomplete copy may remain at the chosen destination." else "Sharing cancelled. Check the chosen app before trying again."
+                throw cancelled
+            } catch (error: Exception) {
+                transferFailed = kind
+                throw error
+            } finally {
+                transfer = null
             }
         }
     }
@@ -170,14 +192,30 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
         Text(book?.title ?: "Local library")
         if (loading || busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (failure) {
-            Text(if (exportFailed) "Export could not finish. Existing comics have been kept; an incomplete copy may remain at the chosen destination. Choose a new name and export again." else "The local comic could not be opened or updated. Return to the library and try again.")
+            Text(
+                when (transferFailed) {
+                    ArchiveTransfer.EXPORT -> "Export could not finish. Existing comics have been kept; an incomplete copy may remain at the chosen destination. Choose a new name and export again."
+                    ArchiveTransfer.SHARE -> "The system could not finish sharing. Existing comics have been kept; check the chosen app before trying again."
+                    null -> "The local comic could not be opened or updated. Return to the library and try again."
+                },
+            )
             TextButton(onClick = { attempt++ }, enabled = !busy) { Text("Retry") }
         }
-        exportMessage?.let { Text(it) }
+        transferMessage?.let { Text(it) }
         if (book == null) {
             TextButton(onClick = { perform { pickAndImport()?.let { selected = it } } }, enabled = !busy && !loading) { Text("Import comic archive") }
             TextButton(onClick = { perform { pickAndImportDirectory()?.let { selected = it } } }, enabled = !busy && !loading) { Text("Import image folder") }
-            if (busy) TextButton(onClick = { request?.cancel() }) { Text(if (exporting) "Cancel export" else "Cancel import") }
+            if (busy) {
+                TextButton(onClick = { request?.cancel() }) {
+                    Text(
+                        when (transfer) {
+                            ArchiveTransfer.EXPORT -> "Cancel export"
+                            ArchiveTransfer.SHARE -> "Cancel sharing"
+                            null -> "Cancel import"
+                        },
+                    )
+                }
+            }
             if (unavailableCopies > 0) {
                 Text("$unavailableCopies local copies could not be read. Their files have been kept; other comics are available below.")
                 TextButton(onClick = { attempt++ }, enabled = !busy && !loading) { Text("Retry unavailable copies") }
@@ -190,22 +228,10 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
                         Text("${item.pages} pages" + if (item.encrypted) " · Password protected" else "")
                         FlowRow {
                             TextButton(onClick = { selected = item }, enabled = !busy) { Text("Read comic") }
-                            TextButton(onClick = {
-                                perform {
-                                    exporting = true
-                                    try {
-                                        exportMessage = if (pickAndExport(item)) "Export saved." else "Export cancelled."
-                                    } catch (cancelled: CancellationException) {
-                                        exportMessage = "Export cancelled. An incomplete copy may remain at the chosen destination."
-                                        throw cancelled
-                                    } catch (error: Exception) {
-                                        exportFailed = true
-                                        throw error
-                                    } finally {
-                                        exporting = false
-                                    }
-                                }
-                            }, enabled = !busy) { Text("Export comic") }
+                            TextButton(onClick = { transferComic(item, ArchiveTransfer.EXPORT, pickAndExport) }, enabled = !busy) { Text("Export comic") }
+                            shareComic?.let { share ->
+                                TextButton(onClick = { transferComic(item, ArchiveTransfer.SHARE, share) }, enabled = !busy) { Text("Share comic") }
+                            }
                             TextButton(onClick = {
                                 perform {
                                     library.remove(item)

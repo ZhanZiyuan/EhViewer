@@ -4,6 +4,8 @@ M0 / GATE_PASSED；M1 / GATE_PASSED（2f00e595c）；M2 / GATE_PASSED（17a17e28
 
 ## 已有基线
 
+M5 书库导出 `34e4d1370883d4cab55e3e1c24b506504067d9fd` 已通过 [Full CI41316218855](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41316218855)：精确 PR head、completed/SUCCESS、必需任务名称集合恰好12项且全部成功，包括 Rosetta/原生 Intel、iOS、Linux、Windows、dry-run 与 `ci/gate`。中断后26个提交文件与测试清单一致、远程分支一致、PR仍Draft；本地手机/平板46、JVM63/Native57与普通iPad系统导出/取消证据见 [shared-archive-export.md](shared-archive-export.md)。后续真实 iOS 系统分享复用该快照，不新增历史链接专用提交；新功能本地失败及待验范围见 [ios-archive-sharing.md](ios-archive-sharing.md)。M5 整体未完成。
+
 M5 共享收藏 `e34fd86312abe9f6c68f04c7a8ede6f047f325f4` 已通过 [Full CI41308619365](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41308619365)：精确 head、completed/SUCCESS、恰好12项必需任务成功，包括 release dry-run 和 `ci/gate`。同一英文 Draft PR 已记录并回读确认。随后才收敛本次真实书库导出与系统选择器，证据见 [shared-archive-export.md](shared-archive-export.md)；不产生记账专用提交，新 SHA 仍需自己的适用门禁。
 
 M4 当前图片续传 `a6870162b441dd353feae173b1acd484fa8a5230` 已通过 [Full CI41284515896](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41284515896)：独立核对精确head、completed/SUCCESS、全部12项SUCCESS、dry-run与ci/gate。新增118网络、35 JVM/29 Native数据及两端42项仪器测试的本地证明见 [partial-image-recovery.md](partial-image-recovery.md)。其后才准备目录阅读，复用私有书库/同一CMP阅读器并保留旧压缩包格式；本条随真实目录功能收录，M4尚不标记完成。

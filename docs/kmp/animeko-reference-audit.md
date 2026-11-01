@@ -1,5 +1,7 @@
 # Animeko → EhViewer 只读参考审计
 
+M5 系统分享：按需只读复阅 `app/shared/app-platform/src/commonMain/kotlin/platform/features/PlatformComponentAccessors.kt`，仅采用平台能力与共享界面的边界。EhViewer 目标为 `ArchiveLibraryScreen.kt`、iOS `AppleArchiveShare.kt` 和入口接线；改造为真实归档快照、UIKit 生命周期与 iPad 窗口锚点，拒绝空操作回退、服务查找和无关媒体行为。没有复制 AGPL 源码/资源/依赖。实际验证、原生 API 资料及待验范围见 [ios-archive-sharing.md](ios-archive-sharing.md)；参考快照仍不可核实 SHA、始终只读，M5 未完成。
+
 Android 共享业务接入：只读复阅 `docs/contributing/architecture.md:112–153` 的 UI→领域→数据→平台责任划分；目标为 `core/network/.../GalleryLibrary.kt`、共同 `GalleryLibraryScreen`、Android `AndroidGalleryLibrary.kt` 和 `SharedGalleriesScreen.kt`。采用共享 CMP 界面与平台数据适配边界，改造为借用 EhViewer 自有 HTTP/Cookie/Room/DataStore，拒绝替换存量数据库、复制参考 Repository/DI/依赖集。全部独立 Kotlin 实现，无 AGPL 精确复用。实际手机/平板同 APK 各 32 项仪器测试（含真实显示旋转和账户导航）、455 任务完整 Android 回归、Desktop 公共测试/JNI 及 iOS 重编译/双冷启动/60 网络/20 阅读测试通过；真实 Android 站点交互与本功能 SHA 托管门禁仍待验，M3 未完成。设计差异、许可处理与结果范围见[账号与 Android 集成](account-initialization.md)。参考快照无写入、构建或格式化。
 
 共享账号初始化：按需只读复阅 `app/shared/app-data/src/commonMain/kotlin/domain/session/SessionStateProvider.kt` 与 `SessionManager.kt` 的会话职责和状态边界。EhViewer 复用自身 Rust 资料/配置解析器，独立实现按域隔离的临时 Cookie 事务、代次检查及共同 CMP 账号/站点选择界面；拒绝 OAuth/token 刷新、后台重试、Koin 图及参考实现，不复制 AGPL 代码或资源。目标路径、差异、许可及真实验证范围见[账号初始化](account-initialization.md)。M3 整体与真实账户验收仍未完成，参考目录无写入或构建。

@@ -164,6 +164,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     require(ios["account_product_checks_by_launch"].array() == listOf(4, 4)) { "Missing actual iOS account/favorite decoder checks" }
     require(ios["history_product_checks_by_launch"].array() == listOf(3, 3)) { "Missing actual iOS native database runtime checks" }
     require(ios["archive_product_checks_by_launch"].array() == listOf(9, 9)) { "Missing actual iOS private archive/directory runtime checks" }
+    require(ios["archive_share_checks_by_launch"].array() == listOf(4, 4)) { "Missing actual UIKit archive sharing failure/cancellation/retry checks" }
     require(ios["browser_cookie_checks_by_launch"].array() == listOf(4, 4)) { "Missing actual WebKit cookie transfer checks" }
     val iosSession = ios["session_backend_tests"].obj()
     require(iosSession["result"] == "PASS" && iosSession["passed"] == 3 && iosSession["ignored"] == 0 && iosSession["execution"] == "REAL_IOS_KEYCHAIN_ON_OWNED_SIMULATOR")

@@ -127,9 +127,11 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                 }
                 val archives = remember { FileArchiveLibrary("${applicationDirectory()}/local-library".toPath(), AppleArchiveFactory) }
                 val archivePicker = remember { AppleArchivePicker { appWindow?.rootViewController } }
-                DisposableEffect(archives, archivePicker) {
+                val archiveShare = remember { AppleArchiveShare { appWindow?.rootViewController } }
+                DisposableEffect(archives, archivePicker, archiveShare) {
                     onDispose {
                         archivePicker.close()
+                        archiveShare.close()
                         val cleanup = CoroutineScope(SupervisorJob() + Dispatchers.IO)
                         cleanup.launch {
                             try {
@@ -166,6 +168,8 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                         NSLog("EhViewerM1:history-product-ready checks=3")
                         check(verifyAppleArchives(applicationDirectory()) == 9)
                         NSLog("EhViewerM1:archive-product-ready checks=9")
+                        check(verifyAppleArchiveSharing(applicationDirectory()) { appWindow?.rootViewController } == 4)
+                        NSLog("EhViewerM1:archive-share-ready checks=4")
                     }
                 }
                 if (startupRegression) {
@@ -175,7 +179,7 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                     }
                 }
                 GallerySearchScreen(session, readerState, appearance, history, downloads, backgroundDownloadsNote = "Downloads pause when you leave the app. Saved pages can be resumed.", archiveContent = { back ->
-                    ArchiveLibraryScreen(archives, session, pickAndImport = { archivePicker.pickAndImport(archives) }, pickAndImportDirectory = { archivePicker.pickAndImport(archives, directory = true) }, pickAndExport = { book -> archivePicker.pickAndExport(archives, book) }, readingState = { book -> ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/archive-reading-state/${book.id}")) }, onBack = back)
+                    ArchiveLibraryScreen(archives, session, pickAndImport = { archivePicker.pickAndImport(archives) }, pickAndImportDirectory = { archivePicker.pickAndImport(archives, directory = true) }, pickAndExport = { book -> archivePicker.pickAndExport(archives, book) }, readingState = { book -> ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/archive-reading-state/${book.id}")) }, onBack = back, shareComic = { book -> archiveShare.share(archives, book) })
                 }, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
             }
             makeKeyAndVisible()
