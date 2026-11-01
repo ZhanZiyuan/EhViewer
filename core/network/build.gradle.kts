@@ -32,6 +32,7 @@ kotlin {
             api(libs.ktor.client.core)
             implementation(libs.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.okio)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

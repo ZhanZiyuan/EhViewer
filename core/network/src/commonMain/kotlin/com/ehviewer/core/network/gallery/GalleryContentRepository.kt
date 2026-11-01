@@ -1,5 +1,6 @@
 package com.ehviewer.core.network.gallery
 
+import com.ehviewer.core.domain.download.GalleryImageCheckpoint
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.model.GalleryPreview
 import io.ktor.client.HttpClient
@@ -9,9 +10,24 @@ import io.ktor.http.Url
 import io.ktor.http.encodedPath
 
 /** Actual gallery metadata, preview-page cursors, image documents and bounded image downloads. */
-class GalleryContentRepository(client: HttpClient, private val decoder: GalleryDocumentDecoder, restricted: Boolean = false) : GalleryContent {
+class GalleryContentRepository(client: HttpClient, private val decoder: GalleryDocumentDecoder, restricted: Boolean = false, beforeRequest: suspend () -> Unit = {}) : GalleryContent {
     private val host = if (restricted) "exhentai.org" else "e-hentai.org"
-    private val requests = GalleryRequests(client, host)
+    private val requests = GalleryRequests(client, host, beforeRequest)
+
+    suspend fun partialImage(page: GalleryImagePage, pageUrl: String, gid: Long, checkpoint: GalleryImageCheckpoint): ByteArray {
+        pageIndex(pageUrl, gid)
+        val token = Url(pageUrl).encodedPath.substringAfter("/s/").substringBefore('/')
+        return requests.partialImage(
+            try {
+                Url(page.imageUrl)
+            } catch (_: Exception) {
+                invalid()
+            },
+            Url(pageUrl),
+            token,
+            checkpoint,
+        )
+    }
 
     override suspend fun details(gid: Long, token: String, previewPage: Int): GalleryDetail {
         require(gid > 0 && Regex("[a-f0-9]{10}").matches(token) && previewPage >= 0)

@@ -165,12 +165,19 @@ class GalleryContentRepositoryTest {
         var count = 0
         val engine = MockEngine { request ->
             count++
-            if (request.url.encodedPath == "/image.png") respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "/actual.png")) else respond(byteArrayOf(1), HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
+            if (request.url.encodedPath == "/image.png") {
+                respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "/actual.png"))
+            } else {
+                assertTrue(request.url.parameters.isEmpty())
+                respond(byteArrayOf(1), HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
+            }
         }
         val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "test")
         try {
             assertContentEquals(byteArrayOf(1), GalleryContentRepository(client, decoder()).image(image, "https://e-hentai.org/s/1111111111/1-1", 1))
             assertEquals(2, count)
+            assertContentEquals(byteArrayOf(1), GalleryContentRepository(client, decoder()).image(image.copy(imageUrl = "https://ehgt.org/image.png?owned-signed-query=do-not-forward"), "https://e-hentai.org/s/1111111111/1-1", 1))
+            assertEquals(4, count)
         } finally {
             client.close()
             engine.close()

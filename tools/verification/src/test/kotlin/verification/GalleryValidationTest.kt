@@ -5,7 +5,7 @@ import org.junit.Test
 
 class GalleryValidationTest {
     @Test fun actualCookieAndRepositorySuitesCannotBeSkippedOrOmitted() {
-        val good = mapOf("status" to "PASS", "executed" to true, "tests" to 108, "suites" to mapOf("GalleryRepositoryTest[desktop]" to 10, "PersistentCookieStorageTest[desktop]" to 12, "GalleryContentRepositoryTest[desktop]" to 10, "GalleryAuthenticationRepositoryTest[desktop]" to 8, "BrowserSignInTest[desktop]" to 7, "GalleryAccountRepositoryTest[desktop]" to 13, "GallerySearchFiltersTest[desktop]" to 6, "GalleryPreviewRepositoryTest[desktop]" to 5, "GalleryDownloadQueueTest[desktop]" to 10, "NetworkGalleryDownloadSourceTest[desktop]" to 9, "DownloadedGalleryContentTest[desktop]" to 4, "ArchiveGalleryContentTest[desktop]" to 6, "GalleryOriginalImageTest[desktop]" to 8))
+        val good = mapOf("status" to "PASS", "executed" to true, "tests" to 118, "suites" to mapOf("GalleryRepositoryTest[desktop]" to 10, "PersistentCookieStorageTest[desktop]" to 12, "GalleryContentRepositoryTest[desktop]" to 10, "GalleryAuthenticationRepositoryTest[desktop]" to 8, "BrowserSignInTest[desktop]" to 7, "GalleryAccountRepositoryTest[desktop]" to 13, "GallerySearchFiltersTest[desktop]" to 6, "GalleryPreviewRepositoryTest[desktop]" to 5, "GalleryDownloadQueueTest[desktop]" to 10, "NetworkGalleryDownloadSourceTest[desktop]" to 9, "DownloadedGalleryContentTest[desktop]" to 4, "ArchiveGalleryContentTest[desktop]" to 6, "GalleryOriginalImageTest[desktop]" to 8, "PartialGalleryImageTest[desktop]" to 10))
         verifyNetworkTests(good)
         verifyNetworkTests(good + mapOf("tests" to (good.getValue("tests") as Number).toInt() + 2, "suites" to (good["suites"].obj() + ("AdditionalNetworkTest[desktop]" to 2))))
         assertThrows(IllegalArgumentException::class.java) { verifyNetworkTests(good + mapOf("tests" to 90, "suites" to (good["suites"].obj() + ("NetworkGalleryDownloadSourceTest[desktop]" to 5)))) }
@@ -15,7 +15,7 @@ class GalleryValidationTest {
         assertThrows(IllegalArgumentException::class.java) { verifyNetworkTests(good + ("suites" to good["suites"].obj().minus("GalleryAccountRepositoryTest[desktop]"))) }
         assertThrows(IllegalArgumentException::class.java) { verifyNetworkTests(good + ("suites" to good["suites"].obj().minus("GallerySearchFiltersTest[desktop]"))) }
         assertThrows(IllegalArgumentException::class.java) { verifyNetworkTests(good + ("suites" to good["suites"].obj().minus("GalleryPreviewRepositoryTest[desktop]"))) }
-        for (suite in listOf("GalleryDownloadQueueTest", "NetworkGalleryDownloadSourceTest", "DownloadedGalleryContentTest", "ArchiveGalleryContentTest", "GalleryOriginalImageTest")) {
+        for (suite in listOf("GalleryDownloadQueueTest", "NetworkGalleryDownloadSourceTest", "DownloadedGalleryContentTest", "ArchiveGalleryContentTest", "GalleryOriginalImageTest", "PartialGalleryImageTest")) {
             assertThrows(IllegalArgumentException::class.java) { verifyNetworkTests(good + ("suites" to good["suites"].obj().minus("$suite[desktop]"))) }
         }
     }

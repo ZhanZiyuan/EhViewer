@@ -1,8 +1,10 @@
 package com.ehviewer.core.network.download
 
 import com.ehviewer.core.domain.download.GalleryDownload
+import com.ehviewer.core.domain.download.GalleryImageCheckpoint
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.gallery.GalleryContent
+import com.ehviewer.core.network.gallery.GalleryContentRepository
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GalleryRequestException
@@ -15,11 +17,15 @@ internal class NetworkGalleryDownloadSource(
     private val task: GalleryDownload,
     private val content: GalleryContent,
     private val requireSession: suspend () -> Unit,
-) : GalleryDownloadSource {
+) : PartialGalleryDownloadSource {
     private var detail: GalleryDetail? = null
     private val known = linkedMapOf<Int, String>()
 
-    override suspend fun load(index: Int): DownloadPageBytes {
+    override suspend fun load(index: Int): DownloadPageBytes = loadPage(index, null)
+
+    override suspend fun load(index: Int, checkpoint: GalleryImageCheckpoint): DownloadPageBytes = loadPage(index, checkpoint)
+
+    private suspend fun loadPage(index: Int, checkpoint: GalleryImageCheckpoint?): DownloadPageBytes {
         require(index in 0 until task.pages)
         requireSession()
         val first = detail ?: pinned { content.details(task.gid, task.token) }.also {
@@ -37,18 +43,20 @@ internal class NetworkGalleryDownloadSource(
         val page = pinned { content.page(url, task.gid) }
         rememberLinks(page)
         val bytes = try {
-            pinned { content.image(page, url, task.gid) }
+            pinned { image(page, url, checkpoint) }
         } catch (failure: GalleryRequestException) {
             val key = page.skipHathKey
             if (key == null || failure.failure !in setOf(GalleryFailure.OFFLINE, GalleryFailure.SERVER)) throw failure
             // The same official replacement used by the reader: one retry, with all normal checks.
             val replacement = pinned { content.page(url, task.gid, key) }
             rememberLinks(replacement)
-            pinned { content.image(replacement, url, task.gid) }
+            pinned { image(replacement, url, checkpoint) }
         }
         requireSession()
         return DownloadPageBytes(url.substringAfter("/s/").substringBefore('/'), bytes)
     }
+
+    private suspend fun image(page: GalleryImagePage, url: String, checkpoint: GalleryImageCheckpoint?): ByteArray = if (checkpoint != null && content is GalleryContentRepository) content.partialImage(page, url, task.gid, checkpoint) else content.image(page, url, task.gid)
 
     private fun rememberLinks(page: GalleryImagePage) {
         for (link in listOfNotNull(page.nextPageUrl, page.previousPageUrl)) known[content.pageIndex(link, task.gid)] = link

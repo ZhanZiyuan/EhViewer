@@ -36,7 +36,8 @@ class GallerySession(vault: SessionVault, private val decoder: GalleryDocumentDe
 
     fun downloads(storage: GalleryDownloadStorage, scope: CoroutineScope) = GalleryDownloadQueue(storage, scope) { task ->
         val generation = cookies.authenticationGeneration()
-        networkGalleryDownloadSource(task, GalleryContentRepository(client, decoder, task.restricted)) { cookies.requireGeneration(generation) }
+        val requireSession: suspend () -> Unit = { cookies.requireGeneration(generation) }
+        networkGalleryDownloadSource(task, GalleryContentRepository(client, decoder, task.restricted, requireSession), requireSession)
     }
 
     fun selectSite(restricted: Boolean) {

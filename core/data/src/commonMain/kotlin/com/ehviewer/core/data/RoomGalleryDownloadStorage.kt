@@ -10,9 +10,13 @@ import com.ehviewer.core.domain.download.GalleryDownload
 import com.ehviewer.core.domain.download.GalleryDownloadState
 import com.ehviewer.core.domain.download.GalleryDownloadStorage
 import com.ehviewer.core.domain.download.GalleryDownloadStorageException
+import com.ehviewer.core.domain.download.GalleryImageCheckpoint
+import com.ehviewer.core.domain.download.GalleryImageIdentity
+import com.ehviewer.core.domain.download.PartialGalleryDownloadStorage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
@@ -29,8 +33,9 @@ class RoomGalleryDownloadStorage(
     private val database: DownloadDatabase,
     private val directory: Path,
     private val files: FileSystem = FileSystem.SYSTEM,
-) : GalleryDownloadStorage {
+) : GalleryDownloadStorage, PartialGalleryDownloadStorage {
     private val mutex = Mutex()
+    private val partialOwner = Mutex()
     private val dao = database.downloads()
 
     init {
@@ -90,6 +95,12 @@ class RoomGalleryDownloadStorage(
         check(records.size <= task.pages && records.map { it.index } == records.indices.toList())
         records.map {
             validate(it, task)
+            val folder = folder(gid)
+            if (listOf("data", "cbor", "cbor.part").any { extension -> files.exists(folder / "partial-${it.index}.$extension") }) {
+                // Recover a kill after the page-row commit but before checkpoint cleanup.
+                read(it, task)
+                FileGalleryImageCheckpoint(files, folder, it.index).discard()
+            }
             DownloadedGalleryPage(it.index, it.token, it.bytes)
         }
     }
@@ -104,6 +115,41 @@ class RoomGalleryDownloadStorage(
     override suspend fun readPage(gid: Long, index: Int): ByteArray = stored {
         val task = checkNotNull(dao.task(gid)).domain()
         read(checkNotNull(dao.page(gid, index)), task)
+    }
+
+    override suspend fun <T> withPartialPage(gid: Long, index: Int, action: suspend (GalleryImageCheckpoint) -> T): T = partialOwner.withLock {
+        val admitted = stored {
+            check(dao.page(gid, index) == null)
+            checkNotNull(dao.task(gid)).domain().also { check(index in 0 until it.pages) }
+        }
+        val partial = stored { FileGalleryImageCheckpoint(files, folder(gid), index) }
+        var progress = stored { partial.open() }
+        var active = true
+        var failed = false
+        suspend fun <R> checked(block: () -> R): R = stored {
+            check(active && !failed)
+            val task = checkNotNull(dao.task(gid)).domain()
+            check(task.token == admitted.token && task.pages == admitted.pages && task.restricted == admitted.restricted)
+            try {
+                block()
+            } catch (failure: Exception) {
+                failed = true
+                throw failure
+            }
+        }
+        val checkpoint = object : GalleryImageCheckpoint {
+            override suspend fun progress() = checked { progress }
+            override suspend fun reset(identity: GalleryImageIdentity?) = withContext(NonCancellable) { checked { progress = partial.reset(identity) } }
+            override suspend fun append(bytes: ByteArray) = withContext(NonCancellable) { checked { progress = partial.append(progress, bytes) } }
+            override suspend fun finish() = withContext(NonCancellable) { checked { progress = partial.finish(progress) } }
+            override suspend fun readComplete() = checked { partial.readComplete(partial.open()) }
+            override suspend fun discard() = withContext(NonCancellable) { checked { partial.discard() } }
+        }
+        try {
+            action(checkpoint)
+        } finally {
+            withContext(NonCancellable) { stored { active = false } }
+        }
     }
 
     override suspend fun writePage(gid: Long, index: Int, token: String, bytes: ByteArray) = stored {
@@ -137,11 +183,13 @@ class RoomGalleryDownloadStorage(
         }
     }
 
-    override suspend fun remove(gid: Long) = stored {
-        require(gid > 0)
-        // Keep the task recoverable if filesystem deletion fails, rather than silently losing it.
-        files.deleteRecursively(folder(gid), mustExist = true)
-        dao.remove(gid)
+    override suspend fun remove(gid: Long) = partialOwner.withLock {
+        stored {
+            require(gid > 0)
+            // Keep the task recoverable if filesystem deletion fails, rather than silently losing it.
+            files.deleteRecursively(folder(gid), mustExist = true)
+            dao.remove(gid)
+        }
     }
 
     companion object {

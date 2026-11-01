@@ -1,5 +1,7 @@
 package com.ehviewer.core.network.gallery
 
+import com.ehviewer.core.domain.download.GalleryDownloadStorageException
+import com.ehviewer.core.domain.download.GalleryImageCheckpoint
 import com.ehviewer.core.network.session.SessionStorageException
 import io.ktor.client.HttpClient
 import io.ktor.client.request.header
@@ -38,6 +40,10 @@ internal class GalleryRequests(private val client: HttpClient, private val host:
         fetch(url, referer.toString(), MAX_IMAGE_BYTES, image = true)
     }
 
+    suspend fun partialImage(url: Url, referer: Url, pageToken: String, checkpoint: GalleryImageCheckpoint): ByteArray = operation {
+        PartialGalleryImageRequest(client, beforeRequest, ::validate).fetch(url, referer, pageToken, checkpoint)
+    }
+
     private suspend fun fetch(initial: Url, referer: String, maximum: Int, image: Boolean): ByteArray {
         var url = initial
         repeat(6) { attempt ->
@@ -54,11 +60,7 @@ internal class GalleryRequests(private val client: HttpClient, private val host:
                 if (response.status.value in setOf(301, 302, 303, 307, 308)) {
                     val location = response.headers[HttpHeaders.Location] ?: invalid()
                     if (attempt == 5) invalid()
-                    redirect = try {
-                        URLBuilder(url).takeFrom(location).build()
-                    } catch (_: Exception) {
-                        invalid()
-                    }
+                    redirect = galleryRedirectUrl(url, location)
                     return@execute null
                 }
                 if (response.status.value !in 200..299) invalid()
@@ -99,11 +101,22 @@ internal class GalleryRequests(private val client: HttpClient, private val host:
 internal fun isGalleryImageHost(host: String): Boolean = listOf("e-hentai.org", "exhentai.org", "ehgt.org", "hath.network").any { host == it || host.endsWith(".$it") }
 internal fun invalid(): Nothing = throw GalleryRequestException(GalleryFailure.INVALID_RESPONSE)
 
+internal fun galleryRedirectUrl(base: Url, location: String): Url = try {
+    URLBuilder(base).apply {
+        parameters.clear()
+        takeFrom(location)
+    }.build()
+} catch (_: Exception) {
+    invalid()
+}
+
 private suspend fun <T> operation(block: suspend () -> T): T = try {
     block()
 } catch (cancelled: CancellationException) {
     throw cancelled
 } catch (failure: GalleryRequestException) {
+    throw failure
+} catch (failure: GalleryDownloadStorageException) {
     throw failure
 } catch (_: SessionStorageException) {
     throw GalleryRequestException(GalleryFailure.SESSION_STORAGE)

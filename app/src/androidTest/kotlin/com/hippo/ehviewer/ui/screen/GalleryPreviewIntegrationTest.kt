@@ -24,6 +24,8 @@ import com.ehviewer.core.domain.download.GalleryDownloadState
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.download.GalleryDownloadQueue
 import com.ehviewer.core.network.download.networkGalleryDownloadSource
+import com.ehviewer.core.network.gallery.GalleryContentRepository
+import com.ehviewer.core.network.gallery.RustGalleryDecoder
 import com.ehviewer.core.preferences.PrefDelegate
 import com.ehviewer.core.preferences.edit
 import com.ehviewer.shared.GalleryLibraryScreen
@@ -38,10 +40,13 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import io.ktor.utils.io.ByteChannel
+import io.ktor.utils.io.writeFully
 import java.io.File
 import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.io.encoding.Base64
 import kotlinx.coroutines.CompletableDeferred
@@ -101,6 +106,11 @@ class GalleryPreviewIntegrationTest {
         val offline = AtomicBoolean(false)
         val blockSecond = AtomicBoolean(true)
         val secondStarted = CompletableDeferred<Unit>()
+        val secondBodyRead = CompletableDeferred<Unit>()
+        val imageBoundaries = AtomicInteger()
+        val prefix = png.copyOf(png.size / 2)
+        val body = ByteChannel(autoFlush = true).also { runBlocking { it.writeFully(prefix) } }
+        val resumedRanges = Collections.synchronizedList(mutableListOf<String?>())
         val requests = Collections.synchronizedList(mutableListOf<String>())
         val engine = MockEngine { request ->
             check(!offline.get()) { "Offline reading must not request HTTP" }
@@ -109,9 +119,15 @@ class GalleryPreviewIntegrationTest {
                 request.url.host == "ehgt.org" -> {
                     if (request.url.encodedPath == "/1.png" && blockSecond.get()) {
                         secondStarted.complete(Unit)
-                        awaitCancellation()
+                        respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType to listOf("image/png"), HttpHeaders.ContentLength to listOf(png.size.toString()), HttpHeaders.ETag to listOf("\"owned-page-one\"")))
+                    } else if (request.url.encodedPath == "/1.png") {
+                        resumedRanges += request.headers[HttpHeaders.Range]
+                        assertEquals("bytes=${prefix.size}-", request.headers[HttpHeaders.Range])
+                        assertEquals("\"owned-page-one\"", request.headers[HttpHeaders.IfRange])
+                        respond(png.copyOfRange(prefix.size, png.size), HttpStatusCode.PartialContent, headersOf(HttpHeaders.ContentType to listOf("image/png"), HttpHeaders.ContentLength to listOf((png.size - prefix.size).toString()), HttpHeaders.ContentRange to listOf("bytes ${prefix.size}-${png.lastIndex}/${png.size}"), HttpHeaders.ETag to listOf("\"owned-page-one\"")))
+                    } else {
+                        respond(png, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
                     }
-                    respond(png, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
                 }
                 request.url.encodedPath == "/" -> respond("""<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/0.png" style="height:100px;width:80px"><div class="cn">Manga</div><div class="ir" style="background-position:0px -1px"></div></div></div></body></html>""")
                 request.url.encodedPath.startsWith("/g/") -> respond(detail(request.url.parameters["p"]?.toInt() ?: 0))
@@ -126,11 +142,15 @@ class GalleryPreviewIntegrationTest {
         }
         val client = HttpClient(engine) { followRedirects = false }
         val library = AndroidGalleryLibrary(false, client)
+        val downloadContent = GalleryContentRepository(client, RustGalleryDecoder) {
+            // Headers, first read, then the next read boundary after consuming the prefilled prefix.
+            if (secondStarted.isCompleted && blockSecond.get() && imageBoundaries.incrementAndGet() == 3) secondBodyRead.complete(Unit)
+        }
         val appearance = AndroidGalleryAppearanceStore()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         fun openDatabase() = Room.databaseBuilder<DownloadDatabase>(context, File(owned, "queue.db").absolutePath).setDriver(AndroidSQLiteDriver()).build()
         var database = openDatabase()
-        fun queue(database: DownloadDatabase) = GalleryDownloadQueue(RoomGalleryDownloadStorage(database, File(owned, "images").toOkioPath()), scope) { task -> networkGalleryDownloadSource(task, library.content) {} }
+        fun queue(database: DownloadDatabase) = GalleryDownloadQueue(RoomGalleryDownloadStorage(database, File(owned, "images").toOkioPath()), scope) { task -> networkGalleryDownloadSource(task, downloadContent) {} }
         var downloads = queue(database)
         fun click(text: String) = requireNotNull(device.wait(Until.findObject(By.text(text)), 15_000)).click()
         fun waitFor(state: GalleryDownloadState) = runBlocking { withTimeout(15_000) { while (downloads.tasks.value.singleOrNull()?.state != state) delay(25) } }
@@ -153,14 +173,37 @@ class GalleryPreviewIntegrationTest {
                 click("Search")
                 click(title)
                 click("Download gallery")
-                runBlocking { withTimeout(15_000) { secondStarted.await() } }
+                runBlocking {
+                    withTimeout(15_000) {
+                        secondStarted.await()
+                        secondBodyRead.await()
+                    }
+                }
                 click("Pause")
                 waitFor(GalleryDownloadState.PAUSED)
                 assertEquals(1, downloads.tasks.value.single().finished)
+                runBlocking {
+                    RoomGalleryDownloadStorage(database, File(owned, "images").toOkioPath()).withPartialPage(gid, 1) { image ->
+                        assertEquals(prefix.size.toLong(), image.progress().bytes)
+                        assertEquals(false, image.progress().complete)
+                    }
+                }
+            }
+            runBlocking { downloads.closeAndJoin() }
+            database.close()
+            database = openDatabase()
+            downloads = queue(database)
+            ActivityScenario.launch<MainActivity>(intent).use { scenario ->
+                attach(scenario)
+                click("Downloads")
+                waitFor(GalleryDownloadState.PAUSED)
                 blockSecond.set(false)
                 click("Resume")
                 waitFor(GalleryDownloadState.COMPLETE)
                 assertEquals(3, downloads.tasks.value.single().finished)
+                assertEquals(listOf("bytes=${prefix.size}-"), resumedRanges.toList())
+                assertEquals(false, File(owned, "images/$gid/partial-1.cbor").exists())
+                assertEquals(false, File(owned, "images/$gid/partial-1.data").exists())
                 assertEquals(1, requests.count { it == "/0.png" })
                 offline.set(true)
                 val beforeOffline = requests.size

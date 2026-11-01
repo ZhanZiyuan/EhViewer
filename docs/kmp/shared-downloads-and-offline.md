@@ -1,5 +1,7 @@
 # Shared downloads and offline reading
 
+The original complete-page recovery slice was accepted at `817f2f685` / [full CI41217474471](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41217474471). The new [current-image recovery slice](partial-image-recovery.md) adds validated partial-byte persistence and conditional HTTP ranges to that same queue; its new exact-SHA acceptance is recorded separately. The older implementation/test counts below describe the original delivery, not the complete current M4 state.
+
 This product slice adds a common Compose downloads list, gallery download action, pause/resume/delete controls and offline reading. It is under platform validation; it does not complete M4 or five-platform P0 acceptance.
 
 `GalleryDownloadQueue` owns FIFO scheduling and one active image transfer. It uses the same 32 MiB image limit as the existing transport, validates gallery/page identities, and bounds tasks and metadata. Each active task fixes its site and authentication generation. Account actions pause shared queues; an identity change during a response cannot publish that response. Pausing stops the active worker even if storage cannot save the requested state. Restored tasks require an explicit resume.

@@ -6,6 +6,8 @@ M3 已在 `74a8e933d51de52309c6e38390e89b90abf6321b` 完成阶段门禁：[Full 
 
 当前进入 M4 / IN_PROGRESS：交付同一 CMP 下载列表、真实文件/Room、暂停/恢复/删除/重启和离线阅读，随后推进 Rust 归档、部分图片恢复与高级媒体；不把本切片等同完整 M4 或五平台 P0。搜索、详情、阅读器、账户、筛选、外观与预览已逐提交通过 CI。PR #15 始终 Draft，版本到 M8 之前保持 `1.15.10 / 180074`。后续每次改动遵守加速计划，不恢复历史双事件矩阵或额外记账提交。
 
+当前图片恢复：从“只复用已完成页面”扩展为强 ETag/If-Range、真实文件分块校验和暂停/重启后的当前图片续传；无安全验证器时保留完整下载。复用原队列与 Room，未改 Rust ABI/数据库版本/生产签名。重定向回归同时修复旧签名查询参数向新地址沿用的问题。118项网络、35项JVM数据、241项工具回归与522任务Android门禁本地通过，手机/平板同APK对各42项成功；Native实际118网络/47阅读器/29数据、Keychain和双冷启动也通过。新SHA托管验证待闭合，不能据此标记M4完成。恢复顺序、参考边界和性能限制见 [partial-image-recovery.md](partial-image-recovery.md)。
+
 下载提交 `817f2f685f92d881f71b83181627bc6d3e715b93` 的 [Full CI41217474471](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41217474471)、归档导入 `c1b9c0a19d72ea8f636138da12dc229046968a8b` 的 [Full CI41270720264](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41270720264)、原图阅读 `079bf4ee1dc1d9b960c0964847f8379e4f7e6bfd` 的 [Full CI41274652972](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41274652972) 均已全部12项成功。归档的真实 Rust C ABI/JNI、Apple 静态 libarchive/liblzma、私有副本、AES 及进程恢复边界见 [shared-archive-library.md](shared-archive-library.md)；原图/显示图及108项网络回归见 [shared-original-images.md](shared-original-images.md)。当前交付同一 CMP 分页/连续阅读器的 GIF/WebP，包含 Native 资源回收、短末页定位及损坏后续帧的可恢复错误；本地手机和平板各42项已通过，仍须新 SHA 独立 CI，详见 [shared-animated-media.md](shared-animated-media.md)。M4 不标记完成。
 
 以下保留各历史时点的范围、结果和未通过记录；其“当前/待验”描述不覆盖以上进度，也不改变维护者的加速计划。

@@ -4,6 +4,10 @@ M0 / GATE_PASSED；M1 / GATE_PASSED（2f00e595c）；M2 / GATE_PASSED（17a17e28
 
 ## 已有基线
 
+M4 动图/共享阅读器修复 `cc49709f2d146d0468de5415bab0d4da7ddb715e` 已通过 [Full CI41280654439](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41280654439)：独立核对精确head、completed/SUCCESS、全部12项SUCCESS，包括iOS、Rosetta/原生Intel、Linux、Windows、release dry-run和ci/gate。此前a0a8b失败/取消不改写。后续当前图片续传复用同一队列与CMP阅读器，手机/平板同APK对各42项和本地118网络/35数据/241工具及原Android完整门禁已通过，Native及新提交托管验收另行记录；M4仍IN_PROGRESS。本条随真实续传功能收录，不作纯记账提交。
+
+中断恢复核对：修复 `cc49709f2d146d0468de5415bab0d4da7ddb715e` 的 [Full CI41280654439](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41280654439) 已开始。它先被同一 PR 的并发锁挂起，故在保存全部已完成失败日志后，仅对已失败的旧 CI41278482376 请求取消以释放队列。旧运行最终 iOS SUCCESS、gate FAILURE、dry-run CANCELLED、运行 CANCELLED，均不算验收；下段“不取消”是请求取消之前的提交时点记录。新 SHA 的全部适用检查仍须成功；本次工作区和10份提交文件SHA-256校验通过，PR仍Draft。此更新随后续真实功能收录，不生成纯记账提交。
+
 M4 动图提交 `a0a8b0a7696f1c1f3a4a55aa1e43cf81f52768eb` 的 [PR CI41278482376](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41278482376) 出现必需检查失败：共享编译/测试/lint 成功后，旧回执目录白名单拒绝 `skiaTest`；Desktop 独立构建又暴露无 Android 目标时的源集访问。该 SHA 未验收，其余任务不取消，后续完整结果由 Actions Summary 保留。本次独立修复统一声明式的 Android/JVM/Native 测试根与实际文件回执，并按目标存在配置 Android 依赖；旧校验器对同一真实 AAR/JAR 的失败已复现，修复后实物校验、独立 Desktop 业务、241项工具测试及542任务共享/原Android门禁本地通过。新的实际Native回执也通过108网络/47阅读器/22数据、Keychain与双冷启动，阅读器按平台各统计真实8份源码；新SHA全门禁仍须闭合。此记录与真实修复一起提交，不改写历史或新增补链提交。
 
 M4 原图子任务：`079bf4ee1dc1d9b960c0964847f8379e4f7e6bfd`，`feat(reader): load original images through the shared client`，已通过 [Full CI41274652972](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41274652972) 全部12项、release dry-run 与 `ci/gate`。手机和平板各39项仪器测试、108项共享网络及原图/显示图像素和 Room 进度本地通过；同一英文 Draft PR 已记录并读回。该结果随本次实际动图/阅读器功能收录，不生成记账专用提交。动图设计、失败及当前验证边界见 [shared-animated-media.md](shared-animated-media.md)。

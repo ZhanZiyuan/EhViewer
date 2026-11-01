@@ -5,6 +5,8 @@ import com.ehviewer.core.domain.download.GalleryDownloadFailure
 import com.ehviewer.core.domain.download.GalleryDownloadState
 import com.ehviewer.core.domain.download.GalleryDownloadStorage
 import com.ehviewer.core.domain.download.GalleryDownloadStorageException
+import com.ehviewer.core.domain.download.GalleryImageCheckpoint
+import com.ehviewer.core.domain.download.PartialGalleryDownloadStorage
 import com.ehviewer.core.model.GalleryDetail
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +27,10 @@ data class DownloadPageBytes(val token: String, val bytes: ByteArray)
 
 fun interface GalleryDownloadSource {
     suspend fun load(index: Int): DownloadPageBytes
+}
+
+interface PartialGalleryDownloadSource : GalleryDownloadSource {
+    suspend fun load(index: Int, checkpoint: GalleryImageCheckpoint): DownloadPageBytes
 }
 
 /** One active image bounds memory and network concurrency; committed pages survive process death. */
@@ -201,14 +207,23 @@ class GalleryDownloadQueue(
                         if (!started) continue
                         val source = openSource(task)
                         for (index in task.finished until task.pages) {
-                            val page = source.load(index)
-                            require(Regex("[a-f0-9]{10}").matches(page.token) && page.bytes.size.toLong() in 1..MAX_IMAGE_BYTES)
-                            mutex.withLock {
-                                owner.ensureActive()
-                                val current = tasks.value.firstOrNull { it.gid == task.gid } ?: throw CancellationException("Download was removed")
-                                if (current.state != GalleryDownloadState.DOWNLOADING) throw CancellationException("Download was paused")
-                                storage.writePage(task.gid, index, page.token, page.bytes)
-                                update(current.copy(finished = index + 1))
+                            suspend fun commit(page: DownloadPageBytes) {
+                                require(Regex("[a-f0-9]{10}").matches(page.token) && page.bytes.size.toLong() in 1..MAX_IMAGE_BYTES)
+                                mutex.withLock {
+                                    owner.ensureActive()
+                                    val current = tasks.value.firstOrNull { it.gid == task.gid } ?: throw CancellationException("Download was removed")
+                                    if (current.state != GalleryDownloadState.DOWNLOADING) throw CancellationException("Download was paused")
+                                    storage.writePage(task.gid, index, page.token, page.bytes)
+                                    update(current.copy(finished = index + 1))
+                                }
+                            }
+                            if (source is PartialGalleryDownloadSource && storage is PartialGalleryDownloadStorage) {
+                                storage.withPartialPage(task.gid, index) { checkpoint ->
+                                    commit(source.load(index, checkpoint))
+                                    checkpoint.discard()
+                                }
+                            } else {
+                                commit(source.load(index))
                             }
                         }
                         mutex.withLock { update(tasks.value.single { it.gid == task.gid }.copy(state = GalleryDownloadState.COMPLETE)) }
