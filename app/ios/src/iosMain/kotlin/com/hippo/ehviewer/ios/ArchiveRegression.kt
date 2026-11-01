@@ -60,13 +60,50 @@ internal suspend fun verifyAppleArchives(applicationDirectory: String): Int {
         check(verifyArchiveProduct(second.open(book)) == 3)
         check(second.importDirectory(imageDirectory.toString(), "Keep original directory title") == directoryBook)
         check(verifyArchiveProduct(second.open(directoryBook)) == 3)
+        val exportedFile = directory / "Exported owned comic.cbz"
+        val archiveExport = second.prepareExport(book)
+        try {
+            check(!archiveExport.isDirectory && archiveExport.name.endsWith(".cbz"))
+            archiveExport.saveTo(exportedFile.toString())
+        } finally {
+            archiveExport.close()
+        }
+        check(files.read(exportedFile) { readByteArray() }.contentEquals(fixture))
+        check(verifyArchiveProduct(AppleArchiveFactory.open(exportedFile.toString())) == 3)
+        val exportedFolder = directory / "Exported owned images"
+        val directoryExport = second.prepareExport(directoryBook)
+        try {
+            check(directoryExport.isDirectory)
+            directoryExport.saveTo(exportedFolder.toString())
+        } finally {
+            directoryExport.close()
+        }
+        val reimport = FileArchiveLibrary(directory / "exported-reimport", AppleArchiveFactory)
+        try {
+            val imported = reimport.importDirectory(exportedFolder.toString(), "Exported image round trip")
+            check(imported.id == directoryBook.id && verifyArchiveProduct(reimport.open(imported)) == 3)
+        } finally {
+            reimport.close()
+        }
+        val protectedBook = second.importFile(encrypted.toString(), "Owned encrypted export")
+        val protectedExport = second.prepareExport(protectedBook)
+        val encryptedOutput = directory / "Exported owned encrypted.cbz"
+        try {
+            check(protectedBook.encrypted)
+            protectedExport.saveTo(encryptedOutput.toString())
+        } finally {
+            protectedExport.close()
+        }
+        check(files.read(encryptedOutput) { readByteArray() }.contentEquals(encryptedArchiveProductFixture()))
+        verifyArchivePassword(AppleArchiveFactory.open(encryptedOutput.toString()))
+        second.remove(protectedBook)
         second.remove(directoryBook)
         second.remove(book)
         check(second.recent().isEmpty())
         check(files.read(input) { readByteArray() }.contentEquals(fixture))
         check(files.read(imageDirectory / "2.png") { readByteArray() }.contentEquals(images.first))
         check(files.read(imageDirectory / "10.png") { readByteArray() }.contentEquals(images.second))
-        return 6
+        return 9
     } finally {
         first.close()
         reopened?.close()

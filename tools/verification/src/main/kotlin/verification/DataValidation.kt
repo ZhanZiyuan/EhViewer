@@ -6,7 +6,7 @@ import java.nio.file.Path
 fun verifyDataTests(tests: Map<String, Any?>, native: Boolean = false) {
     require(tests["status"] == "PASS" && tests["executed"] == true)
     val suites = tests["suites"].obj().mapKeys { it.key.substringAfterLast('.').substringBefore('[') }
-    val required = mapOf("RoomGalleryHistoryStoreTest" to 5, "HistoryMigrationTest" to 3, "PortablePreferencesTest" to 4, "DownloadStorageTest" to 4, "FileArchiveLibraryTest" to 8, "PartialDownloadStorageTest" to 7, "DirectoryLibraryTest" to 10, "ArchiveLibraryRecoveryTest" to 4) + if (native) emptyMap() else mapOf("DesktopSQLiteDriverTest" to 6)
+    val required = mapOf("RoomGalleryHistoryStoreTest" to 5, "HistoryMigrationTest" to 3, "PortablePreferencesTest" to 4, "DownloadStorageTest" to 4, "FileArchiveLibraryTest" to 8, "PartialDownloadStorageTest" to 7, "DirectoryLibraryTest" to 10, "ArchiveLibraryRecoveryTest" to 4, "ArchiveExportTest" to 12) + if (native) emptyMap() else mapOf("DesktopSQLiteDriverTest" to 6)
     for ((suite, minimum) in required) require((suites[suite] as? Number)?.toInt()?.let { it >= minimum } == true) { "Required real database behavior was not tested: $suite" }
 }
 

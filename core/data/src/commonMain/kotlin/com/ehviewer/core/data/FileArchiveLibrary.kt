@@ -6,6 +6,7 @@ import com.ehviewer.core.domain.reader.ArchiveBook
 import com.ehviewer.core.domain.reader.ArchiveDocument
 import com.ehviewer.core.domain.reader.ArchiveDocumentFactory
 import com.ehviewer.core.domain.reader.ArchiveException
+import com.ehviewer.core.domain.reader.ArchiveExport
 import com.ehviewer.core.domain.reader.ArchiveFailure
 import com.ehviewer.core.domain.reader.ArchiveLibrary
 import com.ehviewer.core.domain.reader.ArchiveLibrarySnapshot
@@ -114,6 +115,15 @@ class FileArchiveLibrary(private val directory: Path, private val factory: Archi
         }
         currentCoroutineContext().ensureActive()
         ArchiveLibrarySnapshot(books.sortedWith(compareBy<ArchiveBook> { it.title }.thenBy { it.id }), unavailable)
+    }
+
+    override suspend fun prepareExport(book: ArchiveBook): ArchiveExport = stored {
+        book.validate()
+        root()
+        val source = folder(book.id)
+        check(metadata(source) == book)
+        val images = if (files.exists(source / DirectoryImages.MANIFEST)) directories.manifest(source, book) else null
+        prepareArchiveExport(files, directory, book, images)
     }
 
     override suspend fun importFile(path: String, title: String): ArchiveBook = stored {

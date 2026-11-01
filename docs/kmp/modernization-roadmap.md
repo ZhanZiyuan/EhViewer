@@ -2,6 +2,8 @@
 
 # 现代化路线与阶段门禁
 
+M5 当前产品进展：共享收藏 `e34fd86312abe9f6c68f04c7a8ede6f047f325f4` 的 [Full CI41308619365](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41308619365) 已精确核对12项全部成功，包括 dry-run 与 `ci/gate`。后续共享书库导出复用现有数据与 Rust，新增独立快照、无覆盖保存和真实系统选择器；手机/平板同APK对各46项、JVM63/Native57及普通iPad归档/目录保存与取消本地通过，待自己的托管门禁。设计边界见 [shared-archive-export.md](shared-archive-export.md)。M5 整体、共享语言/平台行为、11包及最终1.16.0仍未完成。
+
 当前 M0–M4 / GATE_PASSED；M4 最终提交 `bc4a84cadd80aaea7ae946d26f9fb2559c269ea1` 的 [Full CI41294257357](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41294257357) 已独立核对恰好12项必需任务全部完成且成功，包括 Android、iOS、桌面/Rust 架构、dry-run 与 `ci/gate`。目录导入前序 `cf918f0c9` 的 [Full CI41290808176](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41290808176) 亦全部成功。下载/归档/媒体、取消/故障/所有权检测阶段门禁已闭合，同一英文 Draft PR 已记录清单。现在进入 M5 共享产品交互，先交付共享收藏编辑器；实际全平台 P0、性能、11包和最终1.16.0仍未完成。下面原有时点记录保留，不覆盖本段当前状态。
 
 M3 已在 `74a8e933d51de52309c6e38390e89b90abf6321b` 完成阶段门禁：[Full CI41212001274](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41212001274) 全部12项成功，包括原 Android 回归、KMP 编译/契约、实际 iOS 启动和存储迁移、Windows ARM64 SQLite/JNI、桌面包原生消费及无密钥 dry-run。此前源码声明、SQLite 架构/连接所有权、独立构建类路径和浏览器关闭竞态的失败均保留，未跳检查。共享 Ktor/会话/Repository、历史/原迁移/便携配置及参考决策已验收，见 [shared-history-and-data.md](shared-history-and-data.md)。

@@ -57,13 +57,50 @@ private fun verifyArchiveLibrary(factory: ArchiveDocumentFactory): Int = runBloc
         check(verifyArchiveProduct(second.open(book)) == 3)
         check(second.importDirectory(imageDirectory.toString(), "Keep the original folder title") == directoryBook)
         check(verifyArchiveProduct(second.open(directoryBook)) == 3)
+        val exportedFile = directory.resolve("Exported owned comic.cbz")
+        val archiveExport = second.prepareExport(book)
+        try {
+            check(!archiveExport.isDirectory && archiveExport.name.endsWith(".cbz"))
+            archiveExport.saveTo(exportedFile.toString())
+        } finally {
+            archiveExport.close()
+        }
+        check(Files.readAllBytes(exportedFile).contentEquals(original))
+        check(verifyArchiveProduct(factory.open(exportedFile.toString())) == 3)
+        val exportedFolder = directory.resolve("Exported owned images")
+        val directoryExport = second.prepareExport(directoryBook)
+        try {
+            check(directoryExport.isDirectory)
+            directoryExport.saveTo(exportedFolder.toString())
+        } finally {
+            directoryExport.close()
+        }
+        val reimport = FileArchiveLibrary(directory.resolve("exported-reimport").toOkioPath(), factory)
+        try {
+            val imported = reimport.importDirectory(exportedFolder.toString(), "Exported image round trip")
+            check(imported.id == directoryBook.id && verifyArchiveProduct(reimport.open(imported)) == 3)
+        } finally {
+            reimport.close()
+        }
+        val protectedBook = second.importFile(encrypted.toString(), "Owned encrypted export")
+        val protectedExport = second.prepareExport(protectedBook)
+        val encryptedOutput = directory.resolve("Exported owned encrypted.cbz")
+        try {
+            check(protectedBook.encrypted)
+            protectedExport.saveTo(encryptedOutput.toString())
+        } finally {
+            protectedExport.close()
+        }
+        check(Files.readAllBytes(encryptedOutput).contentEquals(encryptedArchiveProductFixture()))
+        verifyArchivePassword(factory.open(encryptedOutput.toString()))
+        second.remove(protectedBook)
         second.remove(directoryBook)
         second.remove(book)
         check(second.recent().isEmpty())
         check(Files.readAllBytes(input).contentEquals(original))
         check(Files.readAllBytes(imageDirectory.resolve("2.png")).contentEquals(images.first))
         check(Files.readAllBytes(imageDirectory.resolve("10.png")).contentEquals(images.second))
-        6
+        9
     } finally {
         first.close()
         reopened?.close()

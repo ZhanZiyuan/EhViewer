@@ -220,7 +220,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         captureDirectory = Path.of(command("xcrun", "simctl", "get_app_container", device, bundle, "data").trim()).resolve("tmp")
         logStart = Instant.now()
         val (firstPid, firstStderr) = launch("first-cold-start")
-        awaitMarkers("first-render", firstPid, firstStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "browser-cookie-ready checks=4" to 1, "history-product-ready checks=3" to 1, "archive-product-ready checks=6" to 1, "active" to 1)
+        awaitMarkers("first-render", firstPid, firstStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "browser-cookie-ready checks=4" to 1, "history-product-ready checks=3" to 1, "archive-product-ready checks=9" to 1, "active" to 1)
         command("xcrun", "simctl", "io", device, "screenshot", output.resolve("startup.png"))
         require(output.resolve("startup.png").fileSize() > 0)
         phase("open-settings")
@@ -238,12 +238,12 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
         check(!alive(firstPid)) { "Terminated app PID $firstPid is still alive" }
         val (secondPid, secondStderr) = launch("second-cold-start")
         check(secondPid != firstPid) { "Second cold start reused the terminated PID" }
-        awaitMarkers("second-render", secondPid, secondStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "browser-cookie-ready checks=4" to 1, "history-product-ready checks=3" to 1, "archive-product-ready checks=6" to 1, "active" to 1)
+        awaitMarkers("second-render", secondPid, secondStderr, "cold-start" to 1, "rust-ffi-ready" to 1, "compose-ready" to 1, "browser-cookie-ready checks=4" to 1, "history-product-ready checks=3" to 1, "archive-product-ready checks=9" to 1, "active" to 1)
         val rustResults = listOf(rustInteropResults(firstStderr.readText()), rustInteropResults(secondStderr.readText()))
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM3:gallery-product checks=5").findAll(stderr.readText()).count() == 1) { "Actual iOS detail/page/static and animated image regression did not execute" }
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM3:account-product checks=4").findAll(stderr.readText()).count() == 1) { "Actual iOS account/favorite decoder regression did not execute" }
         for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM1:history-product-ready checks=3").findAll(stderr.readText()).count() == 1) { "Actual iOS native Room history regression did not execute" }
-        for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM1:archive-product-ready checks=6").findAll(stderr.readText()).count() == 1) { "Actual iOS private archive/directory import/pixel/reopen regression did not execute" }
+        for (stderr in listOf(firstStderr, secondStderr)) require(Regex("EhViewerM1:archive-product-ready checks=9").findAll(stderr.readText()).count() == 1) { "Actual iOS private archive/directory import/pixel/reopen regression did not execute" }
         val lifecycle = logs("lifecycle")
         output.resolve("lifecycle.log").writeText(lifecycle)
         val unified = iosUnifiedLifecycle(lifecycle, firstPid, secondPid)
@@ -264,7 +264,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             "gallery_product_checks_by_launch" to listOf(5, 5),
             "account_product_checks_by_launch" to listOf(4, 4),
             "history_product_checks_by_launch" to listOf(3, 3),
-            "archive_product_checks_by_launch" to listOf(6, 6),
+            "archive_product_checks_by_launch" to listOf(9, 9),
             "browser_cookie_checks_by_launch" to listOf(4, 4),
             "unified_log_lifecycle" to unified,
         )

@@ -1,7 +1,7 @@
 package com.ehviewer.shared
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -41,7 +41,7 @@ import kotlinx.coroutines.withContext
 
 /** One local-library/password/reader UI; platforms supply only their real file chooser and vault. */
 @Composable
-fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAndImport: suspend () -> ArchiveBook?, pickAndImportDirectory: suspend () -> ArchiveBook?, readingState: (ArchiveBook) -> ReaderStateStore, onBack: () -> Unit) {
+fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAndImport: suspend () -> ArchiveBook?, pickAndImportDirectory: suspend () -> ArchiveBook?, pickAndExport: suspend (ArchiveBook) -> Boolean, readingState: (ArchiveBook) -> ReaderStateStore, onBack: () -> Unit) {
     var books by remember(library) { mutableStateOf<List<ArchiveBook>>(emptyList()) }
     var unavailableCopies by remember(library) { mutableIntStateOf(0) }
     var selected by remember(library) { mutableStateOf<ArchiveBook?>(null) }
@@ -50,6 +50,9 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
     var failure by remember { mutableStateOf(false) }
     var attempt by remember { mutableIntStateOf(0) }
     var busy by remember { mutableStateOf(false) }
+    var exporting by remember { mutableStateOf(false) }
+    var exportFailed by remember { mutableStateOf(false) }
+    var exportMessage by remember { mutableStateOf<String?>(null) }
     var request by remember { mutableStateOf<Job?>(null) }
     var unlocked by remember(selected) { mutableStateOf(false) }
     var password by remember(selected) { mutableStateOf("") }
@@ -95,6 +98,8 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
         if (busy) return
         busy = true
         failure = false
+        exportFailed = false
+        exportMessage = null
         request = scope.launch {
             try {
                 block()
@@ -165,13 +170,14 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
         Text(book?.title ?: "Local library")
         if (loading || busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (failure) {
-            Text("The local comic could not be opened or updated. Return to the library and try again.")
+            Text(if (exportFailed) "Export could not finish. Existing comics have been kept; an incomplete copy may remain at the chosen destination. Choose a new name and export again." else "The local comic could not be opened or updated. Return to the library and try again.")
             TextButton(onClick = { attempt++ }, enabled = !busy) { Text("Retry") }
         }
+        exportMessage?.let { Text(it) }
         if (book == null) {
             TextButton(onClick = { perform { pickAndImport()?.let { selected = it } } }, enabled = !busy && !loading) { Text("Import comic archive") }
             TextButton(onClick = { perform { pickAndImportDirectory()?.let { selected = it } } }, enabled = !busy && !loading) { Text("Import image folder") }
-            if (busy) TextButton(onClick = { request?.cancel() }) { Text("Cancel import") }
+            if (busy) TextButton(onClick = { request?.cancel() }) { Text(if (exporting) "Cancel export" else "Cancel import") }
             if (unavailableCopies > 0) {
                 Text("$unavailableCopies local copies could not be read. Their files have been kept; other comics are available below.")
                 TextButton(onClick = { attempt++ }, enabled = !busy && !loading) { Text("Retry unavailable copies") }
@@ -182,8 +188,24 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
                     Column {
                         Text(item.title)
                         Text("${item.pages} pages" + if (item.encrypted) " · Password protected" else "")
-                        Row {
+                        FlowRow {
                             TextButton(onClick = { selected = item }, enabled = !busy) { Text("Read comic") }
+                            TextButton(onClick = {
+                                perform {
+                                    exporting = true
+                                    try {
+                                        exportMessage = if (pickAndExport(item)) "Export saved." else "Export cancelled."
+                                    } catch (cancelled: CancellationException) {
+                                        exportMessage = "Export cancelled. An incomplete copy may remain at the chosen destination."
+                                        throw cancelled
+                                    } catch (error: Exception) {
+                                        exportFailed = true
+                                        throw error
+                                    } finally {
+                                        exporting = false
+                                    }
+                                }
+                            }, enabled = !busy) { Text("Export comic") }
                             TextButton(onClick = {
                                 perform {
                                     library.remove(item)

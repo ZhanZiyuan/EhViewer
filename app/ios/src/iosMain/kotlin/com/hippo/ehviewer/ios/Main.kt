@@ -164,8 +164,8 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                     LaunchedEffect(history) {
                         check(verifyHistoryProduct(history) == 3)
                         NSLog("EhViewerM1:history-product-ready checks=3")
-                        check(verifyAppleArchives(applicationDirectory()) == 6)
-                        NSLog("EhViewerM1:archive-product-ready checks=6")
+                        check(verifyAppleArchives(applicationDirectory()) == 9)
+                        NSLog("EhViewerM1:archive-product-ready checks=9")
                     }
                 }
                 if (startupRegression) {
@@ -175,7 +175,7 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                     }
                 }
                 GallerySearchScreen(session, readerState, appearance, history, downloads, backgroundDownloadsNote = "Downloads pause when you leave the app. Saved pages can be resumed.", archiveContent = { back ->
-                    ArchiveLibraryScreen(archives, session, pickAndImport = { archivePicker.pickAndImport(archives) }, pickAndImportDirectory = { archivePicker.pickAndImport(archives, directory = true) }, readingState = { book -> ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/archive-reading-state/${book.id}")) }, onBack = back)
+                    ArchiveLibraryScreen(archives, session, pickAndImport = { archivePicker.pickAndImport(archives) }, pickAndImportDirectory = { archivePicker.pickAndImport(archives, directory = true) }, pickAndExport = { book -> archivePicker.pickAndExport(archives, book) }, readingState = { book -> ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/archive-reading-state/${book.id}")) }, onBack = back)
                 }, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
             }
             makeKeyAndVisible()

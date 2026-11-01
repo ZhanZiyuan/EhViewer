@@ -48,7 +48,20 @@ interface ArchiveLibrary {
     /** Copy the selected regular file; never give an external provider's mutable file to mmap. */
     suspend fun importFile(path: String, title: String): ArchiveBook
     suspend fun importDirectory(path: String, title: String): ArchiveBook
+    suspend fun prepareExport(book: ArchiveBook): ArchiveExport
     suspend fun open(book: ArchiveBook): ArchiveDocument
     suspend fun remove(book: ArchiveBook)
+    suspend fun close()
+}
+
+/** Independent immutable snapshot. The caller keeps it alive through the platform export UI. */
+interface ArchiveExport {
+    val name: String
+    val path: String
+    val isDirectory: Boolean
+    val bytes: Long
+
+    /** Create a new destination only. Interrupted external copies are retained, never overwritten. */
+    suspend fun saveTo(path: String)
     suspend fun close()
 }

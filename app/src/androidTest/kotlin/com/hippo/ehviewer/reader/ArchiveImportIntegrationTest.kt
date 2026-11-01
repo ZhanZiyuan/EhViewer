@@ -21,6 +21,64 @@ import org.junit.runner.RunWith
 /** Actual APK JNI, immutable copies, Rust extraction, Bitmap pixels and persisted library reopen. */
 @RunWith(AndroidJUnit4::class)
 class ArchiveImportIntegrationTest {
+    @Test fun exportsPreserveCompressedBytesEncryptedContentAndDirectoryPixelsThroughRealJni() = runBlocking {
+        System.loadLibrary("ehviewer")
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val root = File(context.cacheDir, "archive-export-product-${UUID.randomUUID()}").apply { check(mkdirs()) }
+        val source = File(root, "Owned comic.cbz").apply { writeBytes(archiveProductFixture()) }
+        val library = FileArchiveLibrary(File(root, "books").toOkioPath(), NativeArchiveBridge::open)
+        val reimport = FileArchiveLibrary(File(root, "reimport").toOkioPath(), NativeArchiveBridge::open)
+        try {
+            val book = library.importFile(source.absolutePath, "Owned export")
+            val exported = File(root, "Exported comic.cbz")
+            val snapshot = library.prepareExport(book)
+            try {
+                assertTrue(!snapshot.isDirectory && snapshot.name.endsWith(".cbz"))
+                snapshot.saveTo(exported.absolutePath)
+            } finally {
+                snapshot.close()
+            }
+            assertArrayEquals(archiveProductFixture(), exported.readBytes())
+            assertEquals(3, verifyArchiveProduct(NativeArchiveBridge.open(exported.absolutePath)))
+            val images = NativeArchiveBridge.open(source.absolutePath).use { it.read(0) to it.read(1) }
+            val input = File(root, "Owned image folder").apply { check(mkdir()) }
+            File(input, "2.png").writeBytes(images.first)
+            File(input, "10.png").writeBytes(images.second)
+            val directoryBook = library.importDirectory(input.absolutePath, "Owned images")
+            val folderExport = library.prepareExport(directoryBook)
+            val folder = File(root, "Exported image folder")
+            try {
+                assertTrue(folderExport.isDirectory)
+                folderExport.saveTo(folder.absolutePath)
+            } finally {
+                folderExport.close()
+            }
+            val imported = reimport.importDirectory(folder.absolutePath, "Exported round trip")
+            assertEquals(directoryBook.id, imported.id)
+            assertEquals(3, verifyArchiveProduct(reimport.open(imported)))
+            val encrypted = File(root, "Owned encrypted.zip").apply { writeBytes(encryptedArchiveProductFixture()) }
+            val protectedBook = library.importFile(encrypted.absolutePath, "Owned encrypted export")
+            assertTrue(protectedBook.encrypted)
+            val protectedExport = library.prepareExport(protectedBook)
+            val encryptedOutput = File(root, "Exported encrypted.cbz")
+            try {
+                protectedExport.saveTo(encryptedOutput.absolutePath)
+            } finally {
+                protectedExport.close()
+            }
+            assertArrayEquals(encryptedArchiveProductFixture(), encryptedOutput.readBytes())
+            verifyArchivePassword(NativeArchiveBridge.open(encryptedOutput.absolutePath))
+            assertArrayEquals(archiveProductFixture(), source.readBytes())
+            assertArrayEquals(images.first, File(input, "2.png").readBytes())
+            assertArrayEquals(images.second, File(input, "10.png").readBytes())
+        } finally {
+            library.close()
+            reimport.close()
+            assertEquals(0 to 0, NativeArchiveBridge.activeResources())
+            check(root.deleteRecursively())
+        }
+    }
+
     @Test fun damagedPrivateMetadataIsReportedWhileOtherBooksStillDecodeThroughRealJni() = runBlocking {
         System.loadLibrary("ehviewer")
         val context = InstrumentationRegistry.getInstrumentation().targetContext

@@ -55,29 +55,10 @@ internal class AppleArchivePicker(private val presenter: () -> UIViewController?
     }
 
     suspend fun pickAndImport(library: ArchiveLibrary, directory: Boolean = false): ArchiveBook? {
-        val url = withContext<NSURL?>(Dispatchers.Main) {
-            suspendCancellableCoroutine<NSURL?> { continuation ->
-                check(active == null)
-                val controller = checkNotNull(presenter())
-                check(controller.presentedViewController == null)
-                val types = if (directory) listOfNotNull(UTType.typeWithIdentifier("public.folder")) else listOf("cbz", "zip", "cbr", "rar", "7z", "cb7", "tar", "gz", "xz").mapNotNull { UTType.typeWithFilenameExtension(it) }
-                check(types.isNotEmpty())
-                val request = Request(continuation)
-                val picker = UIDocumentPickerViewController(forOpeningContentTypes = types, asCopy = !directory)
-                request.picker = picker
-                active = request
-                picker.delegate = request
-                picker.allowsMultipleSelection = false
-                continuation.invokeOnCancellation {
-                    dispatch_async(dispatch_get_main_queue()) {
-                        if (active === request) {
-                            active = null
-                            picker.dismissViewControllerAnimated(false, null)
-                        }
-                    }
-                }
-                controller.presentViewController(picker, animated = true, completion = null)
-            }
+        val url = choose {
+            val types = if (directory) listOfNotNull(UTType.typeWithIdentifier("public.folder")) else listOf("cbz", "zip", "cbr", "rar", "7z", "cb7", "tar", "cbt", "gz", "xz", "archive").mapNotNull { UTType.typeWithFilenameExtension(it) }
+            check(types.isNotEmpty())
+            UIDocumentPickerViewController(forOpeningContentTypes = types, asCopy = !directory)
         } ?: return null
         val accessing = url.startAccessingSecurityScopedResource()
         try {
@@ -86,6 +67,41 @@ internal class AppleArchivePicker(private val presenter: () -> UIViewController?
             return if (directory) coordinatedDirectoryImport(library, url, title) else library.importFile(path, title)
         } finally {
             if (accessing) url.stopAccessingSecurityScopedResource()
+        }
+    }
+
+    suspend fun pickAndExport(library: ArchiveLibrary, book: ArchiveBook): Boolean {
+        val snapshot = library.prepareExport(book)
+        try {
+            return choose {
+                val url = NSURL.fileURLWithPath(snapshot.path, isDirectory = snapshot.isDirectory)
+                UIDocumentPickerViewController(forExportingURLs = listOf(url), asCopy = true)
+            } != null
+        } finally {
+            snapshot.close()
+        }
+    }
+
+    private suspend fun choose(create: () -> UIDocumentPickerViewController): NSURL? = withContext(Dispatchers.Main) {
+        suspendCancellableCoroutine<NSURL?> { continuation ->
+            check(active == null)
+            val controller = checkNotNull(presenter())
+            check(controller.presentedViewController == null)
+            val request = Request(continuation)
+            val picker = create()
+            request.picker = picker
+            active = request
+            picker.delegate = request
+            picker.allowsMultipleSelection = false
+            continuation.invokeOnCancellation {
+                dispatch_async(dispatch_get_main_queue()) {
+                    if (active === request) {
+                        active = null
+                        picker.dismissViewControllerAnimated(false, null)
+                    }
+                }
+            }
+            controller.presentViewController(picker, animated = true, completion = null)
         }
     }
 

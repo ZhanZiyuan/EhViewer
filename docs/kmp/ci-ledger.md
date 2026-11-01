@@ -4,6 +4,8 @@ M0 / GATE_PASSED；M1 / GATE_PASSED（2f00e595c）；M2 / GATE_PASSED（17a17e28
 
 ## 已有基线
 
+M5 共享收藏 `e34fd86312abe9f6c68f04c7a8ede6f047f325f4` 已通过 [Full CI41308619365](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41308619365)：精确 head、completed/SUCCESS、恰好12项必需任务成功，包括 release dry-run 和 `ci/gate`。同一英文 Draft PR 已记录并回读确认。随后才收敛本次真实书库导出与系统选择器，证据见 [shared-archive-export.md](shared-archive-export.md)；不产生记账专用提交，新 SHA 仍需自己的适用门禁。
+
 M4 当前图片续传 `a6870162b441dd353feae173b1acd484fa8a5230` 已通过 [Full CI41284515896](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41284515896)：独立核对精确head、completed/SUCCESS、全部12项SUCCESS、dry-run与ci/gate。新增118网络、35 JVM/29 Native数据及两端42项仪器测试的本地证明见 [partial-image-recovery.md](partial-image-recovery.md)。其后才准备目录阅读，复用私有书库/同一CMP阅读器并保留旧压缩包格式；本条随真实目录功能收录，M4尚不标记完成。
 
 M4 动图/共享阅读器修复 `cc49709f2d146d0468de5415bab0d4da7ddb715e` 已通过 [Full CI41280654439](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41280654439)：独立核对精确head、completed/SUCCESS、全部12项SUCCESS，包括iOS、Rosetta/原生Intel、Linux、Windows、release dry-run和ci/gate。此前a0a8b失败/取消不改写。后续当前图片续传复用同一队列与CMP阅读器，手机/平板同APK对各42项和本地118网络/35数据/241工具及原Android完整门禁已通过，Native及新提交托管验收另行记录；M4仍IN_PROGRESS。本条随真实续传功能收录，不作纯记账提交。

@@ -19,9 +19,9 @@ fun main(arguments: Array<String>) {
     check(verifyGalleryProduct(decoder) + verifyAnimatedGalleryProduct() == 5)
     check(verifyAccountProduct(decoder) == 4)
     check(verifyDesktopHistory() == 3)
-    check(verifyDesktopArchives(library) == 6)
+    check(verifyDesktopArchives(library) == 9)
     println("Gallery product regression passed: 5 checks")
     println("Account product regression passed: 4 checks")
     println("History product regression passed: 3 checks")
-    println("Archive product regression passed: 6 checks")
+    println("Archive product regression passed: 9 checks")
 }

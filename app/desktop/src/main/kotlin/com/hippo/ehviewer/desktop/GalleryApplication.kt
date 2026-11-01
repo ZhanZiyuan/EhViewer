@@ -74,7 +74,7 @@ fun galleryApplication() {
                         pickComicArchive()?.let { archives.importFile(it.toString(), it.fileName.toString().replace('\n', ' ').replace('\r', ' ').take(1024)) }
                     }, pickAndImportDirectory = {
                         pickImageDirectory()?.let { archives.importDirectory(it.toString(), (it.fileName?.toString() ?: "Imported images").replace('\n', ' ').replace('\r', ' ').take(1024)) }
-                    }, readingState = { book ->
+                    }, pickAndExport = { book -> exportComicArchive(archives, book) }, readingState = { book ->
                         val directory = applicationData().resolve("archive-reading-state").resolve(book.id)
                         if (windows) windowsReaderState(resources.resolve("ehviewer_capi.dll"), directory) else ReaderStateRepository(NativeSessionVault(directory.toString()))
                     }, onBack = back)
