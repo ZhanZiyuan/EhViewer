@@ -152,7 +152,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     verifyReaderTests(iosReader)
     require(iosReader["execution"] == "BOOTED_OWNED_SIMULATOR" && sha256(path("ios", "reader-tests.kexe")) == iosReader["test_executable_sha256"])
     val readerXml = filesBelow(path("ios", "."), ".xml").filter { it.fileName.toString().startsWith("reader-") }
-    val readerEvidence = sharedHostTestEvidence(readerXml.map(Path::readBytes), filesBelow(root.resolve("app/shared/src/commonTest"), ".kt").size)
+    val readerEvidence = sharedHostTestEvidence(readerXml.map(Path::readBytes), productTestSources(root, "shared-ui", "ios").size)
     require(readerEvidence == iosReader - setOf("execution", "test_executable_sha256")) { "Actual Native reader XML differs from its producer receipt" }
     val iosData = ios["data_tests"].obj()
     verifyDataTests(iosData, native = true)

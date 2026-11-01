@@ -160,7 +160,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             require(sha256(binary) == sha256(staged.resolve("test.kexe"))) { "Executed network tests differ from the actual Native binary" }
             val xml = filesBelow(root.resolve("core/network/build/test-results/iosSimulatorArm64Test"), ".xml")
             require(xml.isNotEmpty() && xml.all { Files.getLastModifiedTime(it).toInstant() >= networkStarted.minusSeconds(1) }) { "Missing or stale Native network test receipts" }
-            val evidence = sharedHostTestEvidence(xml.map { Files.readAllBytes(it) }, filesBelow(root.resolve("core/network/src/commonTest"), ".kt").size)
+            val evidence = sharedHostTestEvidence(xml.map { Files.readAllBytes(it) }, productTestSources(root, "network", "ios").size)
             verifyNetworkTests(evidence)
             xml.forEach { Files.copy(it, output.resolve("network-${it.fileName}")) }
             evidence + mapOf("test_executable_sha256" to sha256(binary), "execution" to "BOOTED_OWNED_SIMULATOR")
@@ -184,7 +184,7 @@ fun iosStartup(app: Path, output: Path, runtimeIdentifier: String? = null): Map<
             require(sha256(binary) == sha256(staged.resolve("test.kexe"))) { "Executed reader tests differ from the actual Native binary" }
             val xml = filesBelow(root.resolve("app/shared/build/test-results/iosSimulatorArm64Test"), ".xml")
             require(xml.isNotEmpty() && xml.all { Files.getLastModifiedTime(it).toInstant() >= started.minusSeconds(1) }) { "Missing or stale Native reader test receipts" }
-            val evidence = sharedHostTestEvidence(xml.map { Files.readAllBytes(it) }, filesBelow(root.resolve("app/shared/src/commonTest"), ".kt").size)
+            val evidence = sharedHostTestEvidence(xml.map { Files.readAllBytes(it) }, productTestSources(root, "shared-ui", "ios").size)
             verifyReaderTests(evidence)
             xml.forEach { Files.copy(it, output.resolve("reader-${it.fileName}")) }
             Files.copy(binary, output.resolve("reader-tests.kexe"))

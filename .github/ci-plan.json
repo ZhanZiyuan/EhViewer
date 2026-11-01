@@ -1,6 +1,18 @@
 {
   "schema_version": 1,
   "fast_jobs": ["source_policy", "shared_kmp", "android"],
+  "product_test_sources": {
+    "network": {
+      "android": ["commonTest", "androidHostTest"],
+      "jvm": ["commonTest", "desktopTest"],
+      "ios": ["commonTest", "iosTest"]
+    },
+    "shared-ui": {
+      "android": ["commonTest", "androidHostTest"],
+      "jvm": ["commonTest", "desktopTest", "skiaTest"],
+      "ios": ["commonTest", "iosTest", "skiaTest"]
+    }
+  },
   "platform_groups": {
     "shared": {
       "patterns": ["^core/", "^app/shared/"],

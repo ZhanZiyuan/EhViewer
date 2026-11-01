@@ -170,10 +170,8 @@ fun verifyProductTestReceipts(shared: Map<String, Any?>, artifacts: Path, reposi
     val products = shared["product_jvm"].obj()
     require(products.keys == setOf("network", "shared-ui"))
     for ((name, value) in products) {
-        val module = if (name == "network") "core/network" else "app/shared"
-        val sources = filesBelow(repository.resolve("$module/src/commonTest"), ".kt").size
-        val jvm = sharedHostTestEvidence(filesBelow(artifacts.resolve("tests/$name-jvm"), ".xml").map(Path::readBytes), sources)
-        val android = sharedHostTestEvidence(filesBelow(artifacts.resolve("tests/$name"), ".xml").map(Path::readBytes), sources)
+        val jvm = sharedHostTestEvidence(filesBelow(artifacts.resolve("tests/$name-jvm"), ".xml").map(Path::readBytes), productTestSources(repository, name, "jvm").size)
+        val android = sharedHostTestEvidence(filesBelow(artifacts.resolve("tests/$name"), ".xml").map(Path::readBytes), productTestSources(repository, name, "android").size)
         require(jvm == value.obj()["host_tests"] && android == shared["modules"].obj().getValue(name).obj()["host_tests"]) { "Actual product test receipts differ from producer evidence or same-source tests" }
         for ((tests, skia) in listOf(jvm to true, android to false)) {
             if (name == "network") {
@@ -211,14 +209,16 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         val aar = filesBelow(directory.resolve("build/outputs/aar"), ".aar").single()
         val evidence = sharedAarEvidence(aar, directory.resolve("build/classes/kotlin/android/main"), if (sharedUi) "com.ehviewer.app.shared" else "com.ehviewer.core.$module", module == "i18n")
         val testSources = filesBelow(directory.resolve("src"), ".kt").filter { directory.resolve("src").relativize(it).getName(0).toString().endsWith("Test") }
-        require(
-            testSources.all {
-                val name = directory.resolve("src").relativize(it).getName(0).toString()
-                name in setOf("commonTest", "jvmTest", "androidHostTest") || module == "common" && name == "nonAndroidTest" || module == "data" && name in setOf("nonAndroidTest", "desktopTest", "iosTest")
-            },
-        ) { "A new shared test source set needs explicit stage integration" }
+        if (module !in setOf("network", "shared-ui")) {
+            require(
+                testSources.all {
+                    val name = directory.resolve("src").relativize(it).getName(0).toString()
+                    name in setOf("commonTest", "jvmTest", "androidHostTest") || module == "common" && name == "nonAndroidTest" || module == "data" && name in setOf("nonAndroidTest", "desktopTest", "iosTest")
+                },
+            ) { "A new shared test source set needs explicit stage integration" }
+        }
         val testFiles = filesBelow(directory.resolve("build/test-results/testAndroidHostTest"), ".xml")
-        val androidSources = testSources.filter { directory.resolve("src").relativize(it).getName(0).toString() in setOf("commonTest", "jvmTest", "androidHostTest") }
+        val androidSources = if (module in setOf("network", "shared-ui")) productTestSources(root, module, "android") else testSources.filter { directory.resolve("src").relativize(it).getName(0).toString() in setOf("commonTest", "jvmTest", "androidHostTest") }
         val tests = sharedHostTestEvidence(testFiles.map { it.readBytes() }, androidSources.size)
         if (module == "domain") verifyDomainTests(tests)
         if (module == "network") verifyNetworkTests(tests)
@@ -276,7 +276,7 @@ fun verifySharedCore(output: Path): Map<String, Any?> {
         val directory = root.resolve(path)
         val artifact = filesBelow(directory.resolve("build/libs"), "-jvm.jar").single()
         val evidence = sharedJvmEvidence(artifact, directory.resolve("build/classes/kotlin/desktop/main"))
-        val sources = filesBelow(directory.resolve("src/commonTest"), ".kt")
+        val sources = productTestSources(root, name, "jvm")
         val xml = filesBelow(directory.resolve("build/test-results/desktopTest"), ".xml")
         val tests = sharedHostTestEvidence(xml.map(Path::readBytes), sources.size)
         if (name == "network") verifyNetworkTests(tests)

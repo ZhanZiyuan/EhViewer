@@ -26,7 +26,7 @@ kotlin {
         implementation(libs.androidx.lifecycle.compose)
         implementation(libs.serialization.json)
     }
-    sourceSets.androidMain.dependencies {
+    sourceSets.findByName("androidMain")?.dependencies {
         implementation(project.dependencies.platform(libs.coil.bom))
         implementation(libs.coil.compose)
     }

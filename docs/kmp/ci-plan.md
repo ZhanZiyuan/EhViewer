@@ -24,6 +24,8 @@ Phase completion must update `docs/kmp/milestones/Mx.json`; that path forces Ful
 
 The source job builds and tests the JVM 17 verifier once. Other native runners consume that run's distribution and test XML instead of compiling and testing the same verifier repeatedly. Shared compilation uses normal Gradle input/cache tracking. Native execution retains necessary fresh-link/test checks and owned Simulator cleanup; cached declarations cannot stand in for execution.
 
+`product_test_sources` in the same policy declares the actual network/shared-reader Kotlin test directories for Android host, JVM and iOS. Producers and consumers count their own target's real files; Android-only lease tests are distinct from the Skia tests shared by JVM/iOS. Unregistered roots, unsafe paths, stale counts, missing mandatory suites and unsuccessful XML remain failures. This replaces the older product-directory whitelist without coupling verification to Gradle DSL formatting or job order. Standalone Desktop configuration adds Android dependencies only when that target exists.
+
 Full package acquisition retains one authoritative archive digest/CRC/payload pass. Release candidate validation still checks source, version, architecture, actual files, actual test receipts and hashes. Production `releases.yml` is unchanged in this change.
 
 Actions Summary automatically records the plan and each actual job result, including failures, with its run URL and SHA. These are the per-commit CI record going forward; do not create commits just to add historical links. Keep `ci-ledger.md` as historical evidence and add substantive phase closures alongside product changes.

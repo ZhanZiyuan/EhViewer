@@ -4,6 +4,8 @@ M0 / GATE_PASSED；M1 / GATE_PASSED（2f00e595c）；M2 / GATE_PASSED（17a17e28
 
 ## 已有基线
 
+M4 动图提交 `a0a8b0a7696f1c1f3a4a55aa1e43cf81f52768eb` 的 [PR CI41278482376](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41278482376) 出现必需检查失败：共享编译/测试/lint 成功后，旧回执目录白名单拒绝 `skiaTest`；Desktop 独立构建又暴露无 Android 目标时的源集访问。该 SHA 未验收，其余任务不取消，后续完整结果由 Actions Summary 保留。本次独立修复统一声明式的 Android/JVM/Native 测试根与实际文件回执，并按目标存在配置 Android 依赖；旧校验器对同一真实 AAR/JAR 的失败已复现，修复后实物校验、独立 Desktop 业务、241项工具测试及542任务共享/原Android门禁本地通过。新的实际Native回执也通过108网络/47阅读器/22数据、Keychain与双冷启动，阅读器按平台各统计真实8份源码；新SHA全门禁仍须闭合。此记录与真实修复一起提交，不改写历史或新增补链提交。
+
 M4 原图子任务：`079bf4ee1dc1d9b960c0964847f8379e4f7e6bfd`，`feat(reader): load original images through the shared client`，已通过 [Full CI41274652972](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41274652972) 全部12项、release dry-run 与 `ci/gate`。手机和平板各39项仪器测试、108项共享网络及原图/显示图像素和 Room 进度本地通过；同一英文 Draft PR 已记录并读回。该结果随本次实际动图/阅读器功能收录，不生成记账专用提交。动图设计、失败及当前验证边界见 [shared-animated-media.md](shared-animated-media.md)。
 
 M4 归档导入子任务：`c1b9c0a19d72ea8f636138da12dc229046968a8b`，`feat(kmp): import local archives into the shared reader`，已通过 [Full CI41270720264](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41270720264) 全部12项、release dry-run 与 `ci/gate`。Desktop/iOS 普通 CBZ 选择、真实图片、进程恢复和 iPad 横屏已验证；正确密码手动输入仍未验证，原生 AES 回归通过。灰色图标误判已用实际导入时间戳纠正，未提交错误修复。该记录随后续原图功能收录，不生成历史补链专用提交。
