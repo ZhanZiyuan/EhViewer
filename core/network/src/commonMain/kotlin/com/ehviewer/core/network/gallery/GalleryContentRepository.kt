@@ -60,6 +60,22 @@ class GalleryContentRepository(client: HttpClient, private val decoder: GalleryD
         }
     }
 
+    private fun originalUrl(value: String, gid: Long): Url {
+        val url = try {
+            Url(value)
+        } catch (_: Exception) {
+            invalid()
+        }
+        if (url.protocol != URLProtocol.HTTPS || url.host != host || url.port != 443 || !url.user.isNullOrEmpty() || !url.password.isNullOrEmpty() || url.fragment.isNotEmpty() || !url.parameters.isEmpty()) invalid()
+        if (!Regex("/fullimg/$gid/[a-f0-9]{10}").matches(url.encodedPath)) invalid()
+        return url
+    }
+
+    override suspend fun originalImage(page: GalleryImagePage, pageUrl: String, gid: Long): ByteArray {
+        pageIndex(pageUrl, gid)
+        return requests.image(originalUrl(page.originImageUrl ?: invalid(), gid), Url(pageUrl))
+    }
+
     override suspend fun image(page: GalleryImagePage, pageUrl: String, gid: Long): ByteArray {
         pageIndex(pageUrl, gid)
         return requests.image(

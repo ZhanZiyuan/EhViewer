@@ -89,10 +89,10 @@ internal class GalleryRequests(private val client: HttpClient, private val host:
         // H@H clients use 443 or a configured nonprivileged port; account/service
         // traffic stays on 443, and the cookie jar never sends identity to H@H.
         if (url.port != 443 && !(hathImage && url.port in 1024..65534)) invalid()
+        val forumLogin = url.host == "forums.e-hentai.org" && url.encodedPath.equals("/index.php", ignoreCase = true) && url.parameters["act"].equals("Login", ignoreCase = true)
+        if (forumLogin || url.host in setOf(host, "forums.e-hentai.org") && url.encodedPath.contains("login", ignoreCase = true)) throw GalleryRequestException(GalleryFailure.AUTHENTICATION)
         val allowed = if (image) isGalleryImageHost(url.host) else url.host in setOf(host, "forums.e-hentai.org")
         if (!allowed) invalid()
-        val forumLogin = url.host == "forums.e-hentai.org" && url.encodedPath.equals("/index.php", ignoreCase = true) && url.parameters["act"].equals("Login", ignoreCase = true)
-        if (!image && (url.encodedPath.contains("login", ignoreCase = true) || forumLogin)) throw GalleryRequestException(GalleryFailure.AUTHENTICATION)
     }
 }
 

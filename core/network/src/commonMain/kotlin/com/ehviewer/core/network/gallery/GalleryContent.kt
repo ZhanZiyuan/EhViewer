@@ -11,5 +11,8 @@ interface GalleryContent {
     fun pageIndex(url: String, gid: Long): Int
     suspend fun page(url: String, gid: Long, reloadKey: String? = null): GalleryImagePage
     suspend fun image(page: GalleryImagePage, pageUrl: String, gid: Long): ByteArray
+
+    /** Local sources have no remote original; only validated online metadata advertises this action. */
+    suspend fun originalImage(page: GalleryImagePage, pageUrl: String, gid: Long): ByteArray = invalid()
     suspend fun preview(preview: GalleryPreview, gid: Long, token: String): ByteArray
 }

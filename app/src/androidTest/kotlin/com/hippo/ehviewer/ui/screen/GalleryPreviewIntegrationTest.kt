@@ -1,6 +1,7 @@
 package com.hippo.ehviewer.ui.screen
 
 import android.content.Intent
+import android.graphics.Color
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -10,6 +11,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
@@ -62,6 +64,7 @@ class GalleryPreviewIntegrationTest {
     private val token = "0123456789"
     private val title = "Preview integration fixture"
     private val png = Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGP4z8AAQv8BD/kD/YURmXYAAAAASUVORK5CYII=")
+    private val originalPng = Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAADklEQVR4XmNg+A+CQAAAF/IF+w/LXpgAAAAASUVORK5CYII=")
 
     private fun detail(page: Int): String {
         val previews = (if (page == 0) 0..1 else 2..2).joinToString("") { index ->
@@ -215,10 +218,11 @@ class GalleryPreviewIntegrationTest {
         val engine = MockEngine { request ->
             requests += request.url.encodedPath + "?" + request.url.parameters["p"]?.let { "p=$it" }.orEmpty()
             when {
-                request.url.host == "ehgt.org" -> respond(png, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
+                request.url.host == "ehgt.org" -> respond(if (request.url.encodedPath == "/original.png") originalPng else png, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
                 request.url.encodedPath == "/" -> respond("""<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/0.png" style="height:100px;width:80px"><div class="cn">Manga</div><div class="ir" style="background-position:0px -1px"></div></div></div></body></html>""")
                 request.url.encodedPath.startsWith("/g/") -> respond(detail(request.url.parameters["p"]?.toInt() ?: 0))
-                request.url.encodedPath == "/s/3333333333/$gid-3" -> respond("""<!DOCTYPE html><html><body><img id="img" src="https://ehgt.org/2.png"><a id="prev" href="https://e-hentai.org/s/2222222222/$gid-2">Previous</a></body></html>""")
+                request.url.encodedPath == "/s/3333333333/$gid-3" -> respond("""<!DOCTYPE html><html><body><img id="img" src="https://ehgt.org/2.png"><a id="prev" href="https://e-hentai.org/s/2222222222/$gid-2">Previous</a><a href="https://e-hentai.org/fullimg/$gid/3333333333">Original</a></body></html>""")
+                request.url.encodedPath == "/fullimg/$gid/3333333333" -> respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "https://ehgt.org/original.png"))
                 else -> error("Unexpected fixture request")
             }
         }
@@ -245,6 +249,31 @@ class GalleryPreviewIntegrationTest {
                     }
                 }
                 fun click(text: String) = requireNotNull(device.wait(Until.findObject(By.text(text)), 15_000)).click()
+                fun waitForImagePixels(original: Boolean) = runBlocking {
+                    withTimeout(10_000) {
+                        while (true) {
+                            val screenshot = checkNotNull(device.takeScreenshot()) { "Actual reader screenshot is unavailable" }
+                            val color = try {
+                                try {
+                                    device.findObject(By.desc("Gallery page 3"))?.visibleCenter?.let { screenshot.getPixel(it.x, it.y) }
+                                } catch (_: StaleObjectException) {
+                                    // Image replacement disposes the previous semantics node.
+                                    // Retry within the same deadline and keep the pixel assertion.
+                                    null
+                                }
+                            } finally {
+                                screenshot.recycle()
+                            }
+                            if (color != null) {
+                                val red = Color.red(color)
+                                val green = Color.green(color)
+                                val blue = Color.blue(color)
+                                if (if (original) green > red + 30 && green > blue + 30 else green < 30 && red > 50 && blue > 50) break
+                            }
+                            delay(100)
+                        }
+                    }
+                }
                 click("Search")
                 click(title)
                 click("Browse page previews")
@@ -253,6 +282,16 @@ class GalleryPreviewIntegrationTest {
                 val third = requireNotNull(device.wait(Until.findObject(By.desc("Preview of page 3")), 15_000))
                 third.click()
                 assertTrue("Selected reader page did not render", device.wait(Until.hasObject(By.text("3 / 3")), 15_000))
+                click("Load original image")
+                runBlocking {
+                    withTimeout(10_000) { while (requests.none { it == "/original.png?" }) delay(25) }
+                }
+                assertTrue("Original image did not render", device.wait(Until.hasObject(By.desc("Gallery page 3")), 15_000))
+                waitForImagePixels(original = true)
+                assertTrue(requests.any { it == "/fullimg/$gid/3333333333?" })
+                click("Use display image")
+                assertTrue("Display image did not render again", device.wait(Until.hasObject(By.desc("Gallery page 3")), 15_000))
+                waitForImagePixels(original = false)
                 runBlocking {
                     withTimeout(10_000) { while (EhDB.getReadingPosition(gid)?.page != 2) delay(25) }
                     assertEquals(title, EhDB.getGalleryInfo(gid)?.title)

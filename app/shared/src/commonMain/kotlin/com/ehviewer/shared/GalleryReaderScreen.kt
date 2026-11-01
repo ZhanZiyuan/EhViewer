@@ -60,6 +60,7 @@ import kotlinx.coroutines.launch
 internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit) {
     var url by remember(initial) { mutableStateOf(initial) }
     var reloadKey by remember(url) { mutableStateOf<String?>(null) }
+    var original by remember(url) { mutableStateOf(false) }
     var document by remember { mutableStateOf<GalleryImagePage?>(null) }
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var failure by remember { mutableStateOf<GalleryFailure?>(null) }
@@ -128,7 +129,7 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
     fun target(link: String?, delta: Int): String? = link?.takeIf { session.content.pageIndex(it, detail.gid) == index + delta && index + delta in 0 until detail.pages }
     val previous = target(document?.previousPageUrl, -1)
     val next = target(document?.nextPageUrl, 1)
-    LaunchedEffect(currentUrl, attempt) {
+    LaunchedEffect(currentUrl, attempt, original) {
         loading = true
         document = null
         bitmap = null
@@ -138,7 +139,8 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
         try {
             val page = session.content.page(currentUrl, detail.gid, reloadKey)
             document = page
-            bitmap = decodeGalleryImage(session.content.image(page, currentUrl, detail.gid))
+            val bytes = if (original) session.content.originalImage(page, currentUrl, detail.gid) else session.content.image(page, currentUrl, detail.gid)
+            bitmap = decodeGalleryImage(bytes)
             saveProgress()
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -180,6 +182,11 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                 val changed = preferences.copy(direction = if (rtl) ReadingDirection.LEFT_TO_RIGHT else ReadingDirection.RIGHT_TO_LEFT)
                 changePreferences(changed)
             }, enabled = !settingsSaving) { Text(if (rtl) "Right to left" else "Left to right") }
+        }
+        if (original || document?.originImageUrl != null) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = { original = !original }, enabled = !loading) { Text(if (original) "Use display image" else "Load original image") }
+            }
         }
         failure?.let {
             GalleryError(it) {
