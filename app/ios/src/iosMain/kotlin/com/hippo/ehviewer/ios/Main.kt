@@ -12,6 +12,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.ComposeUIViewController
 import com.ehviewer.core.data.DataStoreLanguageStore
+import com.ehviewer.core.data.DataStoreNetworkPreferences
 import com.ehviewer.core.data.FileArchiveLibrary
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
@@ -79,8 +80,9 @@ private fun applicationDirectory(): String {
 
 private fun applicationSession(): GallerySession {
     val directory = applicationDirectory()
+    DataDirectory.configure("$directory/database".toPath())
     val version = NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "development"
-    return GallerySession(AppleSessionVault(directory), NativeGalleryDecoder, "EhViewer/$version")
+    return GallerySession(AppleSessionVault(directory), NativeGalleryDecoder, "EhViewer/$version", networkPreferences = DataStoreNetworkPreferences())
 }
 
 @ExportObjCClass(name = "EhViewerAppDelegate")

@@ -179,4 +179,12 @@
     <string name="gallery_gallery_metadata">%1$s 页 · %2$s · %3$s</string>
     <string name="gallery_library_unavailable">无法读取 %1$s 份本地副本，原文件保持不变；其他漫画仍可在下方使用。</string>
     <string name="gallery_download_unknown">%1$s · 总页数未知</string>
+    <string name="gallery_network">网络请求超时</string>
+    <string name="gallery_network_loading">正在加载网络设置…</string>
+    <string name="gallery_network_reload">重新加载网络设置</string>
+    <string name="gallery_network_save_failed">无法保存网络设置。请先重新加载已保存的值，再重试。</string>
+    <string name="gallery_network_unavailable">网络设置不可用，已保留原有设置。</string>
+    <string name="gallery_timeout_default">平台默认值</string>
+    <string name="gallery_timeout_help">适用于新请求。具有独立超时设置的请求仍使用其原有限制。</string>
+    <string name="gallery_timeout_seconds">%1$d 秒</string>
 </resources>

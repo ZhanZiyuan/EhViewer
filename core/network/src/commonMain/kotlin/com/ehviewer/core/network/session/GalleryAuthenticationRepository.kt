@@ -1,5 +1,6 @@
 package com.ehviewer.core.network.session
 
+import com.ehviewer.core.domain.GalleryNetworkPreferences
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.galleryHttpClient
@@ -27,6 +28,7 @@ import kotlinx.io.readByteArray
 class GalleryAuthenticationRepository(
     private val cookies: PersistentCookieStorage,
     private val userAgent: String,
+    private val networkPreferences: GalleryNetworkPreferences? = null,
     private val engineFactory: () -> HttpClientEngine = ::platformNetworkEngine,
 ) {
     private val signInMutex = Mutex()
@@ -45,7 +47,7 @@ class GalleryAuthenticationRepository(
                 val jar = AuthenticationCookieJar()
                 val engine = engineFactory()
                 try {
-                    val client = galleryHttpClient(engine, jar, userAgent)
+                    val client = galleryHttpClient(engine, jar, userAgent, networkPreferences)
                     try {
                         var url = Url("https://forums.e-hentai.org/index.php?act=Login&CODE=01")
                         repeat(6) { attempt ->

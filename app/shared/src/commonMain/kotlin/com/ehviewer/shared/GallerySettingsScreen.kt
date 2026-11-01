@@ -28,6 +28,7 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.AppLanguageException
+import com.ehviewer.core.domain.GalleryNetworkPreferences
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
@@ -70,6 +71,7 @@ import org.jetbrains.compose.resources.StringResource
 /** The same settings controls persist through the actual platform adapters used by the reader. */
 @Composable
 internal fun GallerySettingsScreen(
+    networkPreferences: GalleryNetworkPreferences?,
     appearance: GalleryAppearanceStore,
     readerState: ReaderStateStore,
     mode: GalleryThemeMode?,
@@ -189,6 +191,7 @@ internal fun GallerySettingsScreen(
                 SettingsChoice(galleryString(Res.string.gallery_reading_ltr), current.direction == ReadingDirection.LEFT_TO_RIGHT, !busy) { update(current.copy(direction = ReadingDirection.LEFT_TO_RIGHT)) }
                 SettingsChoice(galleryString(Res.string.gallery_reading_rtl), current.direction == ReadingDirection.RIGHT_TO_LEFT, !busy) { update(current.copy(direction = ReadingDirection.RIGHT_TO_LEFT)) }
             }
+            networkPreferences?.let { GalleryNetworkSettings(it) }
             failure?.let { error ->
                 Text(galleryString(error), color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = { attempt++ }) { Text(galleryString(Res.string.gallery_reading_preferences_reload)) }
@@ -198,7 +201,7 @@ internal fun GallerySettingsScreen(
 }
 
 @Composable
-private fun SettingsChoice(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+internal fun SettingsChoice(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         RadioButton(selected, onClick = null, enabled = enabled)
         Text(label, Modifier.padding(start = 8.dp))

@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.ehviewer.core.data.DataStoreLanguageStore
+import com.ehviewer.core.data.DataStoreNetworkPreferences
 import com.ehviewer.core.data.FileArchiveLibrary
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
@@ -46,6 +47,7 @@ private fun applicationData(): Path {
 
 /** A normal product window; the existing explicit --m1-smoke path keeps its original regressions. */
 fun galleryApplication() {
+    DataDirectory.configure(applicationData().resolve("database").toString().toPath())
     val resources = Path.of(checkNotNull(System.getProperty("compose.application.resources.dir")))
     val windows = System.getProperty("os.name").startsWith("Windows")
     val version = System.getProperty("jpackage.app-version") ?: "development"
@@ -54,7 +56,7 @@ fun galleryApplication() {
     } else {
         val extension = if (System.getProperty("os.name").startsWith("Mac")) "dylib" else "so"
         System.load(resources.resolve("libehviewer_rust.$extension").toAbsolutePath().toString())
-        GallerySession(NativeSessionVault(applicationData().toString()), RustGalleryDecoder, "EhViewer/$version")
+        GallerySession(NativeSessionVault(applicationData().toString()), RustGalleryDecoder, "EhViewer/$version", networkPreferences = DataStoreNetworkPreferences())
     }
     val readerDirectory = applicationData().resolve("reader-state")
     val readerState = if (windows) windowsReaderState(resources.resolve("ehviewer_capi.dll"), readerDirectory) else ReaderStateRepository(NativeSessionVault(readerDirectory.toString()))
@@ -62,7 +64,6 @@ fun galleryApplication() {
     val appearance = if (windows) windowsAppearanceStore(resources.resolve("ehviewer_capi.dll"), appearanceDirectory) else GalleryAppearanceRepository(NativeSessionVault(appearanceDirectory.toString()))
     val browserLibrary = resources.resolve(if (windows) "ehviewer_capi.dll" else "libehviewer_rust.${if (System.getProperty("os.name").startsWith("Mac")) "dylib" else "so"}")
     val browsers = DesktopBrowserService(browserLibrary, resources.resolve(if (windows) "ehviewer_browser.exe" else "ehviewer_browser"))
-    DataDirectory.configure(applicationData().resolve("database").toString().toPath())
     val systemLanguage = Locale.getDefault().toLanguageTag()
     val language = GalleryLanguageSettings(DataStoreLanguageStore()) { tag ->
         Locale.setDefault(Locale.forLanguageTag(galleryResourceLanguageTag(tag ?: systemLanguage)))

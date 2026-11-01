@@ -179,4 +179,12 @@
     <string name="gallery_gallery_metadata">%1$s ページ · %2$s · %3$s</string>
     <string name="gallery_library_unavailable">%1$s 件のコピーを読み込めません。ファイルは保持されています。他の漫画は引き続き利用できます。</string>
     <string name="gallery_download_unknown">%1$s · 合計不明</string>
+    <string name="gallery_network">ネットワークリクエストのタイムアウト</string>
+    <string name="gallery_network_loading">ネットワーク設定を読み込み中…</string>
+    <string name="gallery_network_reload">ネットワーク設定を再読み込み</string>
+    <string name="gallery_network_save_failed">ネットワーク設定を保存できませんでした。保存済みの値を再読み込みしてから再試行してください。</string>
+    <string name="gallery_network_unavailable">ネットワーク設定を読み込めません。既存の設定は保持されています。</string>
+    <string name="gallery_timeout_default">プラットフォームの既定値</string>
+    <string name="gallery_timeout_help">新しいリクエストに適用します。個別のタイムアウトがあるリクエストはその制限を維持します。</string>
+    <string name="gallery_timeout_seconds">%1$d 秒</string>
 </resources>

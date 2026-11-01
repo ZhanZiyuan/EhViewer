@@ -1,7 +1,9 @@
 package com.hippo.ehviewer.ktor
 
 import androidx.webkit.WebViewCompat
+import com.ehviewer.core.data.DataStoreNetworkPreferences
 import com.ehviewer.core.network.EhCookieStore
+import com.ehviewer.core.network.GalleryNetworkTimeout
 import com.hippo.ehviewer.Settings
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngineConfig
@@ -24,6 +26,7 @@ private const val CHROME_ACCEPT = "text/html,application/xhtml+xml,application/x
 private const val CHROME_ACCEPT_LANGUAGE = "en-US,en;q=0.9"
 
 fun <T : HttpClientEngineConfig> HttpClientConfig<T>.configureCommon(redirect: Boolean = true) = apply {
+    install(GalleryNetworkTimeout) { preferences = DataStoreNetworkPreferences() }
     install(HttpCookies) {
         storage = EhCookieStore
     }

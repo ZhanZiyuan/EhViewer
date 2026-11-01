@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.AppLanguageException
 import com.ehviewer.core.domain.GalleryHistoryException
 import com.ehviewer.core.domain.GalleryHistoryStore
+import com.ehviewer.core.domain.GalleryNetworkPreferences
 import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.GalleryLibrary
@@ -120,7 +121,7 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
             }
         }
     }
-    GalleryLibraryScreen(library, readerState, appearance, history, downloads, language, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
+    GalleryLibraryScreen(library, readerState, appearance, history, downloads, language, networkPreferences = session.networkPreferences, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
     }, onReady = onReady)
 }
@@ -134,6 +135,7 @@ fun GalleryLibraryScreen(
     history: GalleryHistoryStore,
     downloads: GalleryDownloads,
     language: GalleryLanguageSettings,
+    networkPreferences: GalleryNetworkPreferences? = null,
     backgroundDownloadsNote: Boolean = false,
     onPlatformDownloadOpen: ((Long) -> Unit)? = null,
     onBack: (() -> Unit)? = null,
@@ -245,7 +247,7 @@ fun GalleryLibraryScreen(
                 Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
                     Column(Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
                         if (settingsOpen) {
-                            GallerySettingsScreen(appearance, readerState, themeMode, appearanceFailed, language, languageTag, languageReady, languageFailed, onLanguageChanged = { languageTag = it }, onRetryLanguage = { languageAttempt++ }, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = {
+                            GallerySettingsScreen(networkPreferences, appearance, readerState, themeMode, appearanceFailed, language, languageTag, languageReady, languageFailed, onLanguageChanged = { languageTag = it }, onRetryLanguage = { languageAttempt++ }, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = {
                                 settingsOpen = false
                                 appearanceAttempt++
                                 languageAttempt++

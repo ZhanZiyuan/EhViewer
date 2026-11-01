@@ -179,4 +179,12 @@
     <string name="gallery_gallery_metadata">%1$s pages · %2$s · %3$s</string>
     <string name="gallery_library_unavailable">%1$s local copies could not be read. Their files have been kept; other comics are available below.</string>
     <string name="gallery_download_unknown">%1$s · total unknown</string>
+    <string name="gallery_network">Network request timeout</string>
+    <string name="gallery_network_loading">Loading network settings…</string>
+    <string name="gallery_network_reload">Reload network settings</string>
+    <string name="gallery_network_save_failed">The network setting could not be saved. Reload the saved value before trying again.</string>
+    <string name="gallery_network_unavailable">Network settings are unavailable. Existing preferences have been kept.</string>
+    <string name="gallery_timeout_default">Platform default</string>
+    <string name="gallery_timeout_help">Applies to new requests. Requests with their own timeout keep that limit.</string>
+    <string name="gallery_timeout_seconds">%1$d seconds</string>
 </resources>

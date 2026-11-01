@@ -179,4 +179,12 @@
     <string name="gallery_gallery_metadata">%1$s 頁 · %2$s · %3$s</string>
     <string name="gallery_library_unavailable">無法讀取 %1$s 份本機副本，原檔案保持不變；其他漫畫仍可在下方使用。</string>
     <string name="gallery_download_unknown">%1$s · 總頁數未知</string>
+    <string name="gallery_network">網路請求逾時</string>
+    <string name="gallery_network_loading">正在載入網路設定…</string>
+    <string name="gallery_network_reload">重新載入網路設定</string>
+    <string name="gallery_network_save_failed">無法儲存網路設定。請先重新載入已儲存的值，再重試。</string>
+    <string name="gallery_network_unavailable">網路設定無法使用，已保留原有設定。</string>
+    <string name="gallery_timeout_default">平台預設值</string>
+    <string name="gallery_timeout_help">適用於新請求。具有獨立逾時設定的請求仍使用其原有限制。</string>
+    <string name="gallery_timeout_seconds">%1$d 秒</string>
 </resources>

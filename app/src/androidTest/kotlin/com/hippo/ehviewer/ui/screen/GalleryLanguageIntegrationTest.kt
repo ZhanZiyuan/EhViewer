@@ -6,8 +6,10 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
+import com.ehviewer.core.data.DataStoreNetworkPreferences
 import com.ehviewer.core.preferences.PrefDelegate
 import com.ehviewer.core.preferences.edit
 import com.hippo.ehviewer.Settings
@@ -16,7 +18,9 @@ import com.hippo.ehviewer.ui.MainActivity
 import com.hippo.ehviewer.util.setAppLanguage
 import java.nio.file.Files
 import java.util.Locale
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -31,6 +35,8 @@ class GalleryLanguageIntegrationTest {
         val context = instrumentation.targetContext
         val device = UiDevice.getInstance(instrumentation)
         val saved = runBlocking { Settings.snapshot() }
+        val network = DataStoreNetworkPreferences()
+        val originalTimeout = runBlocking { network.requestTimeoutSeconds() }
         val originalLocales = AppCompatDelegate.getApplicationLocales()
         val originalDefault = Locale.getDefault()
         val location = with(Settings) { listOf(downloadScheme, downloadAuthority, downloadPath, downloadQuery, downloadFragment) }
@@ -75,11 +81,37 @@ class GalleryLanguageIntegrationTest {
                     settingsLabel = settings
                 }
                 click("Settings")
+                fun scrollTo(text: String, direction: Direction) {
+                    repeat(6) {
+                        if (device.hasObject(By.text(text))) return
+                        requireNotNull(device.findObject(By.scrollable(true))).scroll(direction, 0.75f)
+                        instrumentation.waitForIdleSync()
+                    }
+                    visible(text)
+                }
+                fun savedTimeout(expected: Int?) = runBlocking {
+                    withTimeout(5_000) {
+                        while (network.requestTimeoutSeconds() != expected) delay(25)
+                    }
+                }
+                scrollTo("120 seconds", Direction.DOWN)
+                click("120 seconds")
+                savedTimeout(120)
+                scenario.recreate()
+                scrollTo("120 seconds", Direction.DOWN)
+                savedTimeout(120)
+                scrollTo("Platform default", Direction.UP)
+                click("Platform default")
+                savedTimeout(null)
+                device.pressBack()
+                visible("Search galleries")
+                click("Settings")
                 click("System language")
                 instrumentation.waitForIdleSync()
                 assertTrue(AppCompatDelegate.getApplicationLocales().isEmpty)
             }
         } finally {
+            runBlocking { network.setRequestTimeoutSeconds(originalTimeout) }
             instrumentation.runOnMainSync {
                 AppCompatDelegate.setApplicationLocales(originalLocales)
                 Locale.setDefault(originalDefault)

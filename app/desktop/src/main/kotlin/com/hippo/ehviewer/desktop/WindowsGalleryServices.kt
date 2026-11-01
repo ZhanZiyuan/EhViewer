@@ -2,6 +2,7 @@
 
 package com.hippo.ehviewer.desktop
 
+import com.ehviewer.core.data.DataStoreNetworkPreferences
 import com.ehviewer.core.domain.reader.ArchiveDocument
 import com.ehviewer.core.domain.reader.ArchiveDocumentFactory
 import com.ehviewer.core.domain.reader.ArchiveException
@@ -193,7 +194,7 @@ internal class WindowsGalleryDecoder(private val library: Path) : GalleryDocumen
 
 internal fun windowsGallerySession(library: Path, directory: Path, userAgent: String): GallerySession {
     require(ADDRESS.byteSize() == 8L)
-    return GallerySession(WindowsSessionVault(library, directory), WindowsGalleryDecoder(library), userAgent)
+    return GallerySession(WindowsSessionVault(library, directory), WindowsGalleryDecoder(library), userAgent, networkPreferences = DataStoreNetworkPreferences())
 }
 
 /** A caller retains one application-lifetime DLL owner on the main thread. Each IO call

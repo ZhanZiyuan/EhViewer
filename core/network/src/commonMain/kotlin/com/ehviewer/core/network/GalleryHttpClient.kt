@@ -1,5 +1,6 @@
 package com.ehviewer.core.network
 
+import com.ehviewer.core.domain.GalleryNetworkPreferences
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
@@ -12,9 +13,10 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.Url
 
 /** The platform supplies a real engine and its browser/secure cookie store. No logging plugin is installed. */
-fun galleryHttpClient(engine: HttpClientEngine, cookies: CookiesStorage, userAgent: String): HttpClient {
+fun galleryHttpClient(engine: HttpClientEngine, cookies: CookiesStorage, userAgent: String, networkPreferences: GalleryNetworkPreferences? = null): HttpClient {
     require(userAgent.isNotBlank() && userAgent.none { it == '\r' || it == '\n' })
     return HttpClient(engine) {
+        if (networkPreferences != null) install(GalleryNetworkTimeout) { preferences = networkPreferences }
         install(HttpCookies) {
             storage = object : CookiesStorage by cookies {
                 override suspend fun get(requestUrl: Url): List<Cookie> {

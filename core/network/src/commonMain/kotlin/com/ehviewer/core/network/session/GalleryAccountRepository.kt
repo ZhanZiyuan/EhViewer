@@ -1,5 +1,6 @@
 package com.ehviewer.core.network.session
 
+import com.ehviewer.core.domain.GalleryNetworkPreferences
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.gallery.GalleryRequests
@@ -19,6 +20,7 @@ class GalleryAccountRepository(
     private val cookies: PersistentCookieStorage,
     private val decoder: GalleryAccountDecoder,
     private val userAgent: String,
+    private val networkPreferences: GalleryNetworkPreferences? = null,
     private val engineFactory: () -> HttpClientEngine = ::platformNetworkEngine,
 ) {
     private val mutex = Mutex()
@@ -29,7 +31,7 @@ class GalleryAccountRepository(
             val jar = AuthenticationCookieJar(snapshot)
             val engine = engineFactory()
             try {
-                val client = galleryHttpClient(engine, jar, userAgent)
+                val client = galleryHttpClient(engine, jar, userAgent, networkPreferences)
                 try {
                     val currentSession: suspend () -> Unit = { cookies.requireGeneration(generation) }
                     val forum = GalleryRequests(client, "forums.e-hentai.org", currentSession)

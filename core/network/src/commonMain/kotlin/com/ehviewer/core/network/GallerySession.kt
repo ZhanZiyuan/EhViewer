@@ -1,5 +1,6 @@
 package com.ehviewer.core.network
 
+import com.ehviewer.core.domain.GalleryNetworkPreferences
 import com.ehviewer.core.domain.download.GalleryDownloadStorage
 import com.ehviewer.core.network.download.GalleryDownloadQueue
 import com.ehviewer.core.network.download.networkGalleryDownloadSource
@@ -17,11 +18,11 @@ import kotlinx.coroutines.CoroutineScope
 expect fun platformNetworkEngine(): HttpClientEngine
 
 /** One application-owned engine, secure cookie store and repository; closing releases the engine. */
-class GallerySession(vault: SessionVault, private val decoder: GalleryDocumentDecoder, val userAgent: String, restricted: Boolean = false) : GalleryLibrary, AutoCloseable {
+class GallerySession(vault: SessionVault, private val decoder: GalleryDocumentDecoder, val userAgent: String, restricted: Boolean = false, val networkPreferences: GalleryNetworkPreferences? = null) : GalleryLibrary, AutoCloseable {
     val cookies = PersistentCookieStorage(vault)
     private val engine = platformNetworkEngine()
     private val client = try {
-        galleryHttpClient(engine, cookies, userAgent)
+        galleryHttpClient(engine, cookies, userAgent, networkPreferences)
     } catch (failure: Exception) {
         engine.close()
         throw failure
@@ -32,8 +33,8 @@ class GallerySession(vault: SessionVault, private val decoder: GalleryDocumentDe
         private set
     override var content = GalleryContentRepository(client, decoder, restricted)
         private set
-    val authentication = GalleryAuthenticationRepository(cookies, userAgent)
-    val account = GalleryAccountRepository(cookies, decoder, userAgent)
+    val authentication = GalleryAuthenticationRepository(cookies, userAgent, networkPreferences)
+    val account = GalleryAccountRepository(cookies, decoder, userAgent, networkPreferences)
     override var favorites = GalleryFavoritesRepository(client, cookies, decoder, restricted, cookies::authenticationGeneration)
         private set
 
