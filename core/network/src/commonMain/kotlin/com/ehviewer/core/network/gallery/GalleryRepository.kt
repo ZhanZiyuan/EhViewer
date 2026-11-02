@@ -40,4 +40,44 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
         require(gid > 0 && Regex("[a-f0-9]{10}").matches(token))
         return Url("https://$host/g/$gid/$token/")
     }
+
+    /** Covers use the same bounded transport and actual cookie jar as gallery previews. */
+    suspend fun cover(gid: Long, token: String, thumbKey: String): ByteArray {
+        val referer = try {
+            galleryUrl(gid, token)
+        } catch (_: IllegalArgumentException) {
+            invalid()
+        }
+        return requests.image(galleryCoverUrl(thumbKey, restricted), referer)
+    }
+}
+
+/** Preserve the original Android E/Ex v1/v2 cover mapping without platform/global settings. */
+internal fun galleryCoverUrl(key: String, restricted: Boolean): Url {
+    if (key.length !in 1..4096 || key.any { it.isWhitespace() || it.code < 32 }) invalid()
+    val address = if (key.startsWith("https://")) {
+        key
+    } else {
+        val path = key.substringBefore('?')
+        if (':' in path || '\\' in key || '#' in key || path.split('/').any { it.isEmpty() || it == "." || it == ".." } || Regex("%2e|%2f|%5c", RegexOption.IGNORE_CASE).containsMatchIn(path)) invalid()
+        val base = if (!restricted) {
+            "https://ehgt.org/"
+        } else if (path.endsWith(".webp", ignoreCase = true)) {
+            "https://s.exhentai.org/"
+        } else {
+            "https://s.exhentai.org/t/"
+        }
+        base + key
+    }
+    val url = try {
+        Url(address)
+    } catch (_: Exception) {
+        invalid()
+    }
+    if (url.protocol != URLProtocol.HTTPS || url.host !in setOf("ehgt.org", "s.exhentai.org") || url.port != 443 ||
+        !url.user.isNullOrEmpty() || !url.password.isNullOrEmpty() || url.fragment.isNotEmpty() || url.encodedPath == "/"
+    ) {
+        invalid()
+    }
+    return url
 }

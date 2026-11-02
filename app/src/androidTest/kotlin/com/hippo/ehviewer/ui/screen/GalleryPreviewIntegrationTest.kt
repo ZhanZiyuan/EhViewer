@@ -105,6 +105,18 @@ class GalleryPreviewIntegrationTest {
         val owned = File(context.cacheDir, "download-ui-${UUID.randomUUID()}").apply { check(mkdirs()) }
         val offline = AtomicBoolean(false)
         val blockSecond = AtomicBoolean(true)
+        val rejectFirstCover = AtomicBoolean(true)
+        val coverPng = android.graphics.Bitmap.createBitmap(4096, 4096, android.graphics.Bitmap.Config.ARGB_8888).let { bitmap ->
+            try {
+                bitmap.eraseColor(Color.MAGENTA)
+                java.io.ByteArrayOutputStream().use { stream ->
+                    check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream))
+                    stream.toByteArray()
+                }
+            } finally {
+                bitmap.recycle()
+            }
+        }
         val secondStarted = CompletableDeferred<Unit>()
         val secondBodyRead = CompletableDeferred<Unit>()
         val imageBoundaries = AtomicInteger()
@@ -117,7 +129,11 @@ class GalleryPreviewIntegrationTest {
             requests += request.url.encodedPath
             when {
                 request.url.host == "ehgt.org" -> {
-                    if (request.url.encodedPath == "/1.png" && blockSecond.get()) {
+                    if (request.url.encodedPath == "/cover.png" && rejectFirstCover.getAndSet(false)) {
+                        respond("Owned recoverable cover failure", HttpStatusCode.ServiceUnavailable)
+                    } else if (request.url.encodedPath == "/cover.png") {
+                        respond(coverPng, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
+                    } else if (request.url.encodedPath == "/1.png" && blockSecond.get()) {
                         secondStarted.complete(Unit)
                         respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType to listOf("image/png"), HttpHeaders.ContentLength to listOf(png.size.toString()), HttpHeaders.ETag to listOf("\"owned-page-one\"")))
                     } else if (request.url.encodedPath == "/1.png") {
@@ -129,7 +145,7 @@ class GalleryPreviewIntegrationTest {
                         respond(png, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
                     }
                 }
-                request.url.encodedPath == "/" -> respond("""<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/0.png" style="height:100px;width:80px"><div class="cn">Manga</div><div class="ir" style="background-position:0px -1px"></div></div></div></body></html>""")
+                request.url.encodedPath == "/" -> respond("""<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/cover.png" style="height:100px;width:80px"><div class="cn">Manga</div><div class="ir" style="background-position:0px -1px"></div></div></div></body></html>""")
                 request.url.encodedPath.startsWith("/g/") -> respond(detail(request.url.parameters["p"]?.toInt() ?: 0))
                 request.url.encodedPath.startsWith("/s/") -> {
                     val index = request.url.encodedPath.substringAfterLast('-').toInt() - 1
@@ -171,6 +187,38 @@ class GalleryPreviewIntegrationTest {
             ActivityScenario.launch<MainActivity>(intent).use { scenario ->
                 attach(scenario)
                 click("Search")
+                assertTrue(device.wait(Until.hasObject(By.text(title)), 15_000))
+                click("Retry cover")
+                fun waitForCoverPixels() = runBlocking {
+                    withTimeout(10_000) {
+                        val density = context.resources.displayMetrics.density
+                        while (true) {
+                            val screenshot = checkNotNull(device.takeScreenshot()) { "Actual cover screenshot is unavailable" }
+                            val color = try {
+                                try {
+                                    device.findObject(By.clickable(true).hasDescendant(By.text(title)))?.visibleBounds?.let { bounds ->
+                                        val x = bounds.left + (52 * density).toInt()
+                                        val y = bounds.top + (72 * density).toInt()
+                                        if (x in 0 until screenshot.width && y in 0 until screenshot.height) screenshot.getPixel(x, y) else null
+                                    }
+                                } catch (_: StaleObjectException) {
+                                    null
+                                }
+                            } finally {
+                                screenshot.recycle()
+                            }
+                            if (color != null && Color.green(color) < 30 && Color.red(color) > 50 && Color.blue(color) > 50) break
+                            delay(100)
+                        }
+                    }
+                }
+                waitForCoverPixels()
+                assertEquals(2, requests.count { it == "/cover.png" }) // One failure, one explicit retry and actual sampled pixels.
+                click(title)
+                assertTrue(device.wait(Until.hasObject(By.text("Download gallery")), 15_000))
+                click("Back to search")
+                waitForCoverPixels()
+                assertEquals(2, requests.count { it == "/cover.png" }) // Returning to the same result page reuses the cover.
                 click(title)
                 click("Download gallery")
                 runBlocking {

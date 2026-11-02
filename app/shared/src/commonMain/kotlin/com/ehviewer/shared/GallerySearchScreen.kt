@@ -1,6 +1,5 @@
 package com.ehviewer.shared
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,15 +13,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -45,6 +43,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.AppLanguageException
@@ -90,7 +89,6 @@ import ehviewer.app.shared.generated.resources.gallery_history
 import ehviewer.app.shared.generated.resources.gallery_local_library
 import ehviewer.app.shared.generated.resources.gallery_next
 import ehviewer.app.shared.generated.resources.gallery_no_galleries
-import ehviewer.app.shared.generated.resources.gallery_page_count
 import ehviewer.app.shared.generated.resources.gallery_previous
 import ehviewer.app.shared.generated.resources.gallery_retry
 import ehviewer.app.shared.generated.resources.gallery_search
@@ -208,7 +206,13 @@ fun GalleryLibraryScreen(
     val scope = rememberCoroutineScope()
     var selected by remember { mutableStateOf<BaseGalleryInfo?>(null) }
     var account by remember { mutableStateOf(false) }
-    val resultsState = rememberLazyListState()
+    val resultsState = rememberLazyGridState()
+    val covers = remember(session, page) {
+        GalleryCoverCache<ImageBitmap> { request ->
+            val bitmap = decodeGalleryCover(session.galleries.cover(request.gid, request.token, request.key))
+            PreviewBitmap(bitmap, bitmap.width, bitmap.height)
+        }
+    }
 
     fun load(cursor: String? = null, previous: Boolean = false) {
         request?.cancel()
@@ -369,14 +373,9 @@ fun GalleryLibraryScreen(
                         if (result == null && !loading && error == null) Text(galleryString(Res.string.gallery_search_hint), Modifier.padding(vertical = 24.dp))
                         if (result != null) {
                             if (result.galleryInfoList.isEmpty()) Text(galleryString(Res.string.gallery_no_galleries), Modifier.padding(vertical = 24.dp))
-                            LazyColumn(Modifier.weight(1f), state = resultsState) {
+                            LazyVerticalGrid(columns = GridCells.Adaptive(320.dp), modifier = Modifier.weight(1f), state = resultsState, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 items(result.galleryInfoList, key = { it.gid }) { gallery ->
-                                    ListItem(
-                                        headlineContent = { Text(gallery.title ?: gallery.titleJpn.orEmpty()) },
-                                        supportingContent = { Text(galleryString(Res.string.gallery_page_count, gallery.pages)) },
-                                        modifier = Modifier.clickable { selected = gallery },
-                                    )
-                                    HorizontalDivider()
+                                    GallerySearchCard(gallery, covers) { selected = gallery }
                                 }
                             }
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

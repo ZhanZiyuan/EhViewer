@@ -78,7 +78,12 @@ fun verifyAnimatedGalleryProduct(): Int {
         "UklGRoQAAABXRUJQVlA4WAoAAAACAAAAAQAAAAAAQU5JTQYAAAD/////AABBTk1GKAAAAAAAAAAAAAEAAAAAAHgAAAJWUDhMDwAAAC8BAAAABxD9j/4HIqL/AQBBTk1GKAAAAAAAAAAAAAEAAAAAALQAAABWUDhMDwAAAC8BAAAABxDR//4HIqL/AQA=",
     )
     for (encoded in owned) {
-        SkiaGalleryFrames(Base64.decode(encoded)).use { frames ->
+        val bytes = Base64.decode(encoded)
+        val cover = decodePlatformCover(bytes)
+        check(cover.width == 2 && cover.height == 1)
+        val poster = cover.toPixelMap()[0, 0]
+        check(poster.red > 0.99f && poster.blue < 0.01f)
+        SkiaGalleryFrames(bytes).use { frames ->
             check(frames.count == 2 && frames.repetitions == -1 && frames.duration(0) == 120 && frames.duration(1) == 180)
             val first = frames.frame(0)
             try {

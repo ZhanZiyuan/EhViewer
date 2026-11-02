@@ -203,4 +203,7 @@
     <string name="gallery_storage_unavailable">Download storage is unavailable.</string>
     <string name="gallery_storage_unlimited">No image limit</string>
     <string name="gallery_storage_usage_bytes">Saved download images: %1$d bytes</string>
+    <string name="gallery_cover_loading">Loading cover</string>
+    <string name="gallery_cover_retry">Retry cover</string>
+    <string name="gallery_cover_unavailable">No cover</string>
 </resources>

@@ -203,4 +203,7 @@
     <string name="gallery_storage_unavailable">下載儲存空間無法使用。</string>
     <string name="gallery_storage_unlimited">不限制圖片容量</string>
     <string name="gallery_storage_usage_bytes">已儲存下載圖片：%1$d 位元組</string>
+    <string name="gallery_cover_loading">正在載入封面</string>
+    <string name="gallery_cover_retry">重試封面</string>
+    <string name="gallery_cover_unavailable">暫無封面</string>
 </resources>
