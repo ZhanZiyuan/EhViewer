@@ -227,7 +227,7 @@ val selectAppleSkiko = tasks.register<SelectAppleSkiko>("selectAppleSkiko") {
 }
 
 val repositoryRoot = layout.projectDirectory.dir("../..")
-val windowsArm = System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64"
+val windows = System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") in setOf("aarch64", "amd64", "x86_64")
 val prepareDesktopNative = tasks.register<BuildDesktopNative>("prepareDesktopNative") {
     val machine = if (System.getProperty("os.arch") in setOf("aarch64", "arm64")) "aarch64" else "x86_64"
     target.set("$machine-${if (System.getProperty("os.name") == "Linux") "unknown-linux-gnu" else "apple-darwin"}")
@@ -268,7 +268,7 @@ val prepareNativeBrowser = tasks.register<BuildNativeBrowser>("prepareNativeBrow
 val desktopProductResources = layout.buildDirectory.dir("desktop-product-resources")
 val prepareDesktopProductResources = tasks.register<Sync>("prepareDesktopProductResources") {
     into(desktopProductResources)
-    if (windowsArm) from(layout.buildDirectory.dir("windows-desktop-resources")) else from(prepareDesktopNative.flatMap { it.resources })
+    if (windows) from(layout.buildDirectory.dir("windows-desktop-resources")) else from(prepareDesktopNative.flatMap { it.resources })
     from(prepareNativeBrowser.flatMap { it.executable }) { into(browserResourcePlatform) }
 }
 tasks.matching { it.name == "prepareAppResources" }.configureEach { dependsOn(prepareDesktopProductResources) }

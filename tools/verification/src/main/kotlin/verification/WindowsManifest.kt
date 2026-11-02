@@ -78,7 +78,8 @@ fun windowsManifestTool(): Path {
         paths.filter { it.isDirectory() && Regex("[0-9]+(\\.[0-9]+){3}").matches(it.name) }.toList()
             .sortedByDescending { path -> path.name.split('.').joinToString(".") { it.padStart(10, '0') } }
     }
-    for (architecture in listOf("arm64", "x64")) {
+    val architectures = if (System.getProperty("os.arch") == "aarch64") listOf("arm64", "x64") else listOf("x64")
+    for (architecture in architectures) {
         versions.map { it.resolve("$architecture/mt.exe") }.firstOrNull { it.isRegularFile() }?.let { return it }
     }
     error("Windows SDK manifest tool is required")

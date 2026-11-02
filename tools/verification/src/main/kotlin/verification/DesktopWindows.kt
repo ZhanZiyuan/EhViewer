@@ -30,16 +30,19 @@ fun copyDesktopImage(source: Path, destination: Path) {
     }
 }
 
-/** A real Windows ARM64 jpackage image and two bundled-JVM/Compose/C ABI launches; no ZIP claim. */
-fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<String, Any?> {
-    require(System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64") { "Use a native Windows ARM64 JVM and runner" }
-    require(System.getenv("GITHUB_ACTIONS") != "true" || System.getenv("RUNNER_ARCH") == "ARM64") { "Expected the Windows ARM64 runner" }
+/** Preserve the ARM64 entry point; both CPUs use the same complete image and runtime checks. */
+fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<String, Any?> = desktopWindowsImage(jvmReport, coreReport, output, WindowsPlatform.ARM64)
+
+fun desktopWindowsX64(jvmReport: Path, coreReport: Path, output: Path): Map<String, Any?> = desktopWindowsImage(jvmReport, coreReport, output, WindowsPlatform.X64)
+
+private fun desktopWindowsImage(jvmReport: Path, coreReport: Path, output: Path, platform: WindowsPlatform): Map<String, Any?> {
+    platform.requireNativeHost()
     val source = command("git", "rev-parse", "HEAD").trim()
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
     val ffi = readJson(jvmReport)
     val caller = ffi["caller"].obj()
-    require(ffi["result"] == "PASS" && ffi["source_commit"] == source && ffi["source_dirty"] == dirty && ffi["target"] == "aarch64-pc-windows-msvc") { "A JVM FFI proof from this exact source is required" }
+    require(ffi["result"] == "PASS" && ffi["source_commit"] == source && ffi["source_dirty"] == dirty && ffi["target"] == platform.target) { "A JVM FFI proof from this exact source is required" }
     require(caller["rust_hash_results"] == "2000" && caller["rust_active_results"] == "0" && caller["library_closed"] == "PASS" && caller["path_transport"] == "utf8-base64") { "Incomplete real JVM ownership proof" }
     require(sha256(coreReport) == sha256(jvmReport.parent.resolve("native-core-proof.json"))) { "Native proof differs from the JVM caller's tested input" }
     val core = readJson(coreReport)
@@ -57,15 +60,15 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
         output.resolve(name).writeText(failure.output)
         throw failure
     }
-    fun pe(path: Path) = path.inputStream().use { verifyWindowsArm64Pe(it.readNBytes(1 shl 20)) }
+    fun pe(path: Path) = path.inputStream().use { verifyWindowsPe(it.readNBytes(1 shl 20), platform) }
     val jvmWork = root.resolve("app/desktop/build/windows-jvm-ffi")
     require(sha256(jvmWork.resolve("jdk.zip")) == ffi.str("jdk_archive_sha256")) { "Verified vendor JDK archive changed" }
     val jdk = Path.of(caller.str("java_home")).toRealPath()
     require(jdk.startsWith(jvmWork.resolve("jdk").toRealPath()) && sha256(jdk.resolve("bin/java.exe")) == ffi.str("java_sha256")) { "JDK differs from the actual FFI caller" }
-    require(caller["java_version"] == "25.0.5.0.2" && jdk.resolve("release").readText().contains("OS_ARCH=\"aarch64\"")) { "Unexpected native vendor JVM" }
+    require(caller["java_version"] == "25.0.5.0.2" && platform.jvmArchitectures.any { jdk.resolve("release").readText().contains("OS_ARCH=\"$it\"") }) { "Unexpected native vendor JVM" }
     for (name in listOf("bin/java.exe", "bin/jlink.exe", "bin/jpackage.exe", "bin/server/jvm.dll")) pe(jdk.resolve(name))
 
-    val nativeBundle = resources.resolve("windows-arm64").createDirectories()
+    val nativeBundle = resources.resolve("windows-${platform.nativeArchitecture}").createDirectories()
     val library = Path.of(caller.str("library")).toRealPath()
     require(library.startsWith(jvmWork.toRealPath()) && sha256(library) == ffi.str("rust_capi_sha256")) { "C ABI library differs from its real caller" }
     val expectedLibraries = linkedMapOf("ehviewer_capi.dll" to sha256(library))
@@ -104,7 +107,7 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
     val pathKey = System.getenv().keys.single { it.equals("PATH", ignoreCase = true) }
     // Do not inherit the Core build's temporary vcpkg DLL path.
     val buildEnvironment = mapOf("JAVA_HOME" to jdk.toString(), pathKey to "${jdk.resolve("bin")};${System.getenv(pathKey)}")
-    capture("browser-clippy.txt", "cargo", "clippy", "--manifest-path", root.resolve("native/browser/Cargo.toml"), "--locked", "--all-targets", "--target", WINDOWS_TARGET, "--", "-D", "warnings", environment = buildEnvironment)
+    capture("browser-clippy.txt", "cargo", "clippy", "--manifest-path", root.resolve("native/browser/Cargo.toml"), "--locked", "--all-targets", "--target", platform.target, "--", "-D", "warnings", environment = buildEnvironment)
     capture(
         "package-app-image.txt", jdk.resolve("bin/java.exe"), "-Dorg.gradle.appname=gradlew", "-jar", root.resolve("gradle/wrapper/gradle-wrapper.jar"),
         "-p", root.resolve("app/desktop"), "createDistributable", "spotlessCheck", "--console=plain", "--no-daemon", "--max-workers=1",
@@ -158,14 +161,14 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
         mapOf("path" to installed.relativize(path).toString(), "sha256" to sha256(path))
     }
     for (path in listOf(launcher, rust, jvm)) pe(path)
-    val skiko = app.listDirectoryEntries("skiko-windows-arm64.dll").single()
-    require(sha256(skiko) == "f72ac08cb6163da84817a102203ce9103015cee42e4dbb80e2b337b3e3bbadbf") { "Unexpected pinned Skiko ARM64 DLL" }
+    val skiko = app.listDirectoryEntries("skiko-windows-${platform.nativeArchitecture}.dll").single()
+    require(sha256(skiko) == platform.skikoSha256) { "Unexpected pinned matching-CPU Skiko DLL" }
     var jarNatives = 0
     for (jar in app.listDirectoryEntries("*.jar")) {
         ZipFile(jar.toFile()).use { zip ->
             zip.entries().asSequence().filter { !it.isDirectory && it.name.substringAfterLast('.') in setOf("dll", "so", "dylib", "jnilib") }.forEach { entry ->
                 require(entry.name.endsWith(".dll")) { "Foreign native in ${jar.name}!/${entry.name}" }
-                zip.getInputStream(entry).use { verifyWindowsArm64Pe(it.readNBytes(1 shl 20)) }
+                zip.getInputStream(entry).use { verifyWindowsPe(it.readNBytes(1 shl 20), platform) }
                 jarNatives++
             }
         }
@@ -173,9 +176,9 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
     val version = Regex("val releaseVersion = \"([^\"]+)\"").find(root.resolve("app/build.gradle.kts").readText())!!.groupValues[1]
     require(app.resolve("EhViewer.cfg").readText().lineSequence().any { it == "java-options=-Djpackage.app-version=$version" }) { "Image version mismatch" }
     val renderApi = "SOFTWARE_COMPAT"
-    val launches = windowsPackagedLaunches(installed, output, version)
+    val launches = windowsPackagedLaunches(installed, output, version, platform)
     val result = mapOf(
-        "source_commit" to source, "source_dirty" to dirty, "result" to "PASS", "target" to "aarch64-pc-windows-msvc",
+        "source_commit" to source, "source_dirty" to dirty, "result" to "PASS", "target" to platform.target,
         "version" to version, "os" to System.getProperty("os.name"), "os_version" to System.getProperty("os.version"),
         "jdk_archive_sha256" to ffi.str("jdk_archive_sha256"), "jvm_ffi_report_sha256" to sha256(jvmReport),
         "native_files" to natives, "installed_notices" to noticeHashes, "jar_native_libraries" to jarNatives,
@@ -186,6 +189,6 @@ fun desktopWindowsArm64(jvmReport: Path, coreReport: Path, output: Path): Map<St
         "hardware_acceleration" to "NOT_VERIFIED", "windows_zip" to "NOT_VERIFIED", "desktop_p0" to "NOT_VERIFIED",
         "minimum_os" to "NOT_VERIFIED", "complete_dependency_license_audit" to "NOT_VERIFIED",
     )
-    output.resolve("windows-arm64-runtime.json").writeText(json(result))
+    output.resolve("windows-${platform.assetArchitecture}-runtime.json").writeText(json(result))
     return result
 }

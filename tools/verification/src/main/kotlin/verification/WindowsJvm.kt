@@ -15,9 +15,6 @@ import kotlin.io.path.name
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
-private const val WINDOWS_JDK_URL = "https://aka.ms/download-jdk/microsoft-jdk-25.0.5.0.2-windows-aarch64.zip"
-private const val WINDOWS_JDK_SHA256 = "f227cc459fbd65a42c1b28123d68e207eb500899c1c78238f21a038cd33688a3"
-
 /** Extract only a checksum-verified vendor archive into a fresh owned directory. */
 fun extractWindowsJdk(archive: Path, destination: Path) {
     require(!destination.exists()) { "Use a fresh JDK extraction directory" }
@@ -53,13 +50,13 @@ fun extractWindowsJdk(archive: Path, destination: Path) {
 
 /** Preserve the complete native gate, then prove real owned-result calls from a native JVM. */
 fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
-    require(System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64") { "Use a native Windows ARM64 JVM and runner" }
-    require(System.getenv("GITHUB_ACTIONS") != "true" || System.getenv("RUNNER_ARCH") == "ARM64") { "Expected the Windows ARM64 runner" }
+    val core = readJson(coreReport)
+    val platform = WindowsPlatform.fromTarget(core.str("target"))
+    platform.requireNativeHost()
     val source = command("git", "rev-parse", "HEAD").trim()
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
-    val core = readJson(coreReport)
-    require(core["result"] == "PASS" && core["source_commit"] == source && core["source_dirty"] == dirty && core["target"] == "aarch64-pc-windows-msvc" && (core["passed"] as Number).toInt() >= MINIMUM_NATIVE_SESSION_PASSES && core["filtered"] == 0) { "A complete native Core/C ABI/session result from this exact source is required" }
+    require(core["result"] == "PASS" && core["source_commit"] == source && core["source_dirty"] == dirty && (core["passed"] as Number).toInt() >= MINIMUM_NATIVE_SESSION_PASSES && core["filtered"] == 0) { "A complete native Core/C ABI/session result from this exact source is required" }
     require(!output.exists()) { "Use a fresh JVM FFI evidence directory" }
     val work = root.resolve("app/desktop/build/windows-jvm-ffi")
     require(!work.exists()) { "Use a fresh JVM FFI build directory" }
@@ -73,19 +70,19 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
         throw failure
     }
     fun pe(path: Path) {
-        require(path.isRegularFile()) { "Missing ARM64 Windows image: $path" }
-        path.inputStream().use { verifyWindowsArm64Pe(it.readNBytes(1 shl 20)) }
+        require(path.isRegularFile()) { "Missing Windows image: $path" }
+        path.inputStream().use { verifyWindowsPe(it.readNBytes(1 shl 20), platform) }
     }
     val zip = work.resolve("jdk.zip")
-    capture("jdk-download.txt", "curl.exe", "--fail", "--silent", "--show-error", "--location", "--connect-timeout", "30", "--max-time", "600", WINDOWS_JDK_URL, "--output", zip)
-    require(sha256(zip) == WINDOWS_JDK_SHA256) { "Pinned Microsoft JDK checksum mismatch" }
+    capture("jdk-download.txt", "curl.exe", "--fail", "--silent", "--show-error", "--location", "--connect-timeout", "30", "--max-time", "600", platform.jdkUrl, "--output", zip)
+    require(sha256(zip) == platform.jdkSha256) { "Pinned Microsoft JDK checksum mismatch" }
     val extracted = work.resolve("jdk")
     extractWindowsJdk(zip, extracted)
     val jdk = Files.list(extracted).use { paths -> paths.toList().single() }
     require(jdk.isDirectory()) { "Unexpected vendor JDK root" }
     for (name in listOf("bin/java.exe", "bin/server/jvm.dll", "bin/jlink.exe", "bin/jpackage.exe")) pe(jdk.resolve(name))
     val release = jdk.resolve("release").readText()
-    require(release.contains("OS_ARCH=\"aarch64\"") && release.contains("IMPLEMENTOR=\"Microsoft\"") && release.contains("JAVA_VERSION=\"25.0.5.0.2\"")) { "Unexpected JDK release identity" }
+    require(platform.jvmArchitectures.any { release.contains("OS_ARCH=\"$it\"") } && release.contains("IMPLEMENTOR=\"Microsoft\"") && release.contains("JAVA_VERSION=\"25.0.5.0.2\"")) { "Unexpected JDK release identity" }
     Files.copy(jdk.resolve("release"), output.resolve("jdk-release.txt"))
     for (name in listOf("LICENSE", "ADDITIONAL_LICENSE_INFO")) {
         Files.copy(jdk.resolve("legal/java.base/$name"), output.resolve("jdk-$name.txt"))
@@ -93,7 +90,7 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
     capture("java-version.txt", jdk.resolve("bin/java.exe"), "-XshowSettings:properties", "-version")
 
     val coreWork = root.resolve("app/desktop/build/windows-native-core")
-    val native = coreWork.resolve("installed/arm64-windows-ehviewer")
+    val native = coreWork.resolve("installed/${platform.vcpkgTriplet}-ehviewer")
     val pathKey = System.getenv().keys.single { it.equals("PATH", ignoreCase = true) }
     val cargoEnvironment = mapOf(
         pathKey to "${native.resolve("bin")};${System.getenv(pathKey)}",
@@ -103,8 +100,8 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
     )
     val channel = Regex("channel = \"(nightly-[0-9-]+)\"").find(root.resolve("rust-toolchain.toml").readText())!!.groupValues[1]
     capture(
-        "cargo-cdylib.txt", "cargo", "+$channel-aarch64-pc-windows-msvc", "rustc", "--manifest-path", root.resolve("native/rust/Cargo.toml"),
-        "--locked", "-p", "ehviewer_capi", "--lib", "--crate-type", "cdylib", "--target", "aarch64-pc-windows-msvc", environment = cargoEnvironment,
+        "cargo-cdylib.txt", "cargo", "+$channel-${platform.target}", "rustc", "--manifest-path", root.resolve("native/rust/Cargo.toml"),
+        "--locked", "-p", "ehviewer_capi", "--lib", "--crate-type", "cdylib", "--target", platform.target, environment = cargoEnvironment,
     )
     // A real Unicode/space directory exercises the Windows wide-character loader.
     val bundle = work.resolve("Native JVM 资料").createDirectories()
@@ -118,7 +115,7 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
         Files.copy(original, bundle.resolve(name))
     }
     val library = bundle.resolve("ehviewer_capi.dll")
-    Files.copy(coreWork.resolve("target/aarch64-pc-windows-msvc/debug/ehviewer_capi.dll"), library)
+    Files.copy(coreWork.resolve("target/${platform.target}/debug/ehviewer_capi.dll"), library)
     pe(library)
     val evidence = output.resolve("native-libraries").createDirectories()
     Files.copy(library, evidence.resolve(library.fileName))
@@ -139,7 +136,7 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
         filesBelow(root.resolve("core/data/build/test-results/desktopTest"), ".xml").forEach { Files.copy(it, reports.resolve(it.fileName)) }
     }
     val proof = Properties().apply { caller.resolve("ffi.properties").inputStream().use { load(it) } }
-    require(proof.getProperty("result") == "PASS" && proof.getProperty("architecture") == "aarch64" && proof.getProperty("os").startsWith("Windows")) { "Caller was not a real Windows ARM64 JVM" }
+    require(proof.getProperty("result") == "PASS" && proof.getProperty("architecture") in platform.jvmArchitectures && proof.getProperty("os").startsWith("Windows")) { "Caller was not a real matching-CPU Windows JVM" }
     require(proof.getProperty("java_version") == "25.0.5.0.2" && Path.of(proof.getProperty("java_home")).toRealPath() == jdk.toRealPath()) { "Caller used a different JVM" }
     require(Path.of(proof.getProperty("library")).toRealPath() == library.toRealPath()) { "Caller loaded a different DLL" }
     require(proof.getProperty("path_transport") == "utf8-base64") { "Caller did not preserve the explicit UTF-8 path transport" }
@@ -150,8 +147,8 @@ fun windowsJvmFfi(coreReport: Path, output: Path): Map<String, Any?> {
     val dataTests = sharedHostTestEvidence(dataXml.map { Files.readAllBytes(it) }, dataSources)
     verifyDataTests(dataTests)
     val result = mapOf(
-        "source_commit" to source, "source_dirty" to dirty, "result" to "PASS", "target" to "aarch64-pc-windows-msvc",
-        "jdk_url" to WINDOWS_JDK_URL, "jdk_archive_sha256" to WINDOWS_JDK_SHA256, "java_sha256" to sha256(jdk.resolve("bin/java.exe")),
+        "source_commit" to source, "source_dirty" to dirty, "result" to "PASS", "target" to platform.target,
+        "jdk_url" to platform.jdkUrl, "jdk_archive_sha256" to platform.jdkSha256, "java_sha256" to sha256(jdk.resolve("bin/java.exe")),
         "rust_capi_sha256" to sha256(library), "caller" to proof.stringPropertyNames().sorted().associateWith { proof.getProperty(it) },
         "data_tests" to dataTests,
         "packaged_jvm_window" to "NOT_VERIFIED", "windows_zip" to "NOT_VERIFIED", "complete_license_audit" to "NOT_VERIFIED",

@@ -17,7 +17,7 @@ fun migrationPhaseContract(sourceSha: String, settings: String): Map<String, Any
         "macos-arm64" to "SOURCE_BOUND_DMG_AND_NATIVE_ARM64_LAUNCH_SPIKE",
         "linux-x64" to "SOURCE_BOUND_APPIMAGE_EXTRACTION_AND_FUSE_SPIKE",
         "linux-arm64" to "SOURCE_BOUND_APPIMAGE_EXTRACTION_AND_FUSE_SPIKE",
-        "windows-x64" to "NOT_INTEGRATED",
+        "windows-x64" to "SOURCE_BOUND_ZIP_AND_EXTRACTED_NATIVE_LAUNCH_SPIKE",
         "windows-arm64" to "SOURCE_BOUND_ZIP_AND_EXTRACTED_NATIVE_LAUNCH_SPIKE",
     )
     require(surfaces.keys == releaseTargets.map { it.id }.toSet()) { "Every final delivery target needs explicit phase coverage" }
@@ -39,8 +39,8 @@ fun migrationPhaseContract(sourceSha: String, settings: String): Map<String, Any
         "ios_product_domain_integration" to "GALLERY_LIBRARY_READER_DOWNLOADS",
         "desktop_product_domain_integration" to "GALLERY_LIBRARY_READER_DOWNLOADS",
         "pending_check_categories" to emptyMap<String, String>(),
-        "staged_candidate_targets" to listOf("android-arm64", "android-armv7", "android-universal", "android-x64", "ios-arm64", "macos-x64", "macos-arm64", "linux-x64", "linux-arm64", "windows-arm64"),
-        "remaining_final_package_targets" to listOf("windows-x64"),
+        "staged_candidate_targets" to listOf("android-arm64", "android-armv7", "android-universal", "android-x64", "ios-arm64", "macos-x64", "macos-arm64", "linux-x64", "linux-arm64", "windows-x64", "windows-arm64"),
+        "remaining_final_package_targets" to emptyList<String>(),
         "target_coverage" to releaseTargets.map {
             mapOf("id" to it.id, "available_ci_surface" to surfaces.getValue(it.id), "final_delivery_acceptance" to "NOT_VERIFIED")
         },

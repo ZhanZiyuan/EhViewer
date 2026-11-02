@@ -784,10 +784,22 @@ jobs:
           retention-days: 14
 
   windows_native_core:
-    name: ci/rust-native (windows-arm64-core)
+    name: ci/rust-native (windows-${{ matrix.assetArch }}-core)
     needs: [source_policy, shared_kmp]
     if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.windows_native_core.required
-    runs-on: windows-11-arm
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-11-arm
+            assetArch: arm64
+            coreCommand: windows-native-core
+            desktopCommand: desktop-windows-arm64
+          - runner: windows-latest
+            assetArch: x86_64
+            coreCommand: windows-x64-native-core
+            desktopCommand: desktop-windows-x64
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
@@ -802,72 +814,72 @@ jobs:
         with:
           name: verification-tools-${{ github.sha }}
           path: tools/verification/build
-      - name: Build real ARM64 codecs and run complete Core and C ABI tests
-        run: .\tools\verification\build\install\verification\bin\verification.bat windows-native-core --output reports/windows-native-core
-      - name: Call real Rust owned results from native Windows ARM64 JVM
+      - name: Build real matching-CPU codecs and run complete Core and C ABI tests
+        run: .\tools\verification\build\install\verification\bin\verification.bat ${{ matrix.coreCommand }} --output reports/windows-native-core
+      - name: Call real Rust owned results from native Windows ${{ matrix.assetArch }} JVM
         id: windows_jvm_ffi
         run: >-
           .\tools\verification\build\install\verification\bin\verification.bat windows-jvm-ffi
           --core-report reports/windows-native-core/windows-native-core.json --output reports/windows-jvm-ffi
-      - name: Package and launch the real Windows ARM64 JVM, Skiko and Rust window twice
+      - name: Package and launch the real Windows ${{ matrix.assetArch }} JVM, Skiko and Rust window twice
         id: windows_desktop
         run: >-
-          .\tools\verification\build\install\verification\bin\verification.bat desktop-windows-arm64
+          .\tools\verification\build\install\verification\bin\verification.bat ${{ matrix.desktopCommand }}
           --jvm-report reports/windows-jvm-ffi/windows-jvm-ffi.json
-          --core-report reports/windows-native-core/windows-native-core.json --output reports/desktop-windows-arm64
-      - name: Create and verify the real source-bound Windows ARM64 staging ZIP
+          --core-report reports/windows-native-core/windows-native-core.json --output reports/desktop-windows-${{ matrix.assetArch }}
+      - name: Create and verify the real source-bound Windows ${{ matrix.assetArch }} staging ZIP
         id: windows_package
         run: >-
           .\tools\verification\build\install\verification\bin\verification.bat windows-stage-zip
-          --runtime-report reports/desktop-windows-arm64/windows-arm64-runtime.json
-          --image reports/desktop-windows-arm64/image/EhViewer --output reports/windows-arm64-package
-      - name: Extract the actual ZIP and launch its bundled Windows ARM64 runtime twice
+          --runtime-report reports/desktop-windows-${{ matrix.assetArch }}/windows-${{ matrix.assetArch }}-runtime.json
+          --image reports/desktop-windows-${{ matrix.assetArch }}/image/EhViewer --output reports/windows-${{ matrix.assetArch }}-package
+      - name: Extract the actual ZIP and launch its bundled Windows ${{ matrix.assetArch }} runtime twice
         id: windows_zip_launch
         run: >-
           .\tools\verification\build\install\verification\bin\verification.bat windows-zip-launch
-          --package-report reports/windows-arm64-package/windows-arm64-package.json
-          --runtime-report reports/desktop-windows-arm64/windows-arm64-runtime.json
-          --output reports/windows-arm64-zip-launch
+          --package-report reports/windows-${{ matrix.assetArch }}-package/windows-${{ matrix.assetArch }}-package.json
+          --runtime-report reports/desktop-windows-${{ matrix.assetArch }}/windows-${{ matrix.assetArch }}-runtime.json
+          --output reports/windows-${{ matrix.assetArch }}-zip-launch
       - uses: actions/download-artifact@v8
         with:
           name: shared-core-${{ github.sha }}
           path: ${{ runner.temp }}/shared-common
-      - name: Exercise the actual common JAR on the native Windows ARM64 JVM
+      - name: Exercise the actual common JAR on the native Windows ${{ matrix.assetArch }} JVM
         run: >-
           .\tools\verification\build\install\verification\bin\verification.bat common-jvm
           --input "$env:RUNNER_TEMP/shared-common" --output reports/windows-native-core/common-jvm.json
-      - name: Retain Windows ARM64 native evidence
+      - name: Retain Windows ${{ matrix.assetArch }} native evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: windows-arm64-core-${{ github.sha }}
+          name: windows-${{ matrix.assetArch }}-core-${{ github.sha }}
           path: reports/windows-native-core/
           if-no-files-found: error
           retention-days: 14
 
-      - name: Retain Windows ARM64 JVM FFI evidence
+      - name: Retain Windows ${{ matrix.assetArch }} JVM FFI evidence
         if: always() && steps.windows_jvm_ffi.outcome != 'skipped'
         uses: actions/upload-artifact@v7
         with:
-          name: windows-arm64-jvm-${{ github.sha }}
+          name: windows-${{ matrix.assetArch }}-jvm-${{ github.sha }}
           path: reports/windows-jvm-ffi/
           if-no-files-found: error
           retention-days: 14
-      - name: Retain Windows ARM64 application image and measured window evidence
+      - name: Retain Windows ${{ matrix.assetArch }} application image and measured window evidence
         if: always() && steps.windows_desktop.outcome != 'skipped'
         uses: actions/upload-artifact@v7
         with:
-          name: windows-arm64-runtime-${{ github.sha }}
-          path: reports/desktop-windows-arm64/
+          name: windows-${{ matrix.assetArch }}-runtime-${{ github.sha }}
+          path: reports/desktop-windows-${{ matrix.assetArch }}/
           if-no-files-found: error
           retention-days: 14
 
-      - name: Retain actual Windows ARM64 ZIP and complete byte inventory
+      - name: Retain actual Windows ${{ matrix.assetArch }} ZIP and complete byte inventory
         if: always() && steps.windows_package.outcome != 'skipped'
         uses: actions/upload-artifact@v7
         with:
-          name: windows-arm64-package-${{ github.sha }}
-          path: reports/windows-arm64-package/
+          name: windows-${{ matrix.assetArch }}-package-${{ github.sha }}
+          path: reports/windows-${{ matrix.assetArch }}-package/
           if-no-files-found: error
           retention-days: 14
 
@@ -875,11 +887,11 @@ jobs:
         if: always() && steps.windows_zip_launch.outcome != 'skipped'
         uses: actions/upload-artifact@v7
         with:
-          name: windows-arm64-zip-launch-${{ github.sha }}
+          name: windows-${{ matrix.assetArch }}-zip-launch-${{ github.sha }}
           path: |
-            reports/windows-arm64-zip-launch/windows-arm64-zip-launch.json
-            reports/windows-arm64-zip-launch/launch-*/
-            reports/windows-arm64-zip-launch/launch-*.log
+            reports/windows-${{ matrix.assetArch }}-zip-launch/windows-${{ matrix.assetArch }}-zip-launch.json
+            reports/windows-${{ matrix.assetArch }}-zip-launch/launch-*/
+            reports/windows-${{ matrix.assetArch }}-zip-launch/launch-*.log
           if-no-files-found: error
           retention-days: 14
 
@@ -918,7 +930,7 @@ jobs:
         run: |
           mkdir -p reports
           tools/verification/build/install/verification/bin/verification staged-package-dry-run --repository "$GITHUB_REPOSITORY" --run-id "$GITHUB_RUN_ID" --android-run-id "$ANDROID_ARTIFACT_RUN_ID" --sdk "$ANDROID_HOME" --output reports/staged-dry-run > reports/staged-dry-run.json
-      - name: Retain ten actual candidates and complete staged evidence
+      - name: Retain eleven actual candidates and complete staged evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:

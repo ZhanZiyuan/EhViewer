@@ -106,6 +106,7 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         listOf("linux-runtime", "reports/desktop-linux-arm64/common-jvm.json", "Linux", "aarch64"),
         listOf("intel-consumer", "common-jvm.json", "Mac", "x86_64"),
         listOf("windows-core", "common-jvm.json", "Windows", "aarch64"),
+        listOf("windows-x64-core", "common-jvm.json", "Windows", "amd64"),
     ).associate { (role, name, os, architecture) ->
         val proof = receipt(role, name)
         verifyCommonJvmReceipt(proof, source, shared, os, architecture)
@@ -319,68 +320,73 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
         retain(id, packageFile, expectedSha256 = digest)
     }
 
-    val packagedFile = path("windows-package", "windows-arm64-package.json")
-    val packaged = receipt("windows-package", "windows-arm64-package.json", false)
-    val runtimeFile = path("windows-runtime", "windows-arm64-runtime.json")
-    val runtime = receipt("windows-runtime", "windows-arm64-runtime.json")
-    val launch = receipt("windows-launch", "windows-arm64-zip-launch.json", false)
-    val core = receipt("windows-core", "windows-native-core.json")
-    val jvmFile = path("windows-jvm", "windows-jvm-ffi.json")
-    val jvm = receipt("windows-jvm", "windows-jvm-ffi.json")
-    val windowsData = jvm["data_tests"].obj()
-    verifyDataTests(windowsData)
-    val windowsDataSources = listOf("commonTest", "nonAndroidTest", "desktopTest").sumOf { filesBelow(root.resolve("core/data/src/$it"), ".kt").size }
-    require(sharedHostTestEvidence(filesBelow(path("windows-jvm", "data-tests"), ".xml").map(Path::readBytes), windowsDataSources) == windowsData) { "Actual Windows native database XML differs from its producer receipt" }
-    require(jvm["target"] == "aarch64-pc-windows-msvc" && jvm["caller"].obj()["rust_hash_results"] == "2000" && jvm["caller"].obj()["rust_active_results"] == "0" && jvm["caller"].obj()["library_closed"] == "PASS") { "Incomplete original Windows JVM ownership evidence" }
-    require(jvm["caller"].obj()["path_transport"] == "utf8-base64" && listOf("double_free", "stale_handle", "undersized_copy").all { jvm["caller"].obj()[it] == "PASS" }) { "Original standalone Windows ownership errors differ" }
-    require(sha256(path("windows-jvm", "native-libraries/ehviewer_capi.dll")) == jvm["rust_capi_sha256"]) { "Standalone Windows C API bytes changed" }
-    require((core["passed"] as Number).toInt() >= MINIMUM_NATIVE_SESSION_PASSES && core["filtered"] == 0 && sha256(path("windows-runtime", "native-core-proof.json")) == sha256(path("windows-core", "windows-native-core.json")) && sha256(path("windows-runtime", "jvm-ffi-proof.json")) == sha256(jvmFile)) { "Original Windows Core/JVM proof chain changed" }
-    val archive = path("windows-package", releaseTargets.single { it.id == "windows-arm64" }.fileName(version))
-    require(packaged["version"] == version && packaged["android_version_code"] == code && packaged["target"] == "aarch64-pc-windows-msvc" && packaged["packager_source_dirty"] == false && packaged["runtime_proof_sha256"] == sha256(runtimeFile)) { "Windows ZIP producer provenance differs" }
-    require(runtime["version"] == version && runtime["target"] == "aarch64-pc-windows-msvc") { "Windows runtime identity differs" }
-    val manifest = packaged.filterKeys { it !in setOf("archive", "archive_evidence", "native_files_verified") }
-    val archiveProof = verifyStageZip(archive, manifest)
-    require(JsonSlurper().parseText(json(archiveProof)).obj() == packaged["archive_evidence"] && launch["archive_sha256"] == sha256(archive) && launch["package_report_sha256"] == sha256(packagedFile) && launch["runtime_report_sha256"] == sha256(runtimeFile) && launch["zip_extracted_launch"] == "PASS" && launch["version"] == version) { "Windows ZIP/native startup hashes differ" }
-    val native = runtime["native_files"].array().map(Any?::obj).associate { stageZipName(it.str("path").replace('\\', '/')) to it.str("sha256") }
-    require(native["app/resources/ehviewer_capi.dll"] == jvm["rust_capi_sha256"]) { "Packaged Windows Rust differs from the actual JVM caller" }
-    require(native.size == runtime["native_files"].array().size && setOf("EhViewer.exe", "runtime/bin/server/jvm.dll", "app/skiko-windows-arm64.dll", "app/resources/ehviewer_capi.dll", "app/resources/ehviewer_browser.exe").all { it in native }) { "Missing original Windows entry/runtime/Skiko/Rust/browser" }
-    val recordedFiles = manifest["files"].array().map(Any?::obj).associateBy { it.str("path") }
-    native.forEach { (name, expected) -> require(recordedFiles.getValue("EhViewer/$name")["sha256"] == expected) { "Windows native bytes differ from the measured runtime" } }
-    runtime["installed_notices"].obj().forEach { (name, expected) -> require(recordedFiles.getValue("EhViewer/app/resources/licenses/" + stageZipName(name.replace('\\', '/')))["sha256"] == expected) { "Windows notice differs from the measured runtime" } }
-    ZipFile(archive.toFile()).use { zip ->
-        val actualNative = zip.entries().asSequence().filter { !it.isDirectory && it.name.substringAfterLast('.').lowercase() in setOf("dll", "exe") }.map { it.name.removePrefix("EhViewer/") }.toSet()
-        require(actualNative == native.keys && native.size == packaged["native_files_verified"]) { "Incomplete actual Windows native set" }
-        native.forEach { (name, _) -> zip.getInputStream(zip.getEntry("EhViewer/$name")).use { verifyWindowsArm64Pe(it.readNBytes(1 shl 20)) } }
+    for (platform in WindowsPlatform.entries) {
+        val rolePrefix = if (platform == WindowsPlatform.ARM64) "windows" else "windows-x64"
+        val packagedFile = path("$rolePrefix-package", "windows-${platform.assetArchitecture}-package.json")
+        val packaged = receipt("$rolePrefix-package", "windows-${platform.assetArchitecture}-package.json", false)
+        val runtimeFile = path("$rolePrefix-runtime", "windows-${platform.assetArchitecture}-runtime.json")
+        val runtime = receipt("$rolePrefix-runtime", "windows-${platform.assetArchitecture}-runtime.json")
+        val launch = receipt("$rolePrefix-launch", "windows-${platform.assetArchitecture}-zip-launch.json", false)
+        val core = receipt("$rolePrefix-core", "windows-native-core.json")
+        val jvmFile = path("$rolePrefix-jvm", "windows-jvm-ffi.json")
+        val jvm = receipt("$rolePrefix-jvm", "windows-jvm-ffi.json")
+        require(packaged["verification_scope"] == platform.stageScope && launch["verification_scope"] == platform.launchScope && launch["target"] == platform.target && core["target"] == platform.target) { "Windows proof CPU/scope differs" }
+        val windowsData = jvm["data_tests"].obj()
+        verifyDataTests(windowsData)
+        val windowsDataSources = listOf("commonTest", "nonAndroidTest", "desktopTest").sumOf { filesBelow(root.resolve("core/data/src/$it"), ".kt").size }
+        require(sharedHostTestEvidence(filesBelow(path("$rolePrefix-jvm", "data-tests"), ".xml").map(Path::readBytes), windowsDataSources) == windowsData) { "Actual Windows native database XML differs from its producer receipt" }
+        require(jvm["target"] == platform.target && jvm["caller"].obj()["rust_hash_results"] == "2000" && jvm["caller"].obj()["rust_active_results"] == "0" && jvm["caller"].obj()["library_closed"] == "PASS") { "Incomplete original Windows JVM ownership evidence" }
+        require(jvm["caller"].obj()["path_transport"] == "utf8-base64" && listOf("double_free", "stale_handle", "undersized_copy").all { jvm["caller"].obj()[it] == "PASS" }) { "Original standalone Windows ownership errors differ" }
+        require(sha256(path("$rolePrefix-jvm", "native-libraries/ehviewer_capi.dll")) == jvm["rust_capi_sha256"]) { "Standalone Windows C API bytes changed" }
+        require((core["passed"] as Number).toInt() >= MINIMUM_NATIVE_SESSION_PASSES && core["filtered"] == 0 && sha256(path("$rolePrefix-runtime", "native-core-proof.json")) == sha256(path("$rolePrefix-core", "windows-native-core.json")) && sha256(path("$rolePrefix-runtime", "jvm-ffi-proof.json")) == sha256(jvmFile)) { "Original Windows Core/JVM proof chain changed" }
+        val archive = path("$rolePrefix-package", releaseTargets.single { it.id == platform.releaseTarget }.fileName(version))
+        require(packaged["version"] == version && packaged["android_version_code"] == code && packaged["target"] == platform.target && packaged["packager_source_dirty"] == false && packaged["runtime_proof_sha256"] == sha256(runtimeFile)) { "Windows ZIP producer provenance differs" }
+        require(runtime["version"] == version && runtime["target"] == platform.target) { "Windows runtime identity differs" }
+        val manifest = packaged.filterKeys { it !in setOf("archive", "archive_evidence", "native_files_verified") }
+        val archiveProof = verifyStageZip(archive, manifest)
+        require(JsonSlurper().parseText(json(archiveProof)).obj() == packaged["archive_evidence"] && launch["archive_sha256"] == archiveProof["sha256"] && launch["package_report_sha256"] == sha256(packagedFile) && launch["runtime_report_sha256"] == sha256(runtimeFile) && launch["zip_extracted_launch"] == "PASS" && launch["version"] == version) { "Windows ZIP/native startup hashes differ" }
+        require(jvm["jdk_archive_sha256"] == platform.jdkSha256 && runtime["jdk_archive_sha256"] == platform.jdkSha256 && runtime["skiko_sha256"] == platform.skikoSha256) { "Windows vendor runtime differs from its reviewed CPU-specific pin" }
+        val native = runtime["native_files"].array().map(Any?::obj).associate { stageZipName(it.str("path").replace('\\', '/')) to it.str("sha256") }
+        require(native["app/resources/ehviewer_capi.dll"] == jvm["rust_capi_sha256"]) { "Packaged Windows Rust differs from the actual JVM caller" }
+        require(native.size == runtime["native_files"].array().size && setOf("EhViewer.exe", "runtime/bin/server/jvm.dll", "app/skiko-windows-${platform.nativeArchitecture}.dll", "app/resources/ehviewer_capi.dll", "app/resources/ehviewer_browser.exe").all { it in native }) { "Missing original Windows entry/runtime/Skiko/Rust/browser" }
+        val recordedFiles = manifest["files"].array().map(Any?::obj).associateBy { it.str("path") }
+        native.forEach { (name, expected) -> require(recordedFiles.getValue("EhViewer/$name")["sha256"] == expected) { "Windows native bytes differ from the measured runtime" } }
+        runtime["installed_notices"].obj().forEach { (name, expected) -> require(recordedFiles.getValue("EhViewer/app/resources/licenses/" + stageZipName(name.replace('\\', '/')))["sha256"] == expected) { "Windows notice differs from the measured runtime" } }
+        ZipFile(archive.toFile()).use { zip ->
+            val actualNative = zip.entries().asSequence().filter { !it.isDirectory && it.name.substringAfterLast('.').lowercase() in setOf("dll", "exe") }.map { it.name.removePrefix("EhViewer/") }.toSet()
+            require(actualNative == native.keys && native.size == packaged["native_files_verified"]) { "Incomplete actual Windows native set" }
+            native.forEach { (name, _) -> zip.getInputStream(zip.getEntry("EhViewer/$name")).use { verifyWindowsPe(it.readNBytes(1 shl 20), platform) } }
+        }
+        require(launch["launches"].array().size == 2 && launch["extracted_file_count"] == manifest["files"].array().size && launch["native_files_verified"] == native.size) { "Incomplete extracted Windows package proof" }
+        fun windowsWindow(proof: Map<String, Any?>) {
+            require(proof["gallery_product_checks"] == "5") { "Missing actual Windows detail/page/static and animated image checks" }
+            require(proof["account_product_checks"] == "4") { "Missing actual Windows account/favorite decoder checks" }
+            require(proof["history_product_checks"] == "3") { "Missing actual Windows native Room history checks" }
+            require(proof["language_product_checks"] == "4") { "Missing actual packaged language resources" }
+            require(proof["archive_product_checks"] == "9") { "Missing actual Windows private archive/directory runtime checks" }
+            require(proof["application_version"] == version && proof["architecture"] in platform.jvmArchitectures && proof["java_version"] == "25.0.5.0.2" && proof["windows_code_page"] == "65001" && proof["native_encoding"] == "UTF-8" && proof["render_api"] == "SOFTWARE_COMPAT" && proof["rust_hash_results"] == "2000" && proof["rust_active_results"] == "0" && proof["rust_ownership_errors"] == "PASS" && proof["rust_library_closed"] == "PASS" && proof["window_showing"] == "true" && proof.str("compose_frames").toInt() > 0) { "Incomplete original Windows window/ownership check" }
+        }
+        require(runtime["launches"].array().size == 2) { "Both original Windows image launches remain mandatory" }
+        runtime["launches"].array().forEach { windowsWindow(it.obj()) }
+        launch["launches"].array().forEachIndexed { index, value ->
+            val proof = value.obj()
+            val properties = Properties().apply { path("$rolePrefix-launch", "launch-${index + 1}/launcher.properties").inputStream().use(::load) }
+            require(properties.stringPropertyNames().associateWith { properties.getProperty(it) } == proof) { "Actual Windows launch properties differ" }
+            val browser = readJson(path("$rolePrefix-launch", "launch-${index + 1}/native-browser.json"))
+            verifyDesktopBrowserReceipt(browser, platform.jvmArchitectures, "C_ABI", native.getValue("app/resources/ehviewer_capi.dll"), native.getValue("app/resources/ehviewer_browser.exe"))
+            windowsWindow(proof)
+            require(proof.str("java_home").replace('\\', '/').endsWith("/ZIP 安装目录/EhViewer/runtime") && proof.str("rust_library").replace('\\', '/').endsWith("/ZIP 安装目录/EhViewer/app/resources/ehviewer_capi.dll")) { "Expected the extracted bundled JVM/Rust paths" }
+        }
+        retain(platform.releaseTarget, archive, expectedSha256 = archiveProof.str("sha256"))
     }
-    require(launch["launches"].array().size == 2 && launch["extracted_file_count"] == manifest["files"].array().size && launch["native_files_verified"] == native.size) { "Incomplete extracted Windows package proof" }
-    fun windowsWindow(proof: Map<String, Any?>) {
-        require(proof["gallery_product_checks"] == "5") { "Missing actual Windows detail/page/static and animated image checks" }
-        require(proof["account_product_checks"] == "4") { "Missing actual Windows account/favorite decoder checks" }
-        require(proof["history_product_checks"] == "3") { "Missing actual Windows native Room history checks" }
-        require(proof["language_product_checks"] == "4") { "Missing actual packaged language resources" }
-        require(proof["archive_product_checks"] == "9") { "Missing actual Windows private archive/directory runtime checks" }
-        require(proof["application_version"] == version && proof["architecture"] == "aarch64" && proof["java_version"] == "25.0.5.0.2" && proof["windows_code_page"] == "65001" && proof["native_encoding"] == "UTF-8" && proof["render_api"] == "SOFTWARE_COMPAT" && proof["rust_hash_results"] == "2000" && proof["rust_active_results"] == "0" && proof["rust_ownership_errors"] == "PASS" && proof["rust_library_closed"] == "PASS" && proof["window_showing"] == "true" && proof.str("compose_frames").toInt() > 0) { "Incomplete original Windows window/ownership check" }
-    }
-    require(runtime["launches"].array().size == 2) { "Both original Windows image launches remain mandatory" }
-    runtime["launches"].array().forEach { windowsWindow(it.obj()) }
-    launch["launches"].array().forEachIndexed { index, value ->
-        val proof = value.obj()
-        val properties = Properties().apply { path("windows-launch", "launch-${index + 1}/launcher.properties").inputStream().use(::load) }
-        require(properties.stringPropertyNames().associateWith { properties.getProperty(it) } == proof) { "Actual Windows launch properties differ" }
-        val browser = readJson(path("windows-launch", "launch-${index + 1}/native-browser.json"))
-        verifyDesktopBrowserReceipt(browser, setOf("aarch64"), "C_ABI", native.getValue("app/resources/ehviewer_capi.dll"), native.getValue("app/resources/ehviewer_browser.exe"))
-        windowsWindow(proof)
-        require(proof.str("java_home").replace('\\', '/').endsWith("/ZIP 安装目录/EhViewer/runtime") && proof.str("rust_library").replace('\\', '/').endsWith("/ZIP 安装目录/EhViewer/app/resources/ehviewer_capi.dll")) { "Expected the extracted bundled JVM/Rust paths" }
-    }
-    retain("windows-arm64", archive)
     val ipaFile = path("ios", "unsigned-ipa/" + releaseTargets.single { it.id == "ios-arm64" }.fileName(version))
     val ipaProducer = receipt("ios", "unsigned-ipa/ipa.json")
     val ipa = verifyUnsignedIosIpa(ipaFile, source, version, code)
     require(JsonSlurper().parseText(json(ipa)).obj() == ipaProducer - "archive_sha256") { "Actual IPA differs from the clean same-source producer checks" }
     retain("ios-arm64", ipaFile, expectedSha256 = ipaProducer.str("archive_sha256"))
-    require(assets.size == 10 && candidate.toFile().listFiles()!!.map { it.name }.toSet() == assets.map { it.str("file") }.toSet()) { "Expected exactly ten current-stage candidate files" }
+    require(assets.size == 11 && candidate.toFile().listFiles()!!.map { it.name }.toSet() == assets.map { it.str("file") }.toSet()) { "Expected exactly eleven current-stage candidate files" }
     val result = mapOf(
-        "schema_version" to 9, "verification_scope" to "M5_M6_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
+        "schema_version" to 10, "verification_scope" to "M5_M6_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
         "version" to version, "android_version_code" to code, "run_id" to run["id"], "run_head_sha" to run["head_sha"], "android_artifact_run_id" to context["android_run"].obj()["id"],
         "upstream_jobs" to stagedUpstreamJobs.sorted(), "artifact_inputs" to plan.map { mapOf("role" to it.role, "artifact_id" to it.id, "run_id" to it.runId, "run_head_sha" to it.run["head_sha"], "digest" to it.metadata["digest"]) },
         "candidate_assets" to assets, "staged_package_bytes_verified" to true, "candidate_android_version_name" to "$version-SNAPSHOT", "android_production_certificate_required" to trustedMain, "android_apk_checks" to verifiedApks,

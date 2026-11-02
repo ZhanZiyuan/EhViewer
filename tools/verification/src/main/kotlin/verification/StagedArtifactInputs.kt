@@ -15,7 +15,7 @@ import kotlin.io.path.writeText
 
 val stagedUpstreamJobs = setOf(
     "android", "ci/ios", "ci/source-policy", "ci/shared-kmp", "ci/rust-host (linux-x86_64)", "ci/rust-host (macos-arm64)",
-    "ci/desktop (macos-x86_64-rosetta)", "ci/desktop (macos-x86_64-native)", "ci/desktop (linux-aarch64-runtime)", "ci/rust-native (windows-arm64-core)",
+    "ci/desktop (macos-x86_64-rosetta)", "ci/desktop (macos-x86_64-native)", "ci/desktop (linux-aarch64-runtime)", "ci/rust-native (windows-arm64-core)", "ci/rust-native (windows-x86_64-core)",
 )
 
 data class StagedArtifact(val role: String, val metadata: Map<String, Any?>, val catalog: Map<String, Any?>, val run: Map<String, Any?>) {
@@ -138,6 +138,7 @@ fun stagedArtifactPlan(context: Map<String, Any?>, source: String, repository: S
         "domain-native" to "domain-native",
         "common-native" to "common-native",
         "windows-core" to "windows-arm64-core", "windows-jvm" to "windows-arm64-jvm", "windows-runtime" to "windows-arm64-runtime", "windows-package" to "windows-arm64-package", "windows-launch" to "windows-arm64-zip-launch",
+        "windows-x64-core" to "windows-x86_64-core", "windows-x64-jvm" to "windows-x86_64-jvm", "windows-x64-runtime" to "windows-x86_64-runtime", "windows-x64-package" to "windows-x86_64-package", "windows-x64-launch" to "windows-x86_64-zip-launch",
     )
     val result = native.map { (role, prefix) -> StagedArtifact(role, available.single { it["name"] == "$prefix-$source" }, currentCatalog, current) }.toMutableList()
     val apks = listOf("arm64-v8a", "armeabi-v7a", "universal", "x86_64").map { abi -> StagedArtifact("apk-$abi", androidAvailable.single { it["name"] == "snapshot-$source-$abi" }, androidCatalog, android) }

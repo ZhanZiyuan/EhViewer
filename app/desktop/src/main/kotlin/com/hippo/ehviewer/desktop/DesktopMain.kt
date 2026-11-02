@@ -35,8 +35,8 @@ fun main(arguments: Array<String>) {
     }
     val mac = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64", "aarch64", "arm64")
     val linux = System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") in setOf("aarch64", "amd64", "x86_64")
-    val windowsArm = System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64"
-    check(mac || linux || windowsArm) { "Packaged regression supports macOS/Linux Intel/ARM64 and Windows ARM64" }
+    val windows = System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") in setOf("aarch64", "amd64", "x86_64")
+    check(mac || linux || windows) { "Packaged regression supports native macOS, Linux and Windows Intel/ARM64" }
     val report = when {
         arguments.isEmpty() -> null
         arguments.size == 2 && arguments[0] == "--m1-smoke" -> Path.of(arguments[1])
@@ -44,15 +44,15 @@ fun main(arguments: Array<String>) {
         else -> error("Expected --m1-smoke <fresh-report-directory>")
     }
     val nativeRoot = Path.of(checkNotNull(System.getProperty("compose.application.resources.dir")))
-    val owned = if (windowsArm) verifyOwnedCapi(nativeRoot.resolve("ehviewer_capi.dll")) else null
+    val owned = if (windows) verifyOwnedCapi(nativeRoot.resolve("ehviewer_capi.dll")) else null
     val completed = owned?.completed ?: verifyUnixJni(nativeRoot, mac)
-    val galleryChecks = verifyGalleryProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder) + verifyAnimatedGalleryProduct()
-    val accountChecks = verifyAccountProduct(if (windowsArm) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder)
+    val galleryChecks = verifyGalleryProduct(if (windows) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder) + verifyAnimatedGalleryProduct()
+    val accountChecks = verifyAccountProduct(if (windows) WindowsGalleryDecoder(nativeRoot.resolve("ehviewer_capi.dll")) else RustGalleryDecoder)
     val historyChecks = verifyDesktopHistory()
-    val browserLibrary = nativeRoot.resolve(if (windowsArm) "ehviewer_capi.dll" else "libehviewer_rust.${if (mac) "dylib" else "so"}")
+    val browserLibrary = nativeRoot.resolve(if (windows) "ehviewer_capi.dll" else "libehviewer_rust.${if (mac) "dylib" else "so"}")
     val archiveChecks = verifyDesktopArchives(browserLibrary)
     val languageChecks = verifyDesktopLanguage()
-    val browserProof = verifyBrowserBridge(browserLibrary, nativeRoot.resolve(if (windowsArm) "ehviewer_browser.exe" else "ehviewer_browser"), windowsArm)
+    val browserProof = verifyBrowserBridge(browserLibrary, nativeRoot.resolve(if (windows) "ehviewer_browser.exe" else "ehviewer_browser"), windows)
     val frames = AtomicInteger()
     application {
         val icon = remember { BitmapPainter(desktopApplicationIcon()) }

@@ -121,24 +121,25 @@ fun windowsStageZip(runtimeReport: Path, image: Path, output: Path): Map<String,
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
     val delivery = releaseContract(root.resolve("app/build.gradle.kts").readText(), source)
     val proof = readJson(runtimeReport)
-    require(proof["source_commit"] == source && proof["source_dirty"] == false && proof["target"] == "aarch64-pc-windows-msvc" && proof["result"] == "PASS" && proof["version"] == delivery["version"]) { "A clean same-source Windows runtime proof is required" }
+    val platform = WindowsPlatform.fromTarget(proof.str("target"))
+    require(proof["source_commit"] == source && proof["source_dirty"] == false && proof["result"] == "PASS" && proof["version"] == delivery["version"]) { "A clean same-source Windows runtime proof is required" }
     val launches = proof["launches"].array().map(Any?::obj)
     require(
         launches.size == 2 && launches.all {
-            it["application_version"] == delivery["version"] && it["java_version"] == "25.0.5.0.2" && it["windows_code_page"] == "65001" && it["native_encoding"] == "UTF-8" &&
+            it["architecture"] in platform.jvmArchitectures && it["application_version"] == delivery["version"] && it["java_version"] == "25.0.5.0.2" && it["windows_code_page"] == "65001" && it["native_encoding"] == "UTF-8" &&
                 it["render_api"] == "SOFTWARE_COMPAT" && it["window_showing"] == "true" && it["compose_frames"] == "1" && it["rust_hash_results"] == "2000" && it["rust_active_results"] == "0" &&
                 it["rust_ownership_errors"] == "PASS" && it["rust_library_closed"] == "PASS"
         },
     ) { "Both measured Windows runtime launches must pass" }
     require(sha256(runtimeReport.parent.resolve("jvm-ffi-proof.json")) == proof["jvm_ffi_report_sha256"]) { "Runtime FFI proof changed" }
     val native = proof["native_files"].array().map(Any?::obj).associate { entry -> stageZipName(entry.str("path").replace('\\', '/')) to entry.str("sha256") }
-    require(native.size == proof["native_files"].array().size && setOf("EhViewer.exe", "runtime/bin/server/jvm.dll", "app/skiko-windows-arm64.dll", "app/resources/ehviewer_capi.dll").all { it in native }) { "Required bundled entry, JVM, Skiko or Rust is missing" }
+    require(native.size == proof["native_files"].array().size && setOf("EhViewer.exe", "runtime/bin/server/jvm.dll", "app/skiko-windows-${platform.nativeArchitecture}.dll", "app/resources/ehviewer_capi.dll").all { it in native }) { "Required bundled entry, JVM, Skiko or Rust is missing" }
     val actual = Files.walk(image).use { walk -> walk.filter { Files.isRegularFile(it) && it.extension.lowercase(Locale.ROOT) in setOf("exe", "dll") }.map { image.relativize(it).joinToString("/") }.toList().toSet() }
     require(actual == native.keys) { "Measured native inventory differs from the entire image" }
     native.forEach { (name, expected) ->
         val file = image.resolve(name)
         require(sha256(file) == expected) { "Measured Windows native bytes changed" }
-        file.inputStream().use { verifyWindowsArm64Pe(it.readNBytes(1 shl 20)) }
+        file.inputStream().use { verifyWindowsPe(it.readNBytes(1 shl 20), platform) }
     }
     proof["installed_notices"].obj().forEach { (name, expected) ->
         require(sha256(image.resolve("app/resources/licenses/" + stageZipName(name.replace('\\', '/')))) == expected) { "Measured Windows notice changed" }
@@ -148,17 +149,17 @@ fun windowsStageZip(runtimeReport: Path, image: Path, output: Path): Map<String,
     val actualImage = image.toRealPath()
     require(!stageOutput.exists(NOFOLLOW_LINKS) && !stageOutput.startsWith(actualImage) && !actualImage.startsWith(stageOutput)) { "Use a fresh separate stage directory" }
     Files.createDirectory(stageOutput)
-    val name = "EhViewer-${delivery["version"]}-windows-arm64.zip"
+    val name = "EhViewer-${delivery["version"]}-windows-${platform.assetArchitecture}.zip"
     val manifest = writeStageZip(
         image,
         stageOutput.resolve(name),
         mapOf(
-            "schema_version" to 1, "verification_scope" to "M2_WINDOWS_ARM64_RUNTIME_STAGE", "source_commit" to source, "source_dirty" to false, "packager_source_dirty" to dirty,
-            "version" to delivery["version"], "android_version_code" to delivery["android_version_code"], "target" to "aarch64-pc-windows-msvc", "runtime_proof_sha256" to sha256(runtimeReport),
+            "schema_version" to 1, "verification_scope" to platform.stageScope, "source_commit" to source, "source_dirty" to false, "packager_source_dirty" to dirty,
+            "version" to delivery["version"], "android_version_code" to delivery["android_version_code"], "target" to platform.target, "runtime_proof_sha256" to sha256(runtimeReport),
             "zip_extracted_launch" to "NOT_VERIFIED", "product_p0_verified" to false, "all_eleven_assets_verified" to false, "publish_enabled" to false,
         ),
     )
     val result = manifest + mapOf("archive" to name, "archive_evidence" to verifyStageZip(stageOutput.resolve(name), manifest), "native_files_verified" to native.size)
-    stageOutput.resolve("windows-arm64-package.json").writeText(json(result))
+    stageOutput.resolve("windows-${platform.assetArchitecture}-package.json").writeText(json(result))
     return result
 }

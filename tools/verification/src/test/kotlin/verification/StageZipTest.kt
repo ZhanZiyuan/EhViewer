@@ -158,4 +158,25 @@ class StageZipTest {
         assertEquals(digest, sha256(sentinel))
         assertEquals(1, Files.list(output).use { it.count() }.toInt())
     }
+
+    @Test fun bothCpuPackageNamesBindToTheirTargetBeforeOfflineExtraction() = temporary { root ->
+        val image = fixture(root)
+        for (platform in WindowsPlatform.entries) {
+            val name = releaseTargets.single { it.id == platform.releaseTarget }.fileName("1.15.10")
+            val archive = root.resolve(name)
+            val manifest = writeStageZip(image, archive, metadata + mapOf("target" to platform.target, "version" to "1.15.10"))
+            val report = root.resolve("${platform.assetArchitecture}.json")
+            val receipt = manifest + mapOf("archive" to name, "archive_evidence" to verifyStageZip(archive, manifest))
+            report.writeText(json(receipt))
+            val result = stageZipExtractionEvidence(report, root.resolve("extracted-${platform.assetArchitecture}"))
+            assertEquals("NOT_EXECUTED", result["native_execution"])
+            assertEquals(false, result["product_p0_verified"])
+            assertEquals(sha256(archive), result["archive_sha256"])
+            val other = WindowsPlatform.entries.single { it != platform }
+            report.writeText(json(receipt + ("target" to other.target)))
+            val rejected = root.resolve("wrong-cpu-${platform.assetArchitecture}")
+            rejects { stageZipExtractionEvidence(report, rejected) }
+            assertTrue(!Files.exists(rejected))
+        }
+    }
 }

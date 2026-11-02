@@ -17,8 +17,8 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 /** Preserve the original two real Windows launches and every original assertion. */
-fun windowsPackagedLaunches(image: Path, output: Path, version: String): List<Map<String, String>> {
-    require(System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64") { "Use a native Windows ARM64 JVM and runner" }
+fun windowsPackagedLaunches(image: Path, output: Path, version: String, platform: WindowsPlatform = WindowsPlatform.ARM64): List<Map<String, String>> {
+    platform.requireNativeHost()
     val launcher = image.resolve("EhViewer.exe")
     val runtime = image.resolve("runtime")
     val rust = image.resolve("app/resources/ehviewer_capi.dll")
@@ -35,7 +35,7 @@ fun windowsPackagedLaunches(image: Path, output: Path, version: String): List<Ma
             throw failure
         }
         val proof = Properties().apply { report.resolve("launcher.properties").inputStream().use(::load) }
-        require(proof.getProperty("architecture") == "aarch64" && proof.getProperty("java_version") == "25.0.5.0.2") { "Running JVM identity mismatch" }
+        require(proof.getProperty("architecture") in platform.jvmArchitectures && proof.getProperty("java_version") == "25.0.5.0.2") { "Running JVM identity mismatch" }
         require(proof.getProperty("windows_code_page") == "65001" && java.nio.charset.Charset.forName(proof.getProperty("native_encoding")) == Charsets.UTF_8) { "Launcher did not activate its per-process UTF-8 manifest" }
         require(Path.of(proof.getProperty("java_home")).toRealPath() == runtime.toRealPath()) { "Launcher used an external JVM" }
         require(Path.of(proof.getProperty("rust_library")).toRealPath() == rust.toRealPath()) { "Caller loaded a different Rust DLL" }
@@ -45,7 +45,7 @@ fun windowsPackagedLaunches(image: Path, output: Path, version: String): List<Ma
         require(proof.getProperty("history_product_checks") == "3") { "Packaged native Room history regression did not execute" }
         require(proof.getProperty("language_product_checks") == "4") { "Packaged language resources did not execute" }
         require(proof.getProperty("archive_product_checks") == "9") { "Packaged private archive/directory import/pixel/reopen regression did not execute" }
-        desktopBrowserReceipt(report, rust, image.resolve("app/resources/ehviewer_browser.exe"), setOf("aarch64"), "C_ABI")
+        desktopBrowserReceipt(report, rust, image.resolve("app/resources/ehviewer_browser.exe"), platform.jvmArchitectures, "C_ABI")
         for (name in listOf("rust_ownership_errors", "rust_library_closed")) require(proof.getProperty(name) == "PASS") { "Missing ownership check: $name" }
         require(proof.getProperty("window_showing") == "true" && proof.getProperty("compose_frames").toInt() > 0 && proof.getProperty("render_api") == renderApi) { "Window did not render with the requested backend" }
         proof.stringPropertyNames().sorted().associateWith { proof.getProperty(it) }
@@ -77,9 +77,10 @@ fun extractStageZip(archive: Path, manifest: Map<String, Any?>, destination: Pat
 /** Offline component inspection uses the same extractor but cannot attest native execution. */
 fun stageZipExtractionEvidence(packageReport: Path, output: Path): Map<String, Any?> {
     val packaged = readJson(packageReport)
+    val platform = WindowsPlatform.fromTarget(packaged.str("target"))
     val version = packaged.str("version")
-    val name = releaseTargets.single { it.id == "windows-arm64" }.fileName(version)
-    require(versionFromTag(version) == version && packaged["archive"] == name && packaged["target"] == "aarch64-pc-windows-msvc") { "Unexpected staged Windows archive identity" }
+    val name = releaseTargets.single { it.id == platform.releaseTarget }.fileName(version)
+    require(versionFromTag(version) == version && packaged["archive"] == name && packaged["target"] == platform.target) { "Unexpected staged Windows archive identity" }
     val archive = packageReport.parent.resolve(name)
     val digest = sha256(archive)
     require(packaged["archive_evidence"].obj()["result"] == "PASS" && packaged["archive_evidence"].obj()["sha256"] == digest) { "Stage archive differs from its producer receipt" }
@@ -94,18 +95,18 @@ fun stageZipExtractionEvidence(packageReport: Path, output: Path): Map<String, A
 }
 
 fun windowsZipLaunch(packageReport: Path, runtimeReport: Path, output: Path): Map<String, Any?> {
-    require(System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64") { "Use a native Windows ARM64 JVM and runner" }
-    require(System.getenv("GITHUB_ACTIONS") != "true" || System.getenv("RUNNER_ARCH") == "ARM64") { "Expected the Windows ARM64 runner" }
+    val packaged = readJson(packageReport)
+    val platform = WindowsPlatform.fromTarget(packaged.str("target"))
+    platform.requireNativeHost()
     val source = command("git", "rev-parse", "HEAD").trim()
     val dirty = command("git", "status", "--porcelain", "--untracked-files=all").isNotBlank()
     require(System.getenv("GITHUB_ACTIONS") != "true" || !dirty) { "CI requires a clean source tree" }
     val delivery = releaseContract(root.resolve("app/build.gradle.kts").readText(), source)
-    val packaged = readJson(packageReport)
     val measured = readJson(runtimeReport)
-    require(packaged["source_commit"] == source && packaged["source_dirty"] == false && packaged["packager_source_dirty"] == false && packaged["version"] == delivery["version"] && packaged["android_version_code"] == delivery["android_version_code"] && packaged["target"] == "aarch64-pc-windows-msvc") { "A clean same-source Windows package is required" }
-    require(packaged["verification_scope"] == "M2_WINDOWS_ARM64_RUNTIME_STAGE" && packaged["runtime_proof_sha256"] == sha256(runtimeReport)) { "Package runtime provenance changed" }
-    require(measured["source_commit"] == source && measured["source_dirty"] == false && measured["result"] == "PASS" && measured["version"] == delivery["version"] && measured["target"] == "aarch64-pc-windows-msvc") { "A same-source measured runtime is required" }
-    val name = releaseTargets.single { it.id == "windows-arm64" }.fileName(delivery.str("version"))
+    require(packaged["source_commit"] == source && packaged["source_dirty"] == false && packaged["packager_source_dirty"] == false && packaged["version"] == delivery["version"] && packaged["android_version_code"] == delivery["android_version_code"] && packaged["target"] == platform.target) { "A clean same-source Windows package is required" }
+    require(packaged["verification_scope"] == platform.stageScope && packaged["runtime_proof_sha256"] == sha256(runtimeReport)) { "Package runtime provenance changed" }
+    require(measured["source_commit"] == source && measured["source_dirty"] == false && measured["result"] == "PASS" && measured["version"] == delivery["version"] && measured["target"] == platform.target) { "A same-source measured runtime is required" }
+    val name = releaseTargets.single { it.id == platform.releaseTarget }.fileName(delivery.str("version"))
     require(packaged["archive"] == name && packaged["archive_evidence"].obj()["result"] == "PASS") { "Unexpected Windows ZIP identity" }
     val archive = packageReport.parent.resolve(name)
     val archiveSha = sha256(archive)
@@ -123,17 +124,17 @@ fun windowsZipLaunch(packageReport: Path, runtimeReport: Path, output: Path): Ma
     native.forEach { (path, expected) ->
         val file = image.resolve(path)
         require(sha256(file) == expected) { "Extracted native bytes changed" }
-        file.inputStream().use { verifyWindowsArm64Pe(it.readNBytes(1 shl 20)) }
+        file.inputStream().use { verifyWindowsPe(it.readNBytes(1 shl 20), platform) }
     }
     measured["installed_notices"].obj().forEach { (path, expected) -> require(sha256(image.resolve("app/resources/licenses/" + stageZipName(path.replace('\\', '/')))) == expected) { "Extracted notice bytes changed" } }
-    val launches = windowsPackagedLaunches(image, evidence, delivery.str("version"))
+    val launches = windowsPackagedLaunches(image, evidence, delivery.str("version"), platform)
     require(sha256(archive) == archiveSha) { "Launching changed the source ZIP" }
     val result = mapOf(
-        "schema_version" to 1, "verification_scope" to "M2_WINDOWS_ARM64_ZIP_LAUNCH", "source_commit" to source, "source_dirty" to dirty, "version" to delivery["version"],
-        "target" to "aarch64-pc-windows-msvc", "archive" to name, "archive_sha256" to archiveSha, "package_report_sha256" to sha256(packageReport), "runtime_report_sha256" to sha256(runtimeReport),
+        "schema_version" to 1, "verification_scope" to platform.launchScope, "source_commit" to source, "source_dirty" to dirty, "version" to delivery["version"],
+        "target" to platform.target, "archive" to name, "archive_sha256" to archiveSha, "package_report_sha256" to sha256(packageReport), "runtime_report_sha256" to sha256(runtimeReport),
         "extracted_file_count" to manifest["files"].array().size, "native_files_verified" to native.size, "zip_extracted_launch" to "PASS", "launches" to launches,
         "minimum_os" to "NOT_VERIFIED", "hardware_acceleration" to "NOT_VERIFIED", "product_p0_verified" to false, "all_eleven_assets_verified" to false, "publish_enabled" to false,
     )
-    evidence.resolve("windows-arm64-zip-launch.json").writeText(json(result))
+    evidence.resolve("windows-${platform.assetArchitecture}-zip-launch.json").writeText(json(result))
     return result
 }
