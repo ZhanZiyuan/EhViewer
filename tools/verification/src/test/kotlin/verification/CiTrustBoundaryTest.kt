@@ -71,7 +71,18 @@ class CiTrustBoundaryTest {
             assertTrue(step, condition.contains("github.ref == 'refs/heads/main'"))
             assertTrue(step, condition.contains("github.event_name == 'push' || github.event_name == 'workflow_dispatch'"))
         }
-        assertTrue(workflow("releases").contains("(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||"))
+        val release = workflow("releases")
+        val publish = release.substringAfter("\n  publish:\n").substringBefore("    runs-on:")
+        assertTrue(publish.contains("needs.prepare.outputs.publish == 'true' && github.ref == 'refs/heads/main'"))
+        for (name in listOf("Restore original signing key and diagnostics public key", "Build signed release and diagnostics")) {
+            val step = release.substringAfter("      - name: $name\n").substringBefore("\n      - ")
+            assertTrue(step.contains("if: needs.prepare.outputs.publish == 'true' && github.ref == 'refs/heads/main'"))
+        }
+        for (name in listOf("Initialize intentionally public test signing and fresh diagnostic encryption", "Build public-test-signed release without production secrets")) {
+            val step = release.substringAfter("      - name: $name\n").substringBefore("\n      - ")
+            assertTrue(step.contains("if: needs.prepare.outputs.publish == 'false'"))
+            assertFalse(step.contains("secrets."))
+        }
         assertTrue(ci.contains("cancel-in-progress: ${'$'}{{ github.ref != 'refs/heads/feature/kmp' && github.head_ref != 'feature/kmp' }}"))
         val gate = ci.substringAfter("  gate:\n")
         assertTrue(gate.contains("name: ci/gate"))

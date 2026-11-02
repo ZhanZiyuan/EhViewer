@@ -23,6 +23,10 @@ class ReleasePreparationTest(private val scenario: String, private val expectedE
         fun cases(): List<Array<String?>> = listOf(
             arrayOf("stable", null),
             arrayOf("branch-dry-run", null),
+            arrayOf("branch-dry-run-existing-tag", null),
+            arrayOf("branch-dry-run-failed-ci", "Successful PR CI is required"),
+            arrayOf("branch-dry-run-push-only", "Successful PR CI is required"),
+            arrayOf("branch-dry-run-other-branch", "Dry-run branch is not authorized"),
             arrayOf("already-published", null),
             arrayOf("wrong-version", "Requested version differs"),
             arrayOf("manual-other-branch", "Manual publication must run from main"),
@@ -41,13 +45,13 @@ class ReleasePreparationTest(private val scenario: String, private val expectedE
         val workflow = generateSequence(Path.of("").toAbsolutePath()) { it.parent }
             .map { it.resolve(".github/workflows/releases.yml") }.first(Files::isRegularFile).readText()
         val script = workflow.substringAfter("      - name: Validate source, CI and version\n")
-            .substringAfter("        run: |\n").substringBefore("\n\n  build:").trimIndent()
+            .substringAfter("        run: |\n").substringBefore("\n      - ").trimIndent()
         check(script.startsWith("set -euo pipefail"))
         fun git(vararg args: String) = command("git", "-C", temp, *args)
         git("init", "-b", "main")
         fun commit() = git("-c", "user.name=Offline Test", "-c", "user.email=offline@example.invalid", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-m", "Offline fixture")
         commit()
-        if (scenario == "conflicting-tag") git("tag", "v2.34.56")
+        if (scenario in setOf("conflicting-tag", "branch-dry-run-existing-tag")) git("tag", "v2.34.56")
         Files.createDirectories(temp.resolve("app")).resolve("build.gradle.kts").writeText("val releaseVersion = \"2.34.56\"\n")
         git("add", "app/build.gradle.kts")
         commit()
@@ -64,7 +68,7 @@ class ReleasePreparationTest(private val scenario: String, private val expectedE
         val output = temp.resolve("step-output")
         output.writeText("")
         val capture = temp.resolve("capture")
-        val publish = scenario != "branch-dry-run"
+        val publish = !scenario.startsWith("branch-dry-run")
         val builder = ProcessBuilder("bash", "-c", script).directory(temp.toFile()).redirectErrorStream(true).redirectOutput(capture.toFile())
         builder.environment().apply {
             this["PATH"] = bin.toString() + File.pathSeparator + getValue("PATH")
@@ -72,7 +76,11 @@ class ReleasePreparationTest(private val scenario: String, private val expectedE
             this["PUBLISH"] = publish.toString()
             this["REQUESTED_TAG"] = if (scenario == "wrong-version") "v9.0.0" else ""
             this["GITHUB_EVENT_NAME"] = "workflow_dispatch"
-            this["GITHUB_REF"] = if (scenario in setOf("manual-other-branch", "branch-dry-run")) "refs/heads/feature/test" else "refs/heads/main"
+            this["GITHUB_REF"] = when {
+                scenario in setOf("manual-other-branch", "branch-dry-run-other-branch") -> "refs/heads/feature/test"
+                scenario.startsWith("branch-dry-run") -> "refs/heads/feature/kmp"
+                else -> "refs/heads/main"
+            }
             this["GITHUB_REPOSITORY"] = "example/offline"
             this["GITHUB_OUTPUT"] = output.toString()
             this["RUNNER_TEMP"] = temp.toString()
@@ -107,10 +115,16 @@ object MockReleasePreparation {
             endpoint.startsWith("repos/example/offline/actions/workflows/ci.yml/runs?head_sha=") -> {
                 check("--jq" in args)
                 val run = mapOf(
-                    "head_branch" to if (scenario == "other-branch-ci") "feature/test" else "main",
-                    "conclusion" to if (scenario == "failed-ci") "failure" else "success",
+                    "head_branch" to if (scenario.startsWith("branch-dry-run")) {
+                        "feature/kmp"
+                    } else if (scenario == "other-branch-ci") {
+                        "feature/test"
+                    } else {
+                        "main"
+                    },
+                    "conclusion" to if (scenario in setOf("failed-ci", "branch-dry-run-failed-ci")) "failure" else "success",
                     "event" to when (scenario) {
-                        "pr-only-ci" -> "pull_request"
+                        "pr-only-ci", "branch-dry-run", "branch-dry-run-existing-tag", "branch-dry-run-failed-ci" -> "pull_request"
                         "manual-ci" -> "workflow_dispatch"
                         "scheduled-ci" -> "schedule"
                         else -> "push"

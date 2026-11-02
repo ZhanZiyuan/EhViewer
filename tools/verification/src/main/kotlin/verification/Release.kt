@@ -65,12 +65,14 @@ fun retainFile(source: Path, destination: Path) {
     require(destination.getPosixFilePermissions() == permissions600 && Files.getOwner(destination) == Files.getOwner(root)) { "Retained file must be owner-only (0600)" }
 }
 
-fun prepareRelease(apkDirectory: Path, tools: AndroidTools, output: Path, privateRoot: Path, tag: String, retention: Int = 180, expectedAbis: Set<String> = abis.keys + "universal"): Map<String, Any?> {
+fun prepareRelease(apkDirectory: Path, tools: AndroidTools, output: Path, privateRoot: Path, tag: String, retention: Int = 180, expectedAbis: Set<String> = abis.keys + "universal", publicTestDryRun: Boolean = false, localComponentTest: Boolean = false): Map<String, Any?> {
+    if (publicTestDryRun) requirePublicReleaseDryRun(System.getenv(), localComponentTest)
     require(retention in 1..3650) { "Retention must be between 1 and 3650 days" }
     val version = versionFromTag(tag)
     val metadata = readJson(apkDirectory.resolve("output-metadata.json"))
     val plan = attachmentPlan(metadata, tag, expectedAbis)
-    verifyApks(apkDirectory, tools, expectedAbis = expectedAbis)
+    val checkedApks = verifyApks(apkDirectory, tools, release = !publicTestDryRun, expectedAbis = expectedAbis)
+    if (publicTestDryRun) requirePublicReleaseCertificate(checkedApks)
     val source = command("git", "rev-parse", "HEAD").trim()
     // Git warnings belong in logs, not in the machine-readable source status.
     val sourceStatus = command("git", "status", "--porcelain", "--untracked-files=all", mergeError = false).lineSequence().filter(String::isNotBlank).toList()
@@ -107,7 +109,8 @@ fun prepareRelease(apkDirectory: Path, tools: AndroidTools, output: Path, privat
         if (staging.exists()) Files.walk(staging).use { it.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
     }
     val manifest = mapOf(
-        "mode" to "verified-payload", "tag" to tag, "version" to version,
+        "mode" to if (publicTestDryRun) "verified-public-test-dry-run" else "verified-payload", "tag" to tag, "version" to version,
+        "public_test_dry_run" to publicTestDryRun, "android_certificate_sha256" to if (publicTestDryRun) PUBLIC_RELEASE_TEST_CERTIFICATE else CERTIFICATE,
         "versionCode" to plan.first().first.code, "source_commit" to source,
         "source_dirty" to sourceStatus.isNotEmpty(), "source_status" to sourceStatus,
         "created_at" to now.toString(), "publication" to "separate gated Release job", "attachments" to attachments,
@@ -139,12 +142,14 @@ fun prepareRelease(apkDirectory: Path, tools: AndroidTools, output: Path, privat
     return manifest
 }
 
-fun releasePartsPlan(manifests: Map<String, Map<String, Any?>>, tag: String, source: String): List<Map<String, Any?>> {
+fun releasePartsPlan(manifests: Map<String, Map<String, Any?>>, tag: String, source: String, publicTestDryRun: Boolean = false): List<Map<String, Any?>> {
     require(manifests.keys == abis.keys + "universal") { "Expected four matrix artifacts" }
     val codes = manifests.values.map { it["versionCode"] }.toSet()
     require(codes.size == 1 && codes.single() is Int && (codes.single() as Int) > 0) { "Matrix version codes differ" }
     return manifests.map { (abi, manifest) ->
-        require(manifest["mode"] == "verified-payload" && manifest["tag"] == tag && manifest["version"] == versionFromTag(tag)) { "Matrix release version differs" }
+        val mode = if (publicTestDryRun) "verified-public-test-dry-run" else "verified-payload"
+        require(if (publicTestDryRun) manifest["public_test_dry_run"] == true && manifest["android_certificate_sha256"] == PUBLIC_RELEASE_TEST_CERTIFICATE else manifest["public_test_dry_run"] != true) { "Matrix signing modes differ" }
+        require(manifest["mode"] == mode && manifest["tag"] == tag && manifest["version"] == versionFromTag(tag)) { "Matrix release version differs" }
         require(manifest["source_commit"] == source && manifest["source_dirty"] == false && manifest["source_status"].array().isEmpty()) { "Matrix source differs or is dirty" }
         require(manifest["diagnostics"].obj()["retention_days"] == 90) { "Matrix diagnostics must be retained for 90 days" }
         val attachment = manifest["attachments"].array().single().obj()
@@ -154,13 +159,14 @@ fun releasePartsPlan(manifests: Map<String, Map<String, Any?>>, tag: String, sou
     }.sortedBy { it.str("name") }
 }
 
-fun combineRelease(parts: Path, tools: AndroidTools, output: Path, tag: String): Map<String, Any?> = temporary { temp ->
+fun combineRelease(parts: Path, tools: AndroidTools, output: Path, tag: String, publicTestDryRun: Boolean = false, localComponentTest: Boolean = false): Map<String, Any?> = temporary { temp ->
+    if (publicTestDryRun) requirePublicReleaseDryRun(System.getenv(), localComponentTest)
     val architectures = abis.keys + "universal"
     require(parts.listDirectoryEntries().map { it.name }.toSet() == architectures.map { "release-part-$it" }.toSet()) { "Unexpected matrix artifact" }
     val manifests = architectures.associateWith { readJson(parts.resolve("release-part-$it/release-manifest.json")) }
     val source = command("git", "rev-parse", "HEAD").trim()
     require(command("git", "status", "--porcelain", "--untracked-files=all", mergeError = false).isBlank()) { "Aggregation source is not clean" }
-    val attachments = releasePartsPlan(manifests, tag, source)
+    val attachments = releasePartsPlan(manifests, tag, source, publicTestDryRun)
     val staging = temp.resolve("apks").createDirectory()
     val metadata = architectures.associateWith { readJson(parts.resolve("release-part-$it/output-metadata.json")) }
     val elements = architectures.map { abi ->
@@ -175,7 +181,8 @@ fun combineRelease(parts: Path, tools: AndroidTools, output: Path, tag: String):
         metadata.getValue(abi)["elements"].array().single()
     }
     staging.resolve("output-metadata.json").writeText(json(metadata.values.first() + ("elements" to elements)))
-    verifyApks(staging, tools)
+    val checkedApks = verifyApks(staging, tools, release = !publicTestDryRun)
+    if (publicTestDryRun) requirePublicReleaseCertificate(checkedApks)
     require(!output.exists(NOFOLLOW_LINKS)) { "Refusing to overwrite release payload" }
     val encrypted = temp.resolve("diagnostics").createDirectory()
     val diagnostics = architectures.associateWith { abi ->
@@ -184,7 +191,21 @@ fun combineRelease(parts: Path, tools: AndroidTools, output: Path, tag: String):
         require(input.inputStream().use { it.readNBytes(8).contentEquals("EHVDIAG1".toByteArray()) }) { "Invalid encrypted diagnostics envelope" }
         val file = encrypted.resolve("$abi.enc")
         Files.copy(input, file)
-        mapOf("sha256" to sha256(file), "manifest" to manifests.getValue(abi)["diagnostics"])
+        val digest = sha256(file)
+        val roundTrip = if (publicTestDryRun) {
+            val part = parts.resolve("release-part-$abi")
+            val proof = readJson(part.resolve("diagnostics-round-trip.json"))
+            require(proof["result"] == "PASS" && proof["plaintext_uploaded"] == false && proof["encrypted_sha256"] == digest) { "Missing or mismatched diagnostic round-trip" }
+            val originals = manifests.getValue(abi)["diagnostics"].obj()["files"].obj()
+            val hashes = proof["decrypted_original_sha256"].obj()
+            require(hashes.keys == setOf("mapping.txt", "native-debug-symbols.zip", "manifest.json")) { "Unexpected diagnostic round-trip inventory" }
+            originals.forEach { (name, entry) -> require(hashes[name] == entry.obj()["sha256"]) { "Round-trip original differs: $name" } }
+            require(hashes["manifest.json"] == sha256(part.resolve("release-manifest.json"))) { "Round-trip source manifest differs" }
+            proof
+        } else {
+            null
+        }
+        mapOf("sha256" to digest, "manifest" to manifests.getValue(abi)["diagnostics"], "round_trip" to roundTrip)
     }
     // Validate all inputs before exposing any public payload.
     require(!output.parent.resolve("diagnostics").exists(NOFOLLOW_LINKS)) { "Refusing to overwrite encrypted diagnostics" }
@@ -193,7 +214,8 @@ fun combineRelease(parts: Path, tools: AndroidTools, output: Path, tag: String):
     val destination = output.parent.resolve("diagnostics").createDirectory()
     encrypted.listDirectoryEntries().forEach { Files.copy(it, destination.resolve(it.name)) }
     val manifest = mapOf(
-        "mode" to "verified-payload", "tag" to tag, "version" to versionFromTag(tag),
+        "mode" to if (publicTestDryRun) "verified-public-test-dry-run" else "verified-payload", "tag" to tag, "version" to versionFromTag(tag),
+        "public_test_dry_run" to publicTestDryRun, "android_certificate_sha256" to if (publicTestDryRun) PUBLIC_RELEASE_TEST_CERTIFICATE else CERTIFICATE,
         "versionCode" to manifests.values.first()["versionCode"], "source_commit" to source,
         "source_dirty" to false, "source_status" to emptyList<String>(), "attachments" to attachments,
         "diagnostics" to mapOf("retention_days" to 90, "encrypted_parts" to diagnostics),

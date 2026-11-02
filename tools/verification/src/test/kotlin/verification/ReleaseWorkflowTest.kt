@@ -53,8 +53,14 @@ class ReleaseWorkflowTest(private val scenario: String, private val expectedErro
             arrayOf("tampered-apk", "FAILED"),
             arrayOf("dirty-manifest", "Refusing to publish a dirty source tree"),
             arrayOf("wrong-source", "Manifest source commit differs"),
-            arrayOf("missing-apk", "Expected exactly four APKs"),
-            arrayOf("extra-apk", "Expected exactly four APKs"),
+            arrayOf("public-test-manifest", "Production Android certificate is required"),
+            arrayOf("public-test-certificate", "Production Android certificate is required"),
+            arrayOf("public-test-mode", "Production Android certificate is required"),
+            arrayOf("unverified-eleven-manifest", "All eleven package bytes must be verified"),
+            arrayOf("missing-apk", "Expected exactly eleven installation assets"),
+            arrayOf("extra-apk", "Expected exactly eleven installation assets"),
+            arrayOf("nested-asset", "Expected exactly eleven installation assets"),
+            arrayOf("linked-asset", "Unsafe checksum entry"),
         )
     }
 
@@ -64,14 +70,14 @@ class ReleaseWorkflowTest(private val scenario: String, private val expectedErro
             .map { it.resolve(".github/workflows/releases.yml") }
             .first(Files::isRegularFile)
         val script = workflow.readText()
-            .substringAfter("      - name: Verify payload and publish exactly four APK attachments\n")
+            .substringAfter("      - name: Verify payload and publish exactly eleven installation attachments\n")
             .substringAfter("        run: |\n")
             .trimIndent()
         check(script.startsWith("set -euo pipefail"))
-        val apks = Files.createDirectories(temp.resolve("apks"))
-        val attachments = (abis.keys + "universal").map { abi ->
-            val name = "EhViewer-${tag.removePrefix("v")}-$abi.apk"
-            val path = apks.resolve(name).apply { writeText("synthetic APK for $abi") }
+        val apks = Files.createDirectories(temp.resolve("assets"))
+        val attachments = releaseTargets.map { target ->
+            val name = target.fileName(tag.removePrefix("v"))
+            val path = apks.resolve(name).apply { writeText("synthetic protocol-only payload for ${target.id}; not native package acceptance") }
             mapOf("name" to name, "sha256" to sha256(path))
         }
         Files.createDirectories(temp.resolve("manifest")).resolve("release-manifest.json").writeText(
@@ -79,6 +85,11 @@ class ReleaseWorkflowTest(private val scenario: String, private val expectedErro
                 mapOf(
                     "source_commit" to if (scenario == "wrong-source") OTHER_SOURCE else RELEASE_SOURCE,
                     "tag" to tag,
+                    "schema_version" to 2,
+                    "all_eleven_package_bytes_verified" to (scenario != "unverified-eleven-manifest"),
+                    "mode" to if (scenario == "public-test-mode") "verified-public-test-dry-run" else "verified-payload",
+                    "public_test_dry_run" to (scenario == "public-test-manifest"),
+                    "android_certificate_sha256" to if (scenario == "public-test-certificate") PUBLIC_RELEASE_TEST_CERTIFICATE else CERTIFICATE,
                     "source_dirty" to (scenario == "dirty-manifest"),
                     "attachments" to attachments,
                 ),
@@ -88,6 +99,15 @@ class ReleaseWorkflowTest(private val scenario: String, private val expectedErro
             "tampered-apk" -> apks.resolve(attachments.first().getValue("name")).writeText("tampered")
             "missing-apk" -> Files.delete(apks.resolve(attachments.first().getValue("name")))
             "extra-apk" -> apks.resolve("unexpected.apk").writeText("extra")
+            "nested-asset" -> {
+                val name = attachments.first().getValue("name")
+                Files.move(apks.resolve(name), Files.createDirectory(apks.resolve("nested")).resolve(name))
+            }
+            "linked-asset" -> {
+                val name = attachments.first().getValue("name")
+                val retained = Files.move(apks.resolve(name), temp.resolve(name))
+                Files.createSymbolicLink(apks.resolve(name), retained)
+            }
         }
         val stateFile = temp.resolve("github.json")
         stateFile.writeText(json(mapOf("scenario" to scenario, "calls" to emptyList<Any>())))
@@ -146,6 +166,7 @@ class ReleaseWorkflowTest(private val scenario: String, private val expectedErro
                 assertTrue(output, process.exitValue() != 0)
                 assertTrue(output, output.contains(expectedError))
                 assertFalse(calls.toString(), calls.any { it.take(2) == listOf("release", "edit") })
+                if (scenario.startsWith("public-test-") || scenario == "unverified-eleven-manifest") assertTrue("Public fixtures must fail before any GitHub mutation: $calls", calls.isEmpty())
             }
             assertFalse(calls.toString(), calls.any { "PATCH" in it || "DELETE" in it || it.any { arg -> "/commits/" in arg } })
             if (scenario == "cyclic-tag") {
@@ -243,7 +264,7 @@ internal object MockReleaseGitHub {
                     }
                     "upload" -> {
                         if (scenario == "upload-error") fail(503)
-                        val assets = args.drop(3).filter { it.endsWith(".apk") }.map { Path.of(it).fileName.toString() }
+                        val assets = args.drop(3).filter { it.startsWith("assets/") }.map { Path.of(it).fileName.toString() }
                         state["assets"] = assets + if (scenario == "extra-release-asset") listOf("debug.txt") else emptyList()
                         if (scenario == "tag-moved-during-upload") state["tag"] = OTHER_SOURCE
                         ""

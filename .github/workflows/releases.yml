@@ -18,6 +18,10 @@ on:
 
 permissions:
   contents: read
+  actions: read
+
+env:
+  CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
 
 # Serialize automatic runs and manual retries; publication never cancels midway.
 concurrency:
@@ -27,7 +31,8 @@ concurrency:
 jobs:
   prepare:
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' &&
+       (github.ref == 'refs/heads/main' || (github.ref == 'refs/heads/feature/kmp' && inputs.publish == false))) ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_branch == 'main' &&
@@ -36,11 +41,13 @@ jobs:
     permissions:
       contents: read
       actions: read
+    timeout-minutes: 30
     outputs:
       tag: ${{ steps.plan.outputs.tag }}
       sha: ${{ steps.plan.outputs.sha }}
       publish: ${{ steps.plan.outputs.publish }}
       build: ${{ steps.plan.outputs.build }}
+      public_test_dry_run: ${{ steps.plan.outputs.publish == 'false' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -74,6 +81,15 @@ jobs:
             gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$source_sha" \
               --jq '.workflow_runs | any(.head_branch == "main" and .conclusion == "success" and (.event == "push" or .event == "schedule" or .event == "workflow_dispatch"))' | grep -qx true || { echo "::error::Successful main CI is required for this commit."; exit 1; }
           fi
+          if [[ "$PUBLISH" == false && "$GITHUB_REF" != refs/heads/main ]]; then
+            [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && "$GITHUB_REF" == refs/heads/feature/kmp ]] || {
+              echo "::error::Dry-run branch is not authorized."; exit 1;
+            }
+            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$source_sha" \
+              --jq '.workflow_runs | any(.head_branch == "feature/kmp" and .conclusion == "success" and .event == "pull_request")' | grep -qx true || {
+                echo "::error::Successful PR CI is required for this exact dry-run commit."; exit 1;
+              }
+          fi
           build=true
           if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" > "$RUNNER_TEMP/existing-release.json" 2> "$RUNNER_TEMP/release-query-error"; then
             if [[ "$PUBLISH" == true && $(jq -r '.draft' "$RUNNER_TEMP/existing-release.json") == false ]]; then
@@ -83,25 +99,62 @@ jobs:
           elif ! grep -q '(HTTP 404)' "$RUNNER_TEMP/release-query-error"; then
             cat "$RUNNER_TEMP/release-query-error"; exit 1
           fi
-          if [[ "$build" == true ]] && git show-ref --verify --quiet "refs/tags/$tag"; then
+          if [[ "$PUBLISH" == true && "$build" == true ]] && git show-ref --verify --quiet "refs/tags/$tag"; then
             [[ $(git rev-parse "$tag^{commit}") == "$source_sha" ]] || {
               echo "::error::Existing tag points to a different commit."; exit 1;
             }
           fi
           printf 'tag=%s\nsha=%s\npublish=%s\nbuild=%s\n' "$tag" "$source_sha" "$PUBLISH" "$build" >> "$GITHUB_OUTPUT"
 
+      - uses: actions/setup-java@v5
+        if: steps.plan.outputs.build == 'true'
+        with:
+          distribution: temurin
+          java-version: '25.0.5+8.0.LTS'
+      - uses: gradle/actions/setup-gradle@v6
+        if: steps.plan.outputs.build == 'true'
+        with:
+          validate-wrappers: true
+          cache-read-only: true
+      - name: Build and test the portable release verifier once
+        if: steps.plan.outputs.build == 'true'
+        run: ./gradlew -p tools/verification check installDist --console=plain --no-daemon
+      - uses: actions/upload-artifact@v7
+        if: steps.plan.outputs.build == 'true'
+        with:
+          name: release-verification-tools
+          path: tools/verification/build/install/verification/
+          if-no-files-found: error
+          retention-days: 14
+
   build:
     needs: prepare
     if: needs.prepare.outputs.build == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
-        abi: [arm64-v8a, armeabi-v7a, x86_64, universal]
+        include:
+          - {target: android-arm64, platform: android, abi: arm64-v8a, runner: ubuntu-latest, javaArch: x64}
+          - {target: android-armv7, platform: android, abi: armeabi-v7a, runner: ubuntu-latest, javaArch: x64}
+          - {target: android-universal, platform: android, abi: universal, runner: ubuntu-latest, javaArch: x64}
+          - {target: android-x64, platform: android, abi: x86_64, runner: ubuntu-latest, javaArch: x64}
+          - {target: ios-arm64, platform: ios, runner: macos-latest, javaArch: aarch64}
+          - {target: macos-x64, platform: macos, runner: macos-latest, javaArch: x64}
+          - {target: macos-arm64, platform: macos, runner: macos-latest, javaArch: aarch64}
+          - {target: linux-x64, platform: linux, runner: ubuntu-latest, javaArch: x64}
+          - {target: linux-arm64, platform: linux, runner: ubuntu-24.04-arm, javaArch: aarch64}
+          - {target: windows-x64, platform: windows, runner: windows-latest}
+          - {target: windows-arm64, platform: windows, runner: windows-11-arm}
     env:
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
       RELEASE_ABI: ${{ matrix.abi }}
+      RELEASE_PUBLISH: ${{ needs.prepare.outputs.publish }}
+      PUBLIC_TEST_DRY_RUN: ${{ needs.prepare.outputs.public_test_dry_run }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -109,6 +162,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Restore original signing key and diagnostics public key
+        if: needs.prepare.outputs.publish == 'true' && github.ref == 'refs/heads/main' && matrix.platform == 'android'
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           PUBLIC_KEY: ${{ vars.DIAGNOSTICS_PUBLIC_KEY }}
@@ -124,12 +178,17 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$EHVIEWER_KEYSTORE"
           printf '%s\n' "$PUBLIC_KEY" > "$RUNNER_TEMP/diagnostics-public.pem"
       - uses: actions/setup-java@v5
+        if: matrix.platform != 'windows'
         with:
           distribution: temurin
-          java-version-file: .java-version
+          java-version: '25.0.5+8.0.LTS'
+          architecture: ${{ matrix.javaArch }}
       - name: Native prerequisites
+        if: matrix.platform == 'android'
         run: sudo apt-get update && sudo apt-get install -y autoconf automake pkg-config
       - name: Rust toolchain
+        if: matrix.platform != 'windows'
+        shell: bash
         run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@v2
         with:
@@ -139,7 +198,70 @@ jobs:
         with:
           validate-wrappers: true
           cache-read-only: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-verification-tools
+          path: tools/verification/build/install/verification
+      - name: Restore verifier launcher permissions
+        if: matrix.platform != 'windows'
+        run: chmod +x tools/verification/build/install/verification/bin/verification
+      - name: Install original pinned Android inspectors
+        if: matrix.platform == 'android'
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" "build-tools;37.0.0" "ndk;29.0.14206865"'
+      - name: Require physical ARM64 for Apple producers
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        run: test "$RUNNER_ARCH" = ARM64 && test "$(uname -m)" = arm64
+      - name: Require Rosetta for the ARM-produced Intel DMG
+        if: matrix.target == 'macos-x64'
+        run: |
+          softwareupdate --install-rosetta --agree-to-license
+          test "$(arch -x86_64 /usr/sbin/sysctl -in sysctl.proc_translated)" = 1
+          rustup target add x86_64-apple-darwin
+      - name: Apple device target
+        if: matrix.platform == 'ios'
+        run: rustup target add aarch64-apple-ios aarch64-apple-ios-sim
+      - name: macOS native dependencies
+        if: matrix.target == 'macos-arm64'
+        run: brew install libarchive webp
+      - name: Linux native and AppImage prerequisites
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libarchive-dev libwebp-dev binutils dbus libwebkit2gtk-4.1-dev xvfb xauth squashfs-tools fuse3 curl libx11-6 libxext6 libxi6 libxrender1 libxtst6 libgl1 libegl1 libgl1-mesa-dri libfontconfig1 fonts-dejavu-core libasound2t64
+          if ! test -c /dev/fuse; then sudo modprobe fuse; fi
+          test -r /dev/fuse && test -w /dev/fuse
+          fusermount3 --version
+      - name: Build and exercise actual Apple installation package
+        if: matrix.platform == 'ios' || matrix.platform == 'macos'
+        run: tools/verification/build/install/verification/bin/verification release-native-build --target '${{ matrix.target }}' --output release-output/native-part
+      - name: Build and exercise actual Linux AppImage through extraction and FUSE
+        if: matrix.platform == 'linux'
+        env:
+          SKIKO_RENDER_API: SOFTWARE_COMPAT
+        run: dbus-run-session -- xvfb-run -a tools/verification/build/install/verification/bin/verification release-native-build --target '${{ matrix.target }}' --output release-output/native-part
+      - name: Build and exercise actual native Windows ZIP
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: .\tools\verification\build\install\verification\bin\verification.bat release-native-build --target '${{ matrix.target }}' --output release-output/native-part
+      - name: Retain native installation bytes and real execution evidence
+        if: matrix.platform != 'android'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-part-${{ matrix.target }}
+          path: |
+            release-output/native-part/
+            !release-output/native-part/evidence/windows*-runtime/image/**
+            !release-output/native-part/evidence/windows*-launch/ZIP 安装目录/**
+          if-no-files-found: error
+          retention-days: 14
+      - name: Initialize intentionally public test signing and fresh diagnostic encryption
+        if: needs.prepare.outputs.publish == 'false' && matrix.platform == 'android'
+        run: tools/verification/build/install/verification/bin/verification release-public-signing --output "$RUNNER_TEMP/public-release-test"
+      - name: Build public-test-signed release without production secrets
+        if: needs.prepare.outputs.publish == 'false' && matrix.platform == 'android'
+        run: ./gradlew :app:assembleRelease -Prelease "-PreleaseAbi=$RELEASE_ABI" --console=plain --no-daemon
       - name: Build signed release and diagnostics
+        if: needs.prepare.outputs.publish == 'true' && github.ref == 'refs/heads/main' && matrix.platform == 'android'
         env:
           EHVIEWER_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           EHVIEWER_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -148,19 +270,30 @@ jobs:
           args=(:app:assembleRelease -Prelease "-PreleaseAbi=$RELEASE_ABI" --console=plain --no-daemon)
           ./gradlew "${args[@]}"
           git status --porcelain --untracked-files=all
-      - name: Verify packaging regression tests
-        run: |
-          ./gradlew -p tools/verification check installDist --console=plain --no-daemon
-          git status --porcelain --untracked-files=all
       - name: Verify matrix APK and encrypt its diagnostics
+        if: matrix.platform == 'android'
         run: |
-          tools/verification/build/install/verification/bin/verification prepare-release --tag "$RELEASE_TAG" --abi "$RELEASE_ABI" \
+          set -euo pipefail
+          args=()
+          public_key="$RUNNER_TEMP/diagnostics-public.pem"
+          if [[ "$PUBLIC_TEST_DRY_RUN" == true ]]; then
+            args+=(--public-test-dry-run)
+            public_key="$EHVIEWER_DRY_RUN_DIAGNOSTICS_PUBLIC_KEY"
+          fi
+          tools/verification/build/install/verification/bin/verification prepare-release "${args[@]}" --tag "$RELEASE_TAG" --abi "$RELEASE_ABI" \
             --sdk "$ANDROID_HOME" --output release-output/apks \
             --private-dir "$RUNNER_TEMP/private-release" --retention-days 90
           tools/verification/build/install/verification/bin/verification encrypt-diagnostics \
             --private-dir "$RUNNER_TEMP/private-release/${RELEASE_TAG#v}-$(git rev-parse HEAD)" \
-            --public-key "$RUNNER_TEMP/diagnostics-public.pem" --output release-output/diagnostics.enc
+            --public-key "$public_key" --output release-output/diagnostics.enc
+          if [[ "$PUBLIC_TEST_DRY_RUN" == true ]]; then
+            tools/verification/build/install/verification/bin/verification release-diagnostics-round-trip \
+              --input release-output/diagnostics.enc --private-key "$EHVIEWER_DRY_RUN_DIAGNOSTICS_PRIVATE_KEY" \
+              --original "$RUNNER_TEMP/private-release/${RELEASE_TAG#v}-$(git rev-parse HEAD)" \
+              > release-output/diagnostics-round-trip.json
+          fi
       - name: Retain matrix APK, metadata and encrypted diagnostics
+        if: matrix.platform == 'android'
         uses: actions/upload-artifact@v7
         with:
           name: release-part-${{ matrix.abi }}
@@ -169,18 +302,60 @@ jobs:
             release-output/output-metadata.json
             release-output/release-manifest.json
             release-output/diagnostics.enc
+            release-output/diagnostics-round-trip.json
           if-no-files-found: error
           retention-days: 90
           overwrite: true
       - name: Clean runner signing material and plaintext diagnostics
-        if: always()
-        run: rm -rf "$RUNNER_TEMP/signing" "$RUNNER_TEMP/private-release"
+        if: always() && matrix.platform == 'android'
+        run: rm -rf "$RUNNER_TEMP/signing" "$RUNNER_TEMP/private-release" "$RUNNER_TEMP/public-release-test" "$RUNNER_TEMP/diagnostics-public.pem"
+
+  verify_intel:
+    needs: [prepare, build]
+    runs-on: macos-26-intel
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25.0.5+8.0.LTS'
+          architecture: x64
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-verification-tools
+          path: tools/verification/build/install/verification
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-part-macos-x64
+          path: release-output/intel-producer
+      - name: Consume the same ARM-produced DMG on physical Intel
+        run: |
+          test "$RUNNER_ARCH" = X64 && test "$(uname -m)" = x86_64
+          chmod +x tools/verification/build/install/verification/bin/verification
+          tools/verification/build/install/verification/bin/verification desktop-intel-native \
+            --dmg release-output/intel-producer/evidence/intel-producer/app/desktop/build/compose/binaries/main/dmg \
+            --producer-report release-output/intel-producer/evidence/intel-producer/reports/desktop-intel/intel-dmg.json \
+            --output release-output/intel-consumer
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-intel-consumer
+          path: release-output/intel-consumer/
+          if-no-files-found: error
+          retention-days: 14
 
   package:
-    needs: [prepare, build]
+    needs: [prepare, build, verify_intel]
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_PUBLISH: ${{ needs.prepare.outputs.publish }}
+      PUBLIC_TEST_DRY_RUN: ${{ needs.prepare.outputs.public_test_dry_run }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -195,32 +370,37 @@ jobs:
         with:
           distribution: temurin
           java-version-file: .java-version
-      - uses: gradle/actions/setup-gradle@v6
+      - name: Install original pinned packaging inspectors
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" "build-tools;37.0.0" "ndk;29.0.14206865"'
+      - uses: actions/download-artifact@v8
         with:
-          validate-wrappers: true
-          cache-read-only: true
-      - name: Verify packaging inspection tools
+          name: release-intel-consumer
+          path: release-output/intel-consumer
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-verification-tools
+          path: tools/verification/build/install/verification
+      - name: Verify and combine exactly eleven installation assets
         run: |
-          test -x "$ANDROID_HOME/build-tools/37.0.0/aapt2"
-          test -x "$ANDROID_HOME/ndk/29.0.14206865/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
-      - name: Verify and combine exactly four APKs
-        run: |
-          ./gradlew -p tools/verification check installDist --console=plain --no-daemon
-          tools/verification/build/install/verification/bin/verification combine-release \
-            --parts release-output/parts --sdk "$ANDROID_HOME" --tag "$RELEASE_TAG" --output release-output/apks
+          set -euo pipefail
+          chmod +x tools/verification/build/install/verification/bin/verification
+          args=()
+          if [[ "$PUBLIC_TEST_DRY_RUN" == true ]]; then args+=(--public-test-dry-run); fi
+          tools/verification/build/install/verification/bin/verification combine-platform-release "${args[@]}" \
+            --parts release-output/parts --intel-consumer release-output/intel-consumer --sdk "$ANDROID_HOME" --tag "$RELEASE_TAG" --output release-output/combined
       - name: Retain encrypted diagnostics before publication
         uses: actions/upload-artifact@v7
         with:
           name: diagnostics-${{ env.RELEASE_TAG }}-${{ needs.prepare.outputs.sha }}
-          path: release-output/diagnostics/*.enc
+          path: release-output/combined/diagnostics/*.enc
           if-no-files-found: error
           retention-days: 90
           overwrite: true
-      - name: Upload verified APK payload
+      - name: Upload exactly eleven verified installation assets
         uses: actions/upload-artifact@v7
         with:
-          name: release-apks
-          path: release-output/apks/*.apk
+          name: release-assets
+          path: release-output/combined/assets/*
           if-no-files-found: error
           retention-days: 14
           overwrite: true
@@ -228,14 +408,24 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: release-manifest
-          path: release-output/release-manifest.json
+          path: release-output/combined/release-manifest.json
           if-no-files-found: error
           retention-days: 90
           overwrite: true
+      - name: Record source-bound packaging result
+        env:
+          SOURCE_SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          {
+            printf '## Release rehearsal\n\nSource: %s\n\n' "$SOURCE_SHA"
+            printf '[Actual Actions run](%s/%s/actions/runs/%s)\n\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+            jq -r '"Mode: `" + .mode + "`\n\n| Verified installation asset | SHA-256 |\n| --- | --- |", (.attachments[] | "| " + .name + " | `" + .sha256 + "` |")' release-output/combined/release-manifest.json
+            printf '\nEleven installation packages passed byte, architecture, version, source and digest checks. Product P0, minimum systems, full SBOM and signed iOS device acceptance remain separate gates.\n'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   publish:
     needs: [prepare, package]
-    if: needs.prepare.outputs.publish == 'true'
+    if: needs.prepare.outputs.publish == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -247,28 +437,31 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: release-apks
-          path: apks
+          name: release-assets
+          path: assets
       - uses: actions/download-artifact@v8
         with:
           name: release-manifest
           path: manifest
-      - name: Verify payload and publish exactly four APK attachments
+      - name: Verify payload and publish exactly eleven installation attachments
         shell: bash
         run: |
           set -euo pipefail
           version=${RELEASE_TAG#v}
-          expected=$(printf 'EhViewer-%s-%s.apk\n' "$version" arm64-v8a "$version" armeabi-v7a "$version" universal "$version" x86_64 | sort)
-          actual=$(find apks -type f | sed 's,^.*/,,' | sort)
-          [[ "$actual" == "$expected" ]] || { echo "::error::Expected exactly four APKs."; exit 1; }
+          expected=$(for suffix in arm64-v8a.apk armeabi-v7a.apk universal.apk x86_64.apk arm64-unsigned.ipa macos-x86_64.dmg macos-arm64.dmg linux-x86_64.AppImage linux-aarch64.AppImage windows-x86_64.zip windows-arm64.zip; do printf 'EhViewer-%s-%s\n' "$version" "$suffix"; done | sort)
+          actual=$(find assets -mindepth 1 -maxdepth 1 | sed 's,^.*/,,' | sort)
+          [[ "$actual" == "$expected" ]] || { echo "::error::Expected exactly eleven installation assets."; exit 1; }
           [[ $(jq -r .source_commit manifest/release-manifest.json) == "$SOURCE_SHA" ]] || { echo "::error::Manifest source commit differs."; exit 1; }
           [[ $(jq -r .tag manifest/release-manifest.json) == "$RELEASE_TAG" ]] || { echo "::error::Manifest version differs."; exit 1; }
-          [[ $(jq '.attachments | length' manifest/release-manifest.json) == 4 ]] || { echo "::error::Manifest must contain four attachments."; exit 1; }
+          [[ $(jq '.attachments | length' manifest/release-manifest.json) == 11 ]] || { echo "::error::Manifest must contain eleven attachments."; exit 1; }
           [[ $(jq -r .source_dirty manifest/release-manifest.json) == false ]] || { echo "::error::Refusing to publish a dirty source tree."; exit 1; }
+          jq -e '.schema_version == 2 and .all_eleven_package_bytes_verified == true' manifest/release-manifest.json > /dev/null || { echo "::error::All eleven package bytes must be verified."; exit 1; }
+          jq -e '.mode == "verified-payload" and .public_test_dry_run == false and .android_certificate_sha256 == "5d91dff13b6489a9cfadbb197b3e795eefc8c39f849c4543f32c160720fb40a6"' \
+            manifest/release-manifest.json > /dev/null || { echo "::error::Production Android certificate is required; public test dry-runs cannot publish."; exit 1; }
           printf '%s\n' "$expected" | diff -u - <(jq -r '.attachments[].name' manifest/release-manifest.json | sort) || exit 1
           while IFS=$'\t' read -r name digest; do
-            [[ "$name" != */* && "$name" == *.apk && "$digest" =~ ^[0-9a-f]{64}$ ]] || { echo "::error::Unsafe checksum entry."; exit 1; }
-            printf '%s  %s\n' "$digest" "apks/$name" | sha256sum -c || exit 1
+            [[ "$name" != */* && "$name" == EhViewer-* && -f "assets/$name" && ! -L "assets/$name" && "$digest" =~ ^[0-9a-f]{64}$ ]] || { echo "::error::Unsafe checksum entry."; exit 1; }
+            printf '%s  %s\n' "$digest" "assets/$name" | sha256sum -c || exit 1
           done < <(jq -r '.attachments[] | [.name,.sha256] | @tsv' manifest/release-manifest.json)
           # The tag endpoint only discovers published releases reliably. Include drafts so a
           # failed upload can resume without creating another draft for the same version.
@@ -324,7 +517,7 @@ jobs:
             args=(--verify-tag --target "$SOURCE_SHA" --title "$RELEASE_TAG" --generate-notes --draft)
             gh release create "$RELEASE_TAG" "${args[@]}"
           fi
-          gh release upload "$RELEASE_TAG" apks/*.apk --clobber || exit 1
+          gh release upload "$RELEASE_TAG" assets/* --clobber || exit 1
           gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' | sort > published-assets
           printf '%s\n' "$expected" | diff -u - published-assets || exit 1
           verify_tag
