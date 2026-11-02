@@ -187,4 +187,10 @@
     <string name="gallery_timeout_default">Platform default</string>
     <string name="gallery_timeout_help">Applies to new requests. Requests with their own timeout keep that limit.</string>
     <string name="gallery_timeout_seconds">%1$d seconds</string>
+    <string name="gallery_link_copy">Copy link</string>
+    <string name="gallery_link_copied">Link copied</string>
+    <string name="gallery_link_copy_failed">The link could not be copied. Try again.</string>
+    <string name="gallery_link_open">Open in browser</string>
+    <string name="gallery_link_opened">Sent to the browser</string>
+    <string name="gallery_link_open_failed">The browser could not be opened. Try again.</string>
 </resources>

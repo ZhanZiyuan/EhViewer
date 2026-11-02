@@ -1,8 +1,18 @@
 package com.hippo.ehviewer.ui.screen
 
+import android.app.Activity
+import android.app.Instrumentation
+import android.content.ClipData
+import android.content.ClipboardManager as AndroidClipboardManager
 import android.content.Intent
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.ClipboardManager as ComposeClipboardManager
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
+import androidx.compose.ui.text.AnnotatedString
 import androidx.room.Room
 import androidx.sqlite.driver.AndroidSQLiteDriver
 import androidx.test.core.app.ActivityScenario
@@ -61,6 +71,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /** Owned offline HTTP data, real Ktor/JNI/CBOR/Room and the same production CMP editor. */
+@Suppress("DEPRECATION")
 @RunWith(AndroidJUnit4::class)
 class GalleryFavoriteIntegrationTest {
     @Test fun sharedEditorAddsPreservesCancelsReloadsAndRemovesARealDecodedFavorite() {
@@ -77,6 +88,18 @@ class GalleryFavoriteIntegrationTest {
         val category = AtomicReference<Int?>(null)
         val note = AtomicReference("")
         val rejectNext = AtomicBoolean(false)
+        val rejectCopy = AtomicBoolean(false)
+        val rejectBrowser = AtomicBoolean(false)
+        val openedLinks = Collections.synchronizedList(mutableListOf<Intent>())
+        val browserMonitor = object : Instrumentation.ActivityMonitor() {
+            override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
+                if (intent.action == Intent.ACTION_VIEW && intent.data?.host == "e-hentai.org") {
+                    openedLinks += Intent(intent)
+                    return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+                }
+                return null
+            }
+        }
         val posts = Collections.synchronizedList(mutableListOf<Parameters>())
         val png = Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGP4z8AAQv8BD/kD/YURmXYAAAAASUVORK5CYII=")
         var vaultBytes: ByteArray? = null
@@ -161,9 +184,63 @@ class GalleryFavoriteIntegrationTest {
         try {
             val intent = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             ActivityScenario.launch<MainActivity>(intent).use { scenario ->
-                scenario.onActivity { activity -> activity.setContent { GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() }) } }
+                instrumentation.addMonitor(browserMonitor)
+                scenario.onActivity { activity ->
+                    activity.getSystemService(AndroidClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Owned clipboard fixture", "owned-link-sentinel"))
+                    activity.setContent {
+                        val nativeClipboard = LocalClipboardManager.current
+                        val nativeBrowser = rememberGalleryBrowserHandler()
+                        val clipboard = remember(nativeClipboard) {
+                            object : ComposeClipboardManager by nativeClipboard {
+                                override fun setText(annotatedString: AnnotatedString) {
+                                    check(!rejectCopy.getAndSet(false)) { "Owned clipboard failure" }
+                                    nativeClipboard.setText(annotatedString)
+                                }
+                            }
+                        }
+                        val browser = remember(nativeBrowser) {
+                            object : UriHandler {
+                                override fun openUri(uri: String) {
+                                    check(!rejectBrowser.getAndSet(false)) { "Owned browser failure" }
+                                    nativeBrowser.openUri(uri)
+                                }
+                            }
+                        }
+                        CompositionLocalProvider(LocalClipboardManager provides clipboard, LocalUriHandler provides browser) {
+                            GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() })
+                        }
+                    }
+                }
                 click("Search")
                 click(title)
+                val galleryUrl = "https://e-hentai.org/g/$gid/$token/"
+                fun clipboardText(): String? {
+                    var value: String? = null
+                    scenario.onActivity { activity -> value = activity.getSystemService(AndroidClipboardManager::class.java).primaryClip?.getItemAt(0)?.coerceToText(activity)?.toString() }
+                    return value
+                }
+                rejectCopy.set(true)
+                click("Copy link")
+                assertTrue(device.wait(Until.hasObject(By.text("The link could not be copied. Try again.")), 15_000))
+                assertEquals("owned-link-sentinel", clipboardText())
+                click("Copy link")
+                assertTrue(device.wait(Until.hasObject(By.text("Link copied")), 15_000))
+                assertEquals(galleryUrl, clipboardText())
+                rejectBrowser.set(true)
+                click("Open in browser")
+                assertTrue(device.wait(Until.hasObject(By.text("The browser could not be opened. Try again.")), 15_000))
+                assertTrue(openedLinks.isEmpty())
+                click("Open in browser")
+                assertTrue(device.wait(Until.hasObject(By.text("Sent to the browser")), 15_000))
+                assertEquals(1, openedLinks.size)
+                assertEquals(galleryUrl, openedLinks.single().dataString)
+                assertTrue(openedLinks.single().hasExtra("android.support.customtabs.extra.SESSION"))
+                // The real Android intent was observed and explicitly cancelled by this owned
+                // monitor. This is not evidence that a real browser rendered the remote page.
+                click("Back to search")
+                click(title)
+                assertFalse(device.hasObject(By.text("Link copied")))
+                assertFalse(device.hasObject(By.text("Sent to the browser")))
                 click("Add to favorites")
                 reveal("8. Shelf 7")
                 click("8. Shelf 7")
@@ -202,8 +279,13 @@ class GalleryFavoriteIntegrationTest {
                 assertNull(category.get())
                 assertEquals("favdel", posts.last()["favcat"])
                 assertEquals(3, posts.size)
+                scenario.onActivity { activity ->
+                    val clipboard = activity.getSystemService(AndroidClipboardManager::class.java)
+                    if (clipboard.primaryClip?.getItemAt(0)?.coerceToText(activity)?.toString() in setOf("owned-link-sentinel", galleryUrl)) clipboard.clearPrimaryClip()
+                }
             }
         } finally {
+            instrumentation.removeMonitor(browserMonitor)
             runBlocking { downloads.closeAndJoin() }
             scope.cancel()
             database.close()

@@ -149,6 +149,7 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                     Text(galleryString(Res.string.gallery_gallery_metadata, document.pages, document.size.orEmpty(), document.language.orEmpty()), Modifier.padding(vertical = 8.dp))
                     document.uploader?.let { Text(galleryString(Res.string.gallery_uploaded_by, it)) }
                     Text(galleryString(Res.string.gallery_rating, document.rating, document.ratingCount))
+                    GalleryLinkActions(session.galleries.galleryUrl(document.gid, document.token).toString())
                     Button(onClick = { editingFavorite = true }) { Text(if (document.favoriteSlot in 0..9) galleryString(Res.string.gallery_favorite_edit) else galleryString(Res.string.gallery_favorite_add)) }
                     if (downloads != null) {
                         Button(onClick = {

@@ -187,4 +187,10 @@
     <string name="gallery_timeout_default">平台默认值</string>
     <string name="gallery_timeout_help">适用于新请求。具有独立超时设置的请求仍使用其原有限制。</string>
     <string name="gallery_timeout_seconds">%1$d 秒</string>
+    <string name="gallery_link_copy">复制链接</string>
+    <string name="gallery_link_copied">链接已复制</string>
+    <string name="gallery_link_copy_failed">无法复制链接，请重试。</string>
+    <string name="gallery_link_open">在浏览器打开</string>
+    <string name="gallery_link_opened">已交给浏览器打开</string>
+    <string name="gallery_link_open_failed">无法打开浏览器，请重试。</string>
 </resources>

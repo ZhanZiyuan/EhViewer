@@ -187,4 +187,10 @@
     <string name="gallery_timeout_default">平台預設值</string>
     <string name="gallery_timeout_help">適用於新請求。具有獨立逾時設定的請求仍使用其原有限制。</string>
     <string name="gallery_timeout_seconds">%1$d 秒</string>
+    <string name="gallery_link_copy">複製連結</string>
+    <string name="gallery_link_copied">連結已複製</string>
+    <string name="gallery_link_copy_failed">無法複製連結，請重試。</string>
+    <string name="gallery_link_open">在瀏覽器開啟</string>
+    <string name="gallery_link_opened">已交給瀏覽器開啟</string>
+    <string name="gallery_link_open_failed">無法開啟瀏覽器，請重試。</string>
 </resources>

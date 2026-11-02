@@ -2,10 +2,14 @@ package com.hippo.ehviewer.ui.screen
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import com.ehviewer.core.data.DataStoreNetworkPreferences
 import com.ehviewer.shared.GalleryLibraryScreen
 import com.hippo.ehviewer.EhDB
@@ -16,6 +20,7 @@ import com.hippo.ehviewer.download.DownloadManager
 import com.hippo.ehviewer.ui.Screen
 import com.hippo.ehviewer.ui.destinations.EhScreenDestination
 import com.hippo.ehviewer.ui.navToReader
+import com.hippo.ehviewer.ui.openBrowserOrThrow
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -33,8 +38,20 @@ fun AnimatedVisibilityScope.SharedGalleriesScreen(navigator: DestinationsNavigat
     val downloads = remember { AndroidGalleryDownloads(scope) }
     key(site, signedIn) {
         val library = remember { AndroidGalleryLibrary(site == EhUrl.SITE_EX) }
-        GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, language, networkPreferences = networkPreferences, onPlatformDownloadOpen = { gid ->
-            with(navigator) { navToReader(checkNotNull(DownloadManager.getDownloadInfo(gid)).galleryInfo) }
-        }, onBack = { navigator.popBackStack() }, onAccount = { navigator.navigate(EhScreenDestination) })
+        CompositionLocalProvider(LocalUriHandler provides rememberGalleryBrowserHandler()) {
+            GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, language, networkPreferences = networkPreferences, onPlatformDownloadOpen = { gid ->
+                with(navigator) { navToReader(checkNotNull(DownloadManager.getDownloadInfo(gid)).galleryInfo) }
+            }, onBack = { navigator.popBackStack() }, onAccount = { navigator.navigate(EhScreenDestination) })
+        }
+    }
+}
+
+@Composable
+internal fun rememberGalleryBrowserHandler(): UriHandler {
+    val context = LocalContext.current
+    return remember(context) {
+        object : UriHandler {
+            override fun openUri(uri: String) = with(context) { openBrowserOrThrow(uri) }
+        }
     }
 }

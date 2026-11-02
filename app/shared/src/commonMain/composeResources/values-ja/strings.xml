@@ -187,4 +187,10 @@
     <string name="gallery_timeout_default">プラットフォームの既定値</string>
     <string name="gallery_timeout_help">新しいリクエストに適用します。個別のタイムアウトがあるリクエストはその制限を維持します。</string>
     <string name="gallery_timeout_seconds">%1$d 秒</string>
+    <string name="gallery_link_copy">リンクをコピー</string>
+    <string name="gallery_link_copied">リンクをコピーしました</string>
+    <string name="gallery_link_copy_failed">リンクをコピーできませんでした。もう一度お試しください。</string>
+    <string name="gallery_link_open">ブラウザーで開く</string>
+    <string name="gallery_link_opened">ブラウザーにリンクを渡しました</string>
+    <string name="gallery_link_open_failed">ブラウザーを開けませんでした。もう一度お試しください。</string>
 </resources>
