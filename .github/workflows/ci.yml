@@ -481,6 +481,8 @@ jobs:
         with:
           distribution: temurin
           java-version-file: .java-version
+          # The ARM DMG contract and its already verified runtime are Temurin 25.0.5+8.
+          java-version: ${{ matrix.platform == 'macos-arm64' && '25.0.5+8' || '' }}
       - name: Linux native dependencies
         if: runner.os == 'Linux'
         run: >-
