@@ -29,6 +29,8 @@ fun main(args: Array<String>) {
         "desktop-intel-dmg" -> desktopIntelDmg(options.path("--dmg"), options.path("--output"))
         "desktop-intel-native" -> desktopIntelDmg(options.path("--dmg"), options.path("--output"), options.path("--producer-report"))
         "desktop-linux-arm64" -> desktopLinuxArm64(options.path("--image"), options.path("--output"))
+        "desktop-linux-x64" -> desktopLinuxX64(options.path("--image"), options.path("--output"))
+        "linux-appimage" -> linuxAppImage(options.path("--image"), options.path("--runtime-report"), options.path("--output"))
         "windows-native-core" -> windowsNativeCore(options.path("--output"))
         "windows-jvm-ffi" -> windowsJvmFfi(options.path("--core-report"), options.path("--output"))
         "desktop-windows-arm64" -> desktopWindowsArm64(options.path("--jvm-report"), options.path("--core-report"), options.path("--output"))

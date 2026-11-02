@@ -20,6 +20,7 @@ import java.io.FileDescriptor
 import java.io.FileInputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.MessageDigest
 import java.util.Base64
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicInteger
@@ -33,9 +34,9 @@ fun main(arguments: Array<String>) {
         return
     }
     val mac = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64", "aarch64", "arm64")
-    val linuxArm = System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") == "aarch64"
+    val linux = System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") in setOf("aarch64", "amd64", "x86_64")
     val windowsArm = System.getProperty("os.name").startsWith("Windows") && System.getProperty("os.arch") == "aarch64"
-    check(mac || linuxArm || windowsArm) { "Packaged regression supports macOS Intel/ARM64, Linux ARM64 and Windows ARM64" }
+    check(mac || linux || windowsArm) { "Packaged regression supports macOS/Linux Intel/ARM64 and Windows ARM64" }
     val report = when {
         arguments.isEmpty() -> null
         arguments.size == 2 && arguments[0] == "--m1-smoke" -> Path.of(arguments[1])
@@ -82,6 +83,19 @@ fun main(arguments: Array<String>) {
                         setProperty("history_product_checks", historyChecks.toString())
                         setProperty("archive_product_checks", archiveChecks.toString())
                         setProperty("language_product_checks", languageChecks.toString())
+                        if (linux) {
+                            val digest = MessageDigest.getInstance("SHA-256")
+                            Files.newInputStream(Path.of(System.getProperty("java.home"), "lib/server/libjvm.so")).use { input ->
+                                val buffer = ByteArray(64 * 1024)
+                                while (true) {
+                                    val count = input.read(buffer)
+                                    if (count < 0) break
+                                    digest.update(buffer, 0, count)
+                                }
+                            }
+                            setProperty("runtime_jvm_sha256", digest.digest().joinToString("") { "%02x".format(it) })
+                            setProperty("runtime_file_store", Files.getFileStore(Path.of(System.getProperty("java.home"))).type())
+                        }
                         if (owned != null) {
                             setProperty("windows_code_page", windowsProcessCodePage().toString())
                             setProperty("native_encoding", System.getProperty("native.encoding"))

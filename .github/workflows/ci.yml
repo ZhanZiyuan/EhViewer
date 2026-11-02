@@ -483,7 +483,19 @@ jobs:
           java-version-file: .java-version
       - name: Linux native dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y pkg-config libarchive-dev libwebp-dev dbus gnome-keyring libwebkit2gtk-4.1-dev xvfb xauth
+        run: >-
+          sudo apt-get update && sudo apt-get install -y
+          build-essential cmake pkg-config libarchive-dev libwebp-dev binutils dbus gnome-keyring
+          libwebkit2gtk-4.1-dev xvfb xauth squashfs-tools fuse3 curl
+          libx11-6 libxext6 libxi6 libxrender1 libxtst6 libgl1 libegl1 libgl1-mesa-dri
+          libfontconfig1 fonts-dejavu-core libasound2t64
+      - name: Require the Linux AppImage FUSE device
+        if: runner.os == 'Linux'
+        run: |
+          if ! test -c /dev/fuse; then sudo modprobe fuse; fi
+          test -r /dev/fuse
+          test -w /dev/fuse
+          fusermount3 --version
       - name: macOS native dependencies
         if: runner.os == 'macOS'
         run: brew install libarchive webp
@@ -542,7 +554,30 @@ jobs:
           tools/verification/build/install/verification/bin/verification desktop-arm64-dmg
           --dmg app/desktop/build/compose/binaries/main/dmg
           --output reports/desktop-native/arm64-dmg > reports/desktop-native/arm64-dmg-result.json
-      - name: Retain desktop JNI evidence and the tested ARM64 DMG
+      - name: Build the actual native x86_64 Linux runtime
+        if: runner.os == 'Linux'
+        run: >-
+          ./gradlew -p app/desktop createDistributable spotlessCheck -Pehviewer.desktopOnly=true
+          --console=plain --no-daemon --max-workers=1
+          -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g
+      - name: Install and launch the native Linux x86_64 image twice
+        if: runner.os == 'Linux'
+        env:
+          SKIKO_RENDER_API: SOFTWARE_COMPAT
+        run: >-
+          dbus-run-session -- xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-linux-x64
+          --image app/desktop/build/compose/binaries/main/app/EhViewer
+          --output reports/desktop-native/linux-image > reports/desktop-native/linux-image-result.json
+      - name: Build and execute the actual x86_64 AppImage through extraction and FUSE
+        if: runner.os == 'Linux'
+        env:
+          SKIKO_RENDER_API: SOFTWARE_COMPAT
+        run: >-
+          dbus-run-session -- xvfb-run -a tools/verification/build/install/verification/bin/verification linux-appimage
+          --image app/desktop/build/compose/binaries/main/app/EhViewer
+          --runtime-report reports/desktop-native/linux-image/linux-x64.json
+          --output reports/desktop-native/appimage > reports/desktop-native/appimage-result.json
+      - name: Retain desktop JNI evidence and the tested native packages
         if: always()
         uses: actions/upload-artifact@v7
         with:
@@ -684,8 +719,14 @@ jobs:
         run: >-
           sudo apt-get update && sudo apt-get install -y
           build-essential cmake pkg-config libarchive-dev binutils libwebkit2gtk-4.1-dev dbus
-          xvfb xauth libx11-6 libxext6 libxi6 libxrender1 libxtst6
+          xvfb xauth squashfs-tools fuse3 curl libx11-6 libxext6 libxi6 libxrender1 libxtst6
           libgl1 libegl1 libgl1-mesa-dri libfontconfig1 fonts-dejavu-core libasound2t64
+      - name: Require the ARM64 AppImage FUSE device
+        run: |
+          if ! test -c /dev/fuse; then sudo modprobe fuse; fi
+          test -r /dev/fuse
+          test -w /dev/fuse
+          fusermount3 --version
       - name: Rust native target
         run: rustup show active-toolchain
       - uses: gradle/actions/setup-gradle@v6
@@ -696,7 +737,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p reports
-          ./gradlew -p app/desktop createDistributable spotlessCheck --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g 2>&1 | tee reports/desktop-linux-build.log
+          ./gradlew -p app/desktop createDistributable spotlessCheck -Pehviewer.desktopOnly=true --console=plain --no-daemon --max-workers=1 -Dorg.gradle.parallel=false -Dorg.gradle.jvmargs=-Xmx2g 2>&1 | tee reports/desktop-linux-build.log
       - uses: actions/download-artifact@v8
         with:
           name: verification-tools-${{ github.sha }}
@@ -711,6 +752,14 @@ jobs:
           dbus-run-session -- xvfb-run -a tools/verification/build/install/verification/bin/verification desktop-linux-arm64
           --image app/desktop/build/compose/binaries/main/app/EhViewer
           --output reports/desktop-linux-arm64
+      - name: Build and execute the actual AArch64 AppImage through extraction and FUSE
+        env:
+          SKIKO_RENDER_API: SOFTWARE_COMPAT
+        run: >-
+          dbus-run-session -- xvfb-run -a tools/verification/build/install/verification/bin/verification linux-appimage
+          --image app/desktop/build/compose/binaries/main/app/EhViewer
+          --runtime-report reports/desktop-linux-arm64/linux-arm64.json
+          --output reports/desktop-linux-arm64/appimage > reports/linux-arm64-appimage-result.json
       - uses: actions/download-artifact@v8
         with:
           name: shared-core-${{ github.sha }}
@@ -867,7 +916,7 @@ jobs:
         run: |
           mkdir -p reports
           tools/verification/build/install/verification/bin/verification staged-package-dry-run --repository "$GITHUB_REPOSITORY" --run-id "$GITHUB_RUN_ID" --android-run-id "$ANDROID_ARTIFACT_RUN_ID" --sdk "$ANDROID_HOME" --output reports/staged-dry-run > reports/staged-dry-run.json
-      - name: Retain eight actual candidates and complete staged evidence
+      - name: Retain ten actual candidates and complete staged evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:

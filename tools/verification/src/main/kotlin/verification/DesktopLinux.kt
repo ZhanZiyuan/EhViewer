@@ -19,19 +19,27 @@ import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 /** Both ELF identity and CPU are required; a renamed x64 object must fail. */
-fun verifyLinuxArm64Elf(header: ByteArray) {
+fun verifyLinuxElf(header: ByteArray, arm64: Boolean) {
     require(header.size >= 32) { "Truncated ELF" }
     val data = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN)
     require(
         data.getInt(0) == 0x464c457f && header[4] == 2.toByte() && header[5] == 1.toByte() && header[6] == 1.toByte() &&
-            data.getShort(16).toInt() in setOf(2, 3) && data.getShort(18).toInt() == 183 && data.getInt(20) == 1,
-    ) { "Expected little-endian ELF64 AArch64 executable/library" }
+            data.getShort(16).toInt() in setOf(2, 3) && data.getShort(18).toInt() == (if (arm64) 183 else 62) && data.getInt(20) == 1,
+    ) { "Expected little-endian ELF64 matching-CPU executable/library" }
 }
 
+fun verifyLinuxArm64Elf(header: ByteArray) = verifyLinuxElf(header, arm64 = true)
+
 /** Real jpackage application image, bundled JVM/Skiko/Rust and window; not an AppImage. */
-fun desktopLinuxArm64(image: Path, output: Path): Map<String, Any?> {
-    require(System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") == "aarch64" && command("uname", "-m").trim() == "aarch64") { "Use the native Linux ARM64 JDK and runner" }
-    require(command("rustc", "-vV").lineSequence().any { it == "host: aarch64-unknown-linux-gnu" }) { "Rust host must match Linux ARM64" }
+fun desktopLinuxArm64(image: Path, output: Path): Map<String, Any?> = desktopLinuxImage(image, output, arm64 = true)
+
+fun desktopLinuxX64(image: Path, output: Path): Map<String, Any?> = desktopLinuxImage(image, output, arm64 = false)
+
+private fun desktopLinuxImage(image: Path, output: Path, arm64: Boolean): Map<String, Any?> {
+    val architecture = if (arm64) "aarch64" else "x86_64"
+    val jvmArchitectures = if (arm64) setOf("aarch64") else setOf("amd64", "x86_64")
+    require(System.getProperty("os.name") == "Linux" && System.getProperty("os.arch") in jvmArchitectures && command("uname", "-m").trim() == architecture) { "Use the native matching-CPU Linux JDK and runner" }
+    require(command("rustc", "-vV").lineSequence().any { it == "host: $architecture-unknown-linux-gnu" }) { "Rust host must match this Linux CPU" }
     val requestedRenderApi = System.getenv("SKIKO_RENDER_API")
     val linuxRenderApis = setOf("OPENGL", "SOFTWARE_FAST", "SOFTWARE_COMPAT")
     require(requestedRenderApi == null || requestedRenderApi in linuxRenderApis) { "Unsupported explicit Linux render API" }
@@ -54,13 +62,13 @@ fun desktopLinuxArm64(image: Path, output: Path): Map<String, Any?> {
         require(Files.isExecutable(launcher)) { "Missing executable launcher" }
         val rust = contents.resolve("app/resources/libehviewer_rust.so")
         val standalone = capture("browser-standalone.log", contents.resolve("app/resources/ehviewer_browser"), "--self-test", timeout = Duration.ofSeconds(20))
-        verifyDesktopBrowserSelfTest(standalone, "aarch64")
+        verifyDesktopBrowserSelfTest(standalone, architecture)
         val home = contents.resolve("runtime")
         val jvm = home.resolve("lib/server/libjvm.so")
         val relocations = capture("rust-relocations.txt", "ldd", "-r", rust)
         require(!relocations.contains("undefined symbol:") && !relocations.contains("not found")) { "Rust has unresolved runtime relocations" }
         require(home.resolve("lib/modules").isRegularFile()) { "Missing bundled jlink modules" }
-        for (path in listOf(launcher, rust, jvm)) path.inputStream().use { verifyLinuxArm64Elf(it.readNBytes(32)) }
+        for (path in listOf(launcher, rust, jvm)) path.inputStream().use { verifyLinuxElf(it.readNBytes(32), arm64) }
         val nativeFiles = mutableListOf<Map<String, Any?>>()
         Files.walk(installed).use { paths ->
             paths.filter {
@@ -69,7 +77,7 @@ fun desktopLinuxArm64(image: Path, output: Path): Map<String, Any?> {
             }.forEach { path ->
                 val header = path.inputStream().use { it.readNBytes(32) }
                 if (header.size >= 4 && ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN).getInt(0) == 0x464c457f) {
-                    verifyLinuxArm64Elf(header)
+                    verifyLinuxElf(header, arm64)
                     val dynamic = capture("native-dynamic-${nativeFiles.size}.txt", "readelf", "-d", path)
                     val search = dynamic.lineSequence().filter { it.contains("(RPATH)") || it.contains("(RUNPATH)") }
                         .flatMap { Regex("\\[([^]]+)]").find(it)!!.groupValues[1].split(':').asSequence() }.toList()
@@ -85,13 +93,14 @@ fun desktopLinuxArm64(image: Path, output: Path): Map<String, Any?> {
             }
         }
         val skiko = contents.resolve("app").listDirectoryEntries("libskiko*.so").single()
-        require(sha256(skiko) == "d4b06daa856c00707183127e5ff269d082db307f677a72a6076b8cbb7f54121e") { "Unexpected Skiko Linux ARM64 runtime" }
+        val expectedSkiko = if (arm64) "d4b06daa856c00707183127e5ff269d082db307f677a72a6076b8cbb7f54121e" else "434f7633c843870c0839a1137b128f6c3db3c5d58dcad3545e90827e3e341afb"
+        require(sha256(skiko) == expectedSkiko) { "Unexpected Skiko Linux runtime" }
         var jarNatives = 0
         contents.resolve("app").listDirectoryEntries("*.jar").forEach { jar ->
             ZipFile(jar.toFile()).use { zip ->
                 zip.entries().asSequence().filter { !it.isDirectory && it.name.substringAfterLast('.') in setOf("so", "dylib", "jnilib", "dll") }.forEach { entry ->
                     require(entry.name.endsWith(".so")) { "Foreign native in ${jar.name}!/${entry.name}" }
-                    zip.getInputStream(entry).use { verifyLinuxArm64Elf(it.readNBytes(32)) }
+                    zip.getInputStream(entry).use { verifyLinuxElf(it.readNBytes(32), arm64) }
                     jarNatives++
                 }
             }
@@ -99,21 +108,23 @@ fun desktopLinuxArm64(image: Path, output: Path): Map<String, Any?> {
         val version = Regex("val releaseVersion = \"([^\"]+)\"").find(root.resolve("app/build.gradle.kts").readText())!!.groupValues[1]
         val config = contents.resolve("app/EhViewer.cfg").readText()
         require(config.lineSequence().any { it == "java-options=-Djpackage.app-version=$version" }) { "Application image version mismatch" }
+        val jvmDigest = sha256(jvm)
         val launches = (1..2).map { attempt ->
             val proofDirectory = output.resolve("launch-$attempt")
             capture("launch-$attempt.log", launcher, "--m1-smoke", proofDirectory, timeout = Duration.ofMinutes(2))
             val proof = Properties().apply { proofDirectory.resolve("launcher.properties").inputStream().use(::load) }
-            require(proof.getProperty("architecture") == "aarch64")
+            require(proof.getProperty("architecture") in jvmArchitectures)
             require(proof.getProperty("application_version") == version) { "Running application version mismatch" }
             require(Path.of(proof.getProperty("java_home")).toRealPath() == home.toRealPath()) { "Launcher used an external JVM" }
             require(proof.getProperty("java_version") == System.getProperty("java.version")) { "Unexpected bundled JVM version" }
+            require(proof.getProperty("runtime_jvm_sha256") == jvmDigest) { "Executed JVM differs from the inspected native runtime" }
             require(proof.getProperty("rust_hash_results").toInt() == 100 && proof.getProperty("compose_frames").toInt() > 0 && proof.getProperty("window_showing") == "true")
             require(proof.getProperty("gallery_product_checks") == "5") { "Packaged detail/page/static and animated image regression did not execute" }
             require(proof.getProperty("account_product_checks") == "4") { "Packaged account/favorite decoder regression did not execute" }
             require(proof.getProperty("history_product_checks") == "3") { "Packaged native Room history regression did not execute" }
             require(proof.getProperty("language_product_checks") == "4") { "Packaged language resources did not execute" }
             require(proof.getProperty("archive_product_checks") == "9") { "Packaged private archive/directory import/pixel/reopen regression did not execute" }
-            val browser = desktopBrowserReceipt(proofDirectory, rust, contents.resolve("app/resources/ehviewer_browser"), setOf("aarch64"), "JNI")
+            val browser = desktopBrowserReceipt(proofDirectory, rust, contents.resolve("app/resources/ehviewer_browser"), jvmArchitectures, "JNI")
             val renderApi = proof.getProperty("render_api")
             require(renderApi in linuxRenderApis && (requestedRenderApi == null || renderApi == requestedRenderApi)) { "Measured render API does not match the requested backend: $renderApi / $requestedRenderApi" }
             mapOf("native_browser" to browser, "gallery_product_checks" to 5, "account_product_checks" to 4, "history_product_checks" to 3, "archive_product_checks" to 9, "language_product_checks" to 4, "rust_hash_results" to 100, "compose_frames" to proof.getProperty("compose_frames").toInt(), "bundled_runtime" to "PASS", "render_api" to renderApi)
@@ -121,15 +132,15 @@ fun desktopLinuxArm64(image: Path, output: Path): Map<String, Any?> {
         val regression = desktopArchiveRegression(output, Path.of(System.getProperty("java.home"), "bin/java"), rust)
         mapOf(
             "version" to version, "native_files" to nativeFiles, "installed_notices" to notices, "skiko_sha256" to sha256(skiko), "jar_native_libraries" to jarNatives,
-            "launches" to launches, "requested_render_api" to requestedRenderApi, "jni_regression_external_test_jdk" to regression, "runtime_jvm_sha256" to sha256(jvm), "rust_sha256" to sha256(rust), "launcher_sha256" to sha256(launcher),
+            "launches" to launches, "requested_render_api" to requestedRenderApi, "jni_regression_external_test_jdk" to regression, "runtime_jvm_sha256" to jvmDigest, "rust_sha256" to sha256(rust), "launcher_sha256" to sha256(launcher),
         )
     }
     val result = mapOf(
         "source_commit" to command("git", "rev-parse", "HEAD").trim(), "source_dirty" to dirty, "result" to "PASS",
-        "target" to "aarch64-unknown-linux-gnu", "jvm_architecture" to System.getProperty("os.arch"), "jvm_version" to System.getProperty("java.version"),
+        "target" to "$architecture-unknown-linux-gnu", "jvm_architecture" to System.getProperty("os.arch"), "jvm_version" to System.getProperty("java.version"),
         "kernel" to command("uname", "-sr").trim(), "os_release" to Path.of("/etc/os-release").readText(), "rust" to command("rustc", "--version").trim(),
         "checks" to checks, "appimage" to "NOT_VERIFIED", "minimum_os" to "NOT_VERIFIED", "desktop_p0" to "NOT_VERIFIED", "complete_dependency_license_audit" to "NOT_VERIFIED",
     )
-    output.resolve("linux-arm64.json").writeText(json(result))
+    output.resolve(if (arm64) "linux-arm64.json" else "linux-x64.json").writeText(json(result))
     return result
 }

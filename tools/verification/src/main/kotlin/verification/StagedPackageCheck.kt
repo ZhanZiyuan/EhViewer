@@ -284,6 +284,41 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     }
     retain("macos-arm64", armDmg, expectedSha256 = armDigest)
 
+    for ((id, role, prefix, imageReport) in listOf(
+        listOf("linux-x64", "linux-host", "appimage", "linux-image/linux-x64.json"),
+        listOf("linux-arm64", "linux-runtime", "reports/desktop-linux-arm64/appimage", "reports/desktop-linux-arm64/linux-arm64.json"),
+    )) {
+        val architecture = if (id == "linux-arm64") "aarch64" else "x86_64"
+        val producer = receipt(role, "$prefix/appimage.json")
+        val packageFile = path(role, "$prefix/EhViewer-$version-linux-$architecture.AppImage")
+        val digest = sha256(packageFile)
+        verifyLinuxAppImageProducer(producer, source, version, architecture, digest)
+        require((producer["bytes"] as Number).toLong() == Files.size(packageFile))
+        require(producer["package_source"].obj()["android_version_code"] == code)
+        val originalImage = receipt(role, imageReport)
+        require(producer["image_receipt"] == originalImage && producer["image_report_sha256"] == sha256(path(role, imageReport))) { "AppImage did not retain its original same-source native image checks" }
+        val checks = originalImage["checks"].obj()
+        require(originalImage["target"] == "$architecture-unknown-linux-gnu" && originalImage["jvm_version"] == "25.0.5" && checks["version"] == version && checks["installed_notices"].array().size == expectedDesktopNativeNoticeCount())
+        val regression = checks["jni_regression_external_test_jdk"].obj()
+        require((regression["ownership_checks"] as Number).toInt() >= 4170 && regression["archive_cases"] == 13) { "Missing retained Linux JNI/archive regression" }
+        val nativeFiles = checks["native_files"].array().map(Any?::obj)
+        val browserDigest = nativeFiles.single { it.str("path").endsWith("/resources/ehviewer_browser") }.str("sha256")
+        val evidence = producer["evidence"].obj()
+        val portableFormat = JsonSlurper().parseText(json(inspectLinuxAppImage(packageFile, architecture))).obj()
+        require(portableFormat == evidence["format"] && (evidence["payload_entries"] as Number).toInt() > nativeFiles.size) { "Actual AppImage format differs from the producer's extracted payload" }
+        val launches = evidence["launches"].array().map(Any?::obj)
+        val jvmArchitectures = if (id == "linux-arm64") setOf("aarch64") else setOf("x86_64", "amd64")
+        require(launches.size == 2 && launches.map { it["mode"] }.toSet() == setOf("EXTRACT_AND_RUN", "FUSE")) { "Missing actual AppImage entry mode" }
+        for (launch in launches) {
+            require(launch["architecture"] in jvmArchitectures && launch["runtime_jvm_sha256"] == checks["runtime_jvm_sha256"] && launch["bundled_runtime"] == "PASS")
+            require(launch["render_api"] == "SOFTWARE_COMPAT")
+            require(launch["gallery_product_checks"] == 5 && launch["account_product_checks"] == 4 && launch["history_product_checks"] == 3 && launch["archive_product_checks"] == 9 && launch["language_product_checks"] == 4 && launch["rust_hash_results"] == 100 && (launch["compose_frames"] as Number).toInt() > 0)
+            if (launch["mode"] == "FUSE") require(launch.str("runtime_file_store").startsWith("fuse") && launch["owned_fuse_mount_removed"] == true && (launch["mount_cleanup_millis"] as Number).toLong() in 0L..10000L) { "Default AppImage entry did not use and release FUSE" }
+            verifyDesktopBrowserReceipt(launch["native_browser"].obj(), jvmArchitectures, "JNI", checks.str("rust_sha256"), browserDigest)
+        }
+        retain(id, packageFile, expectedSha256 = digest)
+    }
+
     val packagedFile = path("windows-package", "windows-arm64-package.json")
     val packaged = receipt("windows-package", "windows-arm64-package.json", false)
     val runtimeFile = path("windows-runtime", "windows-arm64-runtime.json")
@@ -343,9 +378,9 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     val ipa = verifyUnsignedIosIpa(ipaFile, source, version, code)
     require(JsonSlurper().parseText(json(ipa)).obj() == ipaProducer - "archive_sha256") { "Actual IPA differs from the clean same-source producer checks" }
     retain("ios-arm64", ipaFile, expectedSha256 = ipaProducer.str("archive_sha256"))
-    require(assets.size == 8 && candidate.toFile().listFiles()!!.map { it.name }.toSet() == assets.map { it.str("file") }.toSet()) { "Expected exactly eight current-stage candidate files" }
+    require(assets.size == 10 && candidate.toFile().listFiles()!!.map { it.name }.toSet() == assets.map { it.str("file") }.toSet()) { "Expected exactly ten current-stage candidate files" }
     val result = mapOf(
-        "schema_version" to 8, "verification_scope" to "M5_M6_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
+        "schema_version" to 9, "verification_scope" to "M5_M6_ACTUAL_STAGED_PACKAGE_PREFLIGHT", "source_commit" to source, "source_dirty" to dirty, "producer_source_clean" to true,
         "version" to version, "android_version_code" to code, "run_id" to run["id"], "run_head_sha" to run["head_sha"], "android_artifact_run_id" to context["android_run"].obj()["id"],
         "upstream_jobs" to stagedUpstreamJobs.sorted(), "artifact_inputs" to plan.map { mapOf("role" to it.role, "artifact_id" to it.id, "run_id" to it.runId, "run_head_sha" to it.run["head_sha"], "digest" to it.metadata["digest"]) },
         "candidate_assets" to assets, "staged_package_bytes_verified" to true, "candidate_android_version_name" to "$version-SNAPSHOT", "android_production_certificate_required" to trustedMain, "android_apk_checks" to verifiedApks,
