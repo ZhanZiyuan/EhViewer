@@ -1,14 +1,47 @@
 use super::CookieTransfer;
+use std::marker::PhantomData;
+use std::rc::Rc;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use webview2_com::Microsoft::Web::WebView2::Win32::{ICoreWebView2_2, ICoreWebView2_13};
 use webview2_com::{GetCookiesCompletedHandler, take_pwstr};
 use windows::Win32::Foundation::{E_INVALIDARG, E_UNEXPECTED};
 use windows::Win32::UI::WindowsAndMessaging::{
-    DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage,
+    DispatchMessageW, KillTimer, MSG, PM_REMOVE, PeekMessageW, SetTimer, TranslateMessage,
 };
 use windows::core::{BOOL, HSTRING, Interface, PCWSTR, PWSTR};
 use wry::WebViewExtWindows;
+
+/// Wry waits for initialization callbacks inside blocking GetMessage calls. A sent
+/// COM callback may complete its channel without leaving a posted message behind.
+/// Keep that wait responsive until construction returns, on this owning STA only.
+pub struct StartupMessagePump {
+    timer: usize,
+    _owner: PhantomData<Rc<()>>,
+}
+
+impl StartupMessagePump {
+    pub fn new() -> Result<Self, ()> {
+        // SAFETY: a thread-owned timer with no callback/pointer. WM_TIMER only wakes
+        // the owner's existing message pump; it cannot call into a dropped Rust value.
+        let timer = unsafe { SetTimer(None, 0, 25, None) };
+        if timer == 0 {
+            return Err(());
+        }
+        Ok(Self {
+            timer,
+            _owner: PhantomData,
+        })
+    }
+}
+
+impl Drop for StartupMessagePump {
+    fn drop(&mut self) {
+        // SAFETY: !Send/!Sync keeps removal on the creating thread. Pending timer
+        // messages have no TIMERPROC and do not retain a Rust callback or borrow.
+        let _ = unsafe { KillTimer(None, self.timer) };
+    }
+}
 
 fn await_callback<T>(receiver: Receiver<T>) -> Result<T, ()> {
     let deadline = Instant::now() + Duration::from_secs(15);
@@ -178,4 +211,75 @@ pub fn verify(view: &wry::WebView) -> Result<usize, ()> {
         return Err(());
     }
     Ok(4)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use windows::Win32::Foundation::{LPARAM, WPARAM};
+    use windows::Win32::System::Threading::GetCurrentThreadId;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetMessageW, PostThreadMessageW, WM_APP, WM_TIMER,
+    };
+
+    /// A posted fallback makes an actual broken message wait fail instead of hanging.
+    fn bounded_queue_wait<T>(action: impl FnOnce() -> T) -> (T, bool) {
+        // SAFETY: only drain/create this test thread's queue; it owns no application window.
+        unsafe {
+            let mut message = MSG::default();
+            while PeekMessageW(&mut message, None, 0, 0, PM_REMOVE).as_bool() {}
+        }
+        let (done, finished) = mpsc::channel();
+        // SAFETY: the current thread remains alive through the worker join below.
+        let owner = unsafe { GetCurrentThreadId() };
+        let worker = std::thread::spawn(move || {
+            let fallback = finished.recv_timeout(Duration::from_secs(3)).is_err();
+            if fallback {
+                // SAFETY: post an inert thread message to the known live owner,
+                // without a window pointer or data crossing the thread boundary.
+                unsafe { PostThreadMessageW(owner, WM_APP, WPARAM(0), LPARAM(0)) }.unwrap();
+            }
+            fallback
+        });
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(action));
+        let _ = done.send(());
+        let fallback = worker.join().unwrap();
+        match result {
+            Ok(value) => (value, fallback),
+            Err(panic) => std::panic::resume_unwind(panic),
+        }
+    }
+
+    #[test]
+    fn the_startup_pulse_posts_a_timer_message_to_its_owner_thread() {
+        let pump = StartupMessagePump::new().unwrap();
+        let (message, fallback) = bounded_queue_wait(|| {
+            let mut message = MSG::default();
+            // SAFETY: one writable MSG on this owner thread, without a window filter.
+            assert!(unsafe { GetMessageW(&mut message, None, 0, 0) }.0 > 0);
+            message
+        });
+        assert!(!fallback);
+        assert_eq!(message.message, WM_TIMER);
+        assert_eq!(message.wParam.0, pump.timer);
+    }
+
+    #[test]
+    fn the_startup_pulse_wakes_completion_and_releases_its_owned_timer() {
+        let pump = StartupMessagePump::new().unwrap();
+        let (sender, receiver) = mpsc::channel();
+        let callback = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(50));
+            sender.send(()).unwrap();
+        });
+        let (result, fallback) = bounded_queue_wait(|| webview2_com::wait_with_pump(receiver));
+        callback.join().unwrap();
+        result.unwrap();
+        assert!(!fallback);
+        let timer = pump.timer;
+        drop(pump);
+        // SAFETY: this is the creating thread. Removal must now fail because Drop
+        // already removed this exact timer; no other thread owns or reuses it here.
+        assert!(unsafe { KillTimer(None, timer) }.is_err());
+    }
 }

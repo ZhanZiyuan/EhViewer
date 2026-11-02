@@ -272,7 +272,11 @@ fn run() -> Result<(), ()> {
             .map_err(|_| ())?
     };
     #[cfg(not(target_os = "linux"))]
-    let view = builder.build(&window).map_err(|_| ())?;
+    let view = {
+        #[cfg(target_os = "windows")]
+        let _startup_pump = windows_backend::StartupMessagePump::new()?;
+        builder.build(&window).map_err(|_| ())?
+    };
     phase("webview-ready");
     #[cfg(target_os = "windows")]
     if !windows_backend::private_store(&view)? {

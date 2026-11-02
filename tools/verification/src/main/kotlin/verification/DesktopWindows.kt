@@ -108,6 +108,14 @@ private fun desktopWindowsImage(jvmReport: Path, coreReport: Path, output: Path,
     // Do not inherit the Core build's temporary vcpkg DLL path.
     val buildEnvironment = mapOf("JAVA_HOME" to jdk.toString(), pathKey to "${jdk.resolve("bin")};${System.getenv(pathKey)}")
     capture("browser-clippy.txt", "cargo", "clippy", "--manifest-path", root.resolve("native/browser/Cargo.toml"), "--locked", "--all-targets", "--target", platform.target, "--", "-D", "warnings", environment = buildEnvironment)
+    val browserTests = capture("browser-unit-tests.txt", "cargo", "test", "--manifest-path", root.resolve("native/browser/Cargo.toml"), "--locked", "--target", platform.target, "--bin", "ehviewer_browser", environment = buildEnvironment)
+    require(
+        listOf(
+            "tests::navigation_never_leaves_official_https_origins",
+            "windows_backend::tests::the_startup_pulse_posts_a_timer_message_to_its_owner_thread",
+            "windows_backend::tests::the_startup_pulse_wakes_completion_and_releases_its_owned_timer",
+        ).all { "test $it ... ok" in browserTests },
+    ) { "Required actual Windows startup message-queue regressions did not execute" }
     capture(
         "package-app-image.txt", jdk.resolve("bin/java.exe"), "-Dorg.gradle.appname=gradlew", "-jar", root.resolve("gradle/wrapper/gradle-wrapper.jar"),
         "-p", root.resolve("app/desktop"), "createDistributable", "spotlessCheck", "--console=plain", "--no-daemon", "--max-workers=1",

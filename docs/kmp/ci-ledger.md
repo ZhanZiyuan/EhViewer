@@ -4,6 +4,8 @@ M0 / GATE_PASSED；M1 / GATE_PASSED（2f00e595c）；M2 / GATE_PASSED（17a17e28
 
 ## 已有基线
 
+M5 封面 `1d15ba631210c34b4322fb986c288d83a333dd62` 的 [PR CI41450827301](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41450827301) 为 NOT_PASSED：10项成功，Windows x64 原生浏览器构建等待失败，`ci/gate` 正确失败；该 Platform 计划的可选 dry-run 未计成功。同一提交树的新 runner [Full复测41455959086](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41455959086) 在同一浏览器步骤再次失败，不能当作一次性外部故障跳过。原日志与官方失败工件均保留。本次独立修复只调整 Windows WebView 构建时的消息唤醒并强制真实 Win32 回归，不改原期限、Cookie/TLS策略或发布权限；277工具、498任务Android、双MSVC严格交叉Clippy与实际Mac桥接已本地通过，真正Windows执行及新SHA全门禁仍待验。已测列宽功能16份文件按哈希备份并暂时移出工作树，不混入修复提交。见 [windows-webview-startup.md](windows-webview-startup.md)；本条随实际修复收录，不新增纯记账提交。
+
 M5 共享下载容量设置 `adaafb58db54c5829e8c55a310226e1e2874fdc2` 已通过 [Platform CI41432710844](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41432710844)：实际 gate 计划与精确 HEAD 已核对，12项必需检查全部 SUCCESS；计划声明可选 Release dry-run 不适用，其 SKIPPED 未计成功。22份提交文件与本地测试快照一致，同一英文 PR 仍 Draft。随后推进本次共享封面/自适应卡片：原 Android498任务、手机/平板同APK对各48、JVM网络142/数据80/阅读器57、最终Apple80任务及实际Native142/57/74/双冷启动通过；普通Mac/iPad真实公共封面、双/三列及详情往返已记录。16份实现文件哈希与已测版本一致，四APK/诊断/字节码及来源/阶段/发布合同校验通过。本次封面 SHA 的托管检查仍待执行；首次新Cookie测试断言失败及工具超时保留，详见 [shared-search-covers.md](shared-search-covers.md)。此条随真实功能收录，不新增补链专用提交。
 
 M5 书库导出 `34e4d1370883d4cab55e3e1c24b506504067d9fd` 已通过 [Full CI41316218855](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41316218855)：精确 PR head、completed/SUCCESS、必需任务名称集合恰好12项且全部成功，包括 Rosetta/原生 Intel、iOS、Linux、Windows、dry-run 与 `ci/gate`。中断后26个提交文件与测试清单一致、远程分支一致、PR仍Draft；本地手机/平板46、JVM63/Native57与普通iPad系统导出/取消证据见 [shared-archive-export.md](shared-archive-export.md)。后续真实 iOS 系统分享复用该快照，不新增历史链接专用提交；新功能本地失败及待验范围见 [ios-archive-sharing.md](ios-archive-sharing.md)。M5 整体未完成。
