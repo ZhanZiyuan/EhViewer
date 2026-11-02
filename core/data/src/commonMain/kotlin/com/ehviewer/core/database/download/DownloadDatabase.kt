@@ -39,6 +39,8 @@ fun GalleryDownload.entity() = GalleryDownloadEntity(gid, token, title, pages, r
 )
 data class DownloadPageEntity(val gid: Long, val index: Int, val token: String, val bytes: Long, val sha256: String)
 
+data class DownloadImageUsage(val bytes: Long, val invalid: Int)
+
 @Dao
 interface GalleryDownloadsDao {
     @Query("SELECT * FROM TASKS ORDER BY position, gid LIMIT 501")
@@ -54,6 +56,9 @@ interface GalleryDownloadsDao {
 
     @Query("SELECT * FROM PAGES WHERE gid=:gid AND `index`=:index")
     suspend fun page(gid: Long, index: Int): DownloadPageEntity?
+
+    @Query("SELECT COALESCE(SUM(bytes), 0) AS bytes, COALESCE(MAX(CASE WHEN bytes BETWEEN 1 AND 33554432 THEN 0 ELSE 1 END), 0) AS invalid FROM PAGES")
+    suspend fun storedImageUsage(): DownloadImageUsage
 
     @Upsert suspend fun save(page: DownloadPageEntity)
 

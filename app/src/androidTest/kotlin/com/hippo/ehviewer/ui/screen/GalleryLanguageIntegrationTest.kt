@@ -10,6 +10,7 @@ import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.ehviewer.core.data.DataStoreNetworkPreferences
+import com.ehviewer.core.i18n.R
 import com.ehviewer.core.preferences.PrefDelegate
 import com.ehviewer.core.preferences.edit
 import com.hippo.ehviewer.Settings
@@ -103,6 +104,12 @@ class GalleryLanguageIntegrationTest {
                 scrollTo("Platform default", Direction.UP)
                 click("Platform default")
                 savedTimeout(null)
+                scrollTo("Open Android download storage settings", Direction.DOWN)
+                click("Open Android download storage settings")
+                visible(context.getString(R.string.settings_download_download_location))
+                assertEquals(directory.toOkioPath(), downloadLocation)
+                device.pressBack()
+                scrollTo("Open Android download storage settings", Direction.DOWN)
                 device.pressBack()
                 visible("Search galleries")
                 click("Settings")

@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.ComposeUIViewController
 import com.ehviewer.core.data.DataStoreLanguageStore
 import com.ehviewer.core.data.DataStoreNetworkPreferences
+import com.ehviewer.core.data.DataStoreStoragePreferences
 import com.ehviewer.core.data.FileArchiveLibrary
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
@@ -139,9 +140,8 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                 val downloadDatabaseOwner = remember { ownedRoomDb<DownloadDatabase>("downloads.db") {} }
                 val downloadDatabase = downloadDatabaseOwner.database
                 val scope = rememberCoroutineScope()
-                val downloads = remember(session, downloadDatabase) {
-                    session.downloads(RoomGalleryDownloadStorage(downloadDatabase, "${applicationDirectory()}/downloads".toPath()), scope)
-                }
+                val downloadStorage = remember(downloadDatabase) { RoomGalleryDownloadStorage(downloadDatabase, "${applicationDirectory()}/downloads".toPath(), preferences = DataStoreStoragePreferences()) }
+                val downloads = remember(session, downloadStorage) { session.downloads(downloadStorage, scope) }
                 val archives = remember { FileArchiveLibrary("${applicationDirectory()}/local-library".toPath(), AppleArchiveFactory) }
                 val archivePicker = remember { AppleArchivePicker { appWindow?.rootViewController } }
                 val archiveShare = remember { AppleArchiveShare { appWindow?.rootViewController } }
@@ -196,7 +196,7 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                     }
                 }
                 if (languageVerified) {
-                    GallerySearchScreen(session, readerState, appearance, history, downloads, language, backgroundDownloadsNote = true, archiveContent = { back ->
+                    GallerySearchScreen(session, readerState, appearance, history, downloads, language, storageSettings = downloadStorage, backgroundDownloadsNote = true, archiveContent = { back ->
                         ArchiveLibraryScreen(archives, session, pickAndImport = { archivePicker.pickAndImport(archives) }, pickAndImportDirectory = { archivePicker.pickAndImport(archives, directory = true) }, pickAndExport = { book -> archivePicker.pickAndExport(archives, book) }, readingState = { book -> ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/archive-reading-state/${book.id}")) }, onBack = back, shareComic = { book -> archiveShare.share(archives, book) })
                     }, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
                 }

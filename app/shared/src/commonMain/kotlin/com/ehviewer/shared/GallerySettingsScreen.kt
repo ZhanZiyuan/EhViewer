@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.AppLanguageException
 import com.ehviewer.core.domain.GalleryNetworkPreferences
+import com.ehviewer.core.domain.download.GalleryStorageSettings
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
@@ -85,6 +86,8 @@ internal fun GallerySettingsScreen(
     onModeChanged: (GalleryThemeMode) -> Unit,
     onRetryAppearance: () -> Unit,
     onBack: () -> Unit,
+    storageSettings: GalleryStorageSettings? = null,
+    onPlatformStorageSettings: (() -> Unit)? = null,
 ) {
     var preferences by remember { mutableStateOf<ReaderPreferences?>(null) }
     var failure by remember { mutableStateOf<StringResource?>(null) }
@@ -192,6 +195,7 @@ internal fun GallerySettingsScreen(
                 SettingsChoice(galleryString(Res.string.gallery_reading_rtl), current.direction == ReadingDirection.RIGHT_TO_LEFT, !busy) { update(current.copy(direction = ReadingDirection.RIGHT_TO_LEFT)) }
             }
             networkPreferences?.let { GalleryNetworkSettings(it) }
+            GalleryStorageSettingsSection(storageSettings, onPlatformStorageSettings)
             failure?.let { error ->
                 Text(galleryString(error), color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = { attempt++ }) { Text(galleryString(Res.string.gallery_reading_preferences_reload)) }

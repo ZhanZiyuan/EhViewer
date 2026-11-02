@@ -193,4 +193,14 @@
     <string name="gallery_link_open">ブラウザーで開く</string>
     <string name="gallery_link_opened">ブラウザーにリンクを渡しました</string>
     <string name="gallery_link_open_failed">ブラウザーを開けませんでした。もう一度お試しください。</string>
+    <string name="gallery_storage">ダウンロード保存領域</string>
+    <string name="gallery_storage_help">保存済みのダウンロード画像にのみ適用します。一時ファイル、ダウンロード中の画像、インポートした本は含みません。既存の画像は削除しません。上限に達したら上限を増やしてダウンロードを再試行してください。</string>
+    <string name="gallery_storage_limit_mib">上限 %1$d MiB</string>
+    <string name="gallery_storage_loading">保存領域を読み込み中…</string>
+    <string name="gallery_storage_platform">Android のダウンロード保存設定を開く</string>
+    <string name="gallery_storage_reload">使用量を更新</string>
+    <string name="gallery_storage_save_failed">上限を保存できませんでした。再読み込みしてから試してください。</string>
+    <string name="gallery_storage_unavailable">保存領域を利用できません。</string>
+    <string name="gallery_storage_unlimited">画像の容量制限なし</string>
+    <string name="gallery_storage_usage_bytes">保存済みダウンロード画像：%1$d バイト</string>
 </resources>

@@ -51,6 +51,7 @@ import com.ehviewer.core.domain.AppLanguageException
 import com.ehviewer.core.domain.GalleryHistoryException
 import com.ehviewer.core.domain.GalleryHistoryStore
 import com.ehviewer.core.domain.GalleryNetworkPreferences
+import com.ehviewer.core.domain.download.GalleryStorageSettings
 import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.GalleryLibrary
@@ -108,7 +109,7 @@ private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
-fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, downloads: GalleryDownloads, language: GalleryLanguageSettings, backgroundDownloadsNote: Boolean = false, archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null, browserFactory: ((String) -> GalleryLoginBrowser)? = null, onReady: () -> Unit = {}) {
+fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, downloads: GalleryDownloads, language: GalleryLanguageSettings, backgroundDownloadsNote: Boolean = false, archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null, browserFactory: ((String) -> GalleryLoginBrowser)? = null, storageSettings: GalleryStorageSettings? = null, onReady: () -> Unit = {}) {
     DisposableEffect(session) { onDispose { session.close() } }
     val library = remember(session, history) {
         object : GalleryLibrary by session {
@@ -121,7 +122,7 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
             }
         }
     }
-    GalleryLibraryScreen(library, readerState, appearance, history, downloads, language, networkPreferences = session.networkPreferences, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
+    GalleryLibraryScreen(library, readerState, appearance, history, downloads, language, networkPreferences = session.networkPreferences, storageSettings = storageSettings, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
     }, onReady = onReady)
 }
@@ -136,6 +137,8 @@ fun GalleryLibraryScreen(
     downloads: GalleryDownloads,
     language: GalleryLanguageSettings,
     networkPreferences: GalleryNetworkPreferences? = null,
+    storageSettings: GalleryStorageSettings? = null,
+    onPlatformStorageSettings: (() -> Unit)? = null,
     backgroundDownloadsNote: Boolean = false,
     onPlatformDownloadOpen: ((Long) -> Unit)? = null,
     onBack: (() -> Unit)? = null,
@@ -251,7 +254,7 @@ fun GalleryLibraryScreen(
                                 settingsOpen = false
                                 appearanceAttempt++
                                 languageAttempt++
-                            })
+                            }, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings)
                             return@Column
                         }
                         if (account && accountContent != null) {

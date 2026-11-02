@@ -193,4 +193,14 @@
     <string name="gallery_link_open">Open in browser</string>
     <string name="gallery_link_opened">Sent to the browser</string>
     <string name="gallery_link_open_failed">The browser could not be opened. Try again.</string>
+    <string name="gallery_storage">Download storage</string>
+    <string name="gallery_storage_help">This limit covers saved download images. Temporary files, in-progress images and imported books are excluded. Existing downloads are never deleted. If the limit is reached, increase it and retry the download.</string>
+    <string name="gallery_storage_limit_mib">%1$d MiB limit</string>
+    <string name="gallery_storage_loading">Loading download storage…</string>
+    <string name="gallery_storage_platform">Open Android download storage settings</string>
+    <string name="gallery_storage_reload">Refresh storage usage</string>
+    <string name="gallery_storage_save_failed">The storage limit could not be saved. Reload before trying again.</string>
+    <string name="gallery_storage_unavailable">Download storage is unavailable.</string>
+    <string name="gallery_storage_unlimited">No image limit</string>
+    <string name="gallery_storage_usage_bytes">Saved download images: %1$d bytes</string>
 </resources>

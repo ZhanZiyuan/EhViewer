@@ -193,4 +193,14 @@
     <string name="gallery_link_open">在浏览器打开</string>
     <string name="gallery_link_opened">已交给浏览器打开</string>
     <string name="gallery_link_open_failed">无法打开浏览器，请重试。</string>
+    <string name="gallery_storage">下载存储</string>
+    <string name="gallery_storage_help">此上限仅统计已保存的下载图片，不含临时文件、下载中的图片和导入书籍。不会删除现有下载。达到上限后，请提高上限并重试下载。</string>
+    <string name="gallery_storage_limit_mib">上限 %1$d MiB</string>
+    <string name="gallery_storage_loading">正在读取下载存储…</string>
+    <string name="gallery_storage_platform">打开 Android 下载存储设置</string>
+    <string name="gallery_storage_reload">刷新存储用量</string>
+    <string name="gallery_storage_save_failed">无法保存存储上限，请重新加载后重试。</string>
+    <string name="gallery_storage_unavailable">下载存储不可用。</string>
+    <string name="gallery_storage_unlimited">不限制图片容量</string>
+    <string name="gallery_storage_usage_bytes">已保存下载图片：%1$d 字节</string>
 </resources>

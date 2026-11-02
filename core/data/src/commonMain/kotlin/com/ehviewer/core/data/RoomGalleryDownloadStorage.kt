@@ -12,7 +12,11 @@ import com.ehviewer.core.domain.download.GalleryDownloadStorage
 import com.ehviewer.core.domain.download.GalleryDownloadStorageException
 import com.ehviewer.core.domain.download.GalleryImageCheckpoint
 import com.ehviewer.core.domain.download.GalleryImageIdentity
+import com.ehviewer.core.domain.download.GalleryStoragePreferences
+import com.ehviewer.core.domain.download.GalleryStorageSettings
+import com.ehviewer.core.domain.download.GalleryStorageUsage
 import com.ehviewer.core.domain.download.PartialGalleryDownloadStorage
+import com.ehviewer.core.domain.download.validateDownloadLimit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -33,7 +37,8 @@ class RoomGalleryDownloadStorage(
     private val database: DownloadDatabase,
     private val directory: Path,
     private val files: FileSystem = FileSystem.SYSTEM,
-) : GalleryDownloadStorage, PartialGalleryDownloadStorage {
+    private val preferences: GalleryStoragePreferences? = null,
+) : GalleryDownloadStorage, PartialGalleryDownloadStorage, GalleryStorageSettings {
     private val mutex = Mutex()
     private val partialOwner = Mutex()
     private val dao = database.downloads()
@@ -52,6 +57,19 @@ class RoomGalleryDownloadStorage(
 
     override suspend fun list(): List<GalleryDownload> = stored {
         dao.list().also { check(it.size <= 500) }.map { it.domain() }
+    }
+
+    private suspend fun imageBytes(): Long = dao.storedImageUsage().also {
+        check(it.invalid == 0 && it.bytes in 0..(500L * 100_000 * MAX_IMAGE_BYTES))
+    }.bytes
+
+    override suspend fun usage(): GalleryStorageUsage = stored {
+        GalleryStorageUsage(imageBytes(), checkNotNull(preferences).downloadLimitMiB())
+    }
+
+    override suspend fun setDownloadLimitMiB(limitMiB: Int?) {
+        validateDownloadLimit(limitMiB)
+        stored { checkNotNull(preferences).setDownloadLimitMiB(limitMiB) }
     }
 
     override suspend fun save(download: GalleryDownload) = stored {
@@ -165,6 +183,12 @@ class RoomGalleryDownloadStorage(
                     read(existing, task) // A duplicate worker cannot overwrite an already committed image.
                 } else {
                     if (index > 0) check(dao.page(gid, index - 1) != null)
+                    // Admission is serialized with settings changes and other Room writers. Existing
+                    // pages stay readable; a partial page and atomic-write copies are not this budget.
+                    preferences?.downloadLimitMiB()?.let { limit ->
+                        validateDownloadLimit(limit)
+                        check(bytes.size.toLong() <= limit.toLong() * 1024 * 1024 - imageBytes())
+                    }
                     val target = image(gid, index)
                     val temporary = folder(gid) / "page-$index.part"
                     check(files.metadataOrNull(temporary)?.symlinkTarget == null && files.metadataOrNull(target)?.symlinkTarget == null)

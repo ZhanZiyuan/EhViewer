@@ -13,6 +13,9 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.text.AnnotatedString
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.room.Room
 import androidx.sqlite.driver.AndroidSQLiteDriver
 import androidx.test.core.app.ActivityScenario
@@ -22,6 +25,7 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
+import com.ehviewer.core.data.DataStoreStoragePreferences
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.model.asEntity
 import com.ehviewer.core.database.download.DownloadDatabase
@@ -60,8 +64,10 @@ import kotlin.io.encoding.Base64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -160,9 +166,13 @@ class GalleryFavoriteIntegrationTest {
         }
         val client = galleryHttpClient(engine, cookies, "favorite-ui-test")
         val library = AndroidGalleryLibrary(false, client, cookies)
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val scopeOwner = SupervisorJob()
+        val scope = CoroutineScope(scopeOwner + Dispatchers.Default)
         val database = Room.databaseBuilder<DownloadDatabase>(context, File(owned, "queue.db").absolutePath).setDriver(AndroidSQLiteDriver()).build()
-        val downloads = GalleryDownloadQueue(RoomGalleryDownloadStorage(database, File(owned, "images").toOkioPath()), scope) { task ->
+        val storageStore = PreferenceDataStoreFactory.createWithPath(scope = scope) { File(owned, "storage.preferences_pb").toOkioPath() }
+        val storagePreferences = DataStoreStoragePreferences(storageStore)
+        val downloadStorage = RoomGalleryDownloadStorage(database, File(owned, "images").toOkioPath(), preferences = storagePreferences)
+        val downloads = GalleryDownloadQueue(downloadStorage, scope) { task ->
             networkGalleryDownloadSource(task, GalleryContentRepository(client, RustGalleryDecoder)) {}
         }
         fun click(text: String) = requireNotNull(device.wait(Until.findObject(By.text(text)), 15_000)).click()
@@ -207,7 +217,7 @@ class GalleryFavoriteIntegrationTest {
                             }
                         }
                         CompositionLocalProvider(LocalClipboardManager provides clipboard, LocalUriHandler provides browser) {
-                            GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() })
+                            GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() }, storageSettings = downloadStorage)
                         }
                     }
                 }
@@ -279,6 +289,35 @@ class GalleryFavoriteIntegrationTest {
                 assertNull(category.get())
                 assertEquals("favdel", posts.last()["favcat"])
                 assertEquals(3, posts.size)
+                click("Back to search")
+                click("Settings")
+                fun storageChoice(text: String) {
+                    repeat(12) {
+                        if (device.findObject(By.text(text))?.visibleBounds?.isEmpty == false) return
+                        requireNotNull(device.wait(Until.findObject(By.scrollable(true)), 5_000)).scroll(Direction.DOWN, 0.7f)
+                    }
+                    assertTrue("Missing real storage setting: $text", device.hasObject(By.text(text)))
+                }
+                storageChoice("256 MiB limit")
+                fun savedLimit(expected: Int) = runBlocking {
+                    withTimeout(5_000) {
+                        while (storagePreferences.downloadLimitMiB() != expected || device.findObject(By.text("$expected MiB limit"))?.parent?.let { it.isChecked && it.isEnabled } != true) delay(25)
+                    }
+                }
+                click("256 MiB limit")
+                assertTrue(device.wait(Until.hasObject(By.text("Saved download images: 0 bytes")), 5_000))
+                savedLimit(256)
+                runBlocking { storageStore.edit { it[intPreferencesKey("schema")] = 2 } }
+                click("1024 MiB limit")
+                assertTrue(device.wait(Until.hasObject(By.text("The storage limit could not be saved. Reload before trying again.")), 5_000))
+                val failedChoice = requireNotNull(requireNotNull(device.findObject(By.text("1024 MiB limit"))).parent)
+                assertFalse(failedChoice.isEnabled)
+                runBlocking { storageStore.edit { it[intPreferencesKey("schema")] = 1 } }
+                click("Refresh storage usage")
+                savedLimit(256)
+                click("1024 MiB limit")
+                savedLimit(1024)
+                assertEquals(3, posts.size) // Storage controls never trigger another account request.
                 scenario.onActivity { activity ->
                     val clipboard = activity.getSystemService(AndroidClipboardManager::class.java)
                     if (clipboard.primaryClip?.getItemAt(0)?.coerceToText(activity)?.toString() in setOf("owned-link-sentinel", galleryUrl)) clipboard.clearPrimaryClip()
@@ -287,7 +326,7 @@ class GalleryFavoriteIntegrationTest {
         } finally {
             instrumentation.removeMonitor(browserMonitor)
             runBlocking { downloads.closeAndJoin() }
-            scope.cancel()
+            runBlocking { scopeOwner.cancelAndJoin() }
             database.close()
             client.close()
             engine.close()

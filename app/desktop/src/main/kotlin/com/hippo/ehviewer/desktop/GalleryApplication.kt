@@ -6,6 +6,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.ehviewer.core.data.DataStoreLanguageStore
 import com.ehviewer.core.data.DataStoreNetworkPreferences
+import com.ehviewer.core.data.DataStoreStoragePreferences
 import com.ehviewer.core.data.FileArchiveLibrary
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
@@ -74,7 +75,8 @@ fun galleryApplication() {
     val downloadDatabaseOwner = ownedRoomDb<DownloadDatabase>("downloads.db") {}
     val downloadDatabase = downloadDatabaseOwner.database
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    val downloads = session.downloads(RoomGalleryDownloadStorage(downloadDatabase, applicationData().resolve("downloads").toString().toPath()), scope)
+    val downloadStorage = RoomGalleryDownloadStorage(downloadDatabase, applicationData().resolve("downloads").toString().toPath(), preferences = DataStoreStoragePreferences())
+    val downloads = session.downloads(downloadStorage, scope)
     val windowsArchives = if (windows) WindowsArchiveFactory(resources.resolve("ehviewer_capi.dll")) else null
     val archives = FileArchiveLibrary(applicationData().resolve("local-library").toString().toPath(), windowsArchives ?: ArchiveDocumentFactory(NativeArchiveBridge::open))
     try {
@@ -90,7 +92,7 @@ fun galleryApplication() {
                         val directory = applicationData().resolve("archive-reading-state").resolve(book.id)
                         if (windows) windowsReaderState(resources.resolve("ehviewer_capi.dll"), directory) else ReaderStateRepository(NativeSessionVault(directory.toString()))
                     }, onBack = back)
-                }, browserFactory = browsers::create)
+                }, browserFactory = browsers::create, storageSettings = downloadStorage)
             }
         }
     } finally {
