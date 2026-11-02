@@ -49,6 +49,7 @@ class GalleryLanguageIntegrationTest {
             it[needSignIn] = false
             it[updateIntervalDays] = 0
             it[launchPage] = 8
+            it[detailSize] = 0
         }
         try {
             instrumentation.runOnMainSync { setAppLanguage("en") }
@@ -95,6 +96,26 @@ class GalleryLanguageIntegrationTest {
                         while (network.requestTimeoutSeconds() != expected) delay(25)
                     }
                 }
+                fun savedDensity(expected: Int, label: String) = runBlocking {
+                    withTimeout(5_000) {
+                        while (Settings.snapshot()[Settings.detailSize] != expected || device.findObject(By.text(label))?.parent?.let { it.isChecked && it.isEnabled } != true) delay(25)
+                    }
+                }
+                scrollTo("Comfortable columns", Direction.DOWN)
+                savedDensity(0, "Comfortable columns")
+                click("Compact columns")
+                savedDensity(1, "Compact columns")
+                scenario.recreate()
+                scrollTo("Compact columns", Direction.DOWN)
+                savedDensity(1, "Compact columns")
+                // The actual original preference rejects unknown saved values without replacing them.
+                Settings.edit(blocking = true) { it[detailSize] = 7 }
+                scenario.recreate()
+                scrollTo("Gallery layout is unavailable.", Direction.DOWN)
+                assertEquals(7, runBlocking { Settings.snapshot()[Settings.detailSize] })
+                Settings.edit(blocking = true) { it[detailSize] = 0 }
+                click("Retry")
+                savedDensity(0, "Comfortable columns")
                 scrollTo("120 seconds", Direction.DOWN)
                 click("120 seconds")
                 savedTimeout(120)
@@ -131,6 +152,7 @@ class GalleryLanguageIntegrationTest {
                 restore(needSignIn)
                 restore(updateIntervalDays)
                 restore(launchPage)
+                restore(detailSize)
             }
             Settings.appLinkVerifyTip = linkTip
             with(Settings) {

@@ -206,4 +206,10 @@
     <string name="gallery_cover_loading">正在加载封面</string>
     <string name="gallery_cover_retry">重试封面</string>
     <string name="gallery_cover_unavailable">暂无封面</string>
+    <string name="gallery_list_layout">图库列宽</string>
+    <string name="gallery_list_comfortable">宽列</string>
+    <string name="gallery_list_compact">紧凑列</string>
+    <string name="gallery_list_loading">正在读取图库布局…</string>
+    <string name="gallery_list_unavailable">无法读取图库布局。</string>
+    <string name="gallery_list_save_failed">无法保存图库布局。</string>
 </resources>

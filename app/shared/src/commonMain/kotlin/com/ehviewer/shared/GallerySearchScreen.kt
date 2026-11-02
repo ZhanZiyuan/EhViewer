@@ -49,6 +49,9 @@ import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.AppLanguageException
 import com.ehviewer.core.domain.GalleryHistoryException
 import com.ehviewer.core.domain.GalleryHistoryStore
+import com.ehviewer.core.domain.GalleryListDensity
+import com.ehviewer.core.domain.GalleryListPreferences
+import com.ehviewer.core.domain.GalleryListPreferencesException
 import com.ehviewer.core.domain.GalleryNetworkPreferences
 import com.ehviewer.core.domain.download.GalleryStorageSettings
 import com.ehviewer.core.domain.reader.ReaderStateStore
@@ -86,6 +89,7 @@ import ehviewer.app.shared.generated.resources.gallery_error_too_large
 import ehviewer.app.shared.generated.resources.gallery_filters
 import ehviewer.app.shared.generated.resources.gallery_filters_applied
 import ehviewer.app.shared.generated.resources.gallery_history
+import ehviewer.app.shared.generated.resources.gallery_list_unavailable
 import ehviewer.app.shared.generated.resources.gallery_local_library
 import ehviewer.app.shared.generated.resources.gallery_next
 import ehviewer.app.shared.generated.resources.gallery_no_galleries
@@ -107,7 +111,7 @@ private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
-fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, downloads: GalleryDownloads, language: GalleryLanguageSettings, backgroundDownloadsNote: Boolean = false, archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null, browserFactory: ((String) -> GalleryLoginBrowser)? = null, storageSettings: GalleryStorageSettings? = null, onReady: () -> Unit = {}) {
+fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, downloads: GalleryDownloads, language: GalleryLanguageSettings, backgroundDownloadsNote: Boolean = false, archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null, browserFactory: ((String) -> GalleryLoginBrowser)? = null, storageSettings: GalleryStorageSettings? = null, listPreferences: GalleryListPreferences? = null, onReady: () -> Unit = {}) {
     DisposableEffect(session) { onDispose { session.close() } }
     val library = remember(session, history) {
         object : GalleryLibrary by session {
@@ -120,7 +124,7 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
             }
         }
     }
-    GalleryLibraryScreen(library, readerState, appearance, history, downloads, language, networkPreferences = session.networkPreferences, storageSettings = storageSettings, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
+    GalleryLibraryScreen(library, readerState, appearance, history, downloads, language, networkPreferences = session.networkPreferences, storageSettings = storageSettings, listPreferences = listPreferences, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
     }, onReady = onReady)
 }
@@ -136,6 +140,7 @@ fun GalleryLibraryScreen(
     language: GalleryLanguageSettings,
     networkPreferences: GalleryNetworkPreferences? = null,
     storageSettings: GalleryStorageSettings? = null,
+    listPreferences: GalleryListPreferences? = null,
     onPlatformStorageSettings: (() -> Unit)? = null,
     backgroundDownloadsNote: Boolean = false,
     onPlatformDownloadOpen: ((Long) -> Unit)? = null,
@@ -145,6 +150,20 @@ fun GalleryLibraryScreen(
     archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null,
     onReady: () -> Unit = {},
 ) {
+    var listDensity by remember(listPreferences) { mutableStateOf<GalleryListDensity?>(null) }
+    var listFailed by remember(listPreferences) { mutableStateOf(false) }
+    var listAttempt by remember { mutableIntStateOf(0) }
+    LaunchedEffect(listPreferences, listAttempt) {
+        listDensity = null
+        listFailed = false
+        try {
+            listDensity = listPreferences?.density() ?: GalleryListDensity.COMPACT
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: GalleryListPreferencesException) {
+            listFailed = true
+        }
+    }
     var languageTag by remember(language) { mutableStateOf<String?>(null) }
     var languageReady by remember(language) { mutableStateOf(false) }
     var languageFailed by remember(language) { mutableStateOf(false) }
@@ -258,7 +277,8 @@ fun GalleryLibraryScreen(
                                 settingsOpen = false
                                 appearanceAttempt++
                                 languageAttempt++
-                            }, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings)
+                                listAttempt++
+                            }, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings, listPreferences = listPreferences, listDensity = listDensity, listFailed = listFailed, onListChanged = { listDensity = it }, onRetryList = { listAttempt++ })
                             return@Column
                         }
                         if (account && accountContent != null) {
@@ -354,6 +374,12 @@ fun GalleryLibraryScreen(
                                 TextButton(onClick = { appearanceAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
                             }
                         }
+                        if (listFailed) {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Text(galleryString(Res.string.gallery_list_unavailable), Modifier.weight(1f))
+                                TextButton(onClick = { listAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
+                            }
+                        }
                         if (filtersOpen) {
                             GallerySearchFiltersDialog(filters, onApply = { applied ->
                                 filters = applied
@@ -373,7 +399,7 @@ fun GalleryLibraryScreen(
                         if (result == null && !loading && error == null) Text(galleryString(Res.string.gallery_search_hint), Modifier.padding(vertical = 24.dp))
                         if (result != null) {
                             if (result.galleryInfoList.isEmpty()) Text(galleryString(Res.string.gallery_no_galleries), Modifier.padding(vertical = 24.dp))
-                            LazyVerticalGrid(columns = GridCells.Adaptive(320.dp), modifier = Modifier.weight(1f), state = resultsState, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            LazyVerticalGrid(columns = GridCells.Adaptive((listDensity ?: GalleryListDensity.COMPACT).minimumColumnWidth.dp), modifier = Modifier.weight(1f), state = resultsState, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 items(result.galleryInfoList, key = { it.gid }) { gallery ->
                                     GallerySearchCard(gallery, covers) { selected = gallery }
                                 }

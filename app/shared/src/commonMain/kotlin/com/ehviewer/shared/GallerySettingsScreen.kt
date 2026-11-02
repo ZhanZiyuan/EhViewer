@@ -28,6 +28,8 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.AppLanguageException
+import com.ehviewer.core.domain.GalleryListDensity
+import com.ehviewer.core.domain.GalleryListPreferences
 import com.ehviewer.core.domain.GalleryNetworkPreferences
 import com.ehviewer.core.domain.download.GalleryStorageSettings
 import com.ehviewer.core.domain.reader.ReaderPreferences
@@ -88,6 +90,11 @@ internal fun GallerySettingsScreen(
     onBack: () -> Unit,
     storageSettings: GalleryStorageSettings? = null,
     onPlatformStorageSettings: (() -> Unit)? = null,
+    listPreferences: GalleryListPreferences? = null,
+    listDensity: GalleryListDensity? = null,
+    listFailed: Boolean = false,
+    onListChanged: (GalleryListDensity) -> Unit = {},
+    onRetryList: () -> Unit = {},
 ) {
     var preferences by remember { mutableStateOf<ReaderPreferences?>(null) }
     var failure by remember { mutableStateOf<StringResource?>(null) }
@@ -182,6 +189,7 @@ internal fun GallerySettingsScreen(
                     }
                 }
             }
+            listPreferences?.let { GalleryListSettings(it, listDensity, listFailed, onListChanged, onRetryList) }
             Text(galleryString(Res.string.gallery_reading), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
             val current = preferences
             if (current != null) {

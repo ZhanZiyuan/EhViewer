@@ -206,4 +206,10 @@
     <string name="gallery_cover_loading">Loading cover</string>
     <string name="gallery_cover_retry">Retry cover</string>
     <string name="gallery_cover_unavailable">No cover</string>
+    <string name="gallery_list_layout">Gallery columns</string>
+    <string name="gallery_list_comfortable">Comfortable columns</string>
+    <string name="gallery_list_compact">Compact columns</string>
+    <string name="gallery_list_loading">Loading gallery layout…</string>
+    <string name="gallery_list_unavailable">Gallery layout is unavailable.</string>
+    <string name="gallery_list_save_failed">Gallery layout could not be saved.</string>
 </resources>

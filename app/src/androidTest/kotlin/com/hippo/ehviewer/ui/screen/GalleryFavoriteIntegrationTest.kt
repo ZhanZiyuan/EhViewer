@@ -5,6 +5,7 @@ import android.app.Instrumentation
 import android.content.ClipData
 import android.content.ClipboardManager as AndroidClipboardManager
 import android.content.Intent
+import android.os.SystemClock
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -23,6 +24,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.ehviewer.core.data.DataStoreStoragePreferences
@@ -64,6 +66,7 @@ import kotlin.io.encoding.Base64
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -175,7 +178,23 @@ class GalleryFavoriteIntegrationTest {
         val downloads = GalleryDownloadQueue(downloadStorage, scope) { task ->
             networkGalleryDownloadSource(task, GalleryContentRepository(client, RustGalleryDecoder)) {}
         }
-        fun click(text: String) = requireNotNull(device.wait(Until.findObject(By.text(text)), 15_000)).click()
+        fun click(text: String) {
+            val deadline = SystemClock.uptimeMillis() + 15_000
+            while (SystemClock.uptimeMillis() < deadline) {
+                try {
+                    var control = device.findObject(By.text(text))
+                    while (control != null && !control.isClickable) control = control.parent
+                    if (control != null && control.isEnabled) {
+                        control.click()
+                        return
+                    }
+                } catch (_: StaleObjectException) {
+                    // No click was dispatched: reacquire the enabled action after recomposition.
+                }
+                SystemClock.sleep(25)
+            }
+            assertTrue("Enabled production action did not become available: $text", false)
+        }
         fun reveal(text: String) {
             check(device.wait(Until.hasObject(By.text("Category")), 15_000))
             repeat(10) {
@@ -194,133 +213,152 @@ class GalleryFavoriteIntegrationTest {
         try {
             val intent = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             ActivityScenario.launch<MainActivity>(intent).use { scenario ->
-                instrumentation.addMonitor(browserMonitor)
-                scenario.onActivity { activity ->
-                    activity.getSystemService(AndroidClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Owned clipboard fixture", "owned-link-sentinel"))
-                    activity.setContent {
-                        val nativeClipboard = LocalClipboardManager.current
-                        val nativeBrowser = rememberGalleryBrowserHandler()
-                        val clipboard = remember(nativeClipboard) {
-                            object : ComposeClipboardManager by nativeClipboard {
-                                override fun setText(annotatedString: AnnotatedString) {
-                                    check(!rejectCopy.getAndSet(false)) { "Owned clipboard failure" }
-                                    nativeClipboard.setText(annotatedString)
-                                }
-                            }
-                        }
-                        val browser = remember(nativeBrowser) {
-                            object : UriHandler {
-                                override fun openUri(uri: String) {
-                                    check(!rejectBrowser.getAndSet(false)) { "Owned browser failure" }
-                                    nativeBrowser.openUri(uri)
-                                }
-                            }
-                        }
-                        CompositionLocalProvider(LocalClipboardManager provides clipboard, LocalUriHandler provides browser) {
-                            GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() }, storageSettings = downloadStorage)
-                        }
-                    }
-                }
-                click("Search")
-                click(title)
                 val galleryUrl = "https://e-hentai.org/g/$gid/$token/"
-                fun clipboardText(): String? {
-                    var value: String? = null
-                    scenario.onActivity { activity -> value = activity.getSystemService(AndroidClipboardManager::class.java).primaryClip?.getItemAt(0)?.coerceToText(activity)?.toString() }
-                    return value
-                }
-                rejectCopy.set(true)
-                click("Copy link")
-                assertTrue(device.wait(Until.hasObject(By.text("The link could not be copied. Try again.")), 15_000))
-                assertEquals("owned-link-sentinel", clipboardText())
-                click("Copy link")
-                assertTrue(device.wait(Until.hasObject(By.text("Link copied")), 15_000))
-                assertEquals(galleryUrl, clipboardText())
-                rejectBrowser.set(true)
-                click("Open in browser")
-                assertTrue(device.wait(Until.hasObject(By.text("The browser could not be opened. Try again.")), 15_000))
-                assertTrue(openedLinks.isEmpty())
-                click("Open in browser")
-                assertTrue(device.wait(Until.hasObject(By.text("Sent to the browser")), 15_000))
-                assertEquals(1, openedLinks.size)
-                assertEquals(galleryUrl, openedLinks.single().dataString)
-                assertTrue(openedLinks.single().hasExtra("android.support.customtabs.extra.SESSION"))
-                // The real Android intent was observed and explicitly cancelled by this owned
-                // monitor. This is not evidence that a real browser rendered the remote page.
-                click("Back to search")
-                click(title)
-                assertFalse(device.hasObject(By.text("Link copied")))
-                assertFalse(device.hasObject(By.text("Sent to the browser")))
-                click("Add to favorites")
-                reveal("8. Shelf 7")
-                click("8. Shelf 7")
-                reveal("Favorite note")
-                val original = "Owned 日本語 + & <note>"
-                noteField().text = original
-                click("Save favorite")
-                click("Edit favorite")
-                reveal("Favorite note")
-                assertEquals(original, note.get())
-                assertEquals(original, noteField().text)
-                assertEquals(7, category.get())
-                assertEquals(1, posts.size)
-                noteField().text = "Do not send this cancelled draft"
-                click("Cancel")
-                assertEquals(original, note.get())
-                assertEquals(1, posts.size)
-                click("Edit favorite")
-                reveal("Favorite note")
-                noteField().text = "Rejected owned draft"
-                rejectNext.set(true)
-                click("Save favorite")
-                assertTrue(device.wait(Until.hasObject(By.text("The favorite state could not be confirmed. Reload before continuing.")), 15_000))
-                val saveButton = requireNotNull(requireNotNull(device.findObject(By.text("Save favorite"))).parent)
-                assertFalse(saveButton.isEnabled)
-                assertEquals(2, posts.size)
-                assertEquals(original, note.get())
-                click("Reload favorite")
-                reveal("Favorite note")
-                assertTrue(device.wait(Until.hasObject(By.text(original)), 15_000))
-                assertEquals(original, noteField().text)
-                assertEquals(2, posts.size)
-                reveal("Remove favorite")
-                click("Remove favorite")
-                assertTrue(device.wait(Until.hasObject(By.text("Add to favorites")), 15_000))
-                assertNull(category.get())
-                assertEquals("favdel", posts.last()["favcat"])
-                assertEquals(3, posts.size)
-                click("Back to search")
-                click("Settings")
-                fun storageChoice(text: String) {
-                    repeat(12) {
-                        if (device.findObject(By.text(text))?.visibleBounds?.isEmpty == false) return
-                        requireNotNull(device.wait(Until.findObject(By.scrollable(true)), 5_000)).scroll(Direction.DOWN, 0.7f)
+                try {
+                    instrumentation.addMonitor(browserMonitor)
+                    scenario.onActivity { activity ->
+                        activity.getSystemService(AndroidClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Owned clipboard fixture", "owned-link-sentinel"))
+                        activity.setContent {
+                            val nativeClipboard = LocalClipboardManager.current
+                            val nativeBrowser = rememberGalleryBrowserHandler()
+                            val clipboard = remember(nativeClipboard) {
+                                object : ComposeClipboardManager by nativeClipboard {
+                                    override fun setText(annotatedString: AnnotatedString) {
+                                        check(!rejectCopy.getAndSet(false)) { "Owned clipboard failure" }
+                                        nativeClipboard.setText(annotatedString)
+                                    }
+                                }
+                            }
+                            val browser = remember(nativeBrowser) {
+                                object : UriHandler {
+                                    override fun openUri(uri: String) {
+                                        check(!rejectBrowser.getAndSet(false)) { "Owned browser failure" }
+                                        nativeBrowser.openUri(uri)
+                                    }
+                                }
+                            }
+                            CompositionLocalProvider(LocalClipboardManager provides clipboard, LocalUriHandler provides browser) {
+                                GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() }, storageSettings = downloadStorage)
+                            }
+                        }
                     }
-                    assertTrue("Missing real storage setting: $text", device.hasObject(By.text(text)))
-                }
-                storageChoice("256 MiB limit")
-                fun savedLimit(expected: Int) = runBlocking {
-                    withTimeout(5_000) {
-                        while (storagePreferences.downloadLimitMiB() != expected || device.findObject(By.text("$expected MiB limit"))?.parent?.let { it.isChecked && it.isEnabled } != true) delay(25)
+                    click("Search")
+                    click(title)
+                    fun clipboardText(): String? {
+                        var value: String? = null
+                        scenario.onActivity { activity -> value = activity.getSystemService(AndroidClipboardManager::class.java).primaryClip?.getItemAt(0)?.coerceToText(activity)?.toString() }
+                        return value
                     }
-                }
-                click("256 MiB limit")
-                assertTrue(device.wait(Until.hasObject(By.text("Saved download images: 0 bytes")), 5_000))
-                savedLimit(256)
-                runBlocking { storageStore.edit { it[intPreferencesKey("schema")] = 2 } }
-                click("1024 MiB limit")
-                assertTrue(device.wait(Until.hasObject(By.text("The storage limit could not be saved. Reload before trying again.")), 5_000))
-                val failedChoice = requireNotNull(requireNotNull(device.findObject(By.text("1024 MiB limit"))).parent)
-                assertFalse(failedChoice.isEnabled)
-                runBlocking { storageStore.edit { it[intPreferencesKey("schema")] = 1 } }
-                click("Refresh storage usage")
-                savedLimit(256)
-                click("1024 MiB limit")
-                savedLimit(1024)
-                assertEquals(3, posts.size) // Storage controls never trigger another account request.
-                scenario.onActivity { activity ->
-                    val clipboard = activity.getSystemService(AndroidClipboardManager::class.java)
-                    if (clipboard.primaryClip?.getItemAt(0)?.coerceToText(activity)?.toString() in setOf("owned-link-sentinel", galleryUrl)) clipboard.clearPrimaryClip()
+                    rejectCopy.set(true)
+                    click("Copy link")
+                    assertTrue(device.wait(Until.hasObject(By.text("The link could not be copied. Try again.")), 15_000))
+                    assertEquals("owned-link-sentinel", clipboardText())
+                    click("Copy link")
+                    assertTrue(device.wait(Until.hasObject(By.text("Link copied")), 15_000))
+                    assertEquals(galleryUrl, clipboardText())
+                    rejectBrowser.set(true)
+                    click("Open in browser")
+                    assertTrue(device.wait(Until.hasObject(By.text("The browser could not be opened. Try again.")), 15_000))
+                    assertTrue(openedLinks.isEmpty())
+                    click("Open in browser")
+                    assertTrue(device.wait(Until.hasObject(By.text("Sent to the browser")), 15_000))
+                    assertEquals(1, openedLinks.size)
+                    assertEquals(galleryUrl, openedLinks.single().dataString)
+                    assertTrue(openedLinks.single().hasExtra("android.support.customtabs.extra.SESSION"))
+                    // The real Android intent was observed and explicitly cancelled by this owned
+                    // monitor. This is not evidence that a real browser rendered the remote page.
+                    click("Back to search")
+                    click(title)
+                    assertFalse(device.hasObject(By.text("Link copied")))
+                    assertFalse(device.hasObject(By.text("Sent to the browser")))
+                    click("Add to favorites")
+                    reveal("8. Shelf 7")
+                    click("8. Shelf 7")
+                    reveal("Favorite note")
+                    val original = "Owned 日本語 + & <note>"
+                    noteField().text = original
+                    click("Save favorite")
+                    click("Edit favorite")
+                    reveal("Favorite note")
+                    assertEquals(original, note.get())
+                    assertEquals(original, noteField().text)
+                    assertEquals(7, category.get())
+                    assertEquals(1, posts.size)
+                    noteField().text = "Do not send this cancelled draft"
+                    click("Cancel")
+                    assertEquals(original, note.get())
+                    assertEquals(1, posts.size)
+                    click("Edit favorite")
+                    reveal("Favorite note")
+                    noteField().text = "Rejected owned draft"
+                    rejectNext.set(true)
+                    click("Save favorite")
+                    assertTrue(device.wait(Until.hasObject(By.text("The favorite state could not be confirmed. Reload before continuing.")), 15_000))
+                    val saveButton = requireNotNull(requireNotNull(device.findObject(By.text("Save favorite"))).parent)
+                    assertFalse(saveButton.isEnabled)
+                    assertEquals(2, posts.size)
+                    assertEquals(original, note.get())
+                    click("Reload favorite")
+                    reveal("Favorite note")
+                    assertTrue(device.wait(Until.hasObject(By.text(original)), 15_000))
+                    assertEquals(original, noteField().text)
+                    assertEquals(2, posts.size)
+                    reveal("Remove favorite")
+                    click("Remove favorite")
+                    assertTrue(device.wait(Until.hasObject(By.text("Add to favorites")), 15_000))
+                    assertNull(category.get())
+                    assertEquals("favdel", posts.last()["favcat"])
+                    assertEquals(3, posts.size)
+                    click("Back to search")
+                    click("Settings")
+                    fun storageChoice(text: String) {
+                        repeat(12) {
+                            if (device.findObject(By.text(text))?.visibleBounds?.isEmpty == false) return
+                            requireNotNull(device.wait(Until.findObject(By.scrollable(true)), 5_000)).scroll(Direction.DOWN, 0.7f)
+                        }
+                        assertTrue("Missing real storage setting: $text", device.hasObject(By.text(text)))
+                    }
+                    storageChoice("256 MiB limit")
+                    var storageCheck = 0
+                    fun savedLimit(expected: Int) = runBlocking {
+                        storageCheck++
+                        try {
+                            withTimeout(5_000) {
+                                while (true) {
+                                    val selected = try {
+                                        device.findObject(By.text("$expected MiB limit"))?.parent?.let { it.isChecked && it.isEnabled } == true
+                                    } catch (_: StaleObjectException) {
+                                        false // A new composition replaces the node; reacquire within the original deadline.
+                                    }
+                                    if (storagePreferences.downloadLimitMiB() == expected && selected) break
+                                    delay(25)
+                                }
+                            }
+                        } catch (failure: TimeoutCancellationException) {
+                            device.dumpWindowHierarchy(File(context.cacheDir, "favorite-storage-failure.xml"))
+                            device.takeScreenshot(File(context.cacheDir, "favorite-storage-failure.png"))
+                            throw AssertionError("Storage selection check $storageCheck did not render $expected within the original deadline", failure)
+                        }
+                    }
+                    click("256 MiB limit")
+                    assertTrue(device.wait(Until.hasObject(By.text("Saved download images: 0 bytes")), 5_000))
+                    savedLimit(256)
+                    runBlocking { storageStore.edit { it[intPreferencesKey("schema")] = 2 } }
+                    click("1024 MiB limit")
+                    assertTrue(device.wait(Until.hasObject(By.text("The storage limit could not be saved. Reload before trying again.")), 5_000))
+                    val failedChoice = requireNotNull(requireNotNull(device.findObject(By.text("1024 MiB limit"))).parent)
+                    assertFalse(failedChoice.isEnabled)
+                    runBlocking { storageStore.edit { it[intPreferencesKey("schema")] = 1 } }
+                    click("Refresh storage usage")
+                    savedLimit(256)
+                    click("1024 MiB limit")
+                    savedLimit(1024)
+                    assertEquals(3, posts.size) // Storage controls never trigger another account request.
+                } finally {
+                    scenario.onActivity { activity ->
+                        val clipboard = activity.getSystemService(AndroidClipboardManager::class.java)
+                        if (clipboard.primaryClip?.getItemAt(0)?.coerceToText(activity)?.toString() in setOf("owned-link-sentinel", galleryUrl)) clipboard.clearPrimaryClip()
+                    }
                 }
             }
         } finally {

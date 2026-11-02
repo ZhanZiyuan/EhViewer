@@ -4,6 +4,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.ehviewer.core.data.DataStoreGalleryListPreferences
 import com.ehviewer.core.data.DataStoreLanguageStore
 import com.ehviewer.core.data.DataStoreNetworkPreferences
 import com.ehviewer.core.data.DataStoreStoragePreferences
@@ -69,6 +70,7 @@ fun galleryApplication() {
     val language = GalleryLanguageSettings(DataStoreLanguageStore()) { tag ->
         Locale.setDefault(Locale.forLanguageTag(galleryResourceLanguageTag(tag ?: systemLanguage)))
     }
+    val listPreferences = DataStoreGalleryListPreferences()
     val databaseOwner = ownedRoomDb<EhDatabase>("eh.db") { addMigrations(Schema17to18()) }
     val database = databaseOwner.database
     val history = RoomGalleryHistoryStore(database)
@@ -92,7 +94,7 @@ fun galleryApplication() {
                         val directory = applicationData().resolve("archive-reading-state").resolve(book.id)
                         if (windows) windowsReaderState(resources.resolve("ehviewer_capi.dll"), directory) else ReaderStateRepository(NativeSessionVault(directory.toString()))
                     }, onBack = back)
-                }, browserFactory = browsers::create, storageSettings = downloadStorage)
+                }, browserFactory = browsers::create, storageSettings = downloadStorage, listPreferences = listPreferences)
             }
         }
     } finally {

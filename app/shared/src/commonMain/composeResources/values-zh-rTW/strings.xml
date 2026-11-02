@@ -206,4 +206,10 @@
     <string name="gallery_cover_loading">正在載入封面</string>
     <string name="gallery_cover_retry">重試封面</string>
     <string name="gallery_cover_unavailable">暫無封面</string>
+    <string name="gallery_list_layout">圖庫欄寬</string>
+    <string name="gallery_list_comfortable">寬欄</string>
+    <string name="gallery_list_compact">緊湊欄</string>
+    <string name="gallery_list_loading">正在讀取圖庫版面…</string>
+    <string name="gallery_list_unavailable">無法讀取圖庫版面。</string>
+    <string name="gallery_list_save_failed">無法儲存圖庫版面。</string>
 </resources>
