@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -32,6 +34,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
@@ -43,6 +48,7 @@ import com.ehviewer.shared.reader.ReaderPageWindow
 import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_back
 import ehviewer.app.shared.generated.resources.gallery_gallery_page
+import ehviewer.app.shared.generated.resources.gallery_go_to_page
 import ehviewer.app.shared.generated.resources.gallery_page_number
 import ehviewer.app.shared.generated.resources.gallery_reading_paged
 import ehviewer.app.shared.generated.resources.gallery_reading_progress_save_failed
@@ -61,6 +67,10 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
     val ratios = remember(window) { mutableStateMapOf<Int, Float>() }
     var saveFailure by remember { mutableStateOf(false) }
     var saveAttempt by remember { mutableIntStateOf(0) }
+    var jumpOrigin by remember(window) { mutableStateOf<Pair<Int, Int>?>(null) }
+    var jumpTarget by remember(window) { mutableStateOf<Int?>(null) }
+    var pendingPosition by remember(window) { mutableStateOf<Pair<Int, Int>?>(null) }
+    val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
     val index = list.firstVisibleItemIndex
     val current = pages[index] as? ReaderPageState.Ready<GalleryMedia>
     val defaultFling = ScrollableDefaults.flingBehavior()
@@ -79,8 +89,13 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
         }
         while (ratios.size > 1024) ratios.remove(ratios.keys.first { it !in pages })
     }
-    LaunchedEffect(window) { snapshotFlow { list.firstVisibleItemIndex }.distinctUntilChanged().collect(window::focus) }
-    LaunchedEffect(index, current?.page?.url, saveAttempt) {
+    LaunchedEffect(window) {
+        snapshotFlow { if (jumpOrigin == null && pendingPosition == null) list.firstVisibleItemIndex else null }
+            .distinctUntilChanged().collect { it?.let(window::focus) }
+    }
+    LaunchedEffect(index, current?.page?.url, saveAttempt, jumpOrigin, pendingPosition) {
+        // A modal keyboard can temporarily backfill earlier items. That is not a reading action.
+        if (jumpOrigin != null || pendingPosition != null) return@LaunchedEffect
         val ready = current ?: return@LaunchedEffect
         try {
             readerState.savePosition(detail.gid, index, ready.page.url.substringAfter("/s/").substringBefore('/'))
@@ -91,10 +106,21 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
             saveFailure = true
         }
     }
+    jumpOrigin?.let { origin ->
+        GalleryReaderPageDialog(origin.first, detail.pages, onJump = { jumpTarget = it }, onDismiss = {
+            pendingPosition = jumpTarget?.let { it to 0 } ?: origin
+            jumpOrigin = null
+            jumpTarget = null
+        })
+    }
+    val jumpLabel = galleryString(Res.string.gallery_go_to_page)
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back)) }
-            Text("${index + 1} / ${detail.pages}")
+            TextButton(onClick = {
+                jumpTarget = null
+                jumpOrigin = list.firstVisibleItemIndex to list.firstVisibleItemScrollOffset
+            }, enabled = pendingPosition == null, modifier = Modifier.semantics { contentDescription = jumpLabel }) { Text("${index + 1} / ${detail.pages}") }
             TextButton(onClick = { current?.page?.url?.let(onPaged) }, enabled = current != null) { Text(galleryString(Res.string.gallery_reading_paged)) }
         }
         if (saveFailure) {
@@ -105,6 +131,16 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
         }
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             val viewportHeight = maxHeight
+            LaunchedEffect(pendingPosition, imeBottom, index, viewportHeight) {
+                val position = pendingPosition ?: return@LaunchedEffect
+                if (imeBottom == 0) {
+                    val layout = list.layoutInfo
+                    val size = layout.visibleItemsInfo.firstOrNull { it.index == position.first }?.size
+                    val offset = readerRestoreOffset(position.second, size, layout.viewportSize.height, position.first == detail.pages - 1)
+                    list.requestScrollToItem(position.first, offset)
+                    if (index == position.first) pendingPosition = null
+                }
+            }
             LazyColumn(Modifier.fillMaxSize(), state = list, flingBehavior = readerFling) {
                 items(detail.pages, key = { it }) { page ->
                     // Unloaded pages retain a page-shaped extent; tiny placeholders make touch flings skip dozens of pages.

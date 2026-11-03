@@ -52,15 +52,18 @@ import kotlin.io.encoding.Base64
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -284,6 +287,197 @@ class GalleryPreviewIntegrationTest {
                 EhDB.deleteHistoryInfo(BaseGalleryInfo(gid = gid, token = token).asEntity())
                 assertNull("Owned gallery fixture was not removed", EhDB.getGalleryInfo(gid))
                 assertNull("Owned reading progress was not removed", EhDB.getReadingPosition(gid))
+            }
+            Settings.edit(blocking = true) { current ->
+                fun <T> restore(pref: PrefDelegate<T>) {
+                    if (pref in before) current[pref] = before[pref] else current.remove(pref)
+                }
+                restore(needSignIn)
+                restore(updateIntervalDays)
+                restore(launchPage)
+                restore(readingMode)
+                restore(continuousReadingRtl)
+            }
+            Settings.appLinkVerifyTip = tip
+            with(Settings) {
+                downloadScheme = location[0]
+                downloadAuthority = location[1]
+                downloadPath = location[2]
+                downloadQuery = location[3]
+                downloadFragment = location[4]
+            }
+            check(owned.deleteRecursively())
+        }
+    }
+
+    @Test fun pageJumpValidatesCancelsRetriesAndOnlySavesActuallyDecodedPagesInBothLayouts() {
+        System.loadLibrary("ehviewer")
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val device = UiDevice.getInstance(instrumentation)
+        val before = runBlocking { Settings.snapshot() }
+        val location = with(Settings) { listOf(downloadScheme, downloadAuthority, downloadPath, downloadQuery, downloadFragment) }
+        val tip = Settings.appLinkVerifyTip
+        val owned = File(context.cacheDir, "reader-jump-${UUID.randomUUID()}").apply { check(mkdirs()) }
+        val metadataStarted = CompletableDeferred<Unit>()
+        val releaseMetadata = CompletableDeferred<Unit>()
+        val metadataFinished = CompletableDeferred<Unit>()
+        val imageStarted = CompletableDeferred<Unit>()
+        val releaseImage = CompletableDeferred<Unit>()
+        val metadataAttempts = AtomicInteger()
+        val blockFirstMetadata = AtomicBoolean(true)
+        val rejectNextMetadata = AtomicBoolean(true)
+        val engine = MockEngine { request ->
+            when {
+                request.url.host == "ehgt.org" -> {
+                    if (request.url.encodedPath == "/2.png") {
+                        imageStarted.complete(Unit)
+                        releaseImage.await()
+                    }
+                    respond(png, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
+                }
+                request.url.encodedPath == "/" -> respond("""<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/0.png" style="height:100px;width:80px"><div class="cn">Non-H</div><div class="ir" style="background-position:0px -1px"></div></div></div></body></html>""")
+                request.url.encodedPath.startsWith("/g/") -> {
+                    if (request.url.parameters["p"] == "1") {
+                        metadataAttempts.incrementAndGet()
+                        if (blockFirstMetadata.getAndSet(false)) {
+                            metadataStarted.complete(Unit)
+                            try {
+                                withContext(NonCancellable) { releaseMetadata.await() }
+                            } finally {
+                                metadataFinished.complete(Unit)
+                            }
+                            respond(detail(1))
+                        } else if (rejectNextMetadata.getAndSet(false)) {
+                            respond("Owned unavailable preview metadata", HttpStatusCode.ServiceUnavailable)
+                        } else {
+                            respond(detail(1))
+                        }
+                    } else {
+                        respond(detail(0))
+                    }
+                }
+                request.url.encodedPath.startsWith("/s/") -> {
+                    val number = request.url.encodedPath.substringAfterLast('-').toInt()
+                    check(number in 1..3)
+                    val previous = if (number > 1) """<a id="prev" href="https://e-hentai.org/s/${(number - 1).toString().repeat(10)}/$gid-${number - 1}">Previous</a>""" else ""
+                    val next = if (number < 3) """<a id="next" href="https://e-hentai.org/s/${(number + 1).toString().repeat(10)}/$gid-${number + 1}">Next</a>""" else ""
+                    respond("""<!DOCTYPE html><html><body><img id="img" src="https://ehgt.org/${number - 1}.png">$previous$next</body></html>""")
+                }
+                else -> error("Unexpected owned reader-jump request")
+            }
+        }
+        val client = HttpClient(engine) { followRedirects = false }
+        val library = AndroidGalleryLibrary(false, client)
+        fun visible(text: String) = assertTrue("Missing reader control: $text", device.wait(Until.hasObject(By.text(text)), 15_000))
+        fun click(text: String) {
+            val deadline = SystemClock.uptimeMillis() + 15_000
+            while (SystemClock.uptimeMillis() < deadline) {
+                try {
+                    var node = device.findObject(By.text(text)) ?: device.findObject(By.desc(text))
+                    while (node != null && !node.isClickable) node = node.parent
+                    if (node?.isEnabled == true) {
+                        node.click()
+                        return
+                    }
+                } catch (_: StaleObjectException) {
+                    // Reacquire before dispatch within the same bounded action.
+                }
+                SystemClock.sleep(25)
+            }
+            throw AssertionError("Missing enabled reader control: $text")
+        }
+        fun input(value: String) {
+            checkNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = value
+        }
+        fun saved(index: Int) = runBlocking { withTimeout(10_000) { while (EhDB.getReadingPosition(gid)?.page != index) delay(25) } }
+        downloadLocation = owned.toOkioPath()
+        Settings.appLinkVerifyTip = true
+        Settings.edit(blocking = true) {
+            it[needSignIn] = false
+            it[updateIntervalDays] = 0
+            it[launchPage] = 8
+            it[readingMode] = ReadingModeType.LEFT_TO_RIGHT.prefValue
+        }
+        runBlocking { assertNull(EhDB.getGalleryInfo(gid)) }
+        try {
+            val intent = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            ActivityScenario.launch<MainActivity>(intent).use { scenario ->
+                scenario.onActivity { activity ->
+                    activity.setContent {
+                        val scope = rememberCoroutineScope()
+                        GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, remember { AndroidGalleryDownloads(scope) }, remember { androidGalleryLanguageSettings() })
+                    }
+                }
+                var stage = "open real first page"
+                try {
+                    click("Search")
+                    click(title)
+                    click("Read gallery")
+                    visible("1 / 3")
+                    saved(0)
+                    stage = "invalid page stays local"
+                    click("Go to page")
+                    input("0")
+                    click("Open page")
+                    visible("Enter a page from 1 to 3.")
+                    assertEquals(0, metadataAttempts.get())
+                    assertEquals(0, runBlocking { EhDB.getReadingPosition(gid)?.page })
+                    stage = "cancel in-flight metadata"
+                    input("3")
+                    click("Open page")
+                    runBlocking { withTimeout(5_000) { metadataStarted.await() } }
+                    click("Cancel")
+                    releaseMetadata.complete(Unit)
+                    runBlocking { withTimeout(5_000) { metadataFinished.await() } }
+                    instrumentation.waitForIdleSync()
+                    visible("1 / 3")
+                    assertEquals(0, runBlocking { EhDB.getReadingPosition(gid)?.page })
+                    stage = "metadata failure preserves page and explicit retry"
+                    click("Go to page")
+                    input("3")
+                    click("Open page")
+                    visible("The site is temporarily unavailable.")
+                    assertEquals(0, runBlocking { EhDB.getReadingPosition(gid)?.page })
+                    click("Open page")
+                    runBlocking { withTimeout(5_000) { imageStarted.await() } }
+                    assertEquals(0, runBlocking { EhDB.getReadingPosition(gid)?.page }) // Metadata alone never advances progress.
+                    releaseImage.complete(Unit)
+                    visible("3 / 3")
+                    assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 3")), 15_000))
+                    saved(2)
+                    assertEquals(3, metadataAttempts.get())
+                    stage = "continuous jump and cancellation"
+                    click("Continuous reading")
+                    visible("Paged reading")
+                    click("Go to page")
+                    input("2")
+                    click("Open page")
+                    visible("2 / 3")
+                    assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 2")), 15_000))
+                    saved(1)
+                    click("Go to page")
+                    input("1")
+                    click("Cancel")
+                    visible("2 / 3")
+                    assertEquals(1, runBlocking { EhDB.getReadingPosition(gid)?.page })
+                    assertFalse(device.hasObject(By.text("Open page")))
+                    assertEquals(3, metadataAttempts.get())
+                } catch (failure: Throwable) {
+                    device.dumpWindowHierarchy(File(context.cacheDir, "reader-jump-$gid-failure.xml"))
+                    device.takeScreenshot(File(context.cacheDir, "reader-jump-$gid-failure.png"))
+                    throw AssertionError("Reader page-jump stage failed: $stage", failure)
+                }
+            }
+        } finally {
+            releaseMetadata.complete(Unit)
+            releaseImage.complete(Unit)
+            client.close()
+            engine.close()
+            runBlocking {
+                EhDB.deleteHistoryInfo(BaseGalleryInfo(gid = gid, token = token).asEntity())
+                assertNull(EhDB.getGalleryInfo(gid))
+                assertNull(EhDB.getReadingPosition(gid))
             }
             Settings.edit(blocking = true) { current ->
                 fun <T> restore(pref: PrefDelegate<T>) {

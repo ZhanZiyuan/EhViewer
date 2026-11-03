@@ -37,21 +37,26 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.domain.reader.ReadingDirection
 import com.ehviewer.core.domain.reader.ReadingLayout
+import com.ehviewer.core.domain.reader.ReadingPosition
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GalleryRequestException
+import com.ehviewer.shared.reader.readingResumeUrl
 import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_back
 import ehviewer.app.shared.generated.resources.gallery_display_image
 import ehviewer.app.shared.generated.resources.gallery_gallery_page
+import ehviewer.app.shared.generated.resources.gallery_go_to_page
 import ehviewer.app.shared.generated.resources.gallery_next_page
 import ehviewer.app.shared.generated.resources.gallery_original_image
 import ehviewer.app.shared.generated.resources.gallery_previous_page
@@ -64,6 +69,8 @@ import ehviewer.app.shared.generated.resources.gallery_reset_zoom
 import ehviewer.app.shared.generated.resources.gallery_retry
 import kotlin.math.min
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
 /** A bounded, cancellable online page reader shared by touch and desktop applications. */
@@ -85,6 +92,7 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
     var preferencesAttempt by remember { mutableIntStateOf(0) }
     var settingsSaving by remember { mutableStateOf(false) }
     var saveFailure by remember(url) { mutableStateOf(false) }
+    var jumpOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val focus = remember { FocusRequester() }
     val currentUrl = url
@@ -162,6 +170,16 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
         }
     }
     LaunchedEffect(Unit) { focus.requestFocus() }
+    if (jumpOpen) {
+        GalleryReaderPageDialog(index, detail.pages, onJump = { target ->
+            if (target != index) {
+                val resolved = readingResumeUrl(session.content, detail, ReadingPosition(detail.gid, target, null, 0))
+                currentCoroutineContext().ensureActive()
+                url = resolved
+            }
+        }, onDismiss = { jumpOpen = false })
+    }
+    val jumpLabel = galleryString(Res.string.gallery_go_to_page)
     Column(
         Modifier.fillMaxSize().focusRequester(focus).onPreviewKeyEvent { event ->
             if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -178,7 +196,7 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back)) }
-            Text("${index + 1} / ${detail.pages}")
+            TextButton(onClick = { jumpOpen = true }, modifier = Modifier.semantics { contentDescription = jumpLabel }) { Text("${index + 1} / ${detail.pages}") }
             TextButton(onClick = {
                 zoom = 1f
                 pan = Offset.Zero

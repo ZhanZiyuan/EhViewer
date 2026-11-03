@@ -218,4 +218,8 @@
     <string name="gallery_sort_title">タイトル</string>
     <string name="gallery_sort_rating">評価の高い順</string>
     <string name="gallery_sort_pages">ページ数の多い順</string>
+    <string name="gallery_go_to_page">指定ページへ移動</string>
+    <string name="gallery_jump_page_label">ページ番号（1–%1$s）</string>
+    <string name="gallery_jump_page_invalid">1 から %1$s までのページ番号を入力してください。</string>
+    <string name="gallery_open_page">ページを開く</string>
 </resources>

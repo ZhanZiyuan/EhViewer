@@ -218,4 +218,8 @@
     <string name="gallery_sort_title">标题</string>
     <string name="gallery_sort_rating">评分从高到低</string>
     <string name="gallery_sort_pages">页数从多到少</string>
+    <string name="gallery_go_to_page">跳转到指定页</string>
+    <string name="gallery_jump_page_label">页码（1–%1$s）</string>
+    <string name="gallery_jump_page_invalid">请输入 1 到 %1$s 之间的页码。</string>
+    <string name="gallery_open_page">打开页面</string>
 </resources>

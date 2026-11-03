@@ -218,4 +218,8 @@
     <string name="gallery_sort_title">Title</string>
     <string name="gallery_sort_rating">Rating (highest first)</string>
     <string name="gallery_sort_pages">Pages (most first)</string>
+    <string name="gallery_go_to_page">Go to page</string>
+    <string name="gallery_jump_page_label">Page number (1–%1$s)</string>
+    <string name="gallery_jump_page_invalid">Enter a page from 1 to %1$s.</string>
+    <string name="gallery_open_page">Open page</string>
 </resources>
