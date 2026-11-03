@@ -51,7 +51,7 @@
     <string name="gallery_refresh">更新</string>
     <string name="gallery_history_title">閲覧履歴</string>
     <string name="gallery_history_unavailable">閲覧履歴を読み込めません。</string>
-    <string name="gallery_history_empty">閲覧履歴はまだありません。</string>
+    <string name="gallery_history_empty">閲覧したギャラリーはここに表示されます</string>
     <string name="gallery_history_remove">履歴から削除</string>
     <string name="gallery_favorite">お気に入り</string>
     <string name="gallery_favorite_editor">お気に入りの編集</string>
@@ -225,5 +225,8 @@
     <string name="gallery_galleries">ギャラリー</string>
     <string name="gallery_open_navigation">ナビゲーションを開く</string>
     <string name="gallery_clear_search">検索をクリア</string>
+    <string name="gallery_search_in">%1$s を検索</string>
+    <string name="gallery_clear_all">すべて消去</string>
+    <string name="gallery_clear_all_history">履歴をすべて消去しますか？</string>
     <string name="gallery_downloaded">ダウンロード済み</string>
 </resources>

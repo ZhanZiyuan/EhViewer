@@ -1130,3 +1130,7 @@ Repair 143c1e9ab passed [PR CI41602379644](https://github.com/ZhanZiyuan/EhViewe
 ## Floating search bar accepted; search load states in validation
 
 757cee561 passed [PR CI41639430212](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41639430212): all executed required jobs SUCCESS (source policy, shared KMP, Android, iOS, Linux aarch64, native and Rosetta Intel Desktop, both Rust hosts, both native Windows CPUs) and gate SUCCESS; release dry-run was skipped by its declared plan and is not counted as a success. The search load-state change was prepared locally during that run and not pushed before the gate; see [shared-search-load-states.md](shared-search-load-states.md).
+
+## Search load states accepted; downloaded mark pushed; History screen in validation
+
+46906c80e passed [PR CI41645680431](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41645680431): all executed required jobs SUCCESS (source policy, shared KMP, Android, iOS, Linux aarch64, native and Rosetta Intel Desktop, both Rust hosts, both native Windows CPUs) and gate SUCCESS; release dry-run was skipped by its declared plan and is not counted as a success. Its iOS job took about 60 minutes against about 39 minutes for the preceding run. The downloaded-mark commit 6ae7394db was prepared and committed locally during that run and pushed only after the gate ([shared-downloaded-mark.md](shared-downloaded-mark.md)). The History screen was then prepared locally; see [shared-history-screen.md](shared-history-screen.md).

@@ -66,6 +66,24 @@ class RoomGalleryHistoryStoreTest {
         }
     }
 
+    @Test fun clearingHistoryRemovesEveryEntryButKeepsGalleriesAndReadingPositions() = runTest {
+        val db = historyTestDatabase()
+        try {
+            val store = RoomGalleryHistoryStore(db)
+            store.record(gallery(1))
+            store.record(gallery(2))
+            db.progressDao().upsert(ProgressInfo(2, 7))
+            store.clear()
+            assertEquals(emptyList(), store.recent())
+            assertEquals("History 1", db.galleryDao().load(1)?.title)
+            assertEquals(7, db.progressDao().load(2)?.page)
+            store.touch(1) // Opening a cleared gallery again restores its entry.
+            assertEquals(listOf(1L), store.recent().map { it.gid })
+        } finally {
+            db.close()
+        }
+    }
+
     @Test fun forgettingHistoryPreservesTheActualGalleryAndReadingPosition() = runTest {
         val db = historyTestDatabase()
         try {

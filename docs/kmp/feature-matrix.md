@@ -40,3 +40,5 @@ Shared floating search bar (in local validation): Android's 56dp Material 3 sear
 Shared search load states (in local validation): Android's centered refresh indicator and sad-Android ErrorTip (tap to retry) for first-search failures and empty pages; failed page turns keep the page. See [shared-search-load-states.md](shared-search-load-states.md).
 
 Shared downloaded mark (in local validation): search cards show Android's 16dp download icon for galleries with a download entry, from the platform download queue. See [shared-downloaded-mark.md](shared-downloaded-mark.md).
+
+Shared History screen (in local validation): Android's HistoryScreen layout with the floating search bar, Clear all, list cards with swipe-to-forget and the large empty-state icon; `GalleryHistoryStore.clear()` keeps galleries and reading positions. See [shared-history-screen.md](shared-history-screen.md).

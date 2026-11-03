@@ -10,4 +10,7 @@ interface GalleryHistoryStore {
     suspend fun record(gallery: GalleryInfo)
     suspend fun touch(gid: Long)
     suspend fun forget(gid: Long)
+
+    /** Android's Clear all: removes every history entry. */
+    suspend fun clear()
 }

@@ -51,7 +51,7 @@
     <string name="gallery_refresh">Refresh</string>
     <string name="gallery_history_title">Reading history</string>
     <string name="gallery_history_unavailable">Reading history is unavailable.</string>
-    <string name="gallery_history_empty">No reading history yet.</string>
+    <string name="gallery_history_empty">Viewed galleries will be shown here</string>
     <string name="gallery_history_remove">Remove from history</string>
     <string name="gallery_favorite">Favorite</string>
     <string name="gallery_favorite_editor">Favorite editor</string>
@@ -225,5 +225,8 @@
     <string name="gallery_galleries">Galleries</string>
     <string name="gallery_open_navigation">Open navigation</string>
     <string name="gallery_clear_search">Clear search</string>
+    <string name="gallery_search_in">Search %1$s</string>
+    <string name="gallery_clear_all">Clear all</string>
+    <string name="gallery_clear_all_history">Clear all history?</string>
     <string name="gallery_downloaded">Downloaded</string>
 </resources>

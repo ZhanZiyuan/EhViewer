@@ -51,7 +51,7 @@
     <string name="gallery_refresh">重新整理</string>
     <string name="gallery_history_title">閱讀歷史</string>
     <string name="gallery_history_unavailable">無法讀取閱讀歷史。</string>
-    <string name="gallery_history_empty">尚無閱讀歷史。</string>
+    <string name="gallery_history_empty">歷史紀錄將會顯示在這裡</string>
     <string name="gallery_history_remove">從歷史中移除</string>
     <string name="gallery_favorite">收藏</string>
     <string name="gallery_favorite_editor">編輯收藏</string>
@@ -225,5 +225,8 @@
     <string name="gallery_galleries">圖庫</string>
     <string name="gallery_open_navigation">開啟導覽</string>
     <string name="gallery_clear_search">清除搜尋</string>
+    <string name="gallery_search_in">搜尋 %1$s</string>
+    <string name="gallery_clear_all">全部清除</string>
+    <string name="gallery_clear_all_history">清除所有歷史紀錄？</string>
     <string name="gallery_downloaded">已下載</string>
 </resources>

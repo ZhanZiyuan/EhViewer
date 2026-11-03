@@ -28,8 +28,8 @@ class GallerySearchBarTest {
                         {},
                         {},
                         maxWidth,
-                        filtered = false,
-                        onFilters = {},
+                        title = "EhViewer",
+                        hint = "Search galleries",
                         leading = {},
                         modifier = Modifier.align(Alignment.TopCenter).onGloballyPositioned {
                             left = it.positionInRoot().x.roundToInt()

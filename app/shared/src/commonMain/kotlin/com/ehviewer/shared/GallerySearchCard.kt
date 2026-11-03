@@ -58,10 +58,10 @@ import kotlinx.coroutines.CancellationException
  * title, then uploader/favorite, rating/language/pages and category/posted rows in labelLarge.
  */
 @Composable
-internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCache<CoilImage>, downloaded: Boolean = false, onOpen: () -> Unit) {
+internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCache<CoilImage>, modifier: Modifier = Modifier, downloaded: Boolean = false, onOpen: () -> Unit) {
     val cover = gallery.thumbKey?.takeIf { it.isNotBlank() }?.let { GalleryCoverRequest(gallery.gid, gallery.token, it) }
     val height = galleryListCardHeight(LocalDensity.current)
-    OutlinedCard(onClick = onOpen, modifier = Modifier.fillMaxWidth().height(height), border = galleryCrystalBorder()) {
+    OutlinedCard(onClick = onOpen, modifier = modifier.fillMaxWidth().height(height), border = galleryCrystalBorder()) {
         Row {
             Card(Modifier.aspectRatio(GALLERY_COVER_RATIO)) { GalleryCoverImage(cover, cache) }
             Column(Modifier.padding(start = 8.dp, top = 2.dp, end = 4.dp, bottom = 4.dp)) {

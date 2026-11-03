@@ -41,6 +41,8 @@ class RoomGalleryHistoryStore(private val database: EhDatabase) : GalleryHistory
         stored { database.historyDao().deleteByKey(gid) }
     }
 
+    override suspend fun clear() = stored { database.historyDao().deleteAll() }
+
     override suspend fun touch(gid: Long) = stored {
         require(gid > 0)
         database.useWriterConnection { connection ->

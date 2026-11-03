@@ -26,6 +26,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.ShapeDefaults
@@ -97,12 +98,16 @@ import ehviewer.app.shared.generated.resources.gallery_error_response
 import ehviewer.app.shared.generated.resources.gallery_error_server
 import ehviewer.app.shared.generated.resources.gallery_error_session_storage
 import ehviewer.app.shared.generated.resources.gallery_error_too_large
+import ehviewer.app.shared.generated.resources.gallery_filters
+import ehviewer.app.shared.generated.resources.gallery_filters_applied
 import ehviewer.app.shared.generated.resources.gallery_list_unavailable
 import ehviewer.app.shared.generated.resources.gallery_next
 import ehviewer.app.shared.generated.resources.gallery_no_galleries
 import ehviewer.app.shared.generated.resources.gallery_previous
 import ehviewer.app.shared.generated.resources.gallery_reload_page
 import ehviewer.app.shared.generated.resources.gallery_retry
+import ehviewer.app.shared.generated.resources.gallery_search
+import ehviewer.app.shared.generated.resources.gallery_search_galleries
 import ehviewer.app.shared.generated.resources.gallery_search_hint
 import ehviewer.app.shared.generated.resources.gallery_sort_page
 import kotlin.math.roundToInt
@@ -247,6 +252,7 @@ fun GalleryLibraryScreen(
     val coverLoader = remember(session, coverContext) { GalleryCoverLoader(coverContext) { session.galleries.cover(it.gid, it.token, it.key) } }
     DisposableEffect(coverLoader) { onDispose { coverLoader.close() } }
     val covers = remember(coverLoader, page) { GalleryCoverCache(load = coverLoader::get) }
+    val historyCovers = remember(coverLoader, historyOpen) { GalleryCoverCache(load = coverLoader::get) }
 
     fun load(search: GallerySearchRequest, replaceResults: Boolean = false) {
         request?.cancel()
@@ -341,8 +347,9 @@ fun GalleryLibraryScreen(
             Surface(Modifier.fillMaxSize()) {
                 GalleryNavigationShell(destinations, destination, ::navigate) { openNavigation ->
                     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
-                        val searching = !settingsOpen && !(account && accountContent != null) && !(archivesOpen && archiveContent != null) && !downloadsOpen && selected == null && !historyOpen
-                        Column(if (searching) Modifier.fillMaxSize() else Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                        // Search and History are Android's floating-search-bar pages; the others keep the content column.
+                        val searchBarPage = !settingsOpen && !(account && accountContent != null) && !(archivesOpen && archiveContent != null) && !downloadsOpen && selected == null
+                        Column(if (searchBarPage) Modifier.fillMaxSize() else Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
                             if (settingsOpen) {
                                 GallerySettingsScreen(networkPreferences, appearance, readerState, themeMode, appearanceFailed, language, languageTag, languageReady, languageFailed, onLanguageChanged = { languageTag = it }, onRetryLanguage = { languageAttempt++ }, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = ::leaveSettings, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings, listPreferences = listPreferences, listDensity = listDensity, listFailed = listFailed, onListChanged = { listDensity = it }, onRetryList = { listAttempt++ })
                                 return@Column
@@ -399,7 +406,9 @@ fun GalleryLibraryScreen(
                                 return@Column
                             }
                             if (historyOpen) {
-                                GalleryHistoryScreen(history, onOpen = { selected = it }, onBack = { historyOpen = false })
+                                GalleryHistoryScreen(history, historyCovers, downloadedGids, leading = {
+                                    if (openNavigation != null) GalleryNavigationButton(openNavigation) else Icon(GalleryIcons.Search, contentDescription = null)
+                                }, onOpen = { selected = it }, onBack = { historyOpen = false })
                                 return@Column
                             }
                             if (filtersOpen) {
@@ -469,8 +478,8 @@ fun GalleryLibraryScreen(
                                     onQueryChange = { query = it.take(4096) },
                                     onSearch = { search() },
                                     maxWidth = maxWidth,
-                                    filtered = filters != GallerySearchFilters(),
-                                    onFilters = { filtersOpen = true },
+                                    title = "EhViewer",
+                                    hint = galleryString(Res.string.gallery_search_galleries),
                                     leading = {
                                         // Like Android's list, phones lead with the drawer; system Back still leaves an embedded screen.
                                         when {
@@ -480,7 +489,14 @@ fun GalleryLibraryScreen(
                                         }
                                     },
                                     modifier = Modifier.align(Alignment.TopCenter).then(offset),
-                                )
+                                ) {
+                                    IconButton(onClick = { search() }) { Icon(GalleryIcons.Search, contentDescription = galleryString(Res.string.gallery_search)) }
+                                    IconButton(onClick = { filtersOpen = true }) {
+                                        val filtered = filters != GallerySearchFilters()
+                                        val description = galleryString(if (filtered) Res.string.gallery_filters_applied else Res.string.gallery_filters)
+                                        Icon(GalleryIcons.FilterList, contentDescription = description, tint = if (filtered) MaterialTheme.colorScheme.primary else LocalContentColor.current)
+                                    }
+                                }
                             }
                             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                                 if (appearanceFailed) {

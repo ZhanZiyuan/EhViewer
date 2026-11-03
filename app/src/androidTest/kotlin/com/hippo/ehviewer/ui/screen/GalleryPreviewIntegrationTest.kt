@@ -720,15 +720,18 @@ class GalleryPreviewIntegrationTest {
                 assertTrue(device.wait(Until.hasObject(By.text(title)), 10_000))
                 click("Back to search")
                 device.openSharedDestination("History")
-                assertTrue(device.wait(Until.hasObject(By.text("Reading history")), 10_000))
+                assertTrue(device.wait(Until.hasObject(By.desc("Search History")), 10_000))
                 click(title)
                 click("Back to history")
-                click("Remove from history")
+                // Like Android's history list, swiping a card toward the start forgets the entry.
+                val card = requireNotNull(device.wait(Until.findObject(By.text(title)), 10_000)).visibleBounds
+                device.swipe(device.displayWidth * 9 / 10, card.centerY(), device.displayWidth / 10, card.centerY(), 20)
                 runBlocking {
                     withTimeout(10_000) { while (EhDB.sharedHistory.recent().any { it.gid == gid }) delay(25) }
                     assertEquals(2, EhDB.getReadingPosition(gid)?.page)
                 }
-                click("Back to search")
+                assertTrue("Forgotten entry stayed in the list", device.wait(Until.gone(By.text(title)), 10_000))
+                device.openSharedDestination("Galleries")
                 assertTrue(device.wait(Until.hasObject(By.desc("Search galleries")), 10_000))
                 assertTrue(requests.any { it == "/g/$gid/$token/?p=1" })
                 assertTrue(requests.any { it.startsWith("/s/3333333333/$gid-3") })
