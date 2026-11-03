@@ -16,6 +16,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** Renders the real shared shell headlessly at phone, tablet and desktop widths. */
 class GalleryNavigationShellTest {
@@ -46,6 +47,9 @@ class GalleryNavigationShellTest {
 
     private fun ImageComposeScene.settle(frame: Int) = repeat(3) { render((frame * 3L + it) * 16_000_000L) }
 
+    // Material's rail is 80dp and grows only when a label needs more room, which depends on platform fonts.
+    private fun assertRail(width: Int, contentWidth: Int) = assertTrue(width - contentWidth in 80..160, "rail beside content: window $width, content $contentWidth")
+
     @Test
     fun compactWindowsUseTheDrawerAndTheFullWidth() {
         val observed = Observed()
@@ -60,7 +64,7 @@ class GalleryNavigationShellTest {
             val observed = Observed()
             shell(width, observed) { it.settle(0) }
             assertNull(observed.opener, "width $width")
-            assertEquals(width - 80, observed.contentWidth, "width $width")
+            assertRail(width, observed.contentWidth)
         }
     }
 
@@ -70,13 +74,14 @@ class GalleryNavigationShellTest {
         var reading by mutableStateOf(false)
         shell(1280, observed, { reading }) { scene ->
             scene.settle(0)
-            assertEquals(1200, observed.contentWidth)
+            assertRail(1280, observed.contentWidth)
+            val beside = observed.contentWidth
             reading = true
             scene.settle(1)
             assertEquals(1280, observed.contentWidth)
             reading = false
             scene.settle(2)
-            assertEquals(1200, observed.contentWidth)
+            assertEquals(beside, observed.contentWidth)
         }
     }
 
@@ -92,7 +97,7 @@ class GalleryNavigationShellTest {
             scene.constraints = Constraints.fixed(1280, 720)
             scene.settle(2)
             assertNull(observed.opener)
-            assertEquals(1200, observed.contentWidth)
+            assertRail(1280, observed.contentWidth)
         }
         assertEquals(1, observed.contentInstances)
     }

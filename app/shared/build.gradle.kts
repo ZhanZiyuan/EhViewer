@@ -1,4 +1,5 @@
 import java.time.Duration
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest
 
@@ -48,6 +49,12 @@ kotlin {
 }
 
 tasks.named<Jar>("desktopJar") { archiveFileName.set("shared-ui-jvm.jar") }
+
+// Headless Compose rendering measures with the host's fonts: keep results per OS and show measured values.
+tasks.named<Test>("desktopTest") {
+    inputs.property("renderingOperatingSystem", System.getProperty("os.name"))
+    testLogging { exceptionFormat = TestExceptionFormat.FULL }
+}
 
 val stagedReaderTest = providers.gradleProperty("ehviewer.reader.testDirectory")
 val stageReaderTest = tasks.register<Copy>("stageIosReaderTest") {
