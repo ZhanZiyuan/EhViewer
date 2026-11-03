@@ -313,10 +313,14 @@ class GalleryFavoriteIntegrationTest {
                     click("Settings")
                     fun storageChoice(text: String) {
                         repeat(12) {
-                            if (device.findObject(By.text(text))?.visibleBounds?.isEmpty == false) return
-                            requireNotNull(device.wait(Until.findObject(By.scrollable(true)), 5_000)).scroll(Direction.DOWN, 0.7f)
+                            try {
+                                if (device.findObject(By.text(text))?.visibleBounds?.isEmpty == false) return
+                                requireNotNull(device.wait(Until.findObject(By.scrollable(true)), 5_000)).scroll(Direction.DOWN, 0.7f)
+                            } catch (_: StaleObjectException) {
+                                // Reacquire after recomposition within the original12 attempts/5s wait.
+                            }
                         }
-                        assertTrue("Missing real storage setting: $text", device.hasObject(By.text(text)))
+                        assertTrue("Missing visible real storage setting: $text", device.findObject(By.text(text))?.visibleBounds?.isEmpty == false)
                     }
                     storageChoice("256 MiB limit")
                     var storageCheck = 0

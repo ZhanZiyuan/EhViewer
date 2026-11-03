@@ -1,13 +1,17 @@
 package com.ehviewer.shared
 
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import coil3.asImage
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.Codec
 import org.jetbrains.skia.Data
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.ImageInfo
 import org.jetbrains.skia.SamplingMode
+
+internal actual fun ImageBitmap.asCoilCover(): coil3.Image = asSkiaBitmap().asImage()
 
 internal actual fun decodePlatformImage(bytes: ByteArray): ImageBitmap {
     val data = Data.makeFromBytes(bytes)
@@ -30,12 +34,13 @@ internal actual fun decodePlatformImage(bytes: ByteArray): ImageBitmap {
     }
 }
 
-internal actual fun decodePlatformCover(bytes: ByteArray): ImageBitmap {
-    val dimensions = Data.makeFromBytes(bytes).let { data ->
+internal actual fun decodePlatformCoverResult(bytes: ByteArray): DecodedGalleryCover {
+    val original = Data.makeFromBytes(bytes).let { data ->
         try {
             val codec = Codec.makeFromData(data)
             try {
-                coverDimensions(codec.width, codec.height)
+                checkedImageDimensions(codec.width, codec.height)
+                codec.width to codec.height
             } finally {
                 codec.close()
             }
@@ -43,6 +48,7 @@ internal actual fun decodePlatformCover(bytes: ByteArray): ImageBitmap {
             data.close()
         }
     }
+    val dimensions = coverDimensions(original.first, original.second)
     val source = Image.makeFromEncoded(bytes)
     try {
         val target = Bitmap()
@@ -56,7 +62,7 @@ internal actual fun decodePlatformCover(bytes: ByteArray): ImageBitmap {
             }
             val scaled = Image.makeFromBitmap(target)
             return try {
-                scaled.toComposeImageBitmap()
+                DecodedGalleryCover(scaled.toComposeImageBitmap(), dimensions != original)
             } finally {
                 scaled.close()
             }

@@ -30,6 +30,7 @@ kotlin {
         implementation(libs.compose.material3)
         implementation(libs.compose.ui.backhandler)
         implementation(libs.androidx.lifecycle.compose)
+        implementation(libs.coil.shared.core)
         implementation(libs.serialization.json)
     }
     sourceSets.findByName("androidMain")?.dependencies {

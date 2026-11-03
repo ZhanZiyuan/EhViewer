@@ -27,13 +27,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.Image as CoilImage
+import coil3.compose.LocalPlatformContext
+import coil3.compose.asPainter
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import ehviewer.app.shared.generated.resources.Res
@@ -46,7 +48,7 @@ import kotlinx.coroutines.CancellationException
 
 /** One shared compact card: narrow screens have one column; wider screens use the same content. */
 @Composable
-internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCache<ImageBitmap>, onOpen: () -> Unit) {
+internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCache<CoilImage>, onOpen: () -> Unit) {
     val cover = gallery.thumbKey?.takeIf { it.isNotBlank() }?.let { GalleryCoverRequest(gallery.gid, gallery.token, it) }
     Card(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -64,8 +66,8 @@ internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCach
 }
 
 @Composable
-private fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCoverCache<ImageBitmap>) {
-    var image by remember(request, cache) { mutableStateOf<ImageBitmap?>(null) }
+private fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCoverCache<CoilImage>) {
+    var image by remember(request, cache) { mutableStateOf<CoilImage?>(null) }
     var failed by remember(request, cache) { mutableStateOf(false) }
     var attempt by remember(request, cache) { mutableIntStateOf(0) }
     LaunchedEffect(request, cache, attempt) {
@@ -82,7 +84,8 @@ private fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCover
     Box(Modifier.width(88.dp).height(128.dp).clip(MaterialTheme.shapes.small).background(MaterialTheme.colorScheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
         val bitmap = image
         if (bitmap != null) {
-            Image(bitmap, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            val context = LocalPlatformContext.current
+            Image(remember(bitmap, context) { bitmap.asPainter(context) }, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         } else if (request == null) {
             Text(galleryString(Res.string.gallery_cover_unavailable), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, modifier = Modifier.padding(4.dp))
         } else if (failed) {

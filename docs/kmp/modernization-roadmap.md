@@ -102,3 +102,5 @@ M3-005实际生产common Native在PR b7ad24/iOS26.5通过八项/23强制任务�
 M3-006最终为NOT_PASSED：Push40903137090成功，PR40903149475因common Native链接编译PT10M超时失败，严格gate失败且dry-run跳过。依维护者加速指令，将有针对性的Native --rerun并入尚未首次推送的CI加速提交，不改原45个远程提交、不强推。仅测试模块的两次编译/链接/真实测试强制重新执行，保留所有新鲜度、真实二进制/XML、原8项domain+8项common、300秒/600秒期限和自有清理；本机两组实际通过84秒/72秒，222工具回归再次成功。原M3仍未完成，完成加速门禁后继续已经保留并初测的网络/会话/图库产品工作。
 
 当前M5搜索纵向交付增加已提交查询的精确游标重试/重载与本页排序。普通Mac真实公开数据发现并修复长列表旧key锚点问题；保留旧APK红测，修复后手机/平板各49项、Native及普通Mac排序/输入/真实前后分页通过，等待本提交独立CI，见[shared-search-navigation.md](shared-search-navigation.md)。M5/M7/M8尚未整阶段验收，不提前冻结版本。
+
+搜索导航 `09882d7fd` / [Platform CI41561025101](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41561025101) 已通过12项真实必需检查，source/gate计划与测试树一致；可选dry-run未要求，不计其skip为成功。下一产品片段按PRD8.3将现有Coil3.5.0接入共用封面请求/Painter，保留真实Ktor、解码器、单页缓存预算和原Android读取行为；本地测试与失败历史见[shared-coil-covers.md](shared-coil-covers.md)，独立Full门禁尚未执行，不提前宣称M5完成。

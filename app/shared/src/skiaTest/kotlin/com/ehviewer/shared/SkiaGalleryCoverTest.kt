@@ -12,7 +12,7 @@ import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Surface
 
 class SkiaGalleryCoverTest {
-    private fun ownedPng(width: Int, height: Int): ByteArray {
+    internal fun ownedPng(width: Int, height: Int): ByteArray {
         val surface = checkNotNull(Surface.makeRasterN32Premul(width, height))
         try {
             surface.canvas.clear(0xffff00ff.toInt())
@@ -34,8 +34,10 @@ class SkiaGalleryCoverTest {
 
     @Test fun realPngCoversAreSmallAspectCorrectAndReadableAfterAllTemporaryOwnersClose() = runTest {
         for ((size, expected) in listOf((2048 to 256) to (512 to 64), (256 to 2048) to (64 to 512), (2 to 1) to (2 to 1))) {
-            val bitmap = decodeGalleryCover(ownedPng(size.first, size.second))
+            val result = decodeGalleryCoverResult(ownedPng(size.first, size.second))
+            val bitmap = result.bitmap
             assertEquals(expected, bitmap.width to bitmap.height)
+            assertEquals(size != expected, result.sampled)
             val color = bitmap.toPixelMap()[bitmap.width / 2, bitmap.height / 2]
             assertTrue(color.red > 0.99f && color.blue > 0.99f && color.green < 0.01f)
         }

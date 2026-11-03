@@ -43,7 +43,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.AppLanguageException
@@ -233,12 +232,10 @@ fun GalleryLibraryScreen(
     var selected by remember { mutableStateOf<BaseGalleryInfo?>(null) }
     var account by remember { mutableStateOf(false) }
     val resultsState = rememberLazyGridState()
-    val covers = remember(session, page) {
-        GalleryCoverCache<ImageBitmap> { request ->
-            val bitmap = decodeGalleryCover(session.galleries.cover(request.gid, request.token, request.key))
-            PreviewBitmap(bitmap, bitmap.width, bitmap.height)
-        }
-    }
+    val coverContext = coil3.compose.LocalPlatformContext.current
+    val coverLoader = remember(session, coverContext) { GalleryCoverLoader(coverContext) { session.galleries.cover(it.gid, it.token, it.key) } }
+    DisposableEffect(coverLoader) { onDispose { coverLoader.close() } }
+    val covers = remember(coverLoader, page) { GalleryCoverCache(load = coverLoader::get) }
 
     fun load(search: GallerySearchRequest, replaceResults: Boolean = false) {
         request?.cancel()

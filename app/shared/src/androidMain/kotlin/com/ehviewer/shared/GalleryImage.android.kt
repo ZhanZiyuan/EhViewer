@@ -3,7 +3,11 @@ package com.ehviewer.shared
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import coil3.asImage
+
+internal actual fun ImageBitmap.asCoilCover(): coil3.Image = asAndroidBitmap().asImage()
 
 internal actual fun decodePlatformImage(bytes: ByteArray): ImageBitmap {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -13,7 +17,7 @@ internal actual fun decodePlatformImage(bytes: ByteArray): ImageBitmap {
     return bitmap.asImageBitmap()
 }
 
-internal actual fun decodePlatformCover(bytes: ByteArray): ImageBitmap {
+internal actual fun decodePlatformCoverResult(bytes: ByteArray): DecodedGalleryCover {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
     coverDimensions(bounds.outWidth, bounds.outHeight)
@@ -23,8 +27,9 @@ internal actual fun decodePlatformCover(bytes: ByteArray): ImageBitmap {
     try {
         require(maxOf(decoded.width, decoded.height) <= COVER_MAX_EDGE * 2)
         val (width, height) = coverDimensions(decoded.width, decoded.height)
-        if (width == decoded.width && height == decoded.height) return decoded.asImageBitmap()
-        return Bitmap.createScaledBitmap(decoded, width, height, true).asImageBitmap().also { decoded.recycle() }
+        val sampled = width != bounds.outWidth || height != bounds.outHeight
+        if (width == decoded.width && height == decoded.height) return DecodedGalleryCover(decoded.asImageBitmap(), sampled)
+        return DecodedGalleryCover(Bitmap.createScaledBitmap(decoded, width, height, true).asImageBitmap(), sampled).also { decoded.recycle() }
     } catch (error: Throwable) {
         decoded.recycle()
         throw error

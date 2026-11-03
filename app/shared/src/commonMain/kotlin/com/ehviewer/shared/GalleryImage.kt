@@ -22,12 +22,20 @@ internal fun coverDimensions(width: Int, height: Int): Pair<Int, Int> {
     return if (edge <= COVER_MAX_EDGE) width to height else maxOf(1, (width.toLong() * COVER_MAX_EDGE / edge).toInt()) to maxOf(1, (height.toLong() * COVER_MAX_EDGE / edge).toInt())
 }
 
-internal expect fun decodePlatformCover(bytes: ByteArray): ImageBitmap
+internal data class DecodedGalleryCover(val bitmap: ImageBitmap, val sampled: Boolean)
+
+internal expect fun decodePlatformCoverResult(bytes: ByteArray): DecodedGalleryCover
+
+internal fun decodePlatformCover(bytes: ByteArray): ImageBitmap = decodePlatformCoverResult(bytes).bitmap
+
+internal expect fun ImageBitmap.asCoilCover(): coil3.Image
 
 /** Publish at most 1 MiB of RGBA per cover, independently of the bounded full reader decoder. */
-internal suspend fun decodeGalleryCover(bytes: ByteArray): ImageBitmap = withContext(Dispatchers.Default) {
+internal suspend fun decodeGalleryCover(bytes: ByteArray): ImageBitmap = decodeGalleryCoverResult(bytes).bitmap
+
+internal suspend fun decodeGalleryCoverResult(bytes: ByteArray): DecodedGalleryCover = withContext(Dispatchers.Default) {
     try {
-        decodePlatformCover(bytes).also { check(it.width in 1..COVER_MAX_EDGE && it.height in 1..COVER_MAX_EDGE) }
+        decodePlatformCoverResult(bytes).also { check(it.bitmap.width in 1..COVER_MAX_EDGE && it.bitmap.height in 1..COVER_MAX_EDGE) }
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (_: Exception) {
