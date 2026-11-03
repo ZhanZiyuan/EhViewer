@@ -246,7 +246,7 @@ class GalleryPreviewIntegrationTest {
             downloads = queue(database)
             ActivityScenario.launch<MainActivity>(intent).use { scenario ->
                 attach(scenario)
-                click("Downloads")
+                device.openSharedDestination("Downloads")
                 waitFor(GalleryDownloadState.PAUSED)
                 blockSecond.set(false)
                 click("Resume")
@@ -271,7 +271,7 @@ class GalleryPreviewIntegrationTest {
             downloads = queue(database)
             ActivityScenario.launch<MainActivity>(intent).use { scenario ->
                 attach(scenario)
-                click("Downloads")
+                device.openSharedDestination("Downloads")
                 click("Read offline")
                 assertTrue(device.wait(Until.hasObject(By.text("2 / 3")), 15_000))
                 assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 2")), 15_000))
@@ -712,7 +712,7 @@ class GalleryPreviewIntegrationTest {
                 click("Back to details")
                 assertTrue(device.wait(Until.hasObject(By.text(title)), 10_000))
                 click("Back to search")
-                click("History")
+                device.openSharedDestination("History")
                 assertTrue(device.wait(Until.hasObject(By.text("Reading history")), 10_000))
                 click(title)
                 click("Back to history")

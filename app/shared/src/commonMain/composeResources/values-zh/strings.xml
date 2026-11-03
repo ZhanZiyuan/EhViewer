@@ -222,4 +222,6 @@
     <string name="gallery_jump_page_label">页码（1–%1$s）</string>
     <string name="gallery_jump_page_invalid">请输入 1 到 %1$s 之间的页码。</string>
     <string name="gallery_open_page">打开页面</string>
+    <string name="gallery_galleries">图库</string>
+    <string name="gallery_open_navigation">打开导航</string>
 </resources>

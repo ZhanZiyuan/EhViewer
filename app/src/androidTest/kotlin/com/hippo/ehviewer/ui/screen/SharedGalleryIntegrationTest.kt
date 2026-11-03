@@ -86,7 +86,7 @@ class SharedGalleryIntegrationTest {
                 requireNotNull(device.wait(Until.findObject(By.text("Cancel")), 5_000)).click()
                 searchIsVisible()
                 assertFalse("Cancelling filters changed the applied search", device.hasObject(By.text("Filters applied")))
-                requireNotNull(device.wait(Until.findObject(By.text("Settings")), 5_000)).click()
+                device.openSharedDestination("Settings")
                 assertTrue("Common appearance settings did not open", device.wait(Until.hasObject(By.text("Appearance")), 5_000))
                 requireNotNull(device.wait(Until.findObject(By.text("Dark theme")), 5_000)).click()
                 runBlocking {
@@ -107,7 +107,7 @@ class SharedGalleryIntegrationTest {
                 instrumentation.waitForIdleSync()
                 device.pressBack()
                 searchIsVisible()
-                requireNotNull(device.wait(Until.findObject(By.text("Account")), 5_000)).click()
+                device.openSharedDestination("Account")
                 assertTrue("Original account settings did not open", device.wait(Until.hasObject(By.text(context.getString(com.ehviewer.core.i18n.R.string.settings_eh))), 10_000))
                 device.pressBack()
                 searchIsVisible()

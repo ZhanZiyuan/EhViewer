@@ -60,13 +60,15 @@ class GalleryLanguageIntegrationTest {
                 visible("Search galleries")
                 requireNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = "owned-language-query"
                 var settingsLabel = "Settings"
-                for ((tag, choice, heading, search, settings) in listOf(
-                    listOf("ja", "日本語", "言語", "ギャラリーを検索", "設定"),
-                    listOf("zh-CN", "简体中文", "语言", "搜索图库", "设置"),
-                    listOf("zh-TW", "繁體中文", "語言", "搜尋圖庫", "設定"),
-                    listOf("en", "English", "Language", "Search galleries", "Settings"),
+                var navigationLabel = "Open navigation"
+                for (row in listOf(
+                    listOf("ja", "日本語", "言語", "ギャラリーを検索", "設定", "ナビゲーションを開く"),
+                    listOf("zh-CN", "简体中文", "语言", "搜索图库", "设置", "打开导航"),
+                    listOf("zh-TW", "繁體中文", "語言", "搜尋圖庫", "設定", "開啟導覽"),
+                    listOf("en", "English", "Language", "Search galleries", "Settings", "Open navigation"),
                 )) {
-                    click(settingsLabel)
+                    val (tag, choice, heading, search, settings) = row
+                    device.openSharedDestination(settingsLabel, navigationLabel)
                     visible(choice)
                     click(choice)
                     visible(heading)
@@ -81,8 +83,9 @@ class GalleryLanguageIntegrationTest {
                     visible(search)
                     visible("owned-language-query")
                     settingsLabel = settings
+                    navigationLabel = row[5]
                 }
-                click("Settings")
+                device.openSharedDestination("Settings")
                 fun scrollTo(text: String, direction: Direction) {
                     repeat(6) {
                         if (device.hasObject(By.text(text))) return
@@ -133,7 +136,7 @@ class GalleryLanguageIntegrationTest {
                 scrollTo("Open Android download storage settings", Direction.DOWN)
                 device.pressBack()
                 visible("Search galleries")
-                click("Settings")
+                device.openSharedDestination("Settings")
                 click("System language")
                 instrumentation.waitForIdleSync()
                 assertTrue(AppCompatDelegate.getApplicationLocales().isEmpty)

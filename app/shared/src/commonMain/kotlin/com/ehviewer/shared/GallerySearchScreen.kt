@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -19,7 +21,13 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -69,13 +77,11 @@ import com.ehviewer.shared.settings.GalleryAppearanceStore
 import com.ehviewer.shared.settings.GalleryLanguageSettings
 import com.ehviewer.shared.settings.GalleryThemeMode
 import ehviewer.app.shared.generated.resources.Res
-import ehviewer.app.shared.generated.resources.gallery_account
 import ehviewer.app.shared.generated.resources.gallery_appearance_unavailable
 import ehviewer.app.shared.generated.resources.gallery_back
 import ehviewer.app.shared.generated.resources.gallery_back_history
 import ehviewer.app.shared.generated.resources.gallery_back_search
 import ehviewer.app.shared.generated.resources.gallery_download_background
-import ehviewer.app.shared.generated.resources.gallery_downloads
 import ehviewer.app.shared.generated.resources.gallery_error_authentication
 import ehviewer.app.shared.generated.resources.gallery_error_challenge
 import ehviewer.app.shared.generated.resources.gallery_error_local_storage
@@ -87,9 +93,7 @@ import ehviewer.app.shared.generated.resources.gallery_error_session_storage
 import ehviewer.app.shared.generated.resources.gallery_error_too_large
 import ehviewer.app.shared.generated.resources.gallery_filters
 import ehviewer.app.shared.generated.resources.gallery_filters_applied
-import ehviewer.app.shared.generated.resources.gallery_history
 import ehviewer.app.shared.generated.resources.gallery_list_unavailable
-import ehviewer.app.shared.generated.resources.gallery_local_library
 import ehviewer.app.shared.generated.resources.gallery_next
 import ehviewer.app.shared.generated.resources.gallery_no_galleries
 import ehviewer.app.shared.generated.resources.gallery_previous
@@ -98,7 +102,6 @@ import ehviewer.app.shared.generated.resources.gallery_retry
 import ehviewer.app.shared.generated.resources.gallery_search
 import ehviewer.app.shared.generated.resources.gallery_search_galleries
 import ehviewer.app.shared.generated.resources.gallery_search_hint
-import ehviewer.app.shared.generated.resources.gallery_settings
 import ehviewer.app.shared.generated.resources.gallery_sort_page
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -271,6 +274,52 @@ fun GalleryLibraryScreen(
         if (cursor != null) loadedSearch?.let { load(it.copy(cursor = cursor, previous = previous)) }
     }
 
+    fun leaveSettings() {
+        settingsOpen = false
+        appearanceAttempt++
+        languageAttempt++
+        listAttempt++
+    }
+
+    fun openAccount() {
+        request?.cancel()
+        generation++
+        loading = false
+        if (onAccount != null) onAccount() else account = true
+    }
+
+    val destinations = listOfNotNull(
+        GalleryDestination.GALLERIES,
+        GalleryDestination.HISTORY,
+        GalleryDestination.DOWNLOADS,
+        GalleryDestination.LOCAL_LIBRARY.takeIf { archiveContent != null },
+        GalleryDestination.ACCOUNT.takeIf { onAccount != null || accountContent != null },
+        GalleryDestination.SETTINGS,
+    )
+    val destination = when {
+        settingsOpen -> GalleryDestination.SETTINGS
+        account && accountContent != null -> GalleryDestination.ACCOUNT
+        archivesOpen && archiveContent != null -> GalleryDestination.LOCAL_LIBRARY
+        downloadsOpen -> GalleryDestination.DOWNLOADS
+        historyOpen -> GalleryDestination.HISTORY
+        else -> GalleryDestination.GALLERIES
+    }
+
+    // Like Android's drawer, choosing a destination returns to its root; reselecting pops a child.
+    fun navigate(target: GalleryDestination) {
+        // Android's original account screen is a separate platform destination.
+        if (target == GalleryDestination.ACCOUNT && onAccount != null) return openAccount()
+        if (settingsOpen && target != GalleryDestination.SETTINGS) leaveSettings()
+        if (target == GalleryDestination.ACCOUNT && !account) openAccount()
+        account = target == GalleryDestination.ACCOUNT
+        settingsOpen = target == GalleryDestination.SETTINGS
+        historyOpen = target == GalleryDestination.HISTORY
+        downloadsOpen = target == GalleryDestination.DOWNLOADS
+        archivesOpen = target == GalleryDestination.LOCAL_LIBRARY
+        selected = null
+        cached = null
+    }
+
     DisposableEffect(session) {
         onDispose {
             request?.cancel()
@@ -281,153 +330,143 @@ fun GalleryLibraryScreen(
     CompositionLocalProvider(LocalGalleryLanguage provides languageTag) {
         MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
             Surface(Modifier.fillMaxSize()) {
-                Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
-                    Column(Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
-                        if (settingsOpen) {
-                            GallerySettingsScreen(networkPreferences, appearance, readerState, themeMode, appearanceFailed, language, languageTag, languageReady, languageFailed, onLanguageChanged = { languageTag = it }, onRetryLanguage = { languageAttempt++ }, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = {
-                                settingsOpen = false
-                                appearanceAttempt++
-                                languageAttempt++
-                                listAttempt++
-                            }, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings, listPreferences = listPreferences, listDensity = listDensity, listFailed = listFailed, onListChanged = { listDensity = it }, onRetryList = { listAttempt++ })
-                            return@Column
-                        }
-                        if (account && accountContent != null) {
-                            accountContent({
-                                if (downloadsReady) {
-                                    scope.launch {
-                                        try {
-                                            downloads.pauseAll()
-                                        } catch (cancelled: CancellationException) {
-                                            throw cancelled
-                                        } catch (_: Exception) {
-                                            downloadsFailed = true
-                                        }
-                                    }
-                                }
-                                request?.cancel()
-                                generation++
-                                selected = null
-                                page = null
-                                query = ""
-                                loadedSearch = null
-                                failedSearch = null
-                                failure = null
-                                loading = false
-                            }, { account = false })
-                            return@Column
-                        }
-                        val gallery = selected
-                        if (archivesOpen && archiveContent != null) {
-                            archiveContent { archivesOpen = false }
-                            return@Column
-                        }
-                        if (downloadsOpen) {
-                            val opened = cached
-                            if (opened != null) {
-                                GalleryCachedReaderScreen(session, opened, readerState, onBack = { cached = null })
-                            } else {
-                                GalleryDownloadsScreen(downloads, downloadsReady, downloadsFailed, retry = { downloadsAttempt++ }, backgroundNote = if (backgroundDownloadsNote) galleryString(Res.string.gallery_download_background) else null, onOpen = {
-                                    when (it) {
-                                        is GalleryDownloadOpen.Cached -> {
-                                            history.touch(it.pages.gallery.gid)
-                                            cached = it.pages
-                                        }
-                                        is GalleryDownloadOpen.PlatformReader -> checkNotNull(onPlatformDownloadOpen)(it.gid)
-                                    }
-                                }, onBack = { downloadsOpen = false })
+                GalleryNavigationShell(destinations, destination, ::navigate) { openNavigation ->
+                    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
+                        Column(Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                            if (settingsOpen) {
+                                GallerySettingsScreen(networkPreferences, appearance, readerState, themeMode, appearanceFailed, language, languageTag, languageReady, languageFailed, onLanguageChanged = { languageTag = it }, onRetryLanguage = { languageAttempt++ }, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = ::leaveSettings, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings, listPreferences = listPreferences, listDensity = listDensity, listFailed = listFailed, onListChanged = { listDensity = it }, onRetryList = { listAttempt++ })
+                                return@Column
                             }
-                            return@Column
-                        }
-                        if (gallery != null) {
-                            GalleryDetailScreen(session, gallery, readerState, downloads.takeIf { downloadsReady }, onDownloads = { downloadsOpen = true }, backLabel = if (historyOpen) galleryString(Res.string.gallery_back_history) else galleryString(Res.string.gallery_back_search), onBack = { selected = null })
-                            return@Column
-                        }
-                        if (historyOpen) {
-                            GalleryHistoryScreen(history, onOpen = { selected = it }, onBack = { historyOpen = false })
-                            return@Column
-                        }
-                        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            onBack?.let { back -> TextButton(onClick = back) { Text(galleryString(Res.string.gallery_back)) } }
-                            Text("EhViewer", style = MaterialTheme.typography.headlineMedium)
-                            TextButton(onClick = { downloadsOpen = true }) { Text(galleryString(Res.string.gallery_downloads)) }
-                            if (archiveContent != null) TextButton(onClick = { archivesOpen = true }) { Text(galleryString(Res.string.gallery_local_library)) }
-                            if (onAccount != null || accountContent != null) {
-                                TextButton(onClick = {
+                            if (account && accountContent != null) {
+                                accountContent({
+                                    if (downloadsReady) {
+                                        scope.launch {
+                                            try {
+                                                downloads.pauseAll()
+                                            } catch (cancelled: CancellationException) {
+                                                throw cancelled
+                                            } catch (_: Exception) {
+                                                downloadsFailed = true
+                                            }
+                                        }
+                                    }
                                     request?.cancel()
                                     generation++
+                                    selected = null
+                                    page = null
+                                    query = ""
+                                    loadedSearch = null
+                                    failedSearch = null
+                                    failure = null
                                     loading = false
-                                    if (onAccount != null) onAccount() else account = true
-                                }) { Text(galleryString(Res.string.gallery_account)) }
+                                }, { account = false })
+                                return@Column
                             }
-                        }
-                        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(
-                                query,
-                                { query = it.take(4096) },
-                                Modifier.weight(1f),
-                                label = { Text(galleryString(Res.string.gallery_search_galleries)) },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                keyboardActions = KeyboardActions(onSearch = { search() }),
-                            )
-                            Button(onClick = { search() }) { Text(galleryString(Res.string.gallery_search)) }
-                        }
-                        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            TextButton(onClick = { filtersOpen = true }) { Text(galleryString(Res.string.gallery_filters)) }
-                            if (filters != GallerySearchFilters()) Text(galleryString(Res.string.gallery_filters_applied), style = MaterialTheme.typography.labelMedium)
-                            TextButton(onClick = { orderOpen = true }, enabled = page != null && !loading) { Text(galleryString(Res.string.gallery_sort_page)) }
-                            TextButton(onClick = { historyOpen = true }) { Text(galleryString(Res.string.gallery_history)) }
-                            TextButton(onClick = { settingsOpen = true }) { Text(galleryString(Res.string.gallery_settings)) }
-                        }
-                        if (appearanceFailed) {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text(galleryString(Res.string.gallery_appearance_unavailable), Modifier.weight(1f))
-                                TextButton(onClick = { appearanceAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
+                            val gallery = selected
+                            if (archivesOpen && archiveContent != null) {
+                                archiveContent { archivesOpen = false }
+                                return@Column
                             }
-                        }
-                        if (listFailed) {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Text(galleryString(Res.string.gallery_list_unavailable), Modifier.weight(1f))
-                                TextButton(onClick = { listAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
+                            if (downloadsOpen) {
+                                val opened = cached
+                                if (opened != null) {
+                                    GalleryCachedReaderScreen(session, opened, readerState, onBack = { cached = null })
+                                } else {
+                                    GalleryDownloadsScreen(downloads, downloadsReady, downloadsFailed, retry = { downloadsAttempt++ }, backgroundNote = if (backgroundDownloadsNote) galleryString(Res.string.gallery_download_background) else null, onOpen = {
+                                        when (it) {
+                                            is GalleryDownloadOpen.Cached -> {
+                                                history.touch(it.pages.gallery.gid)
+                                                cached = it.pages
+                                            }
+                                            is GalleryDownloadOpen.PlatformReader -> checkNotNull(onPlatformDownloadOpen)(it.gid)
+                                        }
+                                    }, onBack = { downloadsOpen = false })
+                                }
+                                return@Column
                             }
-                        }
-                        if (filtersOpen) {
-                            GallerySearchFiltersDialog(filters, onApply = { applied ->
-                                filters = applied
-                                filtersOpen = false
-                                search()
-                            }, onDismiss = { filtersOpen = false })
-                        }
-                        if (orderOpen) {
-                            GalleryPageOrderDialog(order, onApply = {
-                                orderName = it.name
-                                orderOpen = false
-                                resultsState.requestScrollToItem(0)
-                            }, onDismiss = { orderOpen = false })
-                        }
-                        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                        val error = failure
-                        if (error != null) {
-                            Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(error.userMessage(), Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
-                                TextButton(onClick = { failedSearch?.let { load(it) } }, enabled = failedSearch != null && !loading) { Text(galleryString(Res.string.gallery_retry)) }
+                            if (gallery != null) {
+                                GalleryDetailScreen(session, gallery, readerState, downloads.takeIf { downloadsReady }, onDownloads = { downloadsOpen = true }, backLabel = if (historyOpen) galleryString(Res.string.gallery_back_history) else galleryString(Res.string.gallery_back_search), onBack = { selected = null })
+                                return@Column
                             }
-                        }
-                        val result = page
-                        if (result == null && !loading && error == null) Text(galleryString(Res.string.gallery_search_hint), Modifier.padding(vertical = 24.dp))
-                        if (result != null) {
-                            val orderedGalleries = remember(result, order) { order.arrange(result.galleryInfoList) }
-                            if (result.galleryInfoList.isEmpty()) Text(galleryString(Res.string.gallery_no_galleries), Modifier.padding(vertical = 24.dp))
-                            LazyVerticalGrid(columns = GridCells.Adaptive((listDensity ?: GalleryListDensity.COMPACT).minimumColumnWidth.dp), modifier = Modifier.weight(1f), state = resultsState, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                items(orderedGalleries, key = { it.gid }) { gallery ->
-                                    GallerySearchCard(gallery, covers) { selected = gallery }
+                            if (historyOpen) {
+                                GalleryHistoryScreen(history, onOpen = { selected = it }, onBack = { historyOpen = false })
+                                return@Column
+                            }
+                            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                                onBack?.let { back ->
+                                    IconButton(onClick = back) { Icon(GalleryIcons.ArrowBack, contentDescription = galleryString(Res.string.gallery_back)) }
+                                }
+                                openNavigation?.let { GalleryNavigationButton(it) }
+                                Text("EhViewer", Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.titleLarge)
+                            }
+                            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                OutlinedTextField(
+                                    query,
+                                    { query = it.take(4096) },
+                                    Modifier.weight(1f),
+                                    label = { Text(galleryString(Res.string.gallery_search_galleries)) },
+                                    leadingIcon = { Icon(GalleryIcons.Search, contentDescription = null) },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    keyboardActions = KeyboardActions(onSearch = { search() }),
+                                )
+                                Button(onClick = { search() }) { Text(galleryString(Res.string.gallery_search)) }
+                            }
+                            FlowRow(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+                                val filtered = filters != GallerySearchFilters()
+                                FilterChip(filtered, onClick = { filtersOpen = true }, label = { Text(galleryString(Res.string.gallery_filters)) }, leadingIcon = { Icon(GalleryIcons.FilterList, contentDescription = null, Modifier.size(FilterChipDefaults.IconSize)) })
+                                AssistChip(onClick = { orderOpen = true }, label = { Text(galleryString(Res.string.gallery_sort_page)) }, enabled = page != null && !loading, leadingIcon = { Icon(GalleryIcons.Sort, contentDescription = null, Modifier.size(AssistChipDefaults.IconSize)) })
+                                if (filtered) Text(galleryString(Res.string.gallery_filters_applied), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                            }
+                            if (appearanceFailed) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(galleryString(Res.string.gallery_appearance_unavailable), Modifier.weight(1f))
+                                    TextButton(onClick = { appearanceAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
                                 }
                             }
-                            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                TextButton(onClick = { turnPage(result.prev, previous = true) }, enabled = result.prev != null && !loading) { Text(galleryString(Res.string.gallery_previous)) }
-                                TextButton(onClick = { loadedSearch?.let { load(it) } }, enabled = loadedSearch != null && !loading) { Text(galleryString(Res.string.gallery_reload_page)) }
-                                TextButton(onClick = { turnPage(result.next) }, enabled = result.next != null && !loading) { Text(galleryString(Res.string.gallery_next)) }
+                            if (listFailed) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(galleryString(Res.string.gallery_list_unavailable), Modifier.weight(1f))
+                                    TextButton(onClick = { listAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
+                                }
+                            }
+                            if (filtersOpen) {
+                                GallerySearchFiltersDialog(filters, onApply = { applied ->
+                                    filters = applied
+                                    filtersOpen = false
+                                    search()
+                                }, onDismiss = { filtersOpen = false })
+                            }
+                            if (orderOpen) {
+                                GalleryPageOrderDialog(order, onApply = {
+                                    orderName = it.name
+                                    orderOpen = false
+                                    resultsState.requestScrollToItem(0)
+                                }, onDismiss = { orderOpen = false })
+                            }
+                            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                            val error = failure
+                            if (error != null) {
+                                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(error.userMessage(), Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
+                                    TextButton(onClick = { failedSearch?.let { load(it) } }, enabled = failedSearch != null && !loading) { Text(galleryString(Res.string.gallery_retry)) }
+                                }
+                            }
+                            val result = page
+                            if (result == null && !loading && error == null) Text(galleryString(Res.string.gallery_search_hint), Modifier.padding(vertical = 24.dp))
+                            if (result != null) {
+                                val orderedGalleries = remember(result, order) { order.arrange(result.galleryInfoList) }
+                                if (result.galleryInfoList.isEmpty()) Text(galleryString(Res.string.gallery_no_galleries), Modifier.padding(vertical = 24.dp))
+                                LazyVerticalGrid(columns = GridCells.Adaptive((listDensity ?: GalleryListDensity.COMPACT).minimumColumnWidth.dp), modifier = Modifier.weight(1f), state = resultsState, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    items(orderedGalleries, key = { it.gid }) { gallery ->
+                                        GallerySearchCard(gallery, covers) { selected = gallery }
+                                    }
+                                }
+                                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    TextButton(onClick = { turnPage(result.prev, previous = true) }, enabled = result.prev != null && !loading) { Text(galleryString(Res.string.gallery_previous)) }
+                                    TextButton(onClick = { loadedSearch?.let { load(it) } }, enabled = loadedSearch != null && !loading) { Text(galleryString(Res.string.gallery_reload_page)) }
+                                    TextButton(onClick = { turnPage(result.next) }, enabled = result.next != null && !loading) { Text(galleryString(Res.string.gallery_next)) }
+                                }
                             }
                         }
                     }

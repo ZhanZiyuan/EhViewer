@@ -222,4 +222,6 @@
     <string name="gallery_jump_page_label">頁碼（1–%1$s）</string>
     <string name="gallery_jump_page_invalid">請輸入 1 到 %1$s 之間的頁碼。</string>
     <string name="gallery_open_page">開啟頁面</string>
+    <string name="gallery_galleries">圖庫</string>
+    <string name="gallery_open_navigation">開啟導覽</string>
 </resources>

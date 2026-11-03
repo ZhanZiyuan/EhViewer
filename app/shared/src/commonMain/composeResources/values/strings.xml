@@ -222,4 +222,6 @@
     <string name="gallery_jump_page_label">Page number (1–%1$s)</string>
     <string name="gallery_jump_page_invalid">Enter a page from 1 to %1$s.</string>
     <string name="gallery_open_page">Open page</string>
+    <string name="gallery_galleries">Galleries</string>
+    <string name="gallery_open_navigation">Open navigation</string>
 </resources>

@@ -222,4 +222,6 @@
     <string name="gallery_jump_page_label">ページ番号（1–%1$s）</string>
     <string name="gallery_jump_page_invalid">1 から %1$s までのページ番号を入力してください。</string>
     <string name="gallery_open_page">ページを開く</string>
+    <string name="gallery_galleries">ギャラリー</string>
+    <string name="gallery_open_navigation">ナビゲーションを開く</string>
 </resources>

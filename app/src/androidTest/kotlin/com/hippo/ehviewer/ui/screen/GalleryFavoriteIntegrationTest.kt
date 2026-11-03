@@ -310,7 +310,7 @@ class GalleryFavoriteIntegrationTest {
                     assertEquals("favdel", posts.last()["favcat"])
                     assertEquals(3, posts.size)
                     click("Back to search")
-                    click("Settings")
+                    device.openSharedDestination("Settings")
                     fun storageChoice(text: String) {
                         repeat(12) {
                             try {
