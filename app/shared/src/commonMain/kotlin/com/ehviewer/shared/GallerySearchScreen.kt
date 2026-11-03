@@ -1,5 +1,6 @@
 package com.ehviewer.shared
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,11 +23,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,12 +47,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.AppLanguageException
@@ -439,12 +444,22 @@ fun GalleryLibraryScreen(
                                             GallerySearchCard(gallery, covers) { selected = gallery }
                                         }
                                     }
-                                } else if (!loading && error == null) {
-                                    val text = if (result == null) Res.string.gallery_search_hint else Res.string.gallery_no_galleries
-                                    Text(galleryString(text), Modifier.padding(start = marginH, top = barSpace + 24.dp, end = marginH))
+                                }
+                                // GalleryList: a refresh covers the list with a centered indicator; failures and empty pages show its ErrorTip.
+                                when {
+                                    loading -> Surface(Modifier.fillMaxSize()) {
+                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                                    }
+                                    error != null && result == null -> Surface(Modifier.fillMaxSize()) {
+                                        val retry = failedSearch
+                                        GalleryErrorTip(error.userMessage(), Modifier.widthIn(max = 228.dp).clip(ShapeDefaults.Small).clickable(enabled = retry != null, onClickLabel = galleryString(Res.string.gallery_retry), role = Role.Button) { retry?.let { load(it) } })
+                                    }
+                                    result == null -> Box(Modifier.fillMaxSize().padding(horizontal = marginH), contentAlignment = Alignment.Center) {
+                                        Text(galleryString(Res.string.gallery_search_hint), Modifier.widthIn(max = 320.dp), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
+                                    }
+                                    result.galleryInfoList.isEmpty() -> GalleryErrorTip(galleryString(Res.string.gallery_no_galleries), Modifier.widthIn(max = 228.dp))
                                 }
                                 val offset = Modifier.offset { IntOffset(0, searchBarOffsetY) }
-                                if (loading) LinearProgressIndicator(Modifier.align(Alignment.TopCenter).then(offset).padding(top = barSpace).fillMaxWidth())
                                 GallerySearchBar(
                                     query = query,
                                     onQueryChange = { query = it.take(4096) },
@@ -476,7 +491,8 @@ fun GalleryLibraryScreen(
                                         TextButton(onClick = { listAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
                                     }
                                 }
-                                if (error != null) {
+                                // A failed page turn keeps the loaded page, like a failed Paging append.
+                                if (error != null && result != null) {
                                     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Text(error.userMessage(), Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
                                         TextButton(onClick = { failedSearch?.let { load(it) } }, enabled = failedSearch != null && !loading) { Text(galleryString(Res.string.gallery_retry)) }

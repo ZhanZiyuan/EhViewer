@@ -1,0 +1,9 @@
+# Shared search loading, error and empty states
+
+The shared search page now shows Android 1.15.10 `GalleryList` load states on every platform. While a search or page loads, a surface covers the list with a centered circular indicator, as Android's refresh does; the floating search bar stays usable above it. Compose Multiplatform material3 1.9.0 does not ship `CircularWavyProgressIndicator`, so the standard circular indicator is used. When a search fails before any page has loaded, the list area shows Android's `ErrorTip`: a 120dp sad-Android icon in the tertiary color above the message in bodyLarge, at most 228dp wide, with a small-shape ripple. Tapping it retries, and it is exposed as a button labelled Retry. Empty pages show the same tip without the tap. A failed page turn keeps the loaded page and its Retry row beside the page buttons, like a failed Paging append. Before the first search, the hint is centered in bodyLarge.
+
+Targets: GalleryErrorTip.kt (new), GalleryIcons.kt (SadAndroid, from the project's own core/ui path data), GallerySearchScreen.kt. The linear progress bar is removed. The new headless GalleryErrorTipTest renders the real tip at 411px and checks that the tertiary icon is about 100px wide (the 120dp icon's path width), horizontally centered and above the centered message.
+
+Local results: Android spotless/unit/host/lint/assemble, shared Desktop79 and the iOS arm64/simulator compile and debug link passed. The phone and tablet runs each passed 50/50 serially with the same APK pair and zero skips. No existing UI test reaches a first-search failure, so the tip is covered by the headless test, not a device screenshot. No Desktop window or iPad interaction has been recorded for this change yet.
+
+Animeko was not consulted for this change; no AGPL code, assets or scripts are used. M5/M7/M8 stay open; stable 1.15.10/180074 and Draft PR15 remain.

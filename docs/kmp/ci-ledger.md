@@ -1126,3 +1126,7 @@ Repair 143c1e9ab passed [PR CI41602379644](https://github.com/ZhanZiyuan/EhViewe
 ## Material theme and cards accepted; floating search bar in validation
 
 07a8c8e2d passed [PR CI41609916306](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41609916306): all required jobs SUCCESS, including source policy, shared KMP, Android, iOS, Linux aarch64, native and Rosetta Intel Desktop, both Rust hosts, both native Windows CPUs, release dry-run and gate. The floating search bar and Android list margins were prepared locally after that gate. Local Android regression, shared Desktop78 (with the new headless bar test) and the iOS link passed; device runs are recorded in [shared-search-bar.md](shared-search-bar.md).
+
+## Floating search bar accepted; search load states in validation
+
+757cee561 passed [PR CI41639430212](https://github.com/ZhanZiyuan/EhViewer/actions/runs/41639430212): all executed required jobs SUCCESS (source policy, shared KMP, Android, iOS, Linux aarch64, native and Rosetta Intel Desktop, both Rust hosts, both native Windows CPUs) and gate SUCCESS; release dry-run was skipped by its declared plan and is not counted as a success. The search load-state change was prepared locally during that run and not pushed before the gate; see [shared-search-load-states.md](shared-search-load-states.md).

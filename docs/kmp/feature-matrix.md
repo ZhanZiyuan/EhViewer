@@ -36,3 +36,5 @@ Shared adaptive navigation (in local validation): phones use a modal drawer and 
 Shared Material 3 theme and Android list cards (in local validation): Android's EhTheme (Dynamic Color/wallpaper/AMOLED/expressive motion) on Android, and dynamic or v1.15.10 fallback colors elsewhere. Search results use GalleryInfoListItem's layout, harmonized category chips and star rating. See [shared-material-theme-and-cards.md](shared-material-theme-and-cards.md).
 
 Shared floating search bar (in local validation): Android's 56dp Material 3 search pill with title/hint placeholder, hide-on-scroll and the 12/20/76dp list margins on every platform. See [shared-search-bar.md](shared-search-bar.md).
+
+Shared search load states (in local validation): Android's centered refresh indicator and sad-Android ErrorTip (tap to retry) for first-search failures and empty pages; failed page turns keep the page. See [shared-search-load-states.md](shared-search-load-states.md).
