@@ -225,4 +225,5 @@
     <string name="gallery_galleries">图库</string>
     <string name="gallery_open_navigation">打开导航</string>
     <string name="gallery_clear_search">清除搜索</string>
+    <string name="gallery_downloaded">已下载</string>
 </resources>

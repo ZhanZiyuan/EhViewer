@@ -191,6 +191,7 @@ class GalleryPreviewIntegrationTest {
                 attach(scenario)
                 device.submitSharedSearch()
                 assertTrue(device.wait(Until.hasObject(By.text(title)), 15_000))
+                assertFalse("A gallery without a download entry was marked downloaded", device.hasObject(By.desc("Downloaded")))
                 click("Retry cover")
                 fun waitForCoverPixels() = runBlocking {
                     withTimeout(10_000) {
@@ -256,6 +257,12 @@ class GalleryPreviewIntegrationTest {
                 assertEquals(false, File(owned, "images/$gid/partial-1.cbor").exists())
                 assertEquals(false, File(owned, "images/$gid/partial-1.data").exists())
                 assertEquals(1, requests.count { it == "/0.png" })
+                // Like Android's list, the search card now carries the downloaded mark.
+                click("Back")
+                device.submitSharedSearch()
+                assertTrue(device.wait(Until.hasObject(By.text(title)), 15_000))
+                assertTrue("The downloaded gallery's card has no downloaded mark", device.wait(Until.hasObject(By.desc("Downloaded")), 10_000))
+                device.openSharedDestination("Downloads")
                 offline.set(true)
                 val beforeOffline = requests.size
                 click("Read offline")

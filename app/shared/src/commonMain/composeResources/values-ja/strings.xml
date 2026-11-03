@@ -225,4 +225,5 @@
     <string name="gallery_galleries">ギャラリー</string>
     <string name="gallery_open_navigation">ナビゲーションを開く</string>
     <string name="gallery_clear_search">検索をクリア</string>
+    <string name="gallery_downloaded">ダウンロード済み</string>
 </resources>

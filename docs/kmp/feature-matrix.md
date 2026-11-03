@@ -38,3 +38,5 @@ Shared Material 3 theme and Android list cards (in local validation): Android's 
 Shared floating search bar (in local validation): Android's 56dp Material 3 search pill with title/hint placeholder, hide-on-scroll and the 12/20/76dp list margins on every platform. See [shared-search-bar.md](shared-search-bar.md).
 
 Shared search load states (in local validation): Android's centered refresh indicator and sad-Android ErrorTip (tap to retry) for first-search failures and empty pages; failed page turns keep the page. See [shared-search-load-states.md](shared-search-load-states.md).
+
+Shared downloaded mark (in local validation): search cards show Android's 16dp download icon for galleries with a download entry, from the platform download queue. See [shared-downloaded-mark.md](shared-downloaded-mark.md).

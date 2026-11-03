@@ -37,6 +37,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -107,6 +108,7 @@ import ehviewer.app.shared.generated.resources.gallery_sort_page
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
@@ -239,6 +241,8 @@ fun GalleryLibraryScreen(
     var account by remember { mutableStateOf(false) }
     val resultsState = rememberLazyGridState()
     var searchBarOffsetY by remember { mutableIntStateOf(0) }
+    // Android marks list cards whose gallery has any download entry.
+    val downloadedGids by remember(downloads) { downloads.tasks.map { tasks -> tasks.mapTo(HashSet()) { it.gid } } }.collectAsState(emptySet())
     val coverContext = coil3.compose.LocalPlatformContext.current
     val coverLoader = remember(session, coverContext) { GalleryCoverLoader(coverContext) { session.galleries.cover(it.gid, it.token, it.key) } }
     DisposableEffect(coverLoader) { onDispose { coverLoader.close() } }
@@ -441,7 +445,7 @@ fun GalleryLibraryScreen(
                                         verticalArrangement = Arrangement.spacedBy(GalleryListInterval),
                                     ) {
                                         items(orderedGalleries, key = { it.gid }) { gallery ->
-                                            GallerySearchCard(gallery, covers) { selected = gallery }
+                                            GallerySearchCard(gallery, covers, downloaded = gallery.gid in downloadedGids) { selected = gallery }
                                         }
                                     }
                                 }

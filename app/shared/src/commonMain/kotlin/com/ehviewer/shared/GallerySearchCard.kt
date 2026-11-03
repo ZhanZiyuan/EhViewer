@@ -50,6 +50,7 @@ import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_cover_loading
 import ehviewer.app.shared.generated.resources.gallery_cover_retry
 import ehviewer.app.shared.generated.resources.gallery_cover_unavailable
+import ehviewer.app.shared.generated.resources.gallery_downloaded
 import kotlinx.coroutines.CancellationException
 
 /**
@@ -57,7 +58,7 @@ import kotlinx.coroutines.CancellationException
  * title, then uploader/favorite, rating/language/pages and category/posted rows in labelLarge.
  */
 @Composable
-internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCache<CoilImage>, onOpen: () -> Unit) {
+internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCache<CoilImage>, downloaded: Boolean = false, onOpen: () -> Unit) {
     val cover = gallery.thumbKey?.takeIf { it.isNotBlank() }?.let { GalleryCoverRequest(gallery.gid, gallery.token, it) }
     val height = galleryListCardHeight(LocalDensity.current)
     OutlinedCard(onClick = onOpen, modifier = Modifier.fillMaxWidth().height(height), border = galleryCrystalBorder()) {
@@ -78,6 +79,7 @@ internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCach
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         GalleryRating(gallery.rating, Modifier.padding(top = 1.dp, bottom = 3.dp))
                         Spacer(Modifier.weight(1f))
+                        if (downloaded) Icon(GalleryIcons.Download, contentDescription = galleryString(Res.string.gallery_downloaded), modifier = Modifier.size(16.dp))
                         gallery.simpleLanguage?.let { Text(it) }
                         if (gallery.pages != 0) Text("${gallery.pages}P")
                     }
