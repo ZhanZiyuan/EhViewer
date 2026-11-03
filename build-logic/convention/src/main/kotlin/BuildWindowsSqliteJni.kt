@@ -1,10 +1,8 @@
 import java.io.File
-import java.net.URI
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.MessageDigest
 import java.time.Duration
-import java.util.Base64
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
 import org.gradle.api.DefaultTask
@@ -92,19 +90,7 @@ abstract class BuildWindowsSqliteJni : DefaultTask() {
         )
     }
 
-    private fun verified(file: File, url: String, expected: String, limit: Int, base64: Boolean = false): File {
-        if (file.isFile && digest(file.readBytes()) == expected) return file
-        val connection = URI(url).toURL().openConnection().apply {
-            connectTimeout = 30_000
-            readTimeout = 30_000
-        }
-        val transport = connection.getInputStream().use { it.readNBytes(limit + 1) }
-        check(transport.size <= limit) { "Pinned source download exceeded its limit" }
-        val bytes = if (base64) Base64.getMimeDecoder().decode(transport) else transport
-        check(digest(bytes) == expected) { "Pinned third-party source checksum mismatch" }
-        file.writeBytes(bytes)
-        return file
-    }
+    private fun verified(file: File, url: String, expected: String, limit: Int, base64: Boolean = false): File = verifiedNativeSource(file, url, expected, limit, base64) { logger.lifecycle(it) }
 
     private fun digest(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
