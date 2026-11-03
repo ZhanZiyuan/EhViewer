@@ -17,7 +17,7 @@ enum class WindowsPlatform(
 
     val jdkUrl: String get() = "https://aka.ms/download-jdk/microsoft-jdk-25.0.5.0.2-windows-${if (this == ARM64) "aarch64" else "x64"}.zip"
     val vcpkgTriplet: String get() = "$nativeArchitecture-windows"
-    val skikoSha256: String get() = if (this == ARM64) "f72ac08cb6163da84817a102203ce9103015cee42e4dbb80e2b337b3e3bbadbf" else "3ce1b2621ce4905333064341568d0e9493efc0d4971a63b096261c774bc6e5a8"
+    val skikoSha256: String get() = if (this == ARM64) "8bddb4a42facbf3117447f9acda90b2e7f02aa38f259c1c92e91c2f685650549" else "5061ffbbfbad9fc8c6c8e0c1741b674c863293d3d071b061db9e6e0fc3ef1d38"
     val stageScope: String get() = if (this == ARM64) "M2_WINDOWS_ARM64_RUNTIME_STAGE" else "M6_WINDOWS_X64_RUNTIME_STAGE"
     val launchScope: String get() = if (this == ARM64) "M2_WINDOWS_ARM64_ZIP_LAUNCH" else "M6_WINDOWS_X64_ZIP_LAUNCH"
     val releaseTarget: String get() = if (this == ARM64) "windows-arm64" else "windows-x64"

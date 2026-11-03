@@ -14,11 +14,11 @@ private val forbiddenSourceExtensions = setOf(
     "zsh", "fish", "ps1", "bat", "cmd", "rb", "pl", "php", "lua", "cs", "fs", "vb",
 )
 
-// Directly retained third-party material, independently audited before M2. Not a dependency SBOM.
+// Directly retained third-party material, independently audited against the pinned upstream revision. Not a dependency SBOM.
 private val retainedOrigins = mapOf(
-    "app/desktop/licenses/skiko-0.144.6/LICENSE.txt" to "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
-    "app/desktop/licenses/skiko-0.144.6/NOTICE.txt" to "35dd077c24768b53625101cfcc0ad853ae7e2abc08bd2a111a0267760d1406d8",
-    "app/desktop/licenses/skiko-0.144.6/origin.toml" to "fd9442a5e2b5e4ea7cbac659841258fe2f370c973dfe0b43e4dac378440e3bd5",
+    "app/desktop/licenses/skiko-0.150.1/LICENSE.txt" to "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "app/desktop/licenses/skiko-0.150.1/NOTICE.txt" to "35dd077c24768b53625101cfcc0ad853ae7e2abc08bd2a111a0267760d1406d8",
+    "app/desktop/licenses/skiko-0.150.1/origin.toml" to "9bcc7905d316e92eda34f0bf757a55b032c695e91db39eac85c3f9b146b64103",
 )
 
 fun sourcePolicy(repository: Path, baseline: String): Map<String, Any?> {

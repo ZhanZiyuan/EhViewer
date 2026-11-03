@@ -222,7 +222,7 @@ val skikoSource = configurations.create("appleSkikoSource") { isTransitive = fal
 val selectAppleSkiko = tasks.register<SelectAppleSkiko>("selectAppleSkiko") {
     source.from(skikoSource)
     targetArchitecture.set(appleArchitecture)
-    sourceSha256.set(if (intelMac) "aacb31a5d2a70197abe18f9e81698eef15c83435791d4c487a2ffe139913762e" else "aec37b44e8dabf4de620068146769655748be3971bf868614e5ec6b240b2ac35")
+    sourceSha256.set(if (intelMac) "64989da062646356d56a45fc5a2354624e9617260bea96b2d8f04b4080d14595" else "bd186dd6bf8736eb69be190107e1b3ab7bd2452ae917faaa516ef513217a5f33")
     destination.set(layout.buildDirectory.file("native-dependencies/skiko-awt-runtime-macos-$appleArchitecture-${libs.versions.skiko.get()}.jar"))
 }
 

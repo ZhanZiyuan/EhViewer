@@ -37,8 +37,8 @@ fun desktopNativeNotices(contents: Path): List<Map<String, String>> {
     val notices = contents.resolve("app/resources/licenses")
     val expected = linkedMapOf(
         "EhViewer/LICENSE.txt" to sha256(root.resolve("LICENSE")),
-        "skiko-0.144.6/LICENSE.txt" to "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
-        "skiko-0.144.6/NOTICE.txt" to "35dd077c24768b53625101cfcc0ad853ae7e2abc08bd2a111a0267760d1406d8",
+        "skiko-0.150.1/LICENSE.txt" to "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+        "skiko-0.150.1/NOTICE.txt" to "35dd077c24768b53625101cfcc0ad853ae7e2abc08bd2a111a0267760d1406d8",
         "libwebp-1.6.0/COPYING" to "5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf",
         "libwebp-1.6.0/PATENTS" to "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c",
         "libwebp-1.6.0/AUTHORS" to "f251be89fd442bd9d701360730aea163cc8e2076ff03528f59267dc2c4f8b60a",

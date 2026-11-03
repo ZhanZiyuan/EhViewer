@@ -93,7 +93,7 @@ private fun desktopLinuxImage(image: Path, output: Path, arm64: Boolean): Map<St
             }
         }
         val skiko = contents.resolve("app").listDirectoryEntries("libskiko*.so").single()
-        val expectedSkiko = if (arm64) "d4b06daa856c00707183127e5ff269d082db307f677a72a6076b8cbb7f54121e" else "434f7633c843870c0839a1137b128f6c3db3c5d58dcad3545e90827e3e341afb"
+        val expectedSkiko = if (arm64) "ee66e016db90b5628bc4277c074ece4f88f3ccf0f2c736ab6053ba12f7bb36fe" else "10674295a4eb78232b97fb94c20a66687b8af8e4b512b1224dcf75f8e16cc030"
         require(sha256(skiko) == expectedSkiko) { "Unexpected Skiko Linux runtime" }
         var jarNatives = 0
         contents.resolve("app").listDirectoryEntries("*.jar").forEach { jar ->
