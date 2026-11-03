@@ -212,4 +212,10 @@
     <string name="gallery_list_loading">正在读取图库布局…</string>
     <string name="gallery_list_unavailable">无法读取图库布局。</string>
     <string name="gallery_list_save_failed">无法保存图库布局。</string>
+    <string name="gallery_reload_page">重新加载本页</string>
+    <string name="gallery_sort_page">本页排序</string>
+    <string name="gallery_sort_service">网站原始顺序</string>
+    <string name="gallery_sort_title">标题</string>
+    <string name="gallery_sort_rating">评分从高到低</string>
+    <string name="gallery_sort_pages">页数从多到少</string>
 </resources>

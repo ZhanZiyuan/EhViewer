@@ -212,4 +212,10 @@
     <string name="gallery_list_loading">ギャラリーの表示設定を読み込み中…</string>
     <string name="gallery_list_unavailable">ギャラリーの表示設定を読み込めません。</string>
     <string name="gallery_list_save_failed">ギャラリーの表示設定を保存できません。</string>
+    <string name="gallery_reload_page">このページを再読み込み</string>
+    <string name="gallery_sort_page">このページを並べ替え</string>
+    <string name="gallery_sort_service">サイトの順序</string>
+    <string name="gallery_sort_title">タイトル</string>
+    <string name="gallery_sort_rating">評価の高い順</string>
+    <string name="gallery_sort_pages">ページ数の多い順</string>
 </resources>

@@ -73,6 +73,49 @@ class GalleryRepositoryTest {
         }
     }
 
+    @Test fun malformedServiceCursorsAreRecoverableErrorsBeforeTheyCanBecomeNavigationRequests() = runTest {
+        for (cursor in listOf("../private-query", "42&next=7", "1--2", "9".repeat(65), "", "42-")) {
+            for (previous in listOf(false, true)) {
+                var requests = 0
+                val engine = MockEngine {
+                    requests++
+                    respond("test-html", HttpStatusCode.OK)
+                }
+                val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+                try {
+                    val parsed = result.copy(prev = cursor.takeIf { previous }, next = cursor.takeUnless { previous })
+                    val error = assertFailsWith<GalleryRequestException> { GalleryRepository(client, GalleryListDecoder { parsed }).search("owned-query") }
+                    assertEquals(GalleryFailure.INVALID_RESPONSE, error.failure)
+                    assertEquals(null, error.cause)
+                    if (cursor.isNotEmpty()) assertFalse(error.toString().contains(cursor))
+                    assertFalse(error.toString().contains("owned-query"))
+                    assertEquals(1, requests)
+                } finally {
+                    client.close()
+                    engine.close()
+                }
+            }
+        }
+    }
+
+    @Test fun oversizedInputCursorsNeverSendARequest() = runTest {
+        var requests = 0
+        val engine = MockEngine {
+            requests++
+            respond("test-html", HttpStatusCode.OK)
+        }
+        val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+        try {
+            assertFailsWith<IllegalArgumentException> { GalleryRepository(client, decoder).search(cursor = "9".repeat(65)) }
+            assertEquals(0, requests)
+            GalleryRepository(client, decoder).search(cursor = "9".repeat(31) + "-" + "8".repeat(32))
+            assertEquals(1, requests)
+        } finally {
+            client.close()
+            engine.close()
+        }
+    }
+
     @Test fun unavailableSecureStorageDoesNotBecomeAnOfflineErrorOrSendARequest() = runTest {
         val vault = object : SessionVault {
             override suspend fun read(): ByteArray? = error("test-only-secret-path")

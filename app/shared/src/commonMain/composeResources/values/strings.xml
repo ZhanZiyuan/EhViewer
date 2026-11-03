@@ -212,4 +212,10 @@
     <string name="gallery_list_loading">Loading gallery layout…</string>
     <string name="gallery_list_unavailable">Gallery layout is unavailable.</string>
     <string name="gallery_list_save_failed">Gallery layout could not be saved.</string>
+    <string name="gallery_reload_page">Reload page</string>
+    <string name="gallery_sort_page">Sort this page</string>
+    <string name="gallery_sort_service">Service order</string>
+    <string name="gallery_sort_title">Title</string>
+    <string name="gallery_sort_rating">Rating (highest first)</string>
+    <string name="gallery_sort_pages">Pages (most first)</string>
 </resources>

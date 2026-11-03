@@ -20,20 +20,25 @@ enum class GalleryFailure { AUTHENTICATION, CHALLENGE, RATE_LIMIT, OFFLINE, SERV
 
 class GalleryRequestException(val failure: GalleryFailure) : Exception("Gallery request failed: $failure")
 
+private val searchCursor = Regex("[0-9]+(?:-[0-9]+)?")
+private fun validSearchCursor(cursor: String?) = cursor == null || cursor.length <= 64 && searchCursor.matches(cursor)
+
 /** Search and cursor pagination use the original service, Rust parser and shared gallery model. */
 class GalleryRepository(private val client: HttpClient, private val decoder: GalleryListDecoder, private val restricted: Boolean = false) {
     private val host = if (restricted) "exhentai.org" else "e-hentai.org"
     private val requests = GalleryRequests(client, host)
 
     suspend fun search(query: String = "", cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult {
-        require(query.length <= 4096 && (cursor == null || Regex("[0-9]+(?:-[0-9]+)?").matches(cursor)))
+        require(query.length <= 4096 && validSearchCursor(cursor))
         val url = URLBuilder(URLProtocol.HTTPS, host).apply {
             encodedPath = "/"
             if (query.isNotBlank()) parameters.append("f_search", query)
             if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
             filters.appendTo(this)
         }.build()
-        return requests.document(url, decoder::decode)
+        return requests.document(url, decoder::decode).also {
+            if (!validSearchCursor(it.prev) || !validSearchCursor(it.next)) invalid()
+        }
     }
 
     fun galleryUrl(gid: Long, token: String): Url {

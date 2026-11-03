@@ -212,4 +212,10 @@
     <string name="gallery_list_loading">正在讀取圖庫版面…</string>
     <string name="gallery_list_unavailable">無法讀取圖庫版面。</string>
     <string name="gallery_list_save_failed">無法儲存圖庫版面。</string>
+    <string name="gallery_reload_page">重新載入本頁</string>
+    <string name="gallery_sort_page">本頁排序</string>
+    <string name="gallery_sort_service">網站原始順序</string>
+    <string name="gallery_sort_title">標題</string>
+    <string name="gallery_sort_rating">評分由高到低</string>
+    <string name="gallery_sort_pages">頁數由多到少</string>
 </resources>

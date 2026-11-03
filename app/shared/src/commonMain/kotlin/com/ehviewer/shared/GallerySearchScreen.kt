@@ -94,11 +94,13 @@ import ehviewer.app.shared.generated.resources.gallery_local_library
 import ehviewer.app.shared.generated.resources.gallery_next
 import ehviewer.app.shared.generated.resources.gallery_no_galleries
 import ehviewer.app.shared.generated.resources.gallery_previous
+import ehviewer.app.shared.generated.resources.gallery_reload_page
 import ehviewer.app.shared.generated.resources.gallery_retry
 import ehviewer.app.shared.generated.resources.gallery_search
 import ehviewer.app.shared.generated.resources.gallery_search_galleries
 import ehviewer.app.shared.generated.resources.gallery_search_hint
 import ehviewer.app.shared.generated.resources.gallery_settings
+import ehviewer.app.shared.generated.resources.gallery_sort_page
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -108,6 +110,8 @@ private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
     save = { Json.encodeToString(it) },
     restore = { runCatching { Json.decodeFromString<GallerySearchFilters>(it) }.getOrNull() },
 )
+
+private data class GallerySearchRequest(val query: String, val filters: GallerySearchFilters, val cursor: String? = null, val previous: Boolean = false)
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
@@ -181,10 +185,13 @@ fun GalleryLibraryScreen(
         }
     }
     var query by rememberSaveable { mutableStateOf("") }
-    var loadedQuery by remember { mutableStateOf("") }
     var filters by rememberSaveable(stateSaver = searchFiltersSaver) { mutableStateOf(GallerySearchFilters()) }
-    var loadedFilters by remember { mutableStateOf(GallerySearchFilters()) }
+    var loadedSearch by remember { mutableStateOf<GallerySearchRequest?>(null) }
+    var failedSearch by remember { mutableStateOf<GallerySearchRequest?>(null) }
     var filtersOpen by remember { mutableStateOf(false) }
+    var orderName by rememberSaveable { mutableStateOf(GalleryPageOrder.SERVICE.name) }
+    val order = GalleryPageOrder.entries.firstOrNull { it.name == orderName } ?: GalleryPageOrder.SERVICE
+    var orderOpen by remember { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var historyOpen by rememberSaveable { mutableStateOf(false) }
     var downloadsOpen by rememberSaveable { mutableStateOf(false) }
@@ -233,31 +240,38 @@ fun GalleryLibraryScreen(
         }
     }
 
-    fun load(cursor: String? = null, previous: Boolean = false) {
+    fun load(search: GallerySearchRequest, replaceResults: Boolean = false) {
         request?.cancel()
         val current = ++generation
-        val text = if (cursor == null) query else loadedQuery
-        val appliedFilters = if (cursor == null) filters else loadedFilters
-        if (cursor == null) page = null
+        if (replaceResults) page = null
+        loading = true
+        failure = null
+        failedSearch = null
         request = scope.launch {
-            loading = true
-            failure = null
             try {
-                val result = session.galleries.search(text, cursor, previous, appliedFilters)
+                val result = session.galleries.search(search.query, search.cursor, search.previous, search.filters)
                 if (current == generation) {
                     page = result
-                    loadedQuery = text
-                    loadedFilters = appliedFilters
-                    resultsState.scrollToItem(0)
+                    loadedSearch = search
+                    resultsState.requestScrollToItem(0)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: GalleryRequestException) {
-                if (current == generation) failure = error.failure
+                if (current == generation) {
+                    failedSearch = search
+                    failure = error.failure
+                }
             } finally {
                 if (current == generation) loading = false
             }
         }
+    }
+
+    fun search() = load(GallerySearchRequest(query, filters), replaceResults = true)
+
+    fun turnPage(cursor: String?, previous: Boolean = false) {
+        if (cursor != null) loadedSearch?.let { load(it.copy(cursor = cursor, previous = previous)) }
     }
 
     DisposableEffect(session) {
@@ -299,8 +313,8 @@ fun GalleryLibraryScreen(
                                 selected = null
                                 page = null
                                 query = ""
-                                loadedQuery = ""
-                                loadedFilters = GallerySearchFilters()
+                                loadedSearch = null
+                                failedSearch = null
                                 failure = null
                                 loading = false
                             }, { account = false })
@@ -358,13 +372,14 @@ fun GalleryLibraryScreen(
                                 label = { Text(galleryString(Res.string.gallery_search_galleries)) },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                keyboardActions = KeyboardActions(onSearch = { load() }),
+                                keyboardActions = KeyboardActions(onSearch = { search() }),
                             )
-                            Button(onClick = { load() }) { Text(galleryString(Res.string.gallery_search)) }
+                            Button(onClick = { search() }) { Text(galleryString(Res.string.gallery_search)) }
                         }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             TextButton(onClick = { filtersOpen = true }) { Text(galleryString(Res.string.gallery_filters)) }
                             if (filters != GallerySearchFilters()) Text(galleryString(Res.string.gallery_filters_applied), style = MaterialTheme.typography.labelMedium)
+                            TextButton(onClick = { orderOpen = true }, enabled = page != null && !loading) { Text(galleryString(Res.string.gallery_sort_page)) }
                             TextButton(onClick = { historyOpen = true }) { Text(galleryString(Res.string.gallery_history)) }
                             TextButton(onClick = { settingsOpen = true }) { Text(galleryString(Res.string.gallery_settings)) }
                         }
@@ -384,29 +399,38 @@ fun GalleryLibraryScreen(
                             GallerySearchFiltersDialog(filters, onApply = { applied ->
                                 filters = applied
                                 filtersOpen = false
-                                load()
+                                search()
                             }, onDismiss = { filtersOpen = false })
+                        }
+                        if (orderOpen) {
+                            GalleryPageOrderDialog(order, onApply = {
+                                orderName = it.name
+                                orderOpen = false
+                                resultsState.requestScrollToItem(0)
+                            }, onDismiss = { orderOpen = false })
                         }
                         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                         val error = failure
                         if (error != null) {
                             Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Text(error.userMessage(), Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
-                                TextButton(onClick = { load() }) { Text(galleryString(Res.string.gallery_retry)) }
+                                TextButton(onClick = { failedSearch?.let { load(it) } }, enabled = failedSearch != null && !loading) { Text(galleryString(Res.string.gallery_retry)) }
                             }
                         }
                         val result = page
                         if (result == null && !loading && error == null) Text(galleryString(Res.string.gallery_search_hint), Modifier.padding(vertical = 24.dp))
                         if (result != null) {
+                            val orderedGalleries = remember(result, order) { order.arrange(result.galleryInfoList) }
                             if (result.galleryInfoList.isEmpty()) Text(galleryString(Res.string.gallery_no_galleries), Modifier.padding(vertical = 24.dp))
                             LazyVerticalGrid(columns = GridCells.Adaptive((listDensity ?: GalleryListDensity.COMPACT).minimumColumnWidth.dp), modifier = Modifier.weight(1f), state = resultsState, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                items(result.galleryInfoList, key = { it.gid }) { gallery ->
+                                items(orderedGalleries, key = { it.gid }) { gallery ->
                                     GallerySearchCard(gallery, covers) { selected = gallery }
                                 }
                             }
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                TextButton(onClick = { load(result.prev, previous = true) }, enabled = result.prev != null && !loading) { Text(galleryString(Res.string.gallery_previous)) }
-                                TextButton(onClick = { load(result.next) }, enabled = result.next != null && !loading) { Text(galleryString(Res.string.gallery_next)) }
+                            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                TextButton(onClick = { turnPage(result.prev, previous = true) }, enabled = result.prev != null && !loading) { Text(galleryString(Res.string.gallery_previous)) }
+                                TextButton(onClick = { loadedSearch?.let { load(it) } }, enabled = loadedSearch != null && !loading) { Text(galleryString(Res.string.gallery_reload_page)) }
+                                TextButton(onClick = { turnPage(result.next) }, enabled = result.next != null && !loading) { Text(galleryString(Res.string.gallery_next)) }
                             }
                         }
                     }
