@@ -122,7 +122,7 @@ private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
     restore = { runCatching { Json.decodeFromString<GallerySearchFilters>(it) }.getOrNull() },
 )
 
-private data class GallerySearchRequest(val query: String, val filters: GallerySearchFilters, val cursor: String? = null, val previous: Boolean = false)
+private data class GallerySearchRequest(val query: String, val filters: GallerySearchFilters, val cursor: String? = null, val previous: Boolean = false, val uploader: String? = null)
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
@@ -263,7 +263,8 @@ fun GalleryLibraryScreen(
         failedSearch = null
         request = scope.launch {
             try {
-                val result = session.galleries.search(search.query, search.cursor, search.previous, search.filters)
+                val result = search.uploader?.let { session.galleries.uploader(it, search.cursor, search.previous, search.filters) }
+                    ?: session.galleries.search(search.query, search.cursor, search.previous, search.filters)
                 if (current == generation) {
                     page = result
                     loadedSearch = search
@@ -283,7 +284,10 @@ fun GalleryLibraryScreen(
         }
     }
 
-    fun search() = load(GallerySearchRequest(query, filters), replaceResults = true)
+    fun search() {
+        val uploader = (failedSearch ?: loadedSearch)?.takeIf { it.query == query }?.uploader
+        load(GallerySearchRequest(query, filters, uploader = uploader), replaceResults = true)
+    }
 
     fun turnPage(cursor: String?, previous: Boolean = false) {
         if (cursor != null) loadedSearch?.let { load(it.copy(cursor = cursor, previous = previous)) }
@@ -402,7 +406,19 @@ fun GalleryLibraryScreen(
                                 return@Column
                             }
                             if (gallery != null) {
-                                GalleryDetailScreen(session, gallery, readerState, downloads.takeIf { downloadsReady }, onDownloads = { downloadsOpen = true }, backLabel = if (historyOpen) galleryString(Res.string.gallery_back_history) else galleryString(Res.string.gallery_back_search), onBack = { selected = null })
+                                GalleryDetailScreen(session, gallery, readerState, downloads.takeIf { downloadsReady }, covers = if (historyOpen) historyCovers else covers, onDownloads = { downloadsOpen = true }, onCategory = {
+                                    selected = null
+                                    historyOpen = false
+                                    filters = GallerySearchFilters(includedCategories = it)
+                                    query = ""
+                                    load(GallerySearchRequest(query, filters), replaceResults = true)
+                                }, onUploader = {
+                                    selected = null
+                                    historyOpen = false
+                                    filters = GallerySearchFilters()
+                                    query = "uploader:$it"
+                                    load(GallerySearchRequest(query, filters, uploader = it), replaceResults = true)
+                                }, backLabel = if (historyOpen) galleryString(Res.string.gallery_back_history) else galleryString(Res.string.gallery_back_search), onBack = { selected = null })
                                 return@Column
                             }
                             if (historyOpen) {

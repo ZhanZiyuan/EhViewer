@@ -64,9 +64,9 @@
     <string name="gallery_favorite_edit">Edit favorite</string>
     <string name="gallery_favorite_add">Add to favorites</string>
     <string name="gallery_download_adding">Adding download…</string>
-    <string name="gallery_download_add">Download gallery</string>
+    <string name="gallery_download_add">Download</string>
     <string name="gallery_download_add_failed">The download could not be added. Try again.</string>
-    <string name="gallery_read_gallery">Read gallery</string>
+    <string name="gallery_read_gallery">Read</string>
     <string name="gallery_read_start">Read from start</string>
     <string name="gallery_pages">Pages</string>
     <string name="gallery_previews_browse">Browse page previews</string>
@@ -173,7 +173,7 @@
     <string name="gallery_gallery_page">Gallery page %1$s</string>
     <string name="gallery_preview_page">Preview of page %1$s</string>
     <string name="gallery_preview_retry">%1$s Retry preview</string>
-    <string name="gallery_continue_reading">Continue reading · page %1$s</string>
+    <string name="gallery_continue_reading">Read page %1$s</string>
     <string name="gallery_uploaded_by">Uploaded by %1$s</string>
     <string name="gallery_rating">Rating %1$s (%2$s)</string>
     <string name="gallery_gallery_metadata">%1$s pages · %2$s · %3$s</string>
@@ -229,4 +229,30 @@
     <string name="gallery_clear_all">Clear all</string>
     <string name="gallery_clear_all_history">Clear all history?</string>
     <string name="gallery_downloaded">Downloaded</string>
+    <string name="gallery_info">Gallery Info</string>
+    <string name="gallery_info_gid">GID</string>
+    <string name="gallery_info_token">Token</string>
+    <string name="gallery_info_url">URL</string>
+    <string name="gallery_info_title">Title</string>
+    <string name="gallery_info_title_jpn">Jpn Title</string>
+    <string name="gallery_info_thumb">Thumb</string>
+    <string name="gallery_info_category">Category</string>
+    <string name="gallery_info_uploader">Uploader</string>
+    <string name="gallery_info_posted">Posted</string>
+    <string name="gallery_info_parent">Parent</string>
+    <string name="gallery_info_visible">Visible</string>
+    <string name="gallery_info_language">Language</string>
+    <string name="gallery_info_pages">Pages</string>
+    <string name="gallery_info_size">Size</string>
+    <string name="gallery_info_favorite_count">Favorite count</string>
+    <string name="gallery_info_favorited">Favorited</string>
+    <string name="gallery_info_rating_count">Rating count</string>
+    <string name="gallery_info_rating">Rating</string>
+    <string name="gallery_info_torrents">Torrents</string>
+    <string name="gallery_info_torrent_url">Torrent URL</string>
+    <string name="gallery_info_favorite_name">Favorite</string>
+    <plurals name="gallery_detail_page_count">
+        <item quantity="one">%1$s page</item>
+        <item quantity="other">%1$s pages</item>
+    </plurals>
 </resources>

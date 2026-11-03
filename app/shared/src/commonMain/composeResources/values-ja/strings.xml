@@ -64,9 +64,9 @@
     <string name="gallery_favorite_edit">お気に入りを編集</string>
     <string name="gallery_favorite_add">お気に入りに追加</string>
     <string name="gallery_download_adding">ダウンロードを追加中…</string>
-    <string name="gallery_download_add">ギャラリーをダウンロード</string>
+    <string name="gallery_download_add">ダウンロード</string>
     <string name="gallery_download_add_failed">ダウンロードを追加できません。再試行してください。</string>
-    <string name="gallery_read_gallery">ギャラリーを読む</string>
+    <string name="gallery_read_gallery">読む</string>
     <string name="gallery_read_start">最初から読む</string>
     <string name="gallery_pages">ページ</string>
     <string name="gallery_previews_browse">プレビューを表示</string>
@@ -173,7 +173,7 @@
     <string name="gallery_gallery_page">ギャラリーのページ %1$s</string>
     <string name="gallery_preview_page">ページ %1$s のプレビュー</string>
     <string name="gallery_preview_retry">%1$s プレビューを再試行</string>
-    <string name="gallery_continue_reading">続きから読む · ページ %1$s</string>
+    <string name="gallery_continue_reading">%1$s ページを読む</string>
     <string name="gallery_uploaded_by">投稿者 %1$s</string>
     <string name="gallery_rating">評価 %1$s（%2$s）</string>
     <string name="gallery_gallery_metadata">%1$s ページ · %2$s · %3$s</string>
@@ -229,4 +229,29 @@
     <string name="gallery_clear_all">すべて消去</string>
     <string name="gallery_clear_all_history">履歴をすべて消去しますか？</string>
     <string name="gallery_downloaded">ダウンロード済み</string>
+    <string name="gallery_info">ギャラリー情報</string>
+    <string name="gallery_info_gid">GID</string>
+    <string name="gallery_info_token">トークン</string>
+    <string name="gallery_info_url">URL</string>
+    <string name="gallery_info_title">タイトル</string>
+    <string name="gallery_info_title_jpn">日本語のタイトル</string>
+    <string name="gallery_info_thumb">サムネイル</string>
+    <string name="gallery_info_category">カテゴリー</string>
+    <string name="gallery_info_uploader">アップローダー</string>
+    <string name="gallery_info_posted">アップロード日時</string>
+    <string name="gallery_info_parent">親ギャラリー</string>
+    <string name="gallery_info_visible">可視性</string>
+    <string name="gallery_info_language">言語</string>
+    <string name="gallery_info_pages">ページ数</string>
+    <string name="gallery_info_size">サイズ</string>
+    <string name="gallery_info_favorite_count">お気に入りの数</string>
+    <string name="gallery_info_favorited">お気に入りに追加済み</string>
+    <string name="gallery_info_rating_count">評価の数</string>
+    <string name="gallery_info_rating">評価</string>
+    <string name="gallery_info_torrents">Torrent</string>
+    <string name="gallery_info_torrent_url">Torrent URL</string>
+    <string name="gallery_info_favorite_name">お気に入り</string>
+    <plurals name="gallery_detail_page_count">
+        <item quantity="other">%1$s ページ</item>
+    </plurals>
 </resources>

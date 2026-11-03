@@ -13,6 +13,7 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
+import io.ktor.http.encodedPath
 import io.ktor.http.headersOf
 import io.ktor.http.parseClientCookiesHeader
 import io.ktor.utils.io.ByteChannel
@@ -32,6 +33,50 @@ class GalleryRepositoryTest {
     private val decoder = GalleryListDecoder { bytes ->
         assertEquals("test-html", bytes.decodeToString())
         result
+    }
+
+    @Test fun uploaderNamesRemainOneEncodedPathSegmentOnEitherService() = runTest {
+        val name = "Owner / 日本語 ?x=1#quoted\""
+        for (restricted in listOf(false, true)) {
+            val engine = MockEngine { request ->
+                assertEquals(if (restricted) "exhentai.org" else "e-hentai.org", request.url.host)
+                assertEquals(listOf("uploader", name), request.url.pathSegments.filter { it.isNotEmpty() })
+                assertTrue("%2F" in request.url.encodedPath, "A slash in the uploader must not create a new route")
+                assertEquals("12-13", request.url.parameters["prev"])
+                assertEquals(null, request.url.parameters["next"])
+                assertEquals(null, request.url.parameters["f_search"])
+                assertEquals(null, request.url.parameters["x"])
+                assertEquals("", request.url.fragment)
+                respond("test-html", HttpStatusCode.OK)
+            }
+            val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+            try {
+                assertEquals(result, GalleryRepository(client, decoder, restricted).uploader(name, "12-13", previous = true))
+            } finally {
+                client.close()
+                engine.close()
+            }
+        }
+    }
+
+    @Test fun invalidUploaderNamesAndCursorsNeverReachTheTransport() = runTest {
+        var sent = 0
+        val engine = MockEngine {
+            sent++
+            respond("test-html", HttpStatusCode.OK)
+        }
+        val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+        try {
+            val repository = GalleryRepository(client, decoder)
+            for (name in listOf("", " ", ".", "..", "a\nb", "a".repeat(257))) {
+                assertEquals(GalleryFailure.INVALID_RESPONSE, assertFailsWith<GalleryRequestException> { repository.uploader(name) }.failure)
+            }
+            assertEquals(GalleryFailure.INVALID_RESPONSE, assertFailsWith<GalleryRequestException> { repository.uploader("Valid owner", "../private") }.failure)
+            assertEquals(0, sent)
+        } finally {
+            client.close()
+            engine.close()
+        }
     }
 
     @Test fun searchEncodesTheQueryAndUsesTheRealSharedCookieAndHeaderConfiguration() = runTest {

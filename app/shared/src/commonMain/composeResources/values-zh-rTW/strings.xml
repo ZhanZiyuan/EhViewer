@@ -64,9 +64,9 @@
     <string name="gallery_favorite_edit">編輯收藏</string>
     <string name="gallery_favorite_add">加入收藏</string>
     <string name="gallery_download_adding">正在新增下載…</string>
-    <string name="gallery_download_add">下載圖庫</string>
+    <string name="gallery_download_add">下載</string>
     <string name="gallery_download_add_failed">無法新增下載，請重試。</string>
-    <string name="gallery_read_gallery">閱讀圖庫</string>
+    <string name="gallery_read_gallery">閱讀</string>
     <string name="gallery_read_start">從頭閱讀</string>
     <string name="gallery_pages">頁面</string>
     <string name="gallery_previews_browse">瀏覽頁面預覽</string>
@@ -173,7 +173,7 @@
     <string name="gallery_gallery_page">圖庫第 %1$s 頁</string>
     <string name="gallery_preview_page">第 %1$s 頁的預覽</string>
     <string name="gallery_preview_retry">%1$s 重試預覽</string>
-    <string name="gallery_continue_reading">繼續閱讀 · 第 %1$s 頁</string>
+    <string name="gallery_continue_reading">從第 %1$s 頁閱讀</string>
     <string name="gallery_uploaded_by">上傳者 %1$s</string>
     <string name="gallery_rating">評分 %1$s（%2$s）</string>
     <string name="gallery_gallery_metadata">%1$s 頁 · %2$s · %3$s</string>
@@ -229,4 +229,29 @@
     <string name="gallery_clear_all">全部清除</string>
     <string name="gallery_clear_all_history">清除所有歷史紀錄？</string>
     <string name="gallery_downloaded">已下載</string>
+    <string name="gallery_info">圖庫資訊</string>
+    <string name="gallery_info_gid">GID</string>
+    <string name="gallery_info_token">Token</string>
+    <string name="gallery_info_url">網址</string>
+    <string name="gallery_info_title">標題</string>
+    <string name="gallery_info_title_jpn">日文標題</string>
+    <string name="gallery_info_thumb">縮圖</string>
+    <string name="gallery_info_category">分類</string>
+    <string name="gallery_info_uploader">上傳者</string>
+    <string name="gallery_info_posted">上傳時間</string>
+    <string name="gallery_info_parent">上層圖庫</string>
+    <string name="gallery_info_visible">可見</string>
+    <string name="gallery_info_language">語言</string>
+    <string name="gallery_info_pages">頁數</string>
+    <string name="gallery_info_size">大小</string>
+    <string name="gallery_info_favorite_count">收藏次數</string>
+    <string name="gallery_info_favorited">收藏</string>
+    <string name="gallery_info_rating_count">評分次數</string>
+    <string name="gallery_info_rating">分數</string>
+    <string name="gallery_info_torrents">種子數</string>
+    <string name="gallery_info_torrent_url">種子連結</string>
+    <string name="gallery_info_favorite_name">收藏圖庫</string>
+    <plurals name="gallery_detail_page_count">
+        <item quantity="other">%1$s 頁</item>
+    </plurals>
 </resources>

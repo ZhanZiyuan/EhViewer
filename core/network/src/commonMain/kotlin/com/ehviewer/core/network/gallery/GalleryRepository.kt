@@ -5,6 +5,7 @@ import io.ktor.client.HttpClient
 import io.ktor.http.URLBuilder
 import io.ktor.http.URLProtocol
 import io.ktor.http.Url
+import io.ktor.http.appendPathSegments
 import io.ktor.http.encodedPath
 import kotlinx.serialization.Serializable
 
@@ -41,10 +42,25 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
         }
     }
 
+    /** Match Android's uploader route, including names that cannot be expressed by search operators. */
+    suspend fun uploader(name: String, cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult {
+        if (name.isBlank() || name.length > 256 || name in setOf(".", "..") || name.any { it.code < 32 || it.code == 127 } || !validSearchCursor(cursor)) invalid()
+        val url = URLBuilder(URLProtocol.HTTPS, host).apply {
+            appendPathSegments("uploader", name, encodeSlash = true)
+            if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
+            filters.appendTo(this)
+        }.build()
+        return requests.document(url, decoder::decode).also {
+            if (!validSearchCursor(it.prev) || !validSearchCursor(it.next)) invalid()
+        }
+    }
+
     fun galleryUrl(gid: Long, token: String): Url {
         require(gid > 0 && Regex("[a-f0-9]{10}").matches(token))
         return Url("https://$host/g/$gid/$token/")
     }
+
+    fun coverUrl(thumbKey: String): Url = galleryCoverUrl(thumbKey, restricted)
 
     /** Covers use the same bounded transport and actual cookie jar as gallery previews. */
     suspend fun cover(gid: Long, token: String, thumbKey: String): ByteArray {
@@ -53,7 +69,7 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
         } catch (_: IllegalArgumentException) {
             invalid()
         }
-        return requests.image(galleryCoverUrl(thumbKey, restricted), referer)
+        return requests.image(coverUrl(thumbKey), referer)
     }
 }
 

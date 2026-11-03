@@ -100,7 +100,7 @@ internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCach
 }
 
 @Composable
-private fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCoverCache<CoilImage>) {
+internal fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCoverCache<CoilImage>) {
     var image by remember(request, cache) { mutableStateOf<CoilImage?>(null) }
     var failed by remember(request, cache) { mutableStateOf(false) }
     var attempt by remember(request, cache) { mutableIntStateOf(0) }

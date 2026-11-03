@@ -127,9 +127,11 @@ class GalleryPreviewIntegrationTest {
         val body = ByteChannel(autoFlush = true).also { runBlocking { it.writeFully(prefix) } }
         val resumedRanges = Collections.synchronizedList(mutableListOf<String?>())
         val requests = Collections.synchronizedList(mutableListOf<String>())
+        val firstImageReferers = Collections.synchronizedList(mutableListOf<String?>())
         val engine = MockEngine { request ->
             check(!offline.get()) { "Offline reading must not request HTTP" }
             requests += request.url.encodedPath
+            if (request.url.host == "ehgt.org" && request.url.encodedPath == "/0.png") firstImageReferers += request.headers[HttpHeaders.Referrer]
             when {
                 request.url.host == "ehgt.org" -> {
                     if (request.url.encodedPath == "/cover.png" && rejectFirstCover.getAndSet(false)) {
@@ -219,12 +221,17 @@ class GalleryPreviewIntegrationTest {
                 waitForCoverPixels()
                 assertEquals(2, requests.count { it == "/cover.png" }) // One failure, one explicit retry and actual sampled pixels.
                 click(title)
-                assertTrue(device.wait(Until.hasObject(By.text("Download gallery")), 15_000))
+                assertTrue(device.wait(Until.hasObject(By.text("Download")), 15_000))
+                requireNotNull(device.wait(Until.findObject(By.desc("Gallery Info")), 15_000)).click()
+                assertTrue(device.wait(Until.hasObject(By.text("GID")), 15_000))
+                assertTrue(device.wait(Until.hasObject(By.text(gid.toString())), 15_000))
+                device.pressBack()
+                assertTrue(device.wait(Until.hasObject(By.text("Download")), 15_000))
                 click("Back to search")
                 waitForCoverPixels()
                 assertEquals(2, requests.count { it == "/cover.png" }) // Returning to the same result page reuses the cover.
                 click(title)
-                click("Download gallery")
+                click("Download")
                 runBlocking {
                     withTimeout(15_000) {
                         secondStarted.await()
@@ -256,7 +263,9 @@ class GalleryPreviewIntegrationTest {
                 assertEquals(listOf("bytes=${prefix.size}-"), resumedRanges.toList())
                 assertEquals(false, File(owned, "images/$gid/partial-1.cbor").exists())
                 assertEquals(false, File(owned, "images/$gid/partial-1.data").exists())
-                assertEquals(1, requests.count { it == "/0.png" })
+                // The new detail cover and downloaded page share this fixture URL; neither may repeat.
+                assertEquals(2, requests.count { it == "/0.png" })
+                assertEquals(listOf("https://e-hentai.org/g/$gid/$token/", "https://e-hentai.org/s/${"1".repeat(10)}/$gid-1"), firstImageReferers.toList())
                 // Like Android's list, the search card now carries the downloaded mark.
                 click("Back")
                 device.submitSharedSearch()
@@ -420,7 +429,7 @@ class GalleryPreviewIntegrationTest {
                 try {
                     device.submitSharedSearch()
                     click(title)
-                    click("Read gallery")
+                    click("Read")
                     visible("1 / 3")
                     saved(0)
                     stage = "invalid page stays local"
