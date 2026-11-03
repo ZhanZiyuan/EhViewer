@@ -22,6 +22,7 @@ import com.hippo.ehviewer.ui.destinations.DownloadScreenDestination
 import com.hippo.ehviewer.ui.destinations.EhScreenDestination
 import com.hippo.ehviewer.ui.navToReader
 import com.hippo.ehviewer.ui.openBrowserOrThrow
+import com.hippo.ehviewer.ui.theme.EhTheme
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -43,7 +44,7 @@ fun AnimatedVisibilityScope.SharedGalleriesScreen(navigator: DestinationsNavigat
         CompositionLocalProvider(LocalUriHandler provides rememberGalleryBrowserHandler()) {
             GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, language, networkPreferences = networkPreferences, listPreferences = listPreferences, onPlatformStorageSettings = { navigator.navigate(DownloadScreenDestination) }, onPlatformDownloadOpen = { gid ->
                 with(navigator) { navToReader(checkNotNull(DownloadManager.getDownloadInfo(gid)).galleryInfo) }
-            }, onBack = { navigator.popBackStack() }, onAccount = { navigator.navigate(EhScreenDestination) })
+            }, onBack = { navigator.popBackStack() }, onAccount = { navigator.navigate(EhScreenDestination) }, platformTheme = { dark, content -> EhTheme(dark, content) })
         }
     }
 }

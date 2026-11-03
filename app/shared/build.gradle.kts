@@ -32,6 +32,7 @@ kotlin {
         implementation(libs.compose.ui.backhandler)
         implementation(libs.androidx.lifecycle.compose)
         implementation(libs.coil.shared.core)
+        implementation(libs.material.kolor)
         implementation(libs.serialization.json)
     }
     sourceSets.findByName("androidMain")?.dependencies {

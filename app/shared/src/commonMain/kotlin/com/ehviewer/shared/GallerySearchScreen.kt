@@ -34,8 +34,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -152,6 +150,7 @@ fun GalleryLibraryScreen(
     onPlatformDownloadOpen: ((Long) -> Unit)? = null,
     onBack: (() -> Unit)? = null,
     onAccount: (() -> Unit)? = null,
+    platformTheme: GalleryPlatformTheme? = null,
     accountContent: (@Composable (onIdentityAction: () -> Unit, onBack: () -> Unit) -> Unit)? = null,
     archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null,
     onReady: () -> Unit = {},
@@ -328,7 +327,7 @@ fun GalleryLibraryScreen(
     val theme = themeMode ?: GalleryThemeMode.SYSTEM
     val dark = theme == GalleryThemeMode.DARK || theme == GalleryThemeMode.SYSTEM && isSystemInDarkTheme()
     CompositionLocalProvider(LocalGalleryLanguage provides languageTag) {
-        MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
+        GalleryTheme(dark, platformTheme) {
             Surface(Modifier.fillMaxSize()) {
                 GalleryNavigationShell(destinations, destination, ::navigate) { openNavigation ->
                     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
