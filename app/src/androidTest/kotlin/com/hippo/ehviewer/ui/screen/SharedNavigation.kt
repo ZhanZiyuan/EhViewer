@@ -32,3 +32,6 @@ internal fun UiDevice.openSharedDestination(label: String, navigation: String = 
     }
     item.click()
 }
+
+/** Submits the shared floating search bar's query with its Search icon button. */
+internal fun UiDevice.submitSharedSearch() = requireNotNull(wait(Until.findObject(By.desc("Search")), 15_000)).click()

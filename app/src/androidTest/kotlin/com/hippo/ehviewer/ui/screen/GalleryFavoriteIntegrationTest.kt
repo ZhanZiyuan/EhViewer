@@ -242,7 +242,7 @@ class GalleryFavoriteIntegrationTest {
                             }
                         }
                     }
-                    click("Search")
+                    device.submitSharedSearch()
                     click(title)
                     fun clipboardText(): String? {
                         var value: String? = null

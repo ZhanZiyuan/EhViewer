@@ -189,7 +189,7 @@ class GalleryPreviewIntegrationTest {
             val intent = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             ActivityScenario.launch<MainActivity>(intent).use { scenario ->
                 attach(scenario)
-                click("Search")
+                device.submitSharedSearch()
                 assertTrue(device.wait(Until.hasObject(By.text(title)), 15_000))
                 click("Retry cover")
                 fun waitForCoverPixels() = runBlocking {
@@ -411,7 +411,7 @@ class GalleryPreviewIntegrationTest {
                 }
                 var stage = "open real first page"
                 try {
-                    click("Search")
+                    device.submitSharedSearch()
                     click(title)
                     click("Read gallery")
                     visible("1 / 3")
@@ -659,7 +659,7 @@ class GalleryPreviewIntegrationTest {
                         throw AssertionError("Paused activity did not expose the expected poster", timeout)
                     }
                 }
-                click("Search")
+                device.submitSharedSearch()
                 click(title)
                 click("Browse page previews")
                 assertTrue("First real preview bitmap did not render", device.wait(Until.hasObject(By.desc("Preview of page 1")), 15_000))
@@ -722,7 +722,7 @@ class GalleryPreviewIntegrationTest {
                     assertEquals(2, EhDB.getReadingPosition(gid)?.page)
                 }
                 click("Back to search")
-                assertTrue(device.wait(Until.hasObject(By.text("Search galleries")), 10_000))
+                assertTrue(device.wait(Until.hasObject(By.desc("Search galleries")), 10_000))
                 assertTrue(requests.any { it == "/g/$gid/$token/?p=1" })
                 assertTrue(requests.any { it.startsWith("/s/3333333333/$gid-3") })
             }

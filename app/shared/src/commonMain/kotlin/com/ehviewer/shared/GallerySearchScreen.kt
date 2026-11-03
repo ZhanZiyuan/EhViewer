@@ -3,13 +3,15 @@ package com.ehviewer.shared
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -19,18 +21,12 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,7 +45,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.AppLanguageException
 import com.ehviewer.core.domain.GalleryHistoryException
@@ -89,18 +91,15 @@ import ehviewer.app.shared.generated.resources.gallery_error_response
 import ehviewer.app.shared.generated.resources.gallery_error_server
 import ehviewer.app.shared.generated.resources.gallery_error_session_storage
 import ehviewer.app.shared.generated.resources.gallery_error_too_large
-import ehviewer.app.shared.generated.resources.gallery_filters
-import ehviewer.app.shared.generated.resources.gallery_filters_applied
 import ehviewer.app.shared.generated.resources.gallery_list_unavailable
 import ehviewer.app.shared.generated.resources.gallery_next
 import ehviewer.app.shared.generated.resources.gallery_no_galleries
 import ehviewer.app.shared.generated.resources.gallery_previous
 import ehviewer.app.shared.generated.resources.gallery_reload_page
 import ehviewer.app.shared.generated.resources.gallery_retry
-import ehviewer.app.shared.generated.resources.gallery_search
-import ehviewer.app.shared.generated.resources.gallery_search_galleries
 import ehviewer.app.shared.generated.resources.gallery_search_hint
 import ehviewer.app.shared.generated.resources.gallery_sort_page
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -234,6 +233,7 @@ fun GalleryLibraryScreen(
     var selected by remember { mutableStateOf<BaseGalleryInfo?>(null) }
     var account by remember { mutableStateOf(false) }
     val resultsState = rememberLazyGridState()
+    var searchBarOffsetY by remember { mutableIntStateOf(0) }
     val coverContext = coil3.compose.LocalPlatformContext.current
     val coverLoader = remember(session, coverContext) { GalleryCoverLoader(coverContext) { session.galleries.cover(it.gid, it.token, it.key) } }
     DisposableEffect(coverLoader) { onDispose { coverLoader.close() } }
@@ -253,6 +253,7 @@ fun GalleryLibraryScreen(
                     page = result
                     loadedSearch = search
                     resultsState.requestScrollToItem(0)
+                    searchBarOffsetY = 0
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -331,7 +332,8 @@ fun GalleryLibraryScreen(
             Surface(Modifier.fillMaxSize()) {
                 GalleryNavigationShell(destinations, destination, ::navigate) { openNavigation ->
                     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
-                        Column(Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                        val searching = !settingsOpen && !(account && accountContent != null) && !(archivesOpen && archiveContent != null) && !downloadsOpen && selected == null && !historyOpen
+                        Column(if (searching) Modifier.fillMaxSize() else Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
                             if (settingsOpen) {
                                 GallerySettingsScreen(networkPreferences, appearance, readerState, themeMode, appearanceFailed, language, languageTag, languageReady, languageFailed, onLanguageChanged = { languageTag = it }, onRetryLanguage = { languageAttempt++ }, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = ::leaveSettings, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings, listPreferences = listPreferences, listDensity = listDensity, listFailed = listFailed, onListChanged = { listDensity = it }, onRetryList = { listAttempt++ })
                                 return@Column
@@ -391,44 +393,6 @@ fun GalleryLibraryScreen(
                                 GalleryHistoryScreen(history, onOpen = { selected = it }, onBack = { historyOpen = false })
                                 return@Column
                             }
-                            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                                onBack?.let { back ->
-                                    IconButton(onClick = back) { Icon(GalleryIcons.ArrowBack, contentDescription = galleryString(Res.string.gallery_back)) }
-                                }
-                                openNavigation?.let { GalleryNavigationButton(it) }
-                                Text("EhViewer", Modifier.padding(horizontal = 4.dp), style = MaterialTheme.typography.titleLarge)
-                            }
-                            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                OutlinedTextField(
-                                    query,
-                                    { query = it.take(4096) },
-                                    Modifier.weight(1f),
-                                    label = { Text(galleryString(Res.string.gallery_search_galleries)) },
-                                    leadingIcon = { Icon(GalleryIcons.Search, contentDescription = null) },
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                    keyboardActions = KeyboardActions(onSearch = { search() }),
-                                )
-                                Button(onClick = { search() }) { Text(galleryString(Res.string.gallery_search)) }
-                            }
-                            FlowRow(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
-                                val filtered = filters != GallerySearchFilters()
-                                FilterChip(filtered, onClick = { filtersOpen = true }, label = { Text(galleryString(Res.string.gallery_filters)) }, leadingIcon = { Icon(GalleryIcons.FilterList, contentDescription = null, Modifier.size(FilterChipDefaults.IconSize)) })
-                                AssistChip(onClick = { orderOpen = true }, label = { Text(galleryString(Res.string.gallery_sort_page)) }, enabled = page != null && !loading, leadingIcon = { Icon(GalleryIcons.Sort, contentDescription = null, Modifier.size(AssistChipDefaults.IconSize)) })
-                                if (filtered) Text(galleryString(Res.string.gallery_filters_applied), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
-                            }
-                            if (appearanceFailed) {
-                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(galleryString(Res.string.gallery_appearance_unavailable), Modifier.weight(1f))
-                                    TextButton(onClick = { appearanceAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
-                                }
-                            }
-                            if (listFailed) {
-                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(galleryString(Res.string.gallery_list_unavailable), Modifier.weight(1f))
-                                    TextButton(onClick = { listAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
-                                }
-                            }
                             if (filtersOpen) {
                                 GallerySearchFiltersDialog(filters, onApply = { applied ->
                                     filters = applied
@@ -441,30 +405,93 @@ fun GalleryLibraryScreen(
                                     orderName = it.name
                                     orderOpen = false
                                     resultsState.requestScrollToItem(0)
+                                    searchBarOffsetY = 0
                                 }, onDismiss = { orderOpen = false })
                             }
-                            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                            val error = failure
-                            if (error != null) {
-                                Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(error.userMessage(), Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
-                                    TextButton(onClick = { failedSearch?.let { load(it) } }, enabled = failedSearch != null && !loading) { Text(galleryString(Res.string.gallery_retry)) }
-                                }
-                            }
                             val result = page
-                            if (result == null && !loading && error == null) Text(galleryString(Res.string.gallery_search_hint), Modifier.padding(vertical = 24.dp))
-                            if (result != null) {
-                                val orderedGalleries = remember(result, order) { order.arrange(result.galleryInfoList) }
-                                if (result.galleryInfoList.isEmpty()) Text(galleryString(Res.string.gallery_no_galleries), Modifier.padding(vertical = 24.dp))
-                                LazyVerticalGrid(columns = GridCells.Adaptive((listDensity ?: GalleryListDensity.COMPACT).minimumColumnWidth.dp), modifier = Modifier.weight(1f), state = resultsState, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    items(orderedGalleries, key = { it.gid }) { gallery ->
-                                        GallerySearchCard(gallery, covers) { selected = gallery }
+                            val error = failure
+                            // SearchBarScreen: list content scrolls beneath a floating search bar that slides away with it.
+                            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                                val window = LocalWindowInfo.current.containerSize
+                                val density = LocalDensity.current
+                                val marginH = with(density) { galleryListMarginH(window.width.toDp(), window.height.toDp()) }
+                                val barSpace = SearchBarDefaults.InputFieldHeight + 16.dp
+                                val barSpacePx = with(density) { barSpace.roundToPx() }
+                                val barConnection = remember(barSpacePx) {
+                                    object : NestedScrollConnection {
+                                        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                                            searchBarOffsetY = (searchBarOffsetY + consumed.y).roundToInt().coerceIn(-barSpacePx, 0)
+                                            return Offset.Zero
+                                        }
                                     }
                                 }
-                                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    TextButton(onClick = { turnPage(result.prev, previous = true) }, enabled = result.prev != null && !loading) { Text(galleryString(Res.string.gallery_previous)) }
-                                    TextButton(onClick = { loadedSearch?.let { load(it) } }, enabled = loadedSearch != null && !loading) { Text(galleryString(Res.string.gallery_reload_page)) }
-                                    TextButton(onClick = { turnPage(result.next) }, enabled = result.next != null && !loading) { Text(galleryString(Res.string.gallery_next)) }
+                                if (result != null && result.galleryInfoList.isNotEmpty()) {
+                                    val orderedGalleries = remember(result, order) { order.arrange(result.galleryInfoList) }
+                                    LazyVerticalGrid(
+                                        columns = GridCells.Adaptive((listDensity ?: GalleryListDensity.COMPACT).minimumColumnWidth.dp),
+                                        modifier = Modifier.fillMaxSize().nestedScroll(barConnection),
+                                        state = resultsState,
+                                        contentPadding = PaddingValues(start = marginH, top = barSpace + GalleryListMarginV, end = marginH, bottom = GalleryListMarginV),
+                                        horizontalArrangement = Arrangement.spacedBy(GalleryListInterval),
+                                        verticalArrangement = Arrangement.spacedBy(GalleryListInterval),
+                                    ) {
+                                        items(orderedGalleries, key = { it.gid }) { gallery ->
+                                            GallerySearchCard(gallery, covers) { selected = gallery }
+                                        }
+                                    }
+                                } else if (!loading && error == null) {
+                                    val text = if (result == null) Res.string.gallery_search_hint else Res.string.gallery_no_galleries
+                                    Text(galleryString(text), Modifier.padding(start = marginH, top = barSpace + 24.dp, end = marginH))
+                                }
+                                val offset = Modifier.offset { IntOffset(0, searchBarOffsetY) }
+                                if (loading) LinearProgressIndicator(Modifier.align(Alignment.TopCenter).then(offset).padding(top = barSpace).fillMaxWidth())
+                                GallerySearchBar(
+                                    query = query,
+                                    onQueryChange = { query = it.take(4096) },
+                                    onSearch = { search() },
+                                    maxWidth = maxWidth,
+                                    filtered = filters != GallerySearchFilters(),
+                                    onFilters = { filtersOpen = true },
+                                    leading = {
+                                        // Like Android's list, phones lead with the drawer; system Back still leaves an embedded screen.
+                                        when {
+                                            openNavigation != null -> GalleryNavigationButton(openNavigation)
+                                            onBack != null -> IconButton(onClick = onBack) { Icon(GalleryIcons.ArrowBack, contentDescription = galleryString(Res.string.gallery_back)) }
+                                            else -> Icon(GalleryIcons.Search, contentDescription = null)
+                                        }
+                                    },
+                                    modifier = Modifier.align(Alignment.TopCenter).then(offset),
+                                )
+                            }
+                            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                                if (appearanceFailed) {
+                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(galleryString(Res.string.gallery_appearance_unavailable), Modifier.weight(1f))
+                                        TextButton(onClick = { appearanceAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
+                                    }
+                                }
+                                if (listFailed) {
+                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(galleryString(Res.string.gallery_list_unavailable), Modifier.weight(1f))
+                                        TextButton(onClick = { listAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
+                                    }
+                                }
+                                if (error != null) {
+                                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(error.userMessage(), Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
+                                        TextButton(onClick = { failedSearch?.let { load(it) } }, enabled = failedSearch != null && !loading) { Text(galleryString(Res.string.gallery_retry)) }
+                                    }
+                                }
+                                if (result != null) {
+                                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        TextButton(onClick = { turnPage(result.prev, previous = true) }, enabled = result.prev != null && !loading) { Text(galleryString(Res.string.gallery_previous)) }
+                                        TextButton(onClick = { loadedSearch?.let { load(it) } }, enabled = loadedSearch != null && !loading) { Text(galleryString(Res.string.gallery_reload_page)) }
+                                        TextButton(onClick = { orderOpen = true }, enabled = !loading) {
+                                            Icon(GalleryIcons.Sort, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
+                                            Text(galleryString(Res.string.gallery_sort_page), Modifier.padding(start = ButtonDefaults.IconSpacing))
+                                        }
+                                        TextButton(onClick = { turnPage(result.next) }, enabled = result.next != null && !loading) { Text(galleryString(Res.string.gallery_next)) }
+                                    }
                                 }
                             }
                         }

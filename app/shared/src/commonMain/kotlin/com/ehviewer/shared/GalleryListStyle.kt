@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.materialkolor.hct.Hct
 import com.materialkolor.utils.ColorUtils
@@ -32,6 +33,20 @@ internal const val GALLERY_COVER_RATIO = 0.67f
  * would make that 360dp, so the tablet height (180dp at density 2) caps it.
  */
 internal fun galleryListCardHeight(density: Density) = with(density) { (40 * 9).toDp() }.coerceIn(120.dp, 180.dp)
+
+/** gallery_list_margin_h: 12dp, 20dp from values-sw600dp and 76dp from values-sw720dp-land. */
+internal fun galleryListMarginH(width: Dp, height: Dp): Dp {
+    val smallest = minOf(width, height)
+    return when {
+        smallest >= 720.dp && width > height -> 76.dp
+        smallest >= 600.dp -> 20.dp
+        else -> 12.dp
+    }
+}
+
+/** gallery_list_margin_v and gallery_list_interval. */
+internal val GalleryListMarginV = 4.dp
+internal val GalleryListInterval = 12.dp
 
 private val categories = listOf(
     0x1 to ("misc" to 0xfff06292),

@@ -34,3 +34,5 @@ Shared reader page-jump is in local validation, with the same common CMP dialog 
 Shared adaptive navigation (in local validation): phones use a modal drawer and wider windows a navigation rail, hidden while reading. Common shell for Android, Desktop and iOS. Android phone50/tablet50, shared Desktop74 and iOS link passed locally; no Desktop window or iPad interaction recorded yet. See [shared-adaptive-navigation.md](shared-adaptive-navigation.md).
 
 Shared Material 3 theme and Android list cards (in local validation): Android's EhTheme (Dynamic Color/wallpaper/AMOLED/expressive motion) on Android, and dynamic or v1.15.10 fallback colors elsewhere. Search results use GalleryInfoListItem's layout, harmonized category chips and star rating. See [shared-material-theme-and-cards.md](shared-material-theme-and-cards.md).
+
+Shared floating search bar (in local validation): Android's 56dp Material 3 search pill with title/hint placeholder, hide-on-scroll and the 12/20/76dp list margins on every platform. See [shared-search-bar.md](shared-search-bar.md).

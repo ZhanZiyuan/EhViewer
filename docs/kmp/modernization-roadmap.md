@@ -110,3 +110,5 @@ The common reader now has a locally validated page-jump dialog across touch and 
 Shared UI moves from text-button destinations to adaptive Material navigation (drawer below 600dp, rail above, immersive reader), the first of the Android-parity UI/UX passes on search, details, reader, downloads and settings.
 
 Theme parity: shared screens use Android's own EhTheme on Android and v1.15.10's schemes elsewhere. Search cards follow GalleryInfoListItem. Unifying through a multiplatform core:ui remains a separate size/packaging decision.
+
+Search layout parity: the shared search page uses Android's floating SearchBar geometry and gallery_list_margin_h qualifiers; the expanded suggestion view, FAB actions and centered load/error tips remain.

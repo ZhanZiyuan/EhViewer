@@ -59,7 +59,7 @@ class SharedGalleryIntegrationTest {
         try {
             val intent = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             ActivityScenario.launch<MainActivity>(intent).use { scenario ->
-                fun searchIsVisible() = assertTrue("Common search did not render", device.wait(Until.hasObject(By.text("Search galleries")), 15_000))
+                fun searchIsVisible() = assertTrue("Common search did not render", device.wait(Until.hasObject(By.desc("Search galleries")), 15_000))
                 searchIsVisible()
                 fun rotate(landscape: Boolean) {
                     // Android 16 large screens ignore Activity orientation requests.
@@ -79,13 +79,13 @@ class SharedGalleryIntegrationTest {
                 }
                 rotate(true)
                 rotate(false)
-                requireNotNull(device.wait(Until.findObject(By.text("Filters")), 5_000)).click()
+                requireNotNull(device.wait(Until.findObject(By.desc("Filters")), 5_000)).click()
                 assertTrue("Common filters did not open", device.wait(Until.hasObject(By.text("Search filters")), 5_000))
                 requireNotNull(device.wait(Until.findObject(By.text("Use site category preferences")), 5_000)).click()
                 assertTrue("Category draft did not change", device.wait(Until.hasObject(By.text("Miscellaneous")), 5_000))
                 requireNotNull(device.wait(Until.findObject(By.text("Cancel")), 5_000)).click()
                 searchIsVisible()
-                assertFalse("Cancelling filters changed the applied search", device.hasObject(By.text("Filters applied")))
+                assertFalse("Cancelling filters changed the applied search", device.hasObject(By.desc("Filters applied")))
                 device.openSharedDestination("Settings")
                 assertTrue("Common appearance settings did not open", device.wait(Until.hasObject(By.text("Appearance")), 5_000))
                 requireNotNull(device.wait(Until.findObject(By.text("Dark theme")), 5_000)).click()

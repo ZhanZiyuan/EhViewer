@@ -57,7 +57,8 @@ class GalleryLanguageIntegrationTest {
             ActivityScenario.launch<MainActivity>(intent).use { scenario ->
                 fun visible(text: String) = assertTrue("Missing localized production control: $text", device.wait(Until.hasObject(By.text(text)), 15_000))
                 fun click(text: String) = requireNotNull(device.wait(Until.findObject(By.text(text)), 5_000)).click()
-                visible("Search galleries")
+                fun labelled(text: String) = assertTrue("Missing localized search field: $text", device.wait(Until.hasObject(By.desc(text)), 15_000))
+                labelled("Search galleries")
                 requireNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = "owned-language-query"
                 var settingsLabel = "Settings"
                 var navigationLabel = "Open navigation"
@@ -80,7 +81,7 @@ class GalleryLanguageIntegrationTest {
                         assertEquals("ja", AppCompatDelegate.getApplicationLocales()[0]?.toLanguageTag())
                     }
                     device.pressBack()
-                    visible(search)
+                    labelled(search)
                     visible("owned-language-query")
                     settingsLabel = settings
                     navigationLabel = row[5]
@@ -135,7 +136,7 @@ class GalleryLanguageIntegrationTest {
                 device.pressBack()
                 scrollTo("Open Android download storage settings", Direction.DOWN)
                 device.pressBack()
-                visible("Search galleries")
+                labelled("Search galleries")
                 device.openSharedDestination("Settings")
                 click("System language")
                 instrumentation.waitForIdleSync()

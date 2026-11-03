@@ -224,4 +224,5 @@
     <string name="gallery_open_page">開啟頁面</string>
     <string name="gallery_galleries">圖庫</string>
     <string name="gallery_open_navigation">開啟導覽</string>
+    <string name="gallery_clear_search">清除搜尋</string>
 </resources>

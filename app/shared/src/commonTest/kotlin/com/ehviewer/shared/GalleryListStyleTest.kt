@@ -24,4 +24,13 @@ class GalleryListStyleTest {
         assertEquals(120.dp, galleryListCardHeight(Density(3.5f)))
         assertEquals(180.dp, galleryListCardHeight(Density(1f)))
     }
+
+    @Test
+    fun listMarginsFollowAndroidQualifiers() {
+        assertEquals(12.dp, galleryListMarginH(411.dp, 914.dp)) // Phone portrait.
+        assertEquals(12.dp, galleryListMarginH(914.dp, 411.dp)) // Phone landscape, sw411.
+        assertEquals(20.dp, galleryListMarginH(800.dp, 1280.dp)) // Tablet portrait, sw800 but not land.
+        assertEquals(76.dp, galleryListMarginH(1280.dp, 800.dp)) // Tablet landscape, sw720dp-land.
+        assertEquals(20.dp, galleryListMarginH(1024.dp, 700.dp)) // sw600 landscape below sw720.
+    }
 }

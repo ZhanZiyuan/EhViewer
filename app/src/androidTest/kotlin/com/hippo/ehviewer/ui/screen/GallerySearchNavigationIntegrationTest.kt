@@ -161,9 +161,9 @@ class GallerySearchNavigationIntegrationTest {
                     }
                 }
                 try {
-                    visible("Search galleries")
+                    assertTrue(device.wait(Until.hasObject(By.desc("Search galleries")), 15_000))
                     query("committed query")
-                    click("Filters")
+                    requireNotNull(device.wait(Until.findObject(By.desc("Filters")), 15_000)).click()
                     visible("Minimum rating (2–5)")
                     checkNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = "3"
                     click("Apply and search")
@@ -200,10 +200,10 @@ class GallerySearchNavigationIntegrationTest {
                     click("Retry")
                     visible("Previous page gallery")
                     query("cancelled query")
-                    click("Search")
+                    device.submitSharedSearch()
                     runBlocking { withTimeout(5_000) { blockedStarted.await() } }
                     query("replacement query")
-                    click("Search")
+                    device.submitSharedSearch()
                     visible("Replacement gallery")
                     releaseBlocked.complete(Unit)
                     runBlocking { withTimeout(5_000) { blockedFinished.await() } }
