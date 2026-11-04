@@ -122,7 +122,7 @@ private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
     restore = { runCatching { Json.decodeFromString<GallerySearchFilters>(it) }.getOrNull() },
 )
 
-private data class GallerySearchRequest(val query: String, val filters: GallerySearchFilters, val cursor: String? = null, val previous: Boolean = false, val uploader: String? = null)
+private data class GallerySearchRequest(val query: String, val filters: GallerySearchFilters, val cursor: String? = null, val previous: Boolean = false, val uploader: String? = null, val tag: String? = null)
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
@@ -263,7 +263,8 @@ fun GalleryLibraryScreen(
         failedSearch = null
         request = scope.launch {
             try {
-                val result = search.uploader?.let { session.galleries.uploader(it, search.cursor, search.previous, search.filters) }
+                val result = search.tag?.let { session.galleries.tag(it, search.cursor, search.previous, search.filters) }
+                    ?: search.uploader?.let { session.galleries.uploader(it, search.cursor, search.previous, search.filters) }
                     ?: session.galleries.search(search.query, search.cursor, search.previous, search.filters)
                 if (current == generation) {
                     page = result
@@ -285,8 +286,8 @@ fun GalleryLibraryScreen(
     }
 
     fun search() {
-        val uploader = (failedSearch ?: loadedSearch)?.takeIf { it.query == query }?.uploader
-        load(GallerySearchRequest(query, filters, uploader = uploader), replaceResults = true)
+        val routed = (failedSearch ?: loadedSearch)?.takeIf { it.query == query }
+        load(GallerySearchRequest(query, filters, uploader = routed?.uploader, tag = routed?.tag), replaceResults = true)
     }
 
     fun turnPage(cursor: String?, previous: Boolean = false) {
@@ -419,6 +420,12 @@ fun GalleryLibraryScreen(
                                     filters = GallerySearchFilters()
                                     query = "uploader:$it"
                                     load(GallerySearchRequest(query, filters, uploader = it), replaceResults = true)
+                                }, onTag = {
+                                    selected = null
+                                    historyOpen = false
+                                    filters = GallerySearchFilters()
+                                    query = it
+                                    load(GallerySearchRequest(query, filters, tag = it), replaceResults = true)
                                 }, backLabel = if (historyOpen) galleryString(Res.string.gallery_back_history) else galleryString(Res.string.gallery_back_search), onBack = { selected = null })
                                 return@Column
                             }

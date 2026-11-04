@@ -24,6 +24,8 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
@@ -33,6 +35,116 @@ class GalleryRepositoryTest {
     private val decoder = GalleryListDecoder { bytes ->
         assertEquals("test-html", bytes.decodeToString())
         result
+    }
+
+    @Test fun cancelledTagRequestsDoNotInvokeTheDecoderOrReturnEmptySuccess() = runTest {
+        val started = CompletableDeferred<Unit>()
+        var decoded = 0
+        val engine = MockEngine {
+            started.complete(Unit)
+            awaitCancellation()
+        }
+        val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+        try {
+            val repository = GalleryRepository(
+                client,
+                GalleryListDecoder {
+                    decoded++
+                    result
+                },
+            )
+            val request = launch { repository.tag("parody:alice in wonderland") }
+            started.await()
+            request.cancelAndJoin()
+            assertTrue(request.isCancelled)
+            assertEquals(0, decoded)
+        } finally {
+            client.close()
+            engine.close()
+        }
+    }
+
+    @Test fun failedTagRequestsPreserveTheRecoverableServerFailure() = runTest {
+        var decoded = 0
+        val engine = MockEngine { respond("Owned unavailable tag page", HttpStatusCode.ServiceUnavailable) }
+        val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+        try {
+            val repository = GalleryRepository(
+                client,
+                GalleryListDecoder {
+                    decoded++
+                    result
+                },
+            )
+            assertEquals(GalleryFailure.SERVER, assertFailsWith<GalleryRequestException> { repository.tag("parody:alice in wonderland") }.failure)
+            assertEquals(0, decoded)
+        } finally {
+            client.close()
+            engine.close()
+        }
+    }
+
+    @Test fun literalNamespacedTagsRemainOnePathSegmentOnEitherService() = runTest {
+        val name = "parody:Alice / 日本語 ?x=1#quoted\""
+        for (restricted in listOf(false, true)) {
+            val engine = MockEngine { request ->
+                assertEquals(if (restricted) "exhentai.org" else "e-hentai.org", request.url.host)
+                assertEquals(listOf("tag", name), request.url.pathSegments.filter { it.isNotEmpty() })
+                assertTrue("%2F" in request.url.encodedPath)
+                assertEquals("12-13", request.url.parameters["prev"])
+                assertEquals(null, request.url.parameters["next"])
+                assertEquals(null, request.url.parameters["f_search"])
+                assertEquals(null, request.url.parameters["x"])
+                assertEquals("", request.url.fragment)
+                respond("test-html", HttpStatusCode.OK)
+            }
+            val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+            try {
+                assertEquals(result, GalleryRepository(client, decoder, restricted).tag(name, "12-13", previous = true))
+            } finally {
+                client.close()
+                engine.close()
+            }
+        }
+    }
+
+    @Test fun invalidTagNamesAndCursorsNeverReachTheTransport() = runTest {
+        var sent = 0
+        val engine = MockEngine {
+            sent++
+            respond("test-html", HttpStatusCode.OK)
+        }
+        val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+        try {
+            val repository = GalleryRepository(client, decoder)
+            for (name in listOf("", "english", ":english", "unknown:english", "language:", "language: ", "artist:a\nb", "artist:a\u007fb", "artist:" + "a".repeat(4096))) {
+                assertEquals(GalleryFailure.INVALID_RESPONSE, assertFailsWith<GalleryRequestException> { repository.tag(name) }.failure)
+            }
+            assertEquals(GalleryFailure.INVALID_RESPONSE, assertFailsWith<GalleryRequestException> { repository.tag("language:english", "../private") }.failure)
+            assertEquals(0, sent)
+        } finally {
+            client.close()
+            engine.close()
+        }
+    }
+
+    @Test fun tagPagingPreservesFiltersAndRejectsMalformedResponseCursors() = runTest {
+        val engine = MockEngine { request ->
+            assertEquals("42", request.url.parameters["next"])
+            assertEquals(null, request.url.parameters["prev"])
+            assertEquals("5", request.url.parameters["f_srdd"])
+            respond("test-html", HttpStatusCode.OK)
+        }
+        val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+        try {
+            val filters = com.ehviewer.core.network.gallery.GallerySearchFilters(minimumRating = 5)
+            assertEquals(result, GalleryRepository(client, decoder).tag("language:english", "42", filters = filters))
+            val invalidDecoder = GalleryListDecoder { result.copy(next = "../private") }
+            assertEquals(GalleryFailure.INVALID_RESPONSE, assertFailsWith<GalleryRequestException> { GalleryRepository(client, invalidDecoder).tag("language:english", "42", filters = filters) }.failure)
+        } finally {
+            client.close()
+            engine.close()
+        }
     }
 
     @Test fun uploaderNamesRemainOneEncodedPathSegmentOnEitherService() = runTest {

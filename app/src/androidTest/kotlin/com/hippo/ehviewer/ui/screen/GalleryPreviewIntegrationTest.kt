@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.graphics.Point
 import android.os.SystemClock
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.Lifecycle
@@ -33,6 +34,7 @@ import com.hippo.ehviewer.EhDB
 import com.hippo.ehviewer.Settings
 import com.hippo.ehviewer.download.downloadLocation
 import com.hippo.ehviewer.ui.MainActivity
+import com.hippo.ehviewer.util.setAppLanguage
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingModeType
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -44,6 +46,7 @@ import io.ktor.utils.io.ByteChannel
 import io.ktor.utils.io.writeFully
 import java.io.File
 import java.util.Collections
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -96,6 +99,121 @@ class GalleryPreviewIntegrationTest {
             <span id="rating_count">3</span><div id="fav"></div><div id="taglist"><table></table></div>
             <div id="cdiv"><div id="chd"><a id="postnewcomment">Comment</a></div></div>
             <div id="gdt">$previews</div></body></html>"""
+    }
+
+    @Test fun realTagPillsRetainTheirRouteThroughFailureRetryPagingAndQueryEditing() {
+        System.loadLibrary("ehviewer")
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val device = UiDevice.getInstance(instrumentation)
+        val before = runBlocking { Settings.snapshot() }
+        val locales = AppCompatDelegate.getApplicationLocales()
+        val originalDefault = Locale.getDefault()
+        val location = with(Settings) { listOf(downloadScheme, downloadAuthority, downloadPath, downloadQuery, downloadFragment) }
+        val tip = Settings.appLinkVerifyTip
+        val owned = File(context.cacheDir, "tag-ui-${UUID.randomUUID()}").apply { check(mkdirs()) }
+        val tagRequests = Collections.synchronizedList(mutableListOf<io.ktor.http.Url>())
+        val roots = Collections.synchronizedList(mutableListOf<io.ktor.http.Url>())
+        fun listing(name: String, next: String? = null): String {
+            val cursor = next?.let { """<a id="unext" href="/?next=$it">Next</a>""" }.orEmpty()
+            return """<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$name</span></a></div><img src="https://ehgt.org/0.png" style="height:100px;width:80px"><div class="cn">Non-H</div><div class="ir" style="background-position:0px -1px"></div></div></div>$cursor</body></html>"""
+        }
+        val taggedDetail = detail(0).replace("<div id=\"taglist\"><table></table></div>", """<div id="taglist"><table><tr><td>parody:</td><td><div class="gt"><a>alice in wonderland</a></div></td></tr></table></div>""")
+        check("parody:</td>" in taggedDetail)
+        val engine = MockEngine { request ->
+            when {
+                request.url.host == "ehgt.org" -> respond(png, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
+                request.url.encodedPath.startsWith("/g/") -> respond(taggedDetail)
+                request.url.pathSegments.firstOrNull { it.isNotEmpty() } == "tag" -> {
+                    assertEquals(listOf("tag", "parody:alice in wonderland"), request.url.pathSegments.filter(String::isNotEmpty))
+                    assertNull(request.url.parameters["f_search"])
+                    tagRequests += request.url
+                    when (tagRequests.size) {
+                        1 -> respond("Owned unavailable tag search", HttpStatusCode.ServiceUnavailable)
+                        2 -> respond(listing("Tag search gallery", "91-92"))
+                        else -> {
+                            assertEquals("91-92", request.url.parameters["next"])
+                            respond(listing("Next tag page gallery"))
+                        }
+                    }
+                }
+                else -> {
+                    assertEquals("e-hentai.org", request.url.host)
+                    assertEquals("/", request.url.encodedPath)
+                    roots += request.url
+                    respond(listing(if (request.url.parameters["f_search"] == "typed replacement") "Plain replacement gallery" else title))
+                }
+            }
+        }
+        val client = HttpClient(engine) { followRedirects = false }
+        val library = AndroidGalleryLibrary(false, client)
+        fun visible(text: String) = assertTrue("Missing tag flow control: $text", device.wait(Until.hasObject(By.text(text)), 15_000))
+        fun query(value: String) {
+            checkNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = value
+        }
+        downloadLocation = owned.toOkioPath()
+        Settings.appLinkVerifyTip = true
+        Settings.edit(blocking = true) {
+            it[needSignIn] = false
+            it[updateIntervalDays] = 0
+            it[launchPage] = 8
+        }
+        try {
+            instrumentation.runOnMainSync { setAppLanguage("en") }
+            val intent = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            ActivityScenario.launch<MainActivity>(intent).use { scenario ->
+                scenario.onActivity { activity ->
+                    activity.setContent {
+                        val scope = rememberCoroutineScope()
+                        GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, remember { AndroidGalleryDownloads(scope) }, remember { androidGalleryLanguageSettings() })
+                    }
+                }
+                query("owned tags")
+                device.submitSharedSearch()
+                visible(title)
+                device.clickSharedControl(title)
+                visible("alice in wonderland")
+                assertTrue(device.hasObject(By.desc("parody:alice in wonderland")))
+                device.clickSharedControl("alice in wonderland")
+                visible("The site is temporarily unavailable.")
+                device.clickSharedControl("The site is temporarily unavailable.")
+                visible("Tag search gallery")
+                assertEquals(2, tagRequests.size)
+                device.clickSharedControl("Next")
+                visible("Next tag page gallery")
+                assertEquals(3, tagRequests.size)
+                query("typed replacement")
+                device.submitSharedSearch()
+                visible("Plain replacement gallery")
+                assertEquals(3, tagRequests.size)
+                assertEquals("typed replacement", roots.last().parameters["f_search"])
+            }
+        } finally {
+            client.close()
+            engine.close()
+            runBlocking { EhDB.deleteHistoryInfo(BaseGalleryInfo(gid = gid, token = token).asEntity()) }
+            Settings.edit(blocking = true) { current ->
+                fun <T> restore(pref: PrefDelegate<T>) {
+                    if (pref in before) current[pref] = before[pref] else current.remove(pref)
+                }
+                restore(needSignIn)
+                restore(updateIntervalDays)
+                restore(launchPage)
+            }
+            Settings.appLinkVerifyTip = tip
+            with(Settings) {
+                downloadScheme = location[0]
+                downloadAuthority = location[1]
+                downloadPath = location[2]
+                downloadQuery = location[3]
+                downloadFragment = location[4]
+            }
+            instrumentation.runOnMainSync {
+                AppCompatDelegate.setApplicationLocales(locales)
+                Locale.setDefault(originalDefault)
+            }
+            check(owned.deleteRecursively())
+        }
     }
 
     @Test fun downloadsPauseResumeAndReopenOfflineUsingRealRustFilesRoomAndSharedReader() {

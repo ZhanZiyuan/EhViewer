@@ -72,7 +72,7 @@ import kotlinx.coroutines.launch
 
 /** Detail and reader routes retain the original search and detail state when navigating back. */
 @Composable
-internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, downloads: GalleryDownloads?, covers: GalleryCoverCache<CoilImage>, onDownloads: () -> Unit, onCategory: (Int) -> Unit, onUploader: (String) -> Unit, backLabel: String? = null, onBack: () -> Unit) {
+internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, downloads: GalleryDownloads?, covers: GalleryCoverCache<CoilImage>, onDownloads: () -> Unit, onCategory: (Int) -> Unit, onUploader: (String) -> Unit, onTag: (String) -> Unit, backLabel: String? = null, onBack: () -> Unit) {
     var detail by remember(gallery.gid) { mutableStateOf<GalleryDetail?>(null) }
     var failure by remember(gallery.gid) { mutableStateOf<GalleryFailure?>(null) }
     var loading by remember(gallery.gid) { mutableStateOf(false) }
@@ -245,7 +245,7 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
             }
             if (document != null) {
                 items(document.tagGroups) { group ->
-                    Text("${group.namespace.value}: ${group.tags.joinToString { it.text }}", Modifier.padding(vertical = 6.dp))
+                    GalleryDetailTagGroup(group, onTag)
                 }
                 item {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

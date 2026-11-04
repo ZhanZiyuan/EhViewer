@@ -1,6 +1,7 @@
 package com.ehviewer.core.network.gallery
 
 import com.ehviewer.core.model.BaseGalleryInfo
+import com.ehviewer.core.model.TagNamespace
 import io.ktor.client.HttpClient
 import io.ktor.http.URLBuilder
 import io.ktor.http.URLProtocol
@@ -47,6 +48,23 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
         if (name.isBlank() || name.length > 256 || name in setOf(".", "..") || name.any { it.code < 32 || it.code == 127 } || !validSearchCursor(cursor)) invalid()
         val url = URLBuilder(URLProtocol.HTTPS, host).apply {
             appendPathSegments("uploader", name, encodeSlash = true)
+            if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
+            filters.appendTo(this)
+        }.build()
+        return requests.document(url, decoder::decode).also {
+            if (!validSearchCursor(it.prev) || !validSearchCursor(it.next)) invalid()
+        }
+    }
+
+    /** Match Android's tag route without interpreting literal tag text as search operators. */
+    suspend fun tag(name: String, cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult {
+        if (name.length > 4096 || TagNamespace.from(name.substringBefore(':', "")) == null ||
+            name.substringAfter(':', "").isBlank() || name.any { it.code < 32 || it.code == 127 } || !validSearchCursor(cursor)
+        ) {
+            invalid()
+        }
+        val url = URLBuilder(URLProtocol.HTTPS, host).apply {
+            appendPathSegments("tag", name, encodeSlash = true)
             if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
             filters.appendTo(this)
         }.build()
