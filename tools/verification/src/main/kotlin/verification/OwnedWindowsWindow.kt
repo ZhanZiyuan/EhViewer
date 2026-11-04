@@ -31,6 +31,8 @@ object OwnedWindowsWindow {
             val visible = function("IsWindowVisible", JAVA_INT, ADDRESS)
             val position = function("SetWindowPos", JAVA_INT, ADDRESS, ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT)
             val foreground = function("SetForegroundWindow", JAVA_INT, ADDRESS)
+            val show = function("ShowWindow", JAVA_INT, ADDRESS, JAVA_INT)
+            val iconic = function("IsIconic", JAVA_INT, ADDRESS)
             val pidBuffer = arena.allocate(JAVA_INT)
             // Snapshot handles before changing Z order, otherwise FindWindowEx can revisit a window.
             val windows = mutableListOf<MemorySegment>()
@@ -49,12 +51,14 @@ object OwnedWindowsWindow {
                 windowPid.invokeWithArguments(window, pidBuffer)
                 check(pidBuffer.get(JAVA_INT, 0).toLong() == pid) { "Window handle changed owners" }
                 val promote = args[2] == "promote"
+                val minimized = iconic.invokeWithArguments(window) as Int != 0
+                if (promote && minimized) show.invokeWithArguments(window, 9) // SW_RESTORE, owned window only
                 // Keep geometry intact. Never dismiss or change the runner's privacy/security UI.
                 val flags = if (promote) 0x0043 else 0x0013 // NOMOVE | NOSIZE | (SHOWWINDOW or NOACTIVATE)
                 val changed = position.invokeWithArguments(window, MemorySegment.ofAddress(if (promote) -1L else -2L), 0, 0, 0, 0, flags) as Int
                 check(changed != 0) { "SetWindowPos rejected the owned window" }
                 val activated = if (promote) foreground.invokeWithArguments(window) as Int != 0 else false
-                println("pid=$pid hwnd=${window.address()} mode=${args[2]} foreground=$activated")
+                println("pid=$pid hwnd=${window.address()} mode=${args[2]} minimized_before=$minimized foreground=$activated")
             }
             println("owned_windows=${windows.size}")
         }

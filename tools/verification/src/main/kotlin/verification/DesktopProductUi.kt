@@ -26,6 +26,44 @@ import kotlin.io.path.writeText
 
 internal val desktopComicColors = listOf(0xff285f93.toInt(), 0xffa44760.toInt(), 0xff417856.toInt())
 
+internal fun inspectedWindowJava(runtimeReport: Path): Path {
+    val report = readJson(runtimeReport)
+    val ffiFile = runtimeReport.toAbsolutePath().parent.resolve("jvm-ffi-proof.json")
+    require(sha256(ffiFile) == report["jvm_ffi_report_sha256"]) { "Inspected JVM proof changed" }
+    val ffi = readJson(ffiFile)
+    val caller = ffi["caller"].obj()
+    require(ffi["result"] == "PASS" && ffi["source_commit"] == report["source_commit"] && ffi["target"] == report["target"] && caller["java_version"] == "25.0.5.0.2")
+    return Path.of(caller.str("java_home"), "bin/java.exe").toRealPath().also {
+        require(sha256(it) == ffi["java_sha256"]) { "Window helper JVM changed" }
+    }
+}
+
+/** Windows gets an owned real input desktop, like Linux's owned Xvfb display. */
+internal fun desktopProductUiOnDisplay(image: Path, runtimeReport: Path, output: Path): Map<String, Any?> {
+    if (!System.getProperty("os.name").startsWith("Windows")) return desktopProductUi(image, runtimeReport, output)
+    require(System.getenv("GITHUB_ACTIONS") == "true" && !output.exists())
+    val absolute = output.toAbsolutePath().normalize()
+    absolute.parent.createDirectories()
+    val log = absolute.resolveSibling("${absolute.fileName}-desktop.log")
+    try {
+        log.writeText(
+            command(
+                inspectedWindowJava(runtimeReport), "--enable-native-access=ALL-UNNAMED", "-cp", System.getProperty("java.class.path"),
+                OwnedWindowsDesktop::class.java.name, image.toAbsolutePath(), runtimeReport.toAbsolutePath(), absolute,
+                timeout = Duration.ofMinutes(10),
+            ),
+        )
+    } catch (failure: Exception) {
+        log.writeText(failure.toString())
+        throw failure
+    }
+    val desktop = readJson(absolute.resolveSibling("${absolute.fileName}-desktop.json"))
+    require(desktop["result"] == "PASS" && desktop["original_desktop_restored"] == true) { "Owned desktop did not complete and restore" }
+    return readJson(absolute.resolve("product-ui.json")).also {
+        require(it["result"] == "PASS" && it["source_commit"] == command("git", "rev-parse", "HEAD").trim() && it["runtime_report_sha256"] == sha256(runtimeReport))
+    }
+}
+
 /** Activate only the product process started by this check, never a title-matched user window. */
 internal fun windowsProductActivation(processId: Long): List<String> {
     require(processId in 1..Int.MAX_VALUE.toLong())
@@ -118,14 +156,7 @@ fun desktopProductUi(image: Path, runtimeReport: Path, output: Path): Map<String
     val leasedWindows = mutableSetOf<Long>()
     val windowJava = if (windows) {
         // jpackage can strip the runtime's java command. Reuse the already measured native JDK.
-        val ffiFile = runtimeReport.toAbsolutePath().parent.resolve("jvm-ffi-proof.json")
-        require(sha256(ffiFile) == report["jvm_ffi_report_sha256"]) { "Inspected JVM proof changed" }
-        val ffi = readJson(ffiFile)
-        val caller = ffi["caller"].obj()
-        require(ffi["result"] == "PASS" && ffi["source_commit"] == source && ffi["target"] == target && caller["java_version"] == "25.0.5.0.2")
-        Path.of(caller.str("java_home"), "bin/java.exe").toRealPath().also {
-            require(sha256(it) == ffi["java_sha256"]) { "Window helper JVM changed" }
-        }
+        inspectedWindowJava(runtimeReport)
     } else {
         Path.of(System.getProperty("java.home"), "bin/java")
     }
@@ -229,6 +260,7 @@ fun desktopProductUi(image: Path, runtimeReport: Path, output: Path): Map<String
             "fixture" to "GENERATED_OWNED_COMIC_NOT_REMOTE_GALLERY", "fixture_sha256" to sha256(comic),
             "decoded_keyboard_pages" to listOf(1, 2, 1), "fresh_profile" to true, "raw_full_display_captures" to true,
             "windows_activation" to if (windows) "OWNED_SAME_EXECUTABLE_PROCESS_TREE_TEMPORARY_TOPMOST" else "NOT_APPLICABLE",
+            "windows_desktop" to if (windows) System.getProperty("verification.ownedDesktop") else "NOT_APPLICABLE",
             "screenshots" to listOf("reader-page1.png", "reader-page2.png", "reader-return-page1.png", "library-after-reader.png").associateWith { sha256(absolute.resolve(it)) },
             "library_return" to "CAPTURED_MANUAL_REVIEW_REQUIRED", "full_visual_parity" to "NOT_VERIFIED", "desktop_p0" to "NOT_VERIFIED", "publish_enabled" to false,
         )
@@ -244,8 +276,11 @@ fun desktopProductUi(image: Path, runtimeReport: Path, output: Path): Map<String
             }
         }
         // Restrict termination to the process and display manager started by this verification.
-        process.destroy()
-        if (!process.waitFor(10, TimeUnit.SECONDS)) process.destroyForcibly().waitFor()
+        val owned = process.descendants().use { it.toList() }.asReversed() + process.toHandle()
+        owned.filter { it.isAlive }.forEach { it.destroy() }
+        owned.filter { it.isAlive }.forEach { child ->
+            runCatching { child.onExit().get(10, TimeUnit.SECONDS) }.onFailure { if (child.isAlive) child.destroyForcibly() }
+        }
         manager?.destroy()
         manager?.waitFor(10, TimeUnit.SECONDS)
     }

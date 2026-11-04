@@ -25,7 +25,7 @@ fun main(args: Array<String>) {
         "ios-common-artifact" -> checkedNativeLibraryArtifact(options.path("--input"), commonNativeSpec)
         "ios-log-evidence" -> iosUnifiedLifecycle(java.nio.file.Files.readString(options.path("--input")), options.get("--first-pid").toLong(), options.get("--second-pid").toLong())
         "desktop-native-smoke" -> desktopNativeSmoke(options.path("--output"))
-        "desktop-product-ui" -> desktopProductUi(options.path("--image"), options.path("--runtime-report"), options.path("--output"))
+        "desktop-product-ui" -> desktopProductUiOnDisplay(options.path("--image"), options.path("--runtime-report"), options.path("--output"))
         "desktop-arm64-dmg" -> desktopArm64Dmg(options.path("--dmg"), options.path("--output"))
         "desktop-intel-dmg" -> desktopIntelDmg(options.path("--dmg"), options.path("--output"))
         "desktop-intel-native" -> desktopIntelDmg(options.path("--dmg"), options.path("--output"), options.path("--producer-report"))

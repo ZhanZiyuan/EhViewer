@@ -16,6 +16,15 @@ import org.junit.Test
 
 class DesktopProductUiTest {
     @Test
+    fun nativeDesktopLaunchKeepsUnicodeSpacesAndTrailingSlashesAsLiteralArguments() {
+        assertEquals("\"C:\\Owned JDK 资料\\java.exe\" \"\" \"C:\\Owned app\\\\\" \"say \\\"hi\\\"\"", windowsProcessCommandLine(listOf("C:\\Owned JDK 资料\\java.exe", "", "C:\\Owned app\\", "say \"hi\"")))
+        for (invalid in listOf("a\u0000b", "a\nb", "a\rb", "x".repeat(32767))) {
+            assertThrows(IllegalArgumentException::class.java) { windowsProcessCommandLine(listOf(invalid)) }
+        }
+        assertThrows(IllegalArgumentException::class.java) { windowsProcessCommandLine(emptyList()) }
+    }
+
+    @Test
     fun windowLeaseUsesTheInspectedRuntimeAndSeparateOwnedArguments() {
         val java = Path.of("Owned runtime 资料", "java.exe")
         val launcher = Path.of("Owned application 资料", "EhViewer.exe")
