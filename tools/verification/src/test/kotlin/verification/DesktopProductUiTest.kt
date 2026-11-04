@@ -16,6 +16,19 @@ import org.junit.Test
 
 class DesktopProductUiTest {
     @Test
+    fun windowLeaseUsesTheInspectedRuntimeAndSeparateOwnedArguments() {
+        val java = Path.of("Owned runtime 资料", "java.exe")
+        val launcher = Path.of("Owned application 资料", "EhViewer.exe")
+        val command = ownedWindowsWindowCommand(java, "libs with spaces/*", 2345, launcher, "promote")
+        assertEquals(listOf(java.toString(), "--enable-native-access=ALL-UNNAMED", "-cp", "libs with spaces/*", OwnedWindowsWindow::class.java.name, "2345", launcher.toString(), "promote"), command)
+        assertEquals("restore", ownedWindowsWindowCommand(java, "cp", 2345, launcher, "restore").last())
+        for (invalid in listOf(0L, -1L, Int.MAX_VALUE.toLong() + 1)) {
+            assertThrows(IllegalArgumentException::class.java) { ownedWindowsWindowCommand(java, "cp", invalid, launcher, "promote") }
+        }
+        assertThrows(IllegalArgumentException::class.java) { ownedWindowsWindowCommand(java, "cp", 2345, launcher, "dismiss-privacy") }
+    }
+
+    @Test
     fun activationCandidatesIncludeARealRestartChildButExcludeAnUnrelatedSameExecutable() = temporary { directory ->
         val java = Path.of(System.getProperty("java.home"), "bin", "java").toRealPath()
         val classpath = listOf(CommandTimeoutProbe::class.java, Unit::class.java)

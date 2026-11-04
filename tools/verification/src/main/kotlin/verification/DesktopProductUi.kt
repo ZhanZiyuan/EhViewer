@@ -115,6 +115,24 @@ fun desktopProductUi(image: Path, runtimeReport: Path, output: Path): Map<String
         manager?.destroy()
         throw failure
     }
+    val leasedWindows = mutableSetOf<Long>()
+    val windowJava = if (windows) {
+        // jpackage can strip the runtime's java command. Reuse the already measured native JDK.
+        val ffiFile = runtimeReport.toAbsolutePath().parent.resolve("jvm-ffi-proof.json")
+        require(sha256(ffiFile) == report["jvm_ffi_report_sha256"]) { "Inspected JVM proof changed" }
+        val ffi = readJson(ffiFile)
+        val caller = ffi["caller"].obj()
+        require(ffi["result"] == "PASS" && ffi["source_commit"] == source && ffi["target"] == target && caller["java_version"] == "25.0.5.0.2")
+        Path.of(caller.str("java_home"), "bin/java.exe").toRealPath().also {
+            require(sha256(it) == ffi["java_sha256"]) { "Window helper JVM changed" }
+        }
+    } else {
+        Path.of(System.getProperty("java.home"), "bin/java")
+    }
+    fun windowLease(pid: Long, mode: String): String = command(
+        *ownedWindowsWindowCommand(windowJava, System.getProperty("java.class.path"), pid, launcher, mode).toTypedArray(),
+        timeout = Duration.ofSeconds(10),
+    ).trim()
     try {
         val robot = Robot().apply { autoDelay = 50 }
         val screen = GraphicsEnvironment.getLocalGraphicsEnvironment().screenDevices.map { it.defaultConfiguration.bounds }.reduce(Rectangle::union)
@@ -133,9 +151,15 @@ fun desktopProductUi(image: Path, runtimeReport: Path, output: Path): Map<String
                     if (System.nanoTime() >= deadline) break
                     val observed = command(*windowsProductActivation(candidate.pid()).toTypedArray(), timeout = Duration.ofSeconds(10)).trim()
                     activation.append("candidate_pid=").append(candidate.pid()).append(" AppActivate=").append(observed).append('\n')
+                    // AppActivate can succeed behind the ARM image's topmost first-logon overlay.
+                    // Lease only this inspected executable's visible window; actual pixels and keys
+                    // below remain mandatory. Revert the lease before terminating our process.
+                    leasedWindows.add(candidate.pid())
+                    val lease = windowLease(candidate.pid(), "promote")
+                    activation.append(lease).append('\n')
                     absolute.resolve("window-activation.log").writeText(activation.toString())
                     require(observed in setOf("True", "False")) { "Unexpected Windows activation result: $observed" }
-                    if (observed == "True") {
+                    if (Regex("(?m)^owned_windows=[1-9][0-9]*$").containsMatchIn(lease)) {
                         activated = true
                         activatedPid = candidate.pid()
                         break
@@ -204,13 +228,21 @@ fun desktopProductUi(image: Path, runtimeReport: Path, output: Path): Map<String
             "normal_entry" to "--open", "launcher_sha256" to measured["launcher_sha256"], "runtime_report_sha256" to sha256(runtimeReport),
             "fixture" to "GENERATED_OWNED_COMIC_NOT_REMOTE_GALLERY", "fixture_sha256" to sha256(comic),
             "decoded_keyboard_pages" to listOf(1, 2, 1), "fresh_profile" to true, "raw_full_display_captures" to true,
-            "windows_activation" to if (windows) "OWNED_SAME_EXECUTABLE_PROCESS_TREE_APP_ACTIVATE" else "NOT_APPLICABLE",
+            "windows_activation" to if (windows) "OWNED_SAME_EXECUTABLE_PROCESS_TREE_TEMPORARY_TOPMOST" else "NOT_APPLICABLE",
             "screenshots" to listOf("reader-page1.png", "reader-page2.png", "reader-return-page1.png", "library-after-reader.png").associateWith { sha256(absolute.resolve(it)) },
             "library_return" to "CAPTURED_MANUAL_REVIEW_REQUIRED", "full_visual_parity" to "NOT_VERIFIED", "desktop_p0" to "NOT_VERIFIED", "publish_enabled" to false,
         )
         absolute.resolve("product-ui.json").writeText(json(result))
         return result
     } finally {
+        if (windows) {
+            val live = ownedDesktopWindowProcesses(process.toHandle(), launcher).map { it.pid() }.toSet()
+            for (pid in leasedWindows.intersect(live)) {
+                runCatching { windowLease(pid, "restore") }
+                    .onSuccess { absolute.resolve("window-restore-$pid.log").writeText(it) }
+                    .onFailure { absolute.resolve("window-restore-$pid.log").writeText("RESTORE_FAILED: $it") }
+            }
+        }
         // Restrict termination to the process and display manager started by this verification.
         process.destroy()
         if (!process.waitFor(10, TimeUnit.SECONDS)) process.destroyForcibly().waitFor()
