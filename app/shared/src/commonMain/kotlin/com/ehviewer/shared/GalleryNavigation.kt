@@ -52,6 +52,9 @@ internal val GalleryRailMinWidth = 600.dp
 
 private val LocalGalleryImmersive = staticCompositionLocalOf<MutableIntState?> { null }
 
+@Composable
+internal fun galleryIsImmersive(): Boolean = (LocalGalleryImmersive.current?.intValue ?: 0) > 0
+
 /** Readers occupy the whole window, like Android's reader, while they are composed. */
 @Composable
 internal fun GalleryImmersive() {

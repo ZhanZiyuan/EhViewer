@@ -254,4 +254,7 @@
     <plurals name="gallery_detail_page_count">
         <item quantity="other">%1$s ページ</item>
     </plurals>
+    <string name="gallery_reader_show_controls">操作パネルを表示</string>
+    <string name="gallery_reader_hide_controls">操作パネルを非表示</string>
+    <string name="gallery_reader_seek">ページ位置を選択</string>
 </resources>

@@ -254,4 +254,7 @@
     <plurals name="gallery_detail_page_count">
         <item quantity="other">%1$s 頁</item>
     </plurals>
+    <string name="gallery_reader_show_controls">顯示閱讀控制項</string>
+    <string name="gallery_reader_hide_controls">隱藏閱讀控制項</string>
+    <string name="gallery_reader_seek">拖曳選擇頁碼</string>
 </resources>

@@ -1,8 +1,12 @@
 package com.hippo.ehviewer.ui.screen
 
+import android.graphics.Rect
+import android.os.SystemClock
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -35,3 +39,44 @@ internal fun UiDevice.openSharedDestination(label: String, navigation: String = 
 
 /** Submits the shared floating search bar's query with its Search icon button. */
 internal fun UiDevice.submitSharedSearch() = requireNotNull(wait(Until.findObject(By.desc("Search")), 15_000)).click()
+
+private val readerControls = setOf("Back", "Go to page", "Previous page", "Next page", "Continuous reading", "Paged reading", "Left to right", "Right to left", "Reset zoom", "Load original image", "Use display image", "Hide reader controls", "Seek page")
+
+/** Reveal the actual overlay before addressing a reader control by its text or accessibility name. */
+internal fun UiDevice.sharedControl(label: String): UiObject2? {
+    val node = findObject(By.text(label)) ?: findObject(By.desc(label))
+    if (node == null && label in readerControls) findObject(By.desc("Show reader controls"))?.click()
+    return node
+}
+
+internal fun UiDevice.clickSharedControl(label: String) {
+    val deadline = SystemClock.uptimeMillis() + 15_000
+    var previous: Rect? = null
+    while (SystemClock.uptimeMillis() < deadline) {
+        try {
+            var node = sharedControl(label)
+            while (node != null && !node.isClickable) node = node.parent
+            val bounds = node?.visibleBounds
+            if (node?.isEnabled == true && bounds != null && !bounds.isEmpty && bounds == previous) {
+                node.click()
+                return
+            }
+            previous = bounds
+        } catch (_: StaleObjectException) {
+            previous = null
+        }
+        SystemClock.sleep(25)
+    }
+    throw AssertionError("Missing enabled shared control: $label")
+}
+
+internal fun UiDevice.hasSharedControl(label: String): Boolean {
+    val deadline = SystemClock.uptimeMillis() + 15_000
+    while (SystemClock.uptimeMillis() < deadline) {
+        try {
+            if (sharedControl(label) != null) return true
+        } catch (_: StaleObjectException) { /* Reacquire within the same deadline. */ }
+        SystemClock.sleep(25)
+    }
+    return false
+}

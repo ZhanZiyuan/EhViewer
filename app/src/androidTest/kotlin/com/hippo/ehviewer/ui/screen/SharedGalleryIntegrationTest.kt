@@ -59,7 +59,15 @@ class SharedGalleryIntegrationTest {
         try {
             val intent = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             ActivityScenario.launch<MainActivity>(intent).use { scenario ->
-                fun searchIsVisible() = assertTrue("Common search did not render", device.wait(Until.hasObject(By.desc("Search galleries")), 15_000))
+                fun searchIsVisible(stage: String = "search") {
+                    val visible = device.wait(Until.hasObject(By.desc("Search galleries")), 15_000)
+                    if (!visible) {
+                        val name = "shared-destination-$stage-${android.os.SystemClock.uptimeMillis()}"
+                        device.dumpWindowHierarchy(File(context.cacheDir, "$name.xml"))
+                        device.takeScreenshot(File(context.cacheDir, "$name.png"))
+                    }
+                    assertTrue("Common search did not render: $stage", visible)
+                }
                 searchIsVisible()
                 fun rotate(landscape: Boolean) {
                     // Android 16 large screens ignore Activity orientation requests.
@@ -106,11 +114,11 @@ class SharedGalleryIntegrationTest {
                 }
                 instrumentation.waitForIdleSync()
                 device.pressBack()
-                searchIsVisible()
+                searchIsVisible("settings-return")
                 device.openSharedDestination("Account")
                 assertTrue("Original account settings did not open", device.wait(Until.hasObject(By.text(context.getString(com.ehviewer.core.i18n.R.string.settings_eh))), 10_000))
                 device.pressBack()
-                searchIsVisible()
+                searchIsVisible("account-return")
             }
         } finally {
             device.unfreezeRotation()

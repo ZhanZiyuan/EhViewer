@@ -255,4 +255,7 @@
         <item quantity="one">%1$s page</item>
         <item quantity="other">%1$s pages</item>
     </plurals>
+    <string name="gallery_reader_show_controls">Show reader controls</string>
+    <string name="gallery_reader_hide_controls">Hide reader controls</string>
+    <string name="gallery_reader_seek">Seek page</string>
 </resources>

@@ -173,7 +173,7 @@ class GalleryPreviewIntegrationTest {
         var database = openDatabase()
         fun queue(database: DownloadDatabase) = GalleryDownloadQueue(RoomGalleryDownloadStorage(database, File(owned, "images").toOkioPath()), scope) { task -> networkGalleryDownloadSource(task, downloadContent) {} }
         var downloads = queue(database)
-        fun click(text: String) = requireNotNull(device.wait(Until.findObject(By.text(text)), 15_000)).click()
+        fun click(text: String) = device.clickSharedControl(text)
         fun waitFor(state: GalleryDownloadState) = runBlocking { withTimeout(15_000) { while (downloads.tasks.value.singleOrNull()?.state != state) delay(25) } }
         fun attach(scenario: ActivityScenario<MainActivity>) = scenario.onActivity { activity ->
             activity.setContent { GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() }) }
@@ -385,24 +385,8 @@ class GalleryPreviewIntegrationTest {
         }
         val client = HttpClient(engine) { followRedirects = false }
         val library = AndroidGalleryLibrary(false, client)
-        fun visible(text: String) = assertTrue("Missing reader control: $text", device.wait(Until.hasObject(By.text(text)), 15_000))
-        fun click(text: String) {
-            val deadline = SystemClock.uptimeMillis() + 15_000
-            while (SystemClock.uptimeMillis() < deadline) {
-                try {
-                    var node = device.findObject(By.text(text)) ?: device.findObject(By.desc(text))
-                    while (node != null && !node.isClickable) node = node.parent
-                    if (node?.isEnabled == true) {
-                        node.click()
-                        return
-                    }
-                } catch (_: StaleObjectException) {
-                    // Reacquire before dispatch within the same bounded action.
-                }
-                SystemClock.sleep(25)
-            }
-            throw AssertionError("Missing enabled reader control: $text")
-        }
+        fun visible(text: String) = assertTrue("Missing reader control: $text", device.hasSharedControl(text))
+        fun click(text: String) = device.clickSharedControl(text)
         fun input(value: String) {
             checkNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = value
         }
@@ -432,6 +416,30 @@ class GalleryPreviewIntegrationTest {
                     click("Read")
                     visible("1 / 3")
                     saved(0)
+                    assertTrue("Reader should open with its small page indicator", device.hasObject(By.desc("Show reader controls")))
+                    stage = "hide and reveal controls without resizing the image"
+                    val canvasBefore = checkNotNull(device.wait(Until.findObject(By.desc("Gallery page 1")), 15_000)).visibleBounds
+                    click("Go to page")
+                    click("Cancel")
+                    click("Hide reader controls")
+                    // IME dismissal and the 200ms overlay exit can still be animating after the tap.
+                    // Keep the exact canvas assertion and the same 15-second bound for both conditions.
+                    runBlocking {
+                        withTimeout(15_000) {
+                            var stable = 0
+                            while (true) {
+                                val unchanged = try {
+                                    device.findObject(By.desc("Gallery page 1"))?.visibleBounds == canvasBefore
+                                } catch (_: StaleObjectException) {
+                                    false
+                                }
+                                stable = if (unchanged && device.hasObject(By.desc("Show reader controls"))) stable + 1 else 0
+                                if (stable >= 8) break
+                                delay(25)
+                            }
+                        }
+                    }
+                    assertEquals(canvasBefore, checkNotNull(device.findObject(By.desc("Gallery page 1"))).visibleBounds)
                     stage = "invalid page stays local"
                     click("Go to page")
                     input("0")
@@ -479,6 +487,25 @@ class GalleryPreviewIntegrationTest {
                     assertEquals(1, runBlocking { EhDB.getReadingPosition(gid)?.page })
                     assertFalse(device.hasObject(By.text("Open page")))
                     assertEquals(3, metadataAttempts.get())
+                    stage = "continuous slider uses the real page window"
+                    val continuousSeek = checkNotNull(device.wait(Until.findObject(By.desc("Seek page").enabled(true)), 15_000)).visibleBounds
+                    val continuousInset = (16 * context.resources.displayMetrics.density).toInt().coerceAtMost(continuousSeek.width() / 4)
+                    device.drag(continuousSeek.centerX(), continuousSeek.centerY(), continuousSeek.right - continuousInset, continuousSeek.centerY(), 20)
+                    visible("3 / 3")
+                    saved(2)
+                    stage = "paged slider resolves and decodes the real first page"
+                    click("Paged reading")
+                    visible("Continuous reading")
+                    assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 3")), 15_000))
+                    saved(2)
+                    val pagedSeek = checkNotNull(device.wait(Until.findObject(By.desc("Seek page").enabled(true)), 15_000)).visibleBounds
+                    // Accessibility touch bounds can extend outside the actual track. Start on
+                    // the thumb/track interior rather than the system edge or the image below it.
+                    val pagedInset = (16 * context.resources.displayMetrics.density).toInt().coerceAtMost(pagedSeek.width() / 4)
+                    device.drag(pagedSeek.right - pagedInset, pagedSeek.centerY(), pagedSeek.left + pagedInset, pagedSeek.centerY(), 20)
+                    visible("1 / 3")
+                    assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 1")), 15_000))
+                    saved(0)
                 } catch (failure: Throwable) {
                     device.dumpWindowHierarchy(File(context.cacheDir, "reader-jump-$gid-failure.xml"))
                     device.takeScreenshot(File(context.cacheDir, "reader-jump-$gid-failure.png"))
@@ -574,7 +601,7 @@ class GalleryPreviewIntegrationTest {
                         GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() })
                     }
                 }
-                fun click(text: String) = requireNotNull(device.wait(Until.findObject(By.text(text)), 15_000)).click()
+                fun click(text: String) = device.clickSharedControl(text)
                 fun waitForImagePixels(original: Boolean) = runBlocking {
                     withTimeout(10_000) {
                         while (true) {
@@ -733,7 +760,23 @@ class GalleryPreviewIntegrationTest {
                 click(title)
                 click("Back to history")
                 // Like Android's history list, swiping a card toward the start forgets the entry.
-                val card = requireNotNull(device.wait(Until.findObject(By.text(title)), 10_000)).visibleBounds
+                val card = runBlocking {
+                    withTimeout(10_000) {
+                        var previous: android.graphics.Rect? = null
+                        var stable: android.graphics.Rect? = null
+                        while (stable == null) {
+                            val bounds = try {
+                                device.findObject(By.text(title))?.visibleBounds?.takeUnless { it.isEmpty }
+                            } catch (_: StaleObjectException) {
+                                null // Returning from details replaces the history card's semantics node.
+                            }
+                            if (bounds != null && bounds == previous) stable = bounds
+                            previous = bounds
+                            if (stable == null) delay(25)
+                        }
+                        checkNotNull(stable)
+                    }
+                }
                 device.swipe(device.displayWidth * 9 / 10, card.centerY(), device.displayWidth / 10, card.centerY(), 20)
                 runBlocking {
                     withTimeout(10_000) { while (EhDB.sharedHistory.recent().any { it.gid == gid }) delay(25) }

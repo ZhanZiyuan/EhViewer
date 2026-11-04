@@ -350,10 +350,11 @@ fun GalleryLibraryScreen(
         GalleryTheme(dark, platformTheme) {
             Surface(Modifier.fillMaxSize()) {
                 GalleryNavigationShell(destinations, destination, ::navigate) { openNavigation ->
-                    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing), contentAlignment = Alignment.TopCenter) {
+                    val immersive = galleryIsImmersive()
+                    Box(Modifier.fillMaxSize().then(if (immersive) Modifier else Modifier.windowInsetsPadding(WindowInsets.safeDrawing)), contentAlignment = Alignment.TopCenter) {
                         // Search and History are Android's floating-search-bar pages; the others keep the content column.
                         val searchBarPage = !settingsOpen && !(account && accountContent != null) && !(archivesOpen && archiveContent != null) && !downloadsOpen && selected == null
-                        Column(if (searchBarPage) Modifier.fillMaxSize() else Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                        Column(galleryPageModifier(searchBarPage, immersive)) {
                             if (settingsOpen) {
                                 GallerySettingsScreen(networkPreferences, appearance, readerState, themeMode, appearanceFailed, language, languageTag, languageReady, languageFailed, onLanguageChanged = { languageTag = it }, onRetryLanguage = { languageAttempt++ }, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = ::leaveSettings, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings, listPreferences = listPreferences, listDensity = listDensity, listFailed = listFailed, onListChanged = { listDensity = it }, onRetryList = { listAttempt++ })
                                 return@Column

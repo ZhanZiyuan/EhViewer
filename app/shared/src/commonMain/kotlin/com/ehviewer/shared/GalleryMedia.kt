@@ -3,6 +3,8 @@ package com.ehviewer.shared
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -89,8 +91,9 @@ internal fun GalleryMediaImage(media: GalleryMedia, description: String, modifie
     Box(modifier, contentAlignment = Alignment.Center) {
         Image(painter, description, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
         if (failed) {
-            TextButton(onClick = { attempt++ }, modifier = Modifier.align(Alignment.BottomCenter)) {
-                Text(galleryString(Res.string.gallery_animation_failed))
+            // Keep recovery above the reader's overlaid bottom controls, without resizing the image.
+            Surface(modifier = Modifier.align(Alignment.Center), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)) {
+                TextButton(onClick = { attempt++ }) { Text(galleryString(Res.string.gallery_animation_failed)) }
             }
         }
     }

@@ -4,12 +4,13 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,8 +38,6 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
@@ -56,7 +55,6 @@ import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_back
 import ehviewer.app.shared.generated.resources.gallery_display_image
 import ehviewer.app.shared.generated.resources.gallery_gallery_page
-import ehviewer.app.shared.generated.resources.gallery_go_to_page
 import ehviewer.app.shared.generated.resources.gallery_next_page
 import ehviewer.app.shared.generated.resources.gallery_original_image
 import ehviewer.app.shared.generated.resources.gallery_previous_page
@@ -77,6 +75,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit) {
     GalleryImmersive()
+    val chrome = rememberGalleryReaderChromeState()
     var url by remember(initial) { mutableStateOf(initial) }
     var reloadKey by remember(url) { mutableStateOf<String?>(null) }
     var original by remember(url) { mutableStateOf(false) }
@@ -140,8 +139,13 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
         val start = remember(preferences.layout) { currentUrl }
         Column(Modifier.fillMaxSize()) {
             if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
-            GalleryContinuousReader(session, detail, start, readerState, onBack, onPaged = { position ->
-                if (!settingsSaving) changePreferences(preferences.copy(layout = ReadingLayout.PAGED)) { url = position }
+            GalleryContinuousReader(session, detail, start, readerState, onBack, chrome, onPaged = { position ->
+                if (!settingsSaving) {
+                    changePreferences(preferences.copy(layout = ReadingLayout.PAGED)) {
+                        url = position
+                        chrome.visible = false
+                    }
+                }
             })
         }
         return
@@ -171,63 +175,114 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
         }
     }
     LaunchedEffect(Unit) { focus.requestFocus() }
+    var pendingSeek by remember { mutableStateOf<Int?>(null) }
+    var seekFailure by remember { mutableStateOf<GalleryFailure?>(null) }
+    var seekAttempt by remember { mutableIntStateOf(0) }
+    val seeking = pendingSeek != null && seekFailure == null
     if (jumpOpen) {
         GalleryReaderPageDialog(index, detail.pages, onJump = { target ->
             if (target != index) {
                 val resolved = readingResumeUrl(session.content, detail, ReadingPosition(detail.gid, target, null, 0))
                 currentCoroutineContext().ensureActive()
+                pendingSeek = null
+                seekFailure = null
                 url = resolved
             }
         }, onDismiss = { jumpOpen = false })
     }
-    val jumpLabel = galleryString(Res.string.gallery_go_to_page)
-    Column(
-        Modifier.fillMaxSize().focusRequester(focus).onPreviewKeyEvent { event ->
-            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+    LaunchedEffect(pendingSeek, seekAttempt) {
+        val target = pendingSeek ?: return@LaunchedEffect
+        seekFailure = null
+        try {
+            val resolved = readingResumeUrl(session.content, detail, ReadingPosition(detail.gid, target, null, 0))
+            currentCoroutineContext().ensureActive()
+            url = resolved
+            pendingSeek = null
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: GalleryRequestException) {
+            currentCoroutineContext().ensureActive()
+            seekFailure = error.failure
+        }
+    }
+    fun navigate(target: String) {
+        pendingSeek = null
+        seekFailure = null
+        url = target
+    }
+    GalleryReaderChrome(
+        title = detail.title.orEmpty(), index = index, pages = detail.pages, state = chrome,
+        onBack = onBack, onJump = { jumpOpen = true },
+        onSeek = {
+            if (it != index) {
+                seekFailure = null
+                pendingSeek = it
+            }
+        },
+        seekEnabled = !loading && !seeking, rtl = rtl,
+        modifier = Modifier.focusRequester(focus).onPreviewKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown || seeking && event.key != Key.Escape) return@onPreviewKeyEvent false
             when (event.key) {
                 Key.Escape -> onBack()
-                Key.DirectionLeft -> (if (rtl) next else previous)?.let { url = it } ?: return@onPreviewKeyEvent false
-                Key.DirectionRight -> (if (rtl) previous else next)?.let { url = it } ?: return@onPreviewKeyEvent false
-                Key.PageUp -> previous?.let { url = it } ?: return@onPreviewKeyEvent false
-                Key.PageDown -> next?.let { url = it } ?: return@onPreviewKeyEvent false
+                Key.Spacebar -> chrome.toggle()
+                Key.DirectionLeft -> (if (rtl) next else previous)?.let(::navigate) ?: return@onPreviewKeyEvent false
+                Key.DirectionRight -> (if (rtl) previous else next)?.let(::navigate) ?: return@onPreviewKeyEvent false
+                Key.PageUp -> previous?.let(::navigate) ?: return@onPreviewKeyEvent false
+                Key.PageDown -> next?.let(::navigate) ?: return@onPreviewKeyEvent false
                 else -> return@onPreviewKeyEvent false
             }
             true
         }.focusable(),
-    ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back)) }
-            TextButton(onClick = { jumpOpen = true }, modifier = Modifier.semantics { contentDescription = jumpLabel }) { Text("${index + 1} / ${detail.pages}") }
-            TextButton(onClick = {
+        status = {
+            if (loading || seeking) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
+            if (saveFailure) ReaderStateError(galleryString(Res.string.gallery_reading_progress_save_failed)) { scope.launch { saveProgress() } }
+            seekFailure?.let {
+                GalleryError(it) {
+                    seekFailure = null
+                    seekAttempt++
+                }
+            }
+            failure?.let {
+                GalleryError(it) {
+                    reloadKey = document?.skipHathKey
+                    attempt++
+                }
+            }
+        },
+        navigation = {
+            ReaderPageButton(if (rtl) galleryString(Res.string.gallery_next_page) else galleryString(Res.string.gallery_previous_page), (if (rtl) next else previous)?.takeUnless { seeking }, right = false, navigate = ::navigate)
+            ReaderPageButton(if (rtl) galleryString(Res.string.gallery_previous_page) else galleryString(Res.string.gallery_next_page), (if (rtl) previous else next)?.takeUnless { seeking }, right = true, navigate = ::navigate)
+        },
+        actions = {
+            GalleryReaderAction(galleryString(Res.string.gallery_reading_continuous), GalleryIcons.LibraryBooks, !settingsSaving && !seeking) { changePreferences(preferences.copy(layout = ReadingLayout.CONTINUOUS)) { chrome.visible = false } }
+            GalleryReaderAction(if (rtl) galleryString(Res.string.gallery_reading_rtl) else galleryString(Res.string.gallery_reading_ltr), GalleryIcons.SwapHoriz, !settingsSaving) {
+                changePreferences(preferences.copy(direction = if (rtl) ReadingDirection.LEFT_TO_RIGHT else ReadingDirection.RIGHT_TO_LEFT))
+            }
+            GalleryReaderAction(galleryString(Res.string.gallery_reset_zoom), GalleryIcons.ZoomOutMap) {
                 zoom = 1f
                 pan = Offset.Zero
-            }) { Text(galleryString(Res.string.gallery_reset_zoom)) }
-        }
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
-        if (saveFailure) ReaderStateError(galleryString(Res.string.gallery_reading_progress_save_failed)) { scope.launch { saveProgress() } }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = { changePreferences(preferences.copy(layout = ReadingLayout.CONTINUOUS)) }, enabled = !settingsSaving) { Text(galleryString(Res.string.gallery_reading_continuous)) }
-            TextButton(onClick = {
-                val changed = preferences.copy(direction = if (rtl) ReadingDirection.LEFT_TO_RIGHT else ReadingDirection.RIGHT_TO_LEFT)
-                changePreferences(changed)
-            }, enabled = !settingsSaving) { Text(if (rtl) galleryString(Res.string.gallery_reading_rtl) else galleryString(Res.string.gallery_reading_ltr)) }
-        }
-        if (original || document?.originImageUrl != null) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = { original = !original }, enabled = !loading) { Text(if (original) galleryString(Res.string.gallery_display_image) else galleryString(Res.string.gallery_original_image)) }
             }
-        }
-        failure?.let {
-            GalleryError(it) {
-                reloadKey = document?.skipHathKey
-                attempt++
+            if (original || document?.originImageUrl != null) {
+                GalleryReaderAction(if (original) galleryString(Res.string.gallery_display_image) else galleryString(Res.string.gallery_original_image), GalleryIcons.Download, !loading && !seeking) { original = !original }
             }
-        }
+        },
+    ) {
         Box(
-            Modifier.weight(1f).fillMaxWidth().clipToBounds().onSizeChanged { viewport = it }
-                .pointerInput(url) {
-                    detectTapGestures(onDoubleTap = {
+            Modifier.fillMaxSize().clipToBounds().onSizeChanged { viewport = it }
+                .pointerInput(url, previous, next, rtl) {
+                    detectTapGestures(onTap = { point ->
+                        val target = if (zoom == 1f && !seeking) {
+                            when {
+                                point.x < size.width / 3f -> if (rtl) next else previous
+                                point.x > size.width * 2f / 3f -> if (rtl) previous else next
+                                else -> null
+                            }
+                        } else {
+                            null
+                        }
+                        if (target == null) chrome.toggle() else navigate(target)
+                    }, onDoubleTap = {
                         zoom = if (zoom > 1f) 1f else 2f
                         pan = Offset.Zero
                     })
@@ -264,21 +319,12 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                 )
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            if (rtl) {
-                ReaderPageButton(galleryString(Res.string.gallery_next_page), next) { url = it }
-                ReaderPageButton(galleryString(Res.string.gallery_previous_page), previous) { url = it }
-            } else {
-                ReaderPageButton(galleryString(Res.string.gallery_previous_page), previous) { url = it }
-                ReaderPageButton(galleryString(Res.string.gallery_next_page), next) { url = it }
-            }
-        }
     }
 }
 
 @Composable
-private fun ReaderPageButton(label: String, target: String?, navigate: (String) -> Unit) {
-    TextButton(onClick = { target?.let(navigate) }, enabled = target != null) { Text(label) }
+private fun ReaderPageButton(label: String, target: String?, right: Boolean, navigate: (String) -> Unit) {
+    IconButton(onClick = { target?.let(navigate) }, enabled = target != null) { Icon(GalleryIcons.ArrowBack, label, Modifier.graphicsLayer { rotationZ = if (right) 180f else 0f }) }
 }
 
 @Composable

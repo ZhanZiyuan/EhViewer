@@ -1,9 +1,11 @@
 package com.ehviewer.shared
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.ScrollableDefaults
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -14,10 +16,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,9 +36,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
@@ -46,21 +55,22 @@ import com.ehviewer.shared.reader.GalleryPageSource
 import com.ehviewer.shared.reader.ReaderPageState
 import com.ehviewer.shared.reader.ReaderPageWindow
 import ehviewer.app.shared.generated.resources.Res
-import ehviewer.app.shared.generated.resources.gallery_back
 import ehviewer.app.shared.generated.resources.gallery_gallery_page
-import ehviewer.app.shared.generated.resources.gallery_go_to_page
 import ehviewer.app.shared.generated.resources.gallery_page_number
 import ehviewer.app.shared.generated.resources.gallery_reading_paged
 import ehviewer.app.shared.generated.resources.gallery_reading_progress_save_failed
 import ehviewer.app.shared.generated.resources.gallery_retry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 
 @Composable
-internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit, onPaged: (String) -> Unit) {
+internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit, chrome: GalleryReaderChromeState, onPaged: (String) -> Unit) {
     val first = session.content.pageIndex(initial, detail.gid)
     val list = rememberLazyListState(first)
     val scope = rememberCoroutineScope()
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
     val source = remember(session, detail.gid, initial) { GalleryPageSource(session, detail, initial) }
     val window = remember(source) { ReaderPageWindow(detail.pages, scope, load = source::load) }
     val pages by window.pages.collectAsState()
@@ -113,23 +123,37 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
             jumpTarget = null
         })
     }
-    val jumpLabel = galleryString(Res.string.gallery_go_to_page)
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back)) }
-            TextButton(onClick = {
-                jumpTarget = null
-                jumpOrigin = list.firstVisibleItemIndex to list.firstVisibleItemScrollOffset
-            }, enabled = pendingPosition == null, modifier = Modifier.semantics { contentDescription = jumpLabel }) { Text("${index + 1} / ${detail.pages}") }
-            TextButton(onClick = { current?.page?.url?.let(onPaged) }, enabled = current != null) { Text(galleryString(Res.string.gallery_reading_paged)) }
-        }
-        if (saveFailure) {
-            Row {
-                Text(galleryString(Res.string.gallery_reading_progress_save_failed), Modifier.weight(1f))
-                TextButton(onClick = { saveAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
+    GalleryReaderChrome(
+        title = detail.title.orEmpty(), index = index, pages = detail.pages, state = chrome,
+        onBack = onBack,
+        onJump = {
+            jumpTarget = null
+            jumpOrigin = list.firstVisibleItemIndex to list.firstVisibleItemScrollOffset
+        },
+        onSeek = { if (it != index) pendingPosition = it to 0 },
+        seekEnabled = pendingPosition == null,
+        modifier = Modifier.focusRequester(focus).onPreviewKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            when (event.key) {
+                Key.Escape -> onBack()
+                Key.Spacebar -> chrome.toggle()
+                Key.PageDown, Key.DirectionDown -> scope.launch { list.animateScrollBy(list.layoutInfo.viewportSize.height.toFloat()) }
+                Key.PageUp, Key.DirectionUp -> scope.launch { list.animateScrollBy(-list.layoutInfo.viewportSize.height.toFloat()) }
+                else -> return@onPreviewKeyEvent false
             }
-        }
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            true
+        }.focusable(),
+        status = {
+            if (saveFailure) {
+                Row {
+                    Text(galleryString(Res.string.gallery_reading_progress_save_failed), Modifier.weight(1f))
+                    TextButton(onClick = { saveAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
+                }
+            }
+        },
+        actions = { GalleryReaderAction(galleryString(Res.string.gallery_reading_paged), GalleryIcons.LibraryBooks, current != null) { current?.page?.url?.let(onPaged) } },
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
             val viewportHeight = maxHeight
             LaunchedEffect(pendingPosition, imeBottom, index, viewportHeight) {
                 val position = pendingPosition ?: return@LaunchedEffect
@@ -149,15 +173,17 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
                     val ratio = ((state as? ReaderPageState.Ready)?.page?.value?.let { it.width.toFloat() / it.height } ?: ratios[page] ?: (1f / 1.4f)).coerceIn(0.1f, 10f)
                     // A short last page must retain the requested index instead of backfilling earlier pages.
                     Box(Modifier.fillMaxWidth().heightIn(min = if (page == detail.pages - 1) viewportHeight else 0.dp)) {
-                        Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).aspectRatio(ratio)) {
+                        Box(Modifier.fillMaxWidth().aspectRatio(ratio).pointerInput(chrome) { detectTapGestures(onTap = { chrome.toggle() }) }) {
                             when (state) {
                                 is ReaderPageState.Ready -> GalleryMediaImage(state.page.value, galleryString(Res.string.gallery_gallery_page, page + 1), Modifier.fillMaxSize(), visible = visible)
-                                is ReaderPageState.Failed -> GalleryError(state.failure) {
-                                    source.retry(page)
-                                    window.retry(page)
+                                is ReaderPageState.Failed -> Surface {
+                                    GalleryError(state.failure) {
+                                        source.retry(page)
+                                        window.retry(page)
+                                    }
                                 }
                                 else -> Column(Modifier.fillMaxWidth()) {
-                                    Text(galleryString(Res.string.gallery_page_number, page + 1))
+                                    Text(galleryString(Res.string.gallery_page_number, page + 1), color = Color.White)
                                     if (state == ReaderPageState.Loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                                 }
                             }
