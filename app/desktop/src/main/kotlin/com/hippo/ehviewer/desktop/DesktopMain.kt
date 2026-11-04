@@ -29,8 +29,8 @@ import kotlinx.coroutines.withTimeout
 
 /** Normal shared product entry, with a separate measured packaged-runtime regression mode. */
 fun main(arguments: Array<String>) {
-    if (arguments.isEmpty()) {
-        galleryApplication()
+    if (arguments.isEmpty() || arguments.first() == "--open") {
+        galleryApplication(if (arguments.isEmpty()) null else desktopDocumentPath(arguments))
         return
     }
     val mac = System.getProperty("os.name").startsWith("Mac") && System.getProperty("os.arch") in setOf("x86_64", "amd64", "aarch64", "arm64")

@@ -37,6 +37,25 @@ private fun verifyArchiveLibrary(factory: ArchiveDocumentFactory): Int = runBloc
         val imageDirectory = Files.createDirectory(directory.resolve("Image folder 资料"))
         Files.write(imageDirectory.resolve("10.png"), images.second)
         Files.write(imageDirectory.resolve("2.png"), images.first)
+        val openedDocuments = FileArchiveLibrary(directory.resolve("opened-documents").toOkioPath(), factory)
+        try {
+            check(desktopDocumentPath(arrayOf("--open", input.toString())) == input)
+            for (invalid in listOf(arrayOf("--open"), arrayOf("--open", " "), arrayOf("--open", input.toString(), "extra"), arrayOf("--unknown", input.toString()))) {
+                check(runCatching { desktopDocumentPath(invalid) }.isFailure)
+            }
+            val openedArchive = importDesktopDocument(openedDocuments, input)
+            check(openedArchive.title == input.fileName.toString() && verifyArchiveProduct(openedDocuments.open(openedArchive)) == 3)
+            val openedDirectory = importDesktopDocument(openedDocuments, imageDirectory)
+            check(openedDirectory.title == imageDirectory.fileName.toString() && verifyArchiveProduct(openedDocuments.open(openedDirectory)) == 3)
+            check(importDesktopDocument(openedDocuments, input) == openedArchive)
+            check(runCatching { importDesktopDocument(openedDocuments, directory.resolve("missing.cbz")) }.isFailure)
+            val corrupt = directory.resolve("Broken owned input.cbz")
+            Files.writeString(corrupt, "invalid archive")
+            check(runCatching { importDesktopDocument(openedDocuments, corrupt) }.isFailure)
+            check(openedDocuments.inspect().books.toSet() == setOf(openedArchive, openedDirectory))
+        } finally {
+            openedDocuments.close()
+        }
         val directoryBook = first.importDirectory(imageDirectory.toString(), "Owned directory regression")
         check(verifyArchiveProduct(first.open(directoryBook)) == 3)
         first.close()

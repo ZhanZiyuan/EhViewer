@@ -126,7 +126,7 @@ private data class GallerySearchRequest(val query: String, val filters: GalleryS
 
 /** Search UI shared by the actual applications; requests run only after an explicit user action. */
 @Composable
-fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, downloads: GalleryDownloads, language: GalleryLanguageSettings, backgroundDownloadsNote: Boolean = false, archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null, browserFactory: ((String) -> GalleryLoginBrowser)? = null, storageSettings: GalleryStorageSettings? = null, listPreferences: GalleryListPreferences? = null, onReady: () -> Unit = {}) {
+fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, downloads: GalleryDownloads, language: GalleryLanguageSettings, backgroundDownloadsNote: Boolean = false, archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null, browserFactory: ((String) -> GalleryLoginBrowser)? = null, storageSettings: GalleryStorageSettings? = null, listPreferences: GalleryListPreferences? = null, initialLocalLibrary: Boolean = false, onReady: () -> Unit = {}) {
     DisposableEffect(session) { onDispose { session.close() } }
     val library = remember(session, history) {
         object : GalleryLibrary by session {
@@ -141,7 +141,7 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
     }
     GalleryLibraryScreen(library, readerState, appearance, history, downloads, language, networkPreferences = session.networkPreferences, storageSettings = storageSettings, listPreferences = listPreferences, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
-    }, onReady = onReady)
+    }, initialLocalLibrary = initialLocalLibrary, onReady = onReady)
 }
 
 /** Android uses the same views while its original session/history adapters remain authoritative. */
@@ -164,6 +164,7 @@ fun GalleryLibraryScreen(
     platformTheme: GalleryPlatformTheme? = null,
     accountContent: (@Composable (onIdentityAction: () -> Unit, onBack: () -> Unit) -> Unit)? = null,
     archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null,
+    initialLocalLibrary: Boolean = false,
     onReady: () -> Unit = {},
 ) {
     var listDensity by remember(listPreferences) { mutableStateOf<GalleryListDensity?>(null) }
@@ -207,7 +208,7 @@ fun GalleryLibraryScreen(
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var historyOpen by rememberSaveable { mutableStateOf(false) }
     var downloadsOpen by rememberSaveable { mutableStateOf(false) }
-    var archivesOpen by rememberSaveable { mutableStateOf(false) }
+    var archivesOpen by rememberSaveable { mutableStateOf(initialLocalLibrary && archiveContent != null) }
     var cached by remember { mutableStateOf<CachedGalleryPages?>(null) }
     var downloadsReady by remember(downloads) { mutableStateOf(false) }
     var downloadsFailed by remember(downloads) { mutableStateOf(false) }

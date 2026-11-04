@@ -1,6 +1,9 @@
 package com.hippo.ehviewer.desktop
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -48,7 +51,7 @@ private fun applicationData(): Path {
 }
 
 /** A normal product window; the existing explicit --m1-smoke path keeps its original regressions. */
-fun galleryApplication() {
+fun galleryApplication(initialDocument: Path? = null) {
     DataDirectory.configure(applicationData().resolve("database").toString().toPath())
     val resources = Path.of(checkNotNull(System.getProperty("compose.application.resources.dir")))
     val windows = System.getProperty("os.name").startsWith("Windows")
@@ -85,16 +88,32 @@ fun galleryApplication() {
         application {
             val icon = remember { BitmapPainter(desktopApplicationIcon()) }
             Window(onCloseRequest = ::exitApplication, title = "EhViewer", icon = icon) {
+                var pendingDocument by remember { mutableStateOf(initialDocument) }
                 GallerySearchScreen(session, readerState, appearance, history, downloads, language, archiveContent = { back ->
-                    ArchiveLibraryScreen(archives, session, pickAndImport = {
-                        pickComicArchive()?.let { archives.importFile(it.toString(), it.fileName.toString().replace('\n', ' ').replace('\r', ' ').take(1024)) }
-                    }, pickAndImportDirectory = {
-                        pickImageDirectory()?.let { archives.importDirectory(it.toString(), (it.fileName?.toString() ?: "Imported images").replace('\n', ' ').replace('\r', ' ').take(1024)) }
-                    }, pickAndExport = { book -> exportComicArchive(archives, book) }, readingState = { book ->
-                        val directory = applicationData().resolve("archive-reading-state").resolve(book.id)
-                        if (windows) windowsReaderState(resources.resolve("ehviewer_capi.dll"), directory) else ReaderStateRepository(NativeSessionVault(directory.toString()))
-                    }, onBack = back)
-                }, browserFactory = browsers::create, storageSettings = downloadStorage, listPreferences = listPreferences)
+                    ArchiveLibraryScreen(
+                        archives,
+                        session,
+                        pickAndImport = {
+                            pickComicArchive()?.let { archives.importFile(it.toString(), it.fileName.toString().replace('\n', ' ').replace('\r', ' ').take(1024)) }
+                        },
+                        pickAndImportDirectory = {
+                            pickImageDirectory()?.let { archives.importDirectory(it.toString(), (it.fileName?.toString() ?: "Imported images").replace('\n', ' ').replace('\r', ' ').take(1024)) }
+                        },
+                        pickAndExport = { book -> exportComicArchive(archives, book) },
+                        readingState = { book ->
+                            val directory = applicationData().resolve("archive-reading-state").resolve(book.id)
+                            if (windows) windowsReaderState(resources.resolve("ehviewer_capi.dll"), directory) else ReaderStateRepository(NativeSessionVault(directory.toString()))
+                        },
+                        onBack = back,
+                        initialImport = pendingDocument?.let { path ->
+                            suspend {
+                                // Consume once before copying: returning to the library must not reopen it.
+                                pendingDocument = null
+                                importDesktopDocument(archives, path)
+                            }
+                        },
+                    )
+                }, browserFactory = browsers::create, storageSettings = downloadStorage, listPreferences = listPreferences, initialLocalLibrary = initialDocument != null)
             }
         }
     } finally {

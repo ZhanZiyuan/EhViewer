@@ -488,7 +488,7 @@ jobs:
         run: >-
           sudo apt-get update && sudo apt-get install -y
           build-essential cmake pkg-config libarchive-dev libwebp-dev binutils dbus gnome-keyring
-          libwebkit2gtk-4.1-dev xvfb xauth squashfs-tools fuse3 curl
+          libwebkit2gtk-4.1-dev xvfb xauth openbox squashfs-tools fuse3 curl
           libx11-6 libxext6 libxi6 libxrender1 libxtst6 libgl1 libegl1 libgl1-mesa-dri
           libfontconfig1 fonts-dejavu-core libasound2t64
       - name: Require the Linux AppImage FUSE device
@@ -579,6 +579,18 @@ jobs:
           --image app/desktop/build/compose/binaries/main/app/EhViewer
           --runtime-report reports/desktop-native/linux-image/linux-x64.json
           --output reports/desktop-native/appimage > reports/desktop-native/appimage-result.json
+      - name: Read an actual local comic in the normal Linux x86_64 product window
+        if: runner.os == 'Linux'
+        env:
+          XDG_DATA_HOME: ${{ runner.temp }}/ehviewer-product-ui-keyring/data
+          XDG_CONFIG_HOME: ${{ runner.temp }}/ehviewer-product-ui-keyring/config
+        run: >-
+          dbus-run-session -- xvfb-run -a bash -euc
+          'printf "%s" "owned-ci-keyring-password" | gnome-keyring-daemon --unlock --components=secrets;
+          tools/verification/build/install/verification/bin/verification desktop-product-ui
+          --image app/desktop/build/compose/binaries/main/app/EhViewer
+          --runtime-report reports/desktop-native/linux-image/linux-x64.json
+          --output reports/desktop-native/product-ui'
       - name: Retain desktop JNI evidence and the tested native packages
         if: always()
         uses: actions/upload-artifact@v7
@@ -720,8 +732,8 @@ jobs:
       - name: Native build and display prerequisites
         run: >-
           sudo apt-get update && sudo apt-get install -y
-          build-essential cmake pkg-config libarchive-dev binutils libwebkit2gtk-4.1-dev dbus
-          xvfb xauth squashfs-tools fuse3 curl libx11-6 libxext6 libxi6 libxrender1 libxtst6
+          build-essential cmake pkg-config libarchive-dev binutils libwebkit2gtk-4.1-dev dbus gnome-keyring
+          xvfb xauth openbox squashfs-tools fuse3 curl libx11-6 libxext6 libxi6 libxrender1 libxtst6
           libgl1 libegl1 libgl1-mesa-dri libfontconfig1 fonts-dejavu-core libasound2t64
       - name: Require the ARM64 AppImage FUSE device
         run: |
@@ -762,6 +774,17 @@ jobs:
           --image app/desktop/build/compose/binaries/main/app/EhViewer
           --runtime-report reports/desktop-linux-arm64/linux-arm64.json
           --output reports/desktop-linux-arm64/appimage > reports/linux-arm64-appimage-result.json
+      - name: Read an actual local comic in the normal Linux ARM64 product window
+        env:
+          XDG_DATA_HOME: ${{ runner.temp }}/ehviewer-product-ui-keyring/data
+          XDG_CONFIG_HOME: ${{ runner.temp }}/ehviewer-product-ui-keyring/config
+        run: >-
+          dbus-run-session -- xvfb-run -a bash -euc
+          'printf "%s" "owned-ci-keyring-password" | gnome-keyring-daemon --unlock --components=secrets;
+          tools/verification/build/install/verification/bin/verification desktop-product-ui
+          --image app/desktop/build/compose/binaries/main/app/EhViewer
+          --runtime-report reports/desktop-linux-arm64/linux-arm64.json
+          --output reports/desktop-linux-arm64/product-ui'
       - uses: actions/download-artifact@v8
         with:
           name: shared-core-${{ github.sha }}
@@ -827,6 +850,12 @@ jobs:
           .\tools\verification\build\install\verification\bin\verification.bat ${{ matrix.desktopCommand }}
           --jvm-report reports/windows-jvm-ffi/windows-jvm-ffi.json
           --core-report reports/windows-native-core/windows-native-core.json --output reports/desktop-windows-${{ matrix.assetArch }}
+      - name: Read an actual local comic in the normal Windows ${{ matrix.assetArch }} product window
+        run: >-
+          .\tools\verification\build\install\verification\bin\verification.bat desktop-product-ui
+          --image reports/desktop-windows-${{ matrix.assetArch }}/image/EhViewer
+          --runtime-report reports/desktop-windows-${{ matrix.assetArch }}/windows-${{ matrix.assetArch }}-runtime.json
+          --output reports/desktop-windows-${{ matrix.assetArch }}/product-ui
       - name: Create and verify the real source-bound Windows ${{ matrix.assetArch }} staging ZIP
         id: windows_package
         run: >-

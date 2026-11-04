@@ -76,7 +76,7 @@ import org.jetbrains.compose.resources.StringResource
 private enum class ArchiveTransfer { EXPORT, SHARE }
 
 @Composable
-fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAndImport: suspend () -> ArchiveBook?, pickAndImportDirectory: suspend () -> ArchiveBook?, pickAndExport: suspend (ArchiveBook) -> Boolean, readingState: (ArchiveBook) -> ReaderStateStore, onBack: () -> Unit, shareComic: (suspend (ArchiveBook) -> Boolean)? = null) {
+fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAndImport: suspend () -> ArchiveBook?, pickAndImportDirectory: suspend () -> ArchiveBook?, pickAndExport: suspend (ArchiveBook) -> Boolean, readingState: (ArchiveBook) -> ReaderStateStore, onBack: () -> Unit, shareComic: (suspend (ArchiveBook) -> Boolean)? = null, initialImport: (suspend () -> ArchiveBook?)? = null) {
     var books by remember(library) { mutableStateOf<List<ArchiveBook>>(emptyList()) }
     var unavailableCopies by remember(library) { mutableIntStateOf(0) }
     var selected by remember(library) { mutableStateOf<ArchiveBook?>(null) }
@@ -89,6 +89,7 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
     var transferFailed by remember { mutableStateOf<ArchiveTransfer?>(null) }
     var transferMessage by remember { mutableStateOf<StringResource?>(null) }
     var request by remember { mutableStateOf<Job?>(null) }
+    var pendingInitialImport by remember(library) { mutableStateOf(initialImport) }
     var unlocked by remember(selected) { mutableStateOf(false) }
     var password by remember(selected) { mutableStateOf("") }
     var passwordFailed by remember(selected) { mutableStateOf(false) }
@@ -176,6 +177,14 @@ fun ArchiveLibraryScreen(library: ArchiveLibrary, online: GalleryLibrary, pickAn
                 throw error
             } finally {
                 transfer = null
+            }
+        }
+    }
+    LaunchedEffect(library, loading) {
+        if (!loading) {
+            pendingInitialImport?.let { action ->
+                pendingInitialImport = null
+                perform { action()?.let { selected = it } }
             }
         }
     }
