@@ -10,7 +10,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.window.ComposeUIViewController
 import com.ehviewer.core.data.DataStoreGalleryListPreferences
 import com.ehviewer.core.data.DataStoreLanguageStore
 import com.ehviewer.core.data.DataStoreNetworkPreferences
@@ -27,6 +26,7 @@ import com.ehviewer.core.network.GallerySession
 import com.ehviewer.shared.AppleGalleryLoginBrowser
 import com.ehviewer.shared.ArchiveLibraryScreen
 import com.ehviewer.shared.GallerySearchScreen
+import com.ehviewer.shared.galleryViewController
 import com.ehviewer.shared.reader.ReaderStateRepository
 import com.ehviewer.shared.settings.GalleryAppearanceRepository
 import com.ehviewer.shared.settings.GalleryLanguageSettings
@@ -117,7 +117,7 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
     override fun scene(scene: UIScene, willConnectToSession: UISceneSession, options: UISceneConnectionOptions) {
         val windowScene = scene as? UIWindowScene ?: error("Expected UIWindowScene")
         appWindow = UIWindow(windowScene = windowScene).apply {
-            rootViewController = ComposeUIViewController {
+            rootViewController = galleryViewController {
                 val session = remember { applicationSession() }
                 val readerState = remember { ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/reader-state")) }
                 val appearance = remember { GalleryAppearanceRepository(AppleSessionVault("${applicationDirectory()}/appearance")) }

@@ -72,8 +72,8 @@ import kotlinx.coroutines.launch
 /** A bounded, cancellable online page reader shared by touch and desktop applications. */
 @Composable
 internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit) {
-    GalleryImmersive()
     val chrome = rememberGalleryReaderChromeState()
+    GalleryImmersive(chrome.visible)
     var url by remember(initial) { mutableStateOf(initial) }
     var reloadKey by remember(url) { mutableStateOf<String?>(null) }
     var original by remember(url) { mutableStateOf(false) }

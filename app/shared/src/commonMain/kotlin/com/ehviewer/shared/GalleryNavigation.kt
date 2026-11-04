@@ -52,12 +52,24 @@ internal val GalleryRailMinWidth = 600.dp
 
 private val LocalGalleryImmersive = staticCompositionLocalOf<MutableIntState?> { null }
 
+/** A window-scoped native presentation lease, restored when its reader leaves composition. */
+internal fun interface GalleryReaderPresentation {
+    fun enter(controlsVisible: Boolean): () -> Unit
+}
+
+internal val LocalGalleryReaderPresentation = staticCompositionLocalOf<GalleryReaderPresentation?> { null }
+
 @Composable
 internal fun galleryIsImmersive(): Boolean = (LocalGalleryImmersive.current?.intValue ?: 0) > 0
 
 /** Readers occupy the whole window, like Android's reader, while they are composed. */
 @Composable
-internal fun GalleryImmersive() {
+internal fun GalleryImmersive(controlsVisible: Boolean = false) {
+    val presentation = LocalGalleryReaderPresentation.current
+    DisposableEffect(presentation, controlsVisible) {
+        val restore = presentation?.enter(controlsVisible)
+        onDispose { restore?.invoke() }
+    }
     val immersive = LocalGalleryImmersive.current ?: return
     DisposableEffect(immersive) {
         immersive.intValue++

@@ -3,7 +3,9 @@ package com.ehviewer.shared
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -100,5 +102,71 @@ class GalleryNavigationShellTest {
             assertRail(1280, observed.contentWidth)
         }
         assertEquals(1, observed.contentInstances)
+    }
+
+    @Test
+    fun nativePresentationRestoresEachReaderAcrossHostChangesResizeAndDisposal() {
+        class Presentation : GalleryReaderPresentation {
+            var entered = 0
+            var restored = 0
+            val states = mutableListOf<Boolean>()
+            val active get() = entered - restored
+            override fun enter(controlsVisible: Boolean): () -> Unit {
+                entered++
+                states += controlsVisible
+                return { restored++ }
+            }
+        }
+        val first = Presentation()
+        val second = Presentation()
+        var host by mutableStateOf<GalleryReaderPresentation>(first)
+        var readers by mutableIntStateOf(0)
+        var controlsVisible by mutableStateOf(false)
+        val scene = ImageComposeScene(1280, 720, Density(1f)) {
+            MaterialTheme {
+                CompositionLocalProvider(LocalGalleryReaderPresentation provides host) {
+                    GalleryNavigationShell(GalleryDestination.entries, GalleryDestination.GALLERIES, onSelect = {}) {
+                        repeat(readers) { GalleryImmersive(controlsVisible) }
+                    }
+                }
+            }
+        }
+        try {
+            scene.settle(0)
+            assertEquals(0, first.entered)
+            readers = 2
+            scene.settle(1)
+            assertEquals(2, first.active)
+            scene.constraints = Constraints.fixed(411, 720)
+            scene.settle(2)
+            assertEquals(2, first.entered, "Resizing must not reenter a native reader lease")
+            controlsVisible = true
+            scene.settle(3)
+            assertEquals(listOf(false, false, true, true), first.states, "Native bars follow the actual shared controls state")
+            assertEquals(2, first.active)
+            host = second
+            scene.settle(4)
+            assertEquals(0, first.active, "Changing the native host must restore the previous window")
+            assertEquals(4, first.restored)
+            assertEquals(2, second.active)
+            assertEquals(listOf(true, true), second.states)
+            controlsVisible = false
+            scene.settle(5)
+            assertEquals(listOf(true, true, false, false), second.states)
+            readers = 1
+            scene.settle(6)
+            assertEquals(1, second.active, "One remaining reader keeps its native presentation")
+            readers = 0
+            scene.settle(7)
+            assertEquals(0, second.active, "Returning from reading restores the system bars")
+            readers = 1
+            scene.settle(8)
+            assertEquals(1, second.active)
+        } finally {
+            scene.close()
+        }
+        assertEquals(0, second.active, "Closing the whole window also restores the last reader lease")
+        assertEquals(5, second.entered)
+        assertEquals(5, second.restored)
     }
 }
