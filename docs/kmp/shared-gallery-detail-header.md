@@ -21,7 +21,7 @@ The cover reuses the existing bounded Coil/Ktor cache, including the search resu
 
 All local receipts are retained under ignored `build/kmp-work-logs/uiux-detail-header-*`; their source is the predecessor `1ef9f9d2d8789d5fdfedbedcb4041380043d8517` plus the recorded working-tree changes, not a clean future commit.
 
-- Android mandatory tests/lint/build, original native/signing/ABI/diagnostic checks and both instrumentation APKs: 478 tasks, SUCCESS.
+- Android mandatory tests/lint/build, original native build tasks and both instrumentation APKs: 478 tasks, SUCCESS. The separate compiled-resource/APK artifact check first failed in CI; its build success was not package acceptance. See [the strict plural-resource repair](compiled-plural-resources.md).
 - Desktop production distribution and tests: shared83, network146 and data87; zero failures/errors/skips. New rendering checks exercise 360/411/1280px layouts at 1× and 1.8× font size. They assert reachable, nonoverlapping, equally sized compact actions and stacked wide actions without assuming a host font's exact glyph metrics.
 - Common network tests exercise actual Ktor mock transport for Unicode and reserved characters in uploader names, both E/Ex hosts, pagination and pre-transport rejection.
 - iOS simulator package and arm64 device executable: SUCCESS. Actual owned simulator execution: network146, shared73 and data81, real Keychain3, cold starts, foreground/background and Rust ownership checks passed. Signed physical-device execution remains NOT_VERIFIED.

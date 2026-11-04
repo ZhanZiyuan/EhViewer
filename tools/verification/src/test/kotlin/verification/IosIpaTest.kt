@@ -81,8 +81,10 @@ class IosIpaTest {
             """.trimIndent().toByteArray(),
             app + "licenses/EhViewer/LICENSE" to Files.readAllBytes(root.resolve("LICENSE")),
         )
-        galleryResourceAssetSpec().forEach { (name, strings) ->
-            files[app + "compose-resources/" + name.removePrefix("assets/")] = ("version:0\n" + strings.entries.joinToString("\n", postfix = "\n") { (key, value) -> "string|$key|${Base64.getEncoder().encodeToString(value.toByteArray())}" }).toByteArray()
+        galleryResourceAssetSpec().forEach { (name, values) ->
+            val strings = values.strings.entries.map { (key, value) -> "string|$key|${Base64.getEncoder().encodeToString(value.toByteArray())}" }
+            val plurals = values.plurals.entries.map { (key, forms) -> "plurals|$key|" + forms.entries.joinToString(",") { (quantity, value) -> "$quantity:${Base64.getEncoder().encodeToString(value.toByteArray())}" } }
+            files[app + "compose-resources/" + name.removePrefix("assets/")] = ("version:0\n" + (strings + plurals).joinToString("\n", postfix = "\n")).toByteArray()
         }
         val notices = root.resolve("app/desktop/licenses/session")
         Files.walk(notices).use { paths -> paths.filter(Files::isRegularFile).forEach { file -> files[app + "licenses/session/" + notices.relativize(file).toString().replace('\\', '/')] = Files.readAllBytes(file) } }
