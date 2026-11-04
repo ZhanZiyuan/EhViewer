@@ -2,6 +2,7 @@ package com.ehviewer.shared
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.CircularProgressIndicator
@@ -23,6 +24,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.model.GalleryPreview
+import com.ehviewer.core.model.V2GalleryPreview
+import com.ehviewer.core.network.GalleryLibrary
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import ehviewer.app.shared.generated.resources.Res
@@ -31,15 +34,30 @@ import ehviewer.app.shared.generated.resources.gallery_preview_retry
 import kotlinx.coroutines.CancellationException
 
 @Composable
-internal fun GalleryPreviewImage(preview: GalleryPreview, cache: GalleryPreviewCache<ImageBitmap>) {
+internal fun rememberGalleryPreviewCache(session: GalleryLibrary, gid: Long, token: String): GalleryPreviewCache<ImageBitmap> = remember(session, gid, token) {
+    GalleryPreviewCache { preview ->
+        val bitmap = decodeGalleryImage(session.content.preview(preview, gid, token))
+        PreviewBitmap(bitmap, bitmap.width, bitmap.height)
+    }
+}
+
+internal fun galleryPreviewContentScale(preview: GalleryPreview, width: Int, height: Int): ContentScale {
+    val ratio = if (preview is V2GalleryPreview) preview.clipWidth.toFloat() / preview.clipHeight else width.toFloat() / height
+    return if (ratio in 0.5f..0.8f) ContentScale.Crop else ContentScale.Fit
+}
+
+@Composable
+internal fun GalleryPreviewImage(preview: GalleryPreview, cache: GalleryPreviewCache<ImageBitmap>, modifier: Modifier = Modifier.height(180.dp)) {
     var painter by remember(preview, cache) { mutableStateOf<BitmapPainter?>(null) }
     var failure by remember(preview, cache) { mutableStateOf<GalleryFailure?>(null) }
     var attempt by remember(preview, cache) { mutableIntStateOf(0) }
+    var scale by remember(preview, cache) { mutableStateOf(ContentScale.Fit) }
     LaunchedEffect(preview, cache, attempt) {
         failure = null
         try {
             val bitmap = cache.get(preview)
             val region = previewRegion(preview, bitmap.width, bitmap.height)
+            scale = galleryPreviewContentScale(preview, bitmap.width, bitmap.height)
             painter = BitmapPainter(bitmap.value, IntOffset(region.x, 0), IntSize(region.width, region.height))
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -47,11 +65,11 @@ internal fun GalleryPreviewImage(preview: GalleryPreview, cache: GalleryPreviewC
             failure = error.failure
         }
     }
-    Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) {
+    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         val image = painter
         val error = failure
         if (image != null) {
-            Image(image, galleryString(Res.string.gallery_preview_page, preview.position + 1), Modifier.fillMaxWidth(), contentScale = ContentScale.Fit)
+            Image(image, galleryString(Res.string.gallery_preview_page, preview.position + 1), Modifier.fillMaxSize(), contentScale = scale)
         } else if (error != null) {
             TextButton(onClick = { attempt++ }) { Text(galleryString(Res.string.gallery_preview_retry, error.userMessage())) }
         } else {

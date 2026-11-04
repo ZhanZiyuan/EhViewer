@@ -1,20 +1,20 @@
 package com.ehviewer.shared
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,7 +59,6 @@ import ehviewer.app.shared.generated.resources.gallery_downloaded
 import ehviewer.app.shared.generated.resources.gallery_favorite_add
 import ehviewer.app.shared.generated.resources.gallery_favorite_edit
 import ehviewer.app.shared.generated.resources.gallery_history_unavailable
-import ehviewer.app.shared.generated.resources.gallery_page_number
 import ehviewer.app.shared.generated.resources.gallery_pages
 import ehviewer.app.shared.generated.resources.gallery_previews_browse
 import ehviewer.app.shared.generated.resources.gallery_rating
@@ -80,7 +79,8 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     var reader by remember(gallery.gid) { mutableStateOf<String?>(null) }
     var browsingPreviews by remember(gallery.gid) { mutableStateOf(false) }
     var previewPage by remember(gallery.gid) { mutableIntStateOf(0) }
-    val previewsState = rememberLazyListState()
+    val previewsState = rememberLazyGridState()
+    val previewCache = rememberGalleryPreviewCache(session, gallery.gid, gallery.token)
     val scope = rememberCoroutineScope()
     var saved by remember(gallery.gid) { mutableStateOf<ReadingPosition?>(null) }
     var stateFailure by remember { mutableStateOf(false) }
@@ -106,7 +106,9 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
         loading = true
         failure = null
         try {
-            detail = session.details(gallery.gid, gallery.token)
+            val loaded = session.details(gallery.gid, gallery.token)
+            previewPageCount(loaded) // Reject inconsistent/duplicate positions before creating grid keys.
+            detail = loaded
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: GalleryRequestException) {
@@ -131,7 +133,7 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     if (browsingPreviews && document != null) {
         GalleryPreviewScreen(session, document, previewPage, onPage = { previewPage = it }, onOpen = {
             reader = session.content.pageUrl(document.gid, it.pToken, it.position).toString()
-        }, onBack = { browsingPreviews = false })
+        }, onBack = { browsingPreviews = false }, cache = previewCache)
         return
     }
     if (editingFavorite) {
@@ -154,111 +156,112 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     val first = document?.previewList?.firstOrNull()
     val resume = saved?.takeIf { document != null && it.index in 0 until document.pages }
     val existingDownload = downloads?.tasks?.collectAsState()?.value?.firstOrNull { it.gid == gallery.gid }
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onBack) { Text(backLabel ?: galleryString(Res.string.gallery_back_search)) }
-            TextButton(onClick = { attempt++ }, enabled = !loading) { Text(galleryString(Res.string.gallery_refresh)) }
-        }
-        Text(document?.title ?: gallery.title.orEmpty(), maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(vertical = 12.dp))
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        failure?.let { GalleryError(it) { attempt++ } }
-        if (stateFailure) {
-            Row {
-                Text(galleryString(Res.string.gallery_history_unavailable), Modifier.weight(1f))
-                TextButton(onClick = { stateAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val columns = galleryPreviewColumns(maxWidth)
+        Column(Modifier.fillMaxSize()) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = onBack) { Text(backLabel ?: galleryString(Res.string.gallery_back_search)) }
+                TextButton(onClick = { attempt++ }, enabled = !loading) { Text(galleryString(Res.string.gallery_refresh)) }
             }
-        }
-        LazyColumn(Modifier.weight(1f), state = previewsState) {
-            item {
-                GalleryDetailHeaderSection(
-                    document ?: gallery,
-                    covers,
-                    onInformation = { information = true },
-                    onCategory = { onCategory((document ?: gallery).category) },
-                    onUploader = { (document ?: gallery).uploader?.let(onUploader) },
-                    download = { modifier ->
-                        val label = when {
-                            addingDownload -> galleryString(Res.string.gallery_download_adding)
-                            existingDownload == null -> galleryString(Res.string.gallery_download_add)
-                            else -> galleryString(
-                                when (existingDownload.state) {
-                                    GalleryDownloadState.QUEUED -> Res.string.gallery_download_queued
-                                    GalleryDownloadState.DOWNLOADING -> Res.string.gallery_download_downloading
-                                    GalleryDownloadState.PAUSED -> Res.string.gallery_download_paused
-                                    GalleryDownloadState.FAILED -> if (existingDownload.failure == GalleryDownloadFailure.STORAGE) Res.string.gallery_download_storage_failed else Res.string.gallery_download_failed
-                                    GalleryDownloadState.COMPLETE -> Res.string.gallery_downloaded
-                                },
-                            )
-                        }
-                        FilledTonalButton(onClick = {
-                            if (existingDownload != null) {
-                                onDownloads()
-                            } else if (document != null && downloads != null) {
-                                addingDownload = true
-                                downloadFailed = false
-                                scope.launch {
-                                    try {
-                                        downloads.enqueue(document, session.restricted)
+            Text(document?.title ?: gallery.title.orEmpty(), maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(vertical = 12.dp))
+            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            failure?.let { GalleryError(it) { attempt++ } }
+            if (stateFailure) {
+                Row {
+                    Text(galleryString(Res.string.gallery_history_unavailable), Modifier.weight(1f))
+                    TextButton(onClick = { stateAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
+                }
+            }
+            LazyVerticalGrid(GridCells.Fixed(columns), Modifier.weight(1f), state = previewsState, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Column(Modifier.fillMaxWidth()) {
+                        GalleryDetailHeaderSection(
+                            document ?: gallery,
+                            covers,
+                            onInformation = { information = true },
+                            onCategory = { onCategory((document ?: gallery).category) },
+                            onUploader = { (document ?: gallery).uploader?.let(onUploader) },
+                            download = { modifier ->
+                                val label = when {
+                                    addingDownload -> galleryString(Res.string.gallery_download_adding)
+                                    existingDownload == null -> galleryString(Res.string.gallery_download_add)
+                                    else -> galleryString(
+                                        when (existingDownload.state) {
+                                            GalleryDownloadState.QUEUED -> Res.string.gallery_download_queued
+                                            GalleryDownloadState.DOWNLOADING -> Res.string.gallery_download_downloading
+                                            GalleryDownloadState.PAUSED -> Res.string.gallery_download_paused
+                                            GalleryDownloadState.FAILED -> if (existingDownload.failure == GalleryDownloadFailure.STORAGE) Res.string.gallery_download_storage_failed else Res.string.gallery_download_failed
+                                            GalleryDownloadState.COMPLETE -> Res.string.gallery_downloaded
+                                        },
+                                    )
+                                }
+                                FilledTonalButton(onClick = {
+                                    if (existingDownload != null) {
                                         onDownloads()
-                                    } catch (cancelled: CancellationException) {
-                                        throw cancelled
-                                    } catch (_: Exception) {
-                                        downloadFailed = true
-                                    } finally {
-                                        addingDownload = false
+                                    } else if (document != null && downloads != null) {
+                                        addingDownload = true
+                                        downloadFailed = false
+                                        scope.launch {
+                                            try {
+                                                downloads.enqueue(document, session.restricted)
+                                                onDownloads()
+                                            } catch (cancelled: CancellationException) {
+                                                throw cancelled
+                                            } catch (_: Exception) {
+                                                downloadFailed = true
+                                            } finally {
+                                                addingDownload = false
+                                            }
+                                        }
                                     }
+                                }, enabled = !addingDownload && downloads != null && (document != null || existingDownload != null), modifier = modifier) {
+                                    Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
-                            }
-                        }, enabled = !addingDownload && downloads != null && (document != null || existingDownload != null), modifier = modifier) {
-                            Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    },
-                    read = { modifier ->
-                        Button(onClick = {
-                            if (document != null && first != null) {
-                                opening = true
-                                scope.launch {
-                                    try {
-                                        reader = if (resume != null) readingResumeUrl(session.content, document, resume) else session.content.pageUrl(document.gid, first.pToken, first.position).toString()
-                                    } catch (cancelled: CancellationException) {
-                                        throw cancelled
-                                    } catch (error: GalleryRequestException) {
-                                        failure = error.failure
-                                    } finally {
-                                        opening = false
+                            },
+                            read = { modifier ->
+                                Button(onClick = {
+                                    if (document != null && first != null) {
+                                        opening = true
+                                        scope.launch {
+                                            try {
+                                                reader = if (resume != null) readingResumeUrl(session.content, document, resume) else session.content.pageUrl(document.gid, first.pToken, first.position).toString()
+                                            } catch (cancelled: CancellationException) {
+                                                throw cancelled
+                                            } catch (error: GalleryRequestException) {
+                                                failure = error.failure
+                                            } finally {
+                                                opening = false
+                                            }
+                                        }
                                     }
+                                }, enabled = !opening && document != null && first != null, modifier = modifier) {
+                                    Text(if (resume == null) galleryString(Res.string.gallery_read_gallery) else galleryString(Res.string.gallery_continue_reading, resume.index + 1), maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
-                            }
-                        }, enabled = !opening && document != null && first != null, modifier = modifier) {
-                            Text(if (resume == null) galleryString(Res.string.gallery_read_gallery) else galleryString(Res.string.gallery_continue_reading, resume.index + 1), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            },
+                            fallbackCoverKey = gallery.thumbKey,
+                        )
+                        if (downloadFailed) Text(galleryString(Res.string.gallery_download_add_failed), color = MaterialTheme.colorScheme.error)
+                        if (document != null) {
+                            if (resume != null && first != null) TextButton(onClick = { reader = session.content.pageUrl(document.gid, first.pToken, first.position).toString() }) { Text(galleryString(Res.string.gallery_read_start)) }
+                            Text(galleryString(Res.string.gallery_rating, document.rating, document.ratingCount), Modifier.padding(vertical = 8.dp))
+                            GalleryLinkActions(session.galleries.galleryUrl(document.gid, document.token).toString())
+                            Button(onClick = { editingFavorite = true }) { Text(if (document.favoriteSlot in 0..9) galleryString(Res.string.gallery_favorite_edit) else galleryString(Res.string.gallery_favorite_add)) }
                         }
-                    },
-                    fallbackCoverKey = gallery.thumbKey,
-                )
-                if (downloadFailed) Text(galleryString(Res.string.gallery_download_add_failed), color = MaterialTheme.colorScheme.error)
-                if (document != null) {
-                    if (resume != null && first != null) TextButton(onClick = { reader = session.content.pageUrl(document.gid, first.pToken, first.position).toString() }) { Text(galleryString(Res.string.gallery_read_start)) }
-                    Text(galleryString(Res.string.gallery_rating, document.rating, document.ratingCount), Modifier.padding(vertical = 8.dp))
-                    GalleryLinkActions(session.galleries.galleryUrl(document.gid, document.token).toString())
-                    Button(onClick = { editingFavorite = true }) { Text(if (document.favoriteSlot in 0..9) galleryString(Res.string.gallery_favorite_edit) else galleryString(Res.string.gallery_favorite_add)) }
-                }
-            }
-            if (document != null) {
-                items(document.tagGroups) { group ->
-                    GalleryDetailTagGroup(group, onTag)
-                }
-                item {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(galleryString(Res.string.gallery_pages), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
-                        TextButton(onClick = { browsingPreviews = true }) { Text(galleryString(Res.string.gallery_previews_browse)) }
                     }
                 }
-                items(document.previewList, key = { it.position }) { preview ->
-                    ListItem(
-                        headlineContent = { Text(galleryString(Res.string.gallery_page_number, preview.position + 1)) },
-                        modifier = Modifier.clickable { reader = session.content.pageUrl(document.gid, preview.pToken, preview.position).toString() },
-                    )
-                    HorizontalDivider()
+                if (document != null) {
+                    items(document.tagGroups, span = { GridItemSpan(maxLineSpan) }) { group ->
+                        GalleryDetailTagGroup(group, onTag)
+                    }
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(galleryString(Res.string.gallery_pages), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
+                            TextButton(onClick = { browsingPreviews = true }) { Text(galleryString(Res.string.gallery_previews_browse)) }
+                        }
+                    }
+                    items(document.previewList, key = { it.position }) { preview ->
+                        GalleryPreviewCell(preview, previewCache, onOpen = { reader = session.content.pageUrl(document.gid, preview.pToken, preview.position).toString() })
+                    }
                 }
             }
         }

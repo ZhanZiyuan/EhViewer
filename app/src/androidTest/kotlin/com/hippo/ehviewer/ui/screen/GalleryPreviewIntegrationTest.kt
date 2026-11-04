@@ -88,7 +88,7 @@ class GalleryPreviewIntegrationTest {
     private fun detail(page: Int): String {
         val previews = (if (page == 0) 0..1 else 2..2).joinToString("") { index ->
             val pageToken = (index + 1).toString().repeat(10)
-            """<a href="https://e-hentai.org/s/$pageToken/$gid-${index + 1}"><div title="Page ${index + 1}" style="width:80px;height:100px;background:url(https://ehgt.org/$index.png)"></div></a>"""
+            """<a href="https://e-hentai.org/s/$pageToken/$gid-${index + 1}"><div title="Page ${index + 1}" style="width:80px;height:100px;background:url(https://ehgt.org/preview-$index.png)"></div></a>"""
         }
         return """<!DOCTYPE html><html><body>
             <script>var gid = $gid; var token = "$token"; var apiuid = -1; var apikey = "0000000000"; var average_rating = 4.5;</script>

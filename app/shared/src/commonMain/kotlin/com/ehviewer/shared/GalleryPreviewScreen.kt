@@ -1,12 +1,11 @@
 package com.ehviewer.shared
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -31,7 +30,6 @@ import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_back_details
-import ehviewer.app.shared.generated.resources.gallery_page_number
 import ehviewer.app.shared.generated.resources.gallery_previews_empty
 import ehviewer.app.shared.generated.resources.gallery_previews_next
 import ehviewer.app.shared.generated.resources.gallery_previews_previous
@@ -58,19 +56,13 @@ internal fun checkPreviewWindow(first: GalleryDetail, window: GalleryDetail, pag
 }
 
 @Composable
-internal fun GalleryPreviewScreen(session: GalleryLibrary, detail: GalleryDetail, page: Int, onPage: (Int) -> Unit, onOpen: (GalleryPreview) -> Unit, onBack: () -> Unit) {
+internal fun GalleryPreviewScreen(session: GalleryLibrary, detail: GalleryDetail, page: Int, onPage: (Int) -> Unit, onOpen: (GalleryPreview) -> Unit, onBack: () -> Unit, cache: GalleryPreviewCache<ImageBitmap>) {
     var previews by remember(detail) { mutableStateOf(detail.previewList) }
     var loadedPage by remember(detail) { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<GalleryFailure?>(null) }
     var attempt by remember { mutableIntStateOf(0) }
     val grid = rememberLazyGridState()
-    val cache = remember(session, detail.gid, detail.token) {
-        GalleryPreviewCache<ImageBitmap> { preview ->
-            val bitmap = decodeGalleryImage(session.content.preview(preview, detail.gid, detail.token))
-            PreviewBitmap(bitmap, bitmap.width, bitmap.height)
-        }
-    }
     var count by remember(detail) { mutableIntStateOf(0) }
     LaunchedEffect(detail, page, attempt) {
         loading = true
@@ -92,24 +84,24 @@ internal fun GalleryPreviewScreen(session: GalleryLibrary, detail: GalleryDetail
             loading = false
         }
     }
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back_details)) }
-            Text(galleryString(Res.string.gallery_previews_title))
-        }
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-        failure?.let { GalleryError(it) { attempt++ } }
-        if (count == 0 && !loading && failure == null) Text(galleryString(Res.string.gallery_previews_empty))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = { onPage(loadedPage - 1) }, enabled = !loading && loadedPage > 0) { Text(galleryString(Res.string.gallery_previews_previous)) }
-            Text(if (count == 0) "0 / 0" else "${loadedPage + 1} / $count")
-            TextButton(onClick = { onPage(loadedPage + 1) }, enabled = !loading && loadedPage + 1 < count) { Text(galleryString(Res.string.gallery_previews_next)) }
-        }
-        LazyVerticalGrid(GridCells.Adaptive(140.dp), Modifier.weight(1f), state = grid) {
-            items(previews, key = { it.position }) { preview ->
-                Column(Modifier.padding(4.dp).clickable(enabled = !loading) { onOpen(preview) }) {
-                    GalleryPreviewImage(preview, cache)
-                    Text(galleryString(Res.string.gallery_page_number, preview.position + 1), Modifier.padding(4.dp))
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val columns = galleryPreviewColumns(maxWidth)
+        Column(Modifier.fillMaxSize()) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back_details)) }
+                Text(galleryString(Res.string.gallery_previews_title))
+            }
+            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            failure?.let { GalleryError(it) { attempt++ } }
+            if (count == 0 && !loading && failure == null) Text(galleryString(Res.string.gallery_previews_empty))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                TextButton(onClick = { onPage(loadedPage - 1) }, enabled = !loading && loadedPage > 0) { Text(galleryString(Res.string.gallery_previews_previous)) }
+                Text(if (count == 0) "0 / 0" else "${loadedPage + 1} / $count")
+                TextButton(onClick = { onPage(loadedPage + 1) }, enabled = !loading && loadedPage + 1 < count) { Text(galleryString(Res.string.gallery_previews_next)) }
+            }
+            LazyVerticalGrid(GridCells.Fixed(columns), Modifier.weight(1f), state = grid, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(previews, key = { it.position }) { preview ->
+                    GalleryPreviewCell(preview, cache, onOpen = { onOpen(preview) }, enabled = !loading)
                 }
             }
         }
