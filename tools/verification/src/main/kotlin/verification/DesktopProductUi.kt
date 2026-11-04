@@ -26,6 +26,12 @@ import kotlin.io.path.writeText
 
 internal val desktopComicColors = listOf(0xff285f93.toInt(), 0xffa44760.toInt(), 0xff417856.toInt())
 
+/** Activate only the product process started by this check, never a title-matched user window. */
+internal fun windowsProductActivation(processId: Long): List<String> {
+    require(processId in 1..Int.MAX_VALUE.toLong())
+    return listOf("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "(New-Object -ComObject WScript.Shell).AppActivate($processId)")
+}
+
 /** Generated, explicitly labeled owned input; no downloaded comic or user's private profile. */
 internal fun writeDesktopComic(path: Path) {
     Files.newOutputStream(path, CREATE_NEW).use { stream ->
@@ -102,6 +108,25 @@ fun desktopProductUi(image: Path, runtimeReport: Path, output: Path): Map<String
         val robot = Robot().apply { autoDelay = 50 }
         val screen = GraphicsEnvironment.getLocalGraphicsEnvironment().screenDevices.map { it.defaultConfiguration.bounds }.reduce(Rectangle::union)
         fun capture(name: String): BufferedImage = robot.createScreenCapture(screen).also { check(ImageIO.write(it, "png", absolute.resolve(name).toFile())) }
+        if (windows) {
+            // The ARM runner's first-logon privacy experience can cover a live product window.
+            // Activate the owned PID before judging pixels; activation alone never passes the check.
+            capture("before-product-activation.png")
+            val activation = StringBuilder("owned_product_pid=${process.pid()}\n")
+            val deadline = System.nanoTime() + Duration.ofSeconds(30).toNanos()
+            var activated = false
+            while (System.nanoTime() < deadline && !activated) {
+                check(process.isAlive) { "Normal product exited before activation: ${log.readText()}" }
+                val observed = command(*windowsProductActivation(process.pid()).toTypedArray(), timeout = Duration.ofSeconds(10)).trim()
+                activation.append("AppActivate=").append(observed).append('\n')
+                absolute.resolve("window-activation.log").writeText(activation.toString())
+                require(observed in setOf("True", "False")) { "Unexpected Windows activation result: $observed" }
+                activated = observed == "True"
+                if (!activated) Thread.sleep(100)
+            }
+            if (!activated) capture("failed-product-activation.png")
+            check(activated) { "Owned product window could not be activated; raw display retained" }
+        }
         fun colorPoint(image: BufferedImage, color: Int): Point? {
             var count = 0
             var first: Point? = null
@@ -158,6 +183,7 @@ fun desktopProductUi(image: Path, runtimeReport: Path, output: Path): Map<String
             "normal_entry" to "--open", "launcher_sha256" to measured["launcher_sha256"], "runtime_report_sha256" to sha256(runtimeReport),
             "fixture" to "GENERATED_OWNED_COMIC_NOT_REMOTE_GALLERY", "fixture_sha256" to sha256(comic),
             "decoded_keyboard_pages" to listOf(1, 2, 1), "fresh_profile" to true, "raw_full_display_captures" to true,
+            "windows_activation" to if (windows) "OWNED_PID_APP_ACTIVATE" else "NOT_APPLICABLE",
             "screenshots" to listOf("reader-page1.png", "reader-page2.png", "reader-return-page1.png", "library-after-reader.png").associateWith { sha256(absolute.resolve(it)) },
             "library_return" to "CAPTURED_MANUAL_REVIEW_REQUIRED", "full_visual_parity" to "NOT_VERIFIED", "desktop_p0" to "NOT_VERIFIED", "publish_enabled" to false,
         )

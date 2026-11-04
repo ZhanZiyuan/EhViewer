@@ -5,10 +5,21 @@ import java.nio.file.Files
 import java.util.zip.ZipFile
 import javax.imageio.ImageIO
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DesktopProductUiTest {
+    @Test
+    fun activationUsesOnlyTheOwnedNumericPidWithoutATitleOrAnotherProcess() {
+        val command = windowsProductActivation(12345)
+        assertEquals("powershell.exe", command.first())
+        assertEquals("(New-Object -ComObject WScript.Shell).AppActivate(12345)", command.last())
+        for (invalid in listOf(0L, -1L, Int.MAX_VALUE.toLong() + 1)) {
+            assertThrows(IllegalArgumentException::class.java) { windowsProductActivation(invalid) }
+        }
+    }
+
     @Test
     fun ownedComicContainsThreeDistinctRealDecodablePagesInNaturalOrder() = temporary { directory ->
         val file = directory.resolve("Owned offline comic 资料.cbz")

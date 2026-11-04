@@ -811,6 +811,9 @@ jobs:
     needs: [source_policy, shared_kmp]
     if: always() && needs.source_policy.result == 'success' && fromJSON(needs.source_policy.outputs.plan).jobs.windows_native_core.required
     runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: pwsh
     strategy:
       fail-fast: false
       matrix:
