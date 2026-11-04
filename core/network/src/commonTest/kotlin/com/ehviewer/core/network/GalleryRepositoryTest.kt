@@ -22,6 +22,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -35,6 +36,38 @@ class GalleryRepositoryTest {
     private val decoder = GalleryListDecoder { bytes ->
         assertEquals("test-html", bytes.decodeToString())
         result
+    }
+
+    @Test fun everyListingRouteRestoresLanguageBadgesWithoutInventingOrReplacingMetadata() = runTest {
+        val engine = MockEngine { respond("owned language listing") }
+        val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+        try {
+            val repository = GalleryRepository(
+                client,
+                GalleryListDecoder {
+                    GallerySearchResult(
+                        null,
+                        null,
+                        listOf(
+                            BaseGalleryInfo(gid = 1, title = "[Chinese] owned", simpleTags = listOf("language:english")),
+                            BaseGalleryInfo(gid = 2, title = "[Español] owned", simpleTags = listOf("other:comic")),
+                            BaseGalleryInfo(gid = 3, title = "Unspecified owned gallery"),
+                            BaseGalleryInfo(gid = 4, title = "[English] owned", simpleTags = listOf("language:english"), simpleLanguage = "FR"),
+                        ),
+                    )
+                },
+            )
+            for (route in listOf<suspend () -> GallerySearchResult>({ repository.search("owned") }, { repository.uploader("Owned Uploader") }, { repository.tag("language:english") })) {
+                val page = route()
+                assertEquals(listOf("EN", "ES", null, "FR"), page.galleryInfoList.map { it.simpleLanguage })
+                assertNull(page.prev)
+                assertNull(page.next)
+                assertEquals(listOf(1L, 2L, 3L, 4L), page.galleryInfoList.map { it.gid })
+            }
+        } finally {
+            client.close()
+            engine.close()
+        }
     }
 
     @Test fun cancelledTagRequestsDoNotInvokeTheDecoderOrReturnEmptySuccess() = runTest {

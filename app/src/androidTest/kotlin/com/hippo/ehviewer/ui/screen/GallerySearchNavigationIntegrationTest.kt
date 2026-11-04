@@ -200,7 +200,11 @@ class GallerySearchNavigationIntegrationTest {
                     click("Retry")
                     visible("Previous page gallery")
                     query("cancelled query")
+                    // A real search submission must leave editing mode on phone and tablet.
+                    checkNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).click()
+                    assertTrue("Search field did not actually receive focus", device.wait(Until.hasObject(By.clazz("android.widget.EditText").focused(true)), 5_000))
                     device.submitSharedSearch()
+                    assertTrue("Submitted search retained editable focus", device.wait(Until.gone(By.clazz("android.widget.EditText").focused(true)), 5_000))
                     runBlocking { withTimeout(5_000) { blockedStarted.await() } }
                     query("replacement query")
                     device.submitSharedSearch()

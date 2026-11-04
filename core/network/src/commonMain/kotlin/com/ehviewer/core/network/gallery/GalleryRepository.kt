@@ -30,6 +30,11 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
     private val host = if (restricted) "exhentai.org" else "e-hentai.org"
     private val requests = GalleryRequests(client, host)
 
+    private fun decodeListing(html: ByteArray) = decoder.decode(html).also { page ->
+        // Rust supplies raw tags; the original Android client derives its language badge here.
+        page.galleryInfoList.filter { it.simpleLanguage == null }.forEach { it.generateSLang() }
+    }
+
     suspend fun search(query: String = "", cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult {
         require(query.length <= 4096 && validSearchCursor(cursor))
         val url = URLBuilder(URLProtocol.HTTPS, host).apply {
@@ -38,7 +43,7 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
             if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
             filters.appendTo(this)
         }.build()
-        return requests.document(url, decoder::decode).also {
+        return requests.document(url, ::decodeListing).also {
             if (!validSearchCursor(it.prev) || !validSearchCursor(it.next)) invalid()
         }
     }
@@ -51,7 +56,7 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
             if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
             filters.appendTo(this)
         }.build()
-        return requests.document(url, decoder::decode).also {
+        return requests.document(url, ::decodeListing).also {
             if (!validSearchCursor(it.prev) || !validSearchCursor(it.next)) invalid()
         }
     }
@@ -68,7 +73,7 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
             if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
             filters.appendTo(this)
         }.build()
-        return requests.document(url, decoder::decode).also {
+        return requests.document(url, ::decodeListing).also {
             if (!validSearchCursor(it.prev) || !validSearchCursor(it.next)) invalid()
         }
     }

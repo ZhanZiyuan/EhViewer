@@ -3,6 +3,7 @@ package com.ehviewer.shared
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,11 +14,13 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -29,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.Image as CoilImage
@@ -71,6 +75,7 @@ import kotlinx.coroutines.launch
 
 /** Detail and reader routes retain the original search and detail state when navigating back. */
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, downloads: GalleryDownloads?, covers: GalleryCoverCache<CoilImage>, onDownloads: () -> Unit, onCategory: (Int) -> Unit, onUploader: (String) -> Unit, onTag: (String) -> Unit, backLabel: String? = null, onBack: () -> Unit) {
     var detail by remember(gallery.gid) { mutableStateOf<GalleryDetail?>(null) }
     var failure by remember(gallery.gid) { mutableStateOf<GalleryFailure?>(null) }
@@ -80,6 +85,8 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     var browsingPreviews by remember(gallery.gid) { mutableStateOf(false) }
     var previewPage by remember(gallery.gid) { mutableIntStateOf(0) }
     val previewsState = rememberLazyGridState()
+    // Keep the title's collapse state alongside the grid when a reader/preview route opens.
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val previewCache = rememberGalleryPreviewCache(session, gallery.gid, gallery.token)
     val scope = rememberCoroutineScope()
     var saved by remember(gallery.gid) { mutableStateOf<ReadingPosition?>(null) }
@@ -159,11 +166,14 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val columns = galleryPreviewColumns(maxWidth)
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = onBack) { Text(backLabel ?: galleryString(Res.string.gallery_back_search)) }
-                TextButton(onClick = { attempt++ }, enabled = !loading) { Text(galleryString(Res.string.gallery_refresh)) }
-            }
-            Text(document?.title ?: gallery.title.orEmpty(), maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(vertical = 12.dp))
+            GalleryDetailAppBar(
+                title = document?.title ?: gallery.title.orEmpty(),
+                backLabel = backLabel ?: galleryString(Res.string.gallery_back_search),
+                onBack = onBack,
+                onRefresh = { attempt++ },
+                refreshEnabled = !loading,
+                scrollBehavior = scrollBehavior,
+            )
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             failure?.let { GalleryError(it) { attempt++ } }
             if (stateFailure) {
@@ -172,7 +182,7 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                     TextButton(onClick = { stateAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
                 }
             }
-            LazyVerticalGrid(GridCells.Fixed(columns), Modifier.weight(1f), state = previewsState, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyVerticalGrid(GridCells.Fixed(columns), Modifier.weight(1f).nestedScroll(scrollBehavior.nestedScrollConnection), state = previewsState, contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(Modifier.fillMaxWidth()) {
                         GalleryDetailHeaderSection(

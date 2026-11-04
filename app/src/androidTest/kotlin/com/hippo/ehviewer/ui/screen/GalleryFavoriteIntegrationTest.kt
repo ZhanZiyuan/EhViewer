@@ -182,7 +182,7 @@ class GalleryFavoriteIntegrationTest {
             val deadline = SystemClock.uptimeMillis() + 15_000
             while (SystemClock.uptimeMillis() < deadline) {
                 try {
-                    var control = device.findObject(By.text(text))
+                    var control = device.findObject(By.text(text)) ?: device.findObject(By.desc(text))
                     while (control != null && !control.isClickable) control = control.parent
                     if (control != null && control.isEnabled) {
                         control.click()
@@ -350,6 +350,16 @@ class GalleryFavoriteIntegrationTest {
                     runBlocking { storageStore.edit { it[intPreferencesKey("schema")] = 2 } }
                     click("1024 MiB limit")
                     assertTrue(device.wait(Until.hasObject(By.text("The storage limit could not be saved. Reload before trying again.")), 5_000))
+                    val clippedChoice = device.findObject(By.text("1024 MiB limit"))?.visibleBounds?.isEmpty != false
+                    if (clippedChoice) {
+                        device.dumpWindowHierarchy(File(context.cacheDir, "favorite-storage-disabled-before-scroll.xml"))
+                        device.takeScreenshot(File(context.cacheDir, "favorite-storage-disabled-before-scroll.png"))
+                    }
+                    storageChoice("1024 MiB limit")
+                    if (clippedChoice) {
+                        device.dumpWindowHierarchy(File(context.cacheDir, "favorite-storage-disabled-after-scroll.xml"))
+                        device.takeScreenshot(File(context.cacheDir, "favorite-storage-disabled-after-scroll.png"))
+                    }
                     val failedChoice = requireNotNull(requireNotNull(device.findObject(By.text("1024 MiB limit"))).parent)
                     assertFalse(failedChoice.isEnabled)
                     runBlocking { storageStore.edit { it[intPreferencesKey("schema")] = 1 } }

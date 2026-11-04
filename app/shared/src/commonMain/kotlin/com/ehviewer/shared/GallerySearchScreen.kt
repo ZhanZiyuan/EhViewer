@@ -55,6 +55,8 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -167,6 +169,8 @@ fun GalleryLibraryScreen(
     initialLocalLibrary: Boolean = false,
     onReady: () -> Unit = {},
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     var listDensity by remember(listPreferences) { mutableStateOf<GalleryListDensity?>(null) }
     var listFailed by remember(listPreferences) { mutableStateOf(false) }
     var listAttempt by remember { mutableIntStateOf(0) }
@@ -287,6 +291,9 @@ fun GalleryLibraryScreen(
     }
 
     fun search() {
+        // Match Android's collapsed search: the submitted query leaves editing mode.
+        focusManager.clearFocus(force = true)
+        keyboard?.hide()
         val routed = (failedSearch ?: loadedSearch)?.takeIf { it.query == query }
         load(GallerySearchRequest(query, filters, uploader = routed?.uploader, tag = routed?.tag), replaceResults = true)
     }
@@ -356,7 +363,7 @@ fun GalleryLibraryScreen(
                     Box(Modifier.fillMaxSize().then(if (immersive) Modifier else Modifier.windowInsetsPadding(WindowInsets.safeDrawing)), contentAlignment = Alignment.TopCenter) {
                         // Search and History are Android's floating-search-bar pages; the others keep the content column.
                         val searchBarPage = !settingsOpen && !(account && accountContent != null) && !(archivesOpen && archiveContent != null) && !downloadsOpen && selected == null
-                        Column(galleryPageModifier(searchBarPage, immersive)) {
+                        Column(galleryPageModifier(searchBarPage, immersive, edgeToEdge = settingsOpen || selected != null)) {
                             if (settingsOpen) {
                                 GallerySettingsScreen(networkPreferences, appearance, readerState, themeMode, appearanceFailed, language, languageTag, languageReady, languageFailed, onLanguageChanged = { languageTag = it }, onRetryLanguage = { languageAttempt++ }, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = ::leaveSettings, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings, listPreferences = listPreferences, listDensity = listDensity, listFailed = listFailed, onListChanged = { listDensity = it }, onRetryList = { listAttempt++ })
                                 return@Column

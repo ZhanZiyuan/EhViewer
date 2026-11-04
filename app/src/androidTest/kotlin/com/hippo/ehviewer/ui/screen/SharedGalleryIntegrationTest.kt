@@ -3,6 +3,7 @@ package com.hippo.ehviewer.ui.screen
 import android.content.Intent
 import android.content.res.Configuration
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -25,10 +26,13 @@ import com.hippo.ehviewer.EhDB
 import com.hippo.ehviewer.Settings
 import com.hippo.ehviewer.download.downloadLocation
 import com.hippo.ehviewer.ui.MainActivity
+import com.hippo.ehviewer.updateWhenThemeChanges
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingModeType
 import java.io.File
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
@@ -55,8 +59,13 @@ class SharedGalleryIntegrationTest {
             it[needSignIn] = false // Exercise the existing supported guest flow.
             it[updateIntervalDays] = 0
             it[launchPage] = 8 // The appended destination preserves original persisted indexes 0..7.
+            // Exercise a real theme transition even when the retained device already stores Dark.
+            // An idempotent Dark write has no change event to update AppCompat's process default.
+            it[theme] = AppCompatDelegate.MODE_NIGHT_NO
         }
         try {
+            // A preference-only setup does not reset Android's retained application night mode.
+            runBlocking { withContext(Dispatchers.Main) { updateWhenThemeChanges(AppCompatDelegate.MODE_NIGHT_NO) } }
             val intent = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             ActivityScenario.launch<MainActivity>(intent).use { scenario ->
                 fun searchIsVisible(stage: String = "search") {
@@ -69,6 +78,20 @@ class SharedGalleryIntegrationTest {
                     assertTrue("Common search did not render: $stage", visible)
                 }
                 searchIsVisible()
+                fun themeApplied(mode: Int): Boolean {
+                    var applied = false
+                    scenario.onActivity { activity ->
+                        val night = if (mode == AppCompatDelegate.MODE_NIGHT_YES) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO
+                        applied = activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == night &&
+                            AppCompatDelegate.getDefaultNightMode() == mode &&
+                            activity.lifecycle.currentState == Lifecycle.State.RESUMED &&
+                            activity.window.decorView.hasWindowFocus() && !activity.isChangingConfigurations
+                    }
+                    return applied
+                }
+                // The OS retains per-app night mode between launches. Settle the explicit Light
+                // precondition before rotating, rather than racing the previous run's recreation.
+                runBlocking { withTimeout(10_000) { while (!themeApplied(AppCompatDelegate.MODE_NIGHT_NO)) delay(25) } }
                 fun rotate(landscape: Boolean) {
                     // Android 16 large screens ignore Activity orientation requests.
                     // Rotate the actual display instead of opting out of adaptive behavior.
@@ -96,23 +119,21 @@ class SharedGalleryIntegrationTest {
                 assertFalse("Cancelling filters changed the applied search", device.hasObject(By.desc("Filters applied")))
                 device.openSharedDestination("Settings")
                 assertTrue("Common appearance settings did not open", device.wait(Until.hasObject(By.text("Appearance")), 5_000))
+                assertEquals(GalleryThemeMode.LIGHT, runBlocking { AndroidGalleryAppearanceStore().mode() })
                 requireNotNull(device.wait(Until.findObject(By.text("Dark theme")), 5_000)).click()
                 runBlocking {
                     withTimeout(10_000) {
                         // The existing observer applies the system theme after the preference write.
                         // Back must target the activity whose actual UI configuration has settled.
                         while (true) {
-                            var applied = false
-                            scenario.onActivity { activity ->
-                                applied = activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES && AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_YES
-                            }
-                            if (applied && AndroidGalleryAppearanceStore().mode() == GalleryThemeMode.DARK) break
+                            if (themeApplied(AppCompatDelegate.MODE_NIGHT_YES) && AndroidGalleryAppearanceStore().mode() == GalleryThemeMode.DARK) break
                             delay(25)
                         }
                     }
                     assertEquals(AppCompatDelegate.MODE_NIGHT_YES, Settings.snapshot()[Settings.theme])
                 }
                 instrumentation.waitForIdleSync()
+                assertTrue("Restored settings did not render before Back", device.wait(Until.hasObject(By.desc("Back").enabled(true)), 5_000))
                 device.pressBack()
                 searchIsVisible("settings-return")
                 device.openSharedDestination("Account")
@@ -131,6 +152,7 @@ class SharedGalleryIntegrationTest {
                 restore(launchPage)
                 restore(theme)
             }
+            runBlocking { withContext(Dispatchers.Main) { updateWhenThemeChanges(saved[Settings.theme]) } }
             Settings.appLinkVerifyTip = linkTip
             with(Settings) {
                 downloadScheme = location[0]

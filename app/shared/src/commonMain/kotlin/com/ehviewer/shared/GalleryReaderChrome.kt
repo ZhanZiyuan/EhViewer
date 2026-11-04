@@ -68,10 +68,11 @@ import ehviewer.app.shared.generated.resources.gallery_reader_show_controls
 import kotlin.math.roundToInt
 
 /** Reading drops both the library's width cap and its keyline padding. */
-internal fun galleryPageModifier(searchBarPage: Boolean, immersive: Boolean) = if (searchBarPage || immersive) {
+internal fun galleryPageModifier(searchBarPage: Boolean, immersive: Boolean, edgeToEdge: Boolean = false) = if (searchBarPage || immersive) {
     Modifier.fillMaxSize()
 } else {
-    Modifier.widthIn(max = 1040.dp).fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)
+    val page = Modifier.widthIn(max = 1040.dp).fillMaxSize()
+    if (edgeToEdge) page else page.padding(horizontal = 16.dp, vertical = 12.dp)
 }
 
 internal class GalleryReaderChromeState {

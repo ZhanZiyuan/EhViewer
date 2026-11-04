@@ -3,17 +3,24 @@ package com.ehviewer.shared
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -134,12 +141,9 @@ internal fun GallerySettingsScreen(
     }
     BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text(galleryString(Res.string.gallery_back)) }
-            Text(galleryString(Res.string.gallery_settings), style = MaterialTheme.typography.headlineSmall)
-        }
+        GallerySettingsHeader(onBack)
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(galleryString(Res.string.gallery_language), style = MaterialTheme.typography.titleMedium)
             if (!languageReady || languageSaveFailed) {
                 Text(
@@ -213,9 +217,18 @@ internal fun GallerySettingsScreen(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
+internal fun GallerySettingsHeader(onBack: () -> Unit) {
+    // The surrounding shared screen already applies the platform's safe drawing insets.
+    TopAppBar(title = { Text(galleryString(Res.string.gallery_settings)) }, navigationIcon = {
+        IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) { Icon(GalleryIcons.ArrowBack, galleryString(Res.string.gallery_back)) }
+    }, windowInsets = WindowInsets(0))
+}
+
+@Composable
 internal fun SettingsChoice(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick).heightIn(min = 56.dp).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         RadioButton(selected, onClick = null, enabled = enabled)
-        Text(label, Modifier.padding(start = 8.dp))
+        Text(label, Modifier.weight(1f).padding(start = 8.dp), style = MaterialTheme.typography.bodyLarge)
     }
 }

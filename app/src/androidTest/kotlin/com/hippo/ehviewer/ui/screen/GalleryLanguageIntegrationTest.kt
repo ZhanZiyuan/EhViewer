@@ -1,12 +1,14 @@
 package com.hippo.ehviewer.ui.screen
 
 import android.content.Intent
+import android.os.SystemClock
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.ehviewer.core.data.DataStoreNetworkPreferences
@@ -17,6 +19,7 @@ import com.hippo.ehviewer.Settings
 import com.hippo.ehviewer.download.downloadLocation
 import com.hippo.ehviewer.ui.MainActivity
 import com.hippo.ehviewer.util.setAppLanguage
+import java.io.File
 import java.nio.file.Files
 import java.util.Locale
 import kotlinx.coroutines.delay
@@ -88,12 +91,56 @@ class GalleryLanguageIntegrationTest {
                 }
                 device.openSharedDestination("Settings")
                 fun scrollTo(text: String, direction: Direction) {
-                    repeat(6) {
-                        if (device.hasObject(By.text(text))) return
-                        requireNotNull(device.findObject(By.scrollable(true))).scroll(direction, 0.75f)
-                        instrumentation.waitForIdleSync()
+                    fun <T> snapshot(read: () -> T): T? = try {
+                        read()
+                    } catch (_: StaleObjectException) {
+                        null // A disposed node cannot establish visibility or a scroll boundary.
                     }
-                    visible(text)
+                    fun targetVisible() = snapshot { device.findObject(By.text(text))?.visibleBounds?.isEmpty == false } == true
+                    val deadline = SystemClock.uptimeMillis() + 15_000
+                    var current = direction
+                    var reversed = false
+                    var step = 0
+                    while (step < 9 && SystemClock.uptimeMillis() < deadline) {
+                        if (targetVisible()) return
+                        val candidates = device.findObjects(By.scrollable(true)).mapNotNull { node -> snapshot { node.visibleBounds.takeUnless { it.isEmpty } } }
+                        val bounds = candidates.maxByOrNull { it.width() }
+                        if (bounds == null) {
+                            SystemClock.sleep(25)
+                            continue
+                        }
+                        println("Owned settings scroll target=$text step=$step bounds=$candidates")
+                        fun anchors() = device.findObjects(By.clazz("android.widget.TextView"))
+                            .mapNotNull { node ->
+                                snapshot {
+                                    val rectangle = node.visibleBounds
+                                    if (!rectangle.isEmpty && bounds.contains(rectangle.centerX(), rectangle.centerY())) "${node.text}:${rectangle.top}" else null
+                                }
+                            }
+                        val before = anchors()
+                        // Address the actual viewport with a real OS swipe. UiObject2.scroll may
+                        // report a boundary without moving this recreated Compose ScrollView.
+                        val upper = bounds.top + bounds.height() / 4
+                        val lower = bounds.bottom - bounds.height() / 4
+                        val start = if (current == Direction.DOWN) lower else upper
+                        val end = if (current == Direction.DOWN) upper else lower
+                        check(device.swipe(bounds.centerX(), start, bounds.centerX(), end, 60))
+                        step++
+                        instrumentation.waitForIdleSync()
+                        val after = anchors()
+                        println("Owned settings scroll progress before=${before.take(2)} after=${after.take(2)}")
+                        if (before.isNotEmpty() && before == after && !reversed) {
+                            reversed = true
+                            current = if (direction == Direction.DOWN) Direction.UP else Direction.DOWN
+                        }
+                    }
+                    if (!targetVisible()) {
+                        val name = "shared-language-scroll-${android.os.SystemClock.uptimeMillis()}"
+                        device.dumpWindowHierarchy(File(context.cacheDir, "$name.xml"))
+                        device.takeScreenshot(File(context.cacheDir, "$name.png"))
+                        println("Owned settings scroll failure evidence=$name")
+                    }
+                    assertTrue("Missing localized production control in the actual viewport: $text", targetVisible())
                 }
                 fun savedTimeout(expected: Int?) = runBlocking {
                     withTimeout(5_000) {
@@ -107,6 +154,7 @@ class GalleryLanguageIntegrationTest {
                 }
                 scrollTo("Comfortable columns", Direction.DOWN)
                 savedDensity(0, "Comfortable columns")
+                scrollTo("Compact columns", Direction.DOWN)
                 click("Compact columns")
                 savedDensity(1, "Compact columns")
                 scenario.recreate()
