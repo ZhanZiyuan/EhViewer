@@ -1,6 +1,5 @@
 package com.ehviewer.shared
 
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.ScrollableDefaults
@@ -42,7 +41,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -132,17 +130,18 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
         },
         onSeek = { if (it != index) pendingPosition = it to 0 },
         seekEnabled = pendingPosition == null,
-        modifier = Modifier.focusRequester(focus).onPreviewKeyEvent { event ->
-            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+        modifier = Modifier.focusRequester(focus),
+        onKey = readerKey@{ event ->
+            if (event.type != KeyEventType.KeyDown) return@readerKey false
             when (event.key) {
                 Key.Escape -> onBack()
                 Key.Spacebar -> chrome.toggle()
                 Key.PageDown, Key.DirectionDown -> scope.launch { list.animateScrollBy(list.layoutInfo.viewportSize.height.toFloat()) }
                 Key.PageUp, Key.DirectionUp -> scope.launch { list.animateScrollBy(-list.layoutInfo.viewportSize.height.toFloat()) }
-                else -> return@onPreviewKeyEvent false
+                else -> return@readerKey false
             }
             true
-        }.focusable(),
+        },
         status = {
             if (saveFailure) {
                 Row {

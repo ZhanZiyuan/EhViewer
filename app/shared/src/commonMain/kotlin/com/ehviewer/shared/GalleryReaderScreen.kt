@@ -1,6 +1,5 @@
 package com.ehviewer.shared
 
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -34,7 +33,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -220,19 +218,20 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
             }
         },
         seekEnabled = !loading && !seeking, rtl = rtl,
-        modifier = Modifier.focusRequester(focus).onPreviewKeyEvent { event ->
-            if (event.type != KeyEventType.KeyDown || seeking && event.key != Key.Escape) return@onPreviewKeyEvent false
+        modifier = Modifier.focusRequester(focus),
+        onKey = readerKey@{ event ->
+            if (event.type != KeyEventType.KeyDown || seeking && event.key != Key.Escape) return@readerKey false
             when (event.key) {
                 Key.Escape -> onBack()
                 Key.Spacebar -> chrome.toggle()
-                Key.DirectionLeft -> (if (rtl) next else previous)?.let(::navigate) ?: return@onPreviewKeyEvent false
-                Key.DirectionRight -> (if (rtl) previous else next)?.let(::navigate) ?: return@onPreviewKeyEvent false
-                Key.PageUp -> previous?.let(::navigate) ?: return@onPreviewKeyEvent false
-                Key.PageDown -> next?.let(::navigate) ?: return@onPreviewKeyEvent false
-                else -> return@onPreviewKeyEvent false
+                Key.DirectionLeft -> (if (rtl) next else previous)?.let(::navigate) ?: return@readerKey false
+                Key.DirectionRight -> (if (rtl) previous else next)?.let(::navigate) ?: return@readerKey false
+                Key.PageUp -> previous?.let(::navigate) ?: return@readerKey false
+                Key.PageDown -> next?.let(::navigate) ?: return@readerKey false
+                else -> return@readerKey false
             }
             true
-        }.focusable(),
+        },
         status = {
             if (loading || seeking) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }

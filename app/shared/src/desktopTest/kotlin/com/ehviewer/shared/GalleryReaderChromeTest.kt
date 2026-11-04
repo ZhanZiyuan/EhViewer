@@ -6,14 +6,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.unit.Density
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,6 +36,126 @@ import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ImageInfo
 
 class GalleryReaderChromeTest {
+    @Test
+    @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
+    fun aRealPointerDragSeeksTheLastAndFirstIntegerPages() {
+        for (density in listOf(1f, 2.625f)) {
+            var page by mutableIntStateOf(1)
+            var enabled by mutableStateOf(true)
+            var sought = -1
+            val requests = mutableListOf<Int>()
+            val chrome = GalleryReaderChromeState().apply { visible = true }
+            val scene = ImageComposeScene((411 * density).toInt(), (720 * density).toInt(), Density(density)) {
+                MaterialTheme {
+                    GalleryReaderChrome("Gallery", page, 3, chrome, {}, {}, {
+                        sought = it
+                        requests += it
+                        enabled = false // Real token/page resolution completes after the gesture.
+                    }, seekEnabled = enabled, actions = {}) {}
+                }
+            }
+            var frame = 0L
+            fun render() {
+                scene.render(frame).close()
+                frame += 16_666_667
+            }
+            fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+            fun bounds() = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single { it.config.contains(SemanticsProperties.ProgressBarRangeInfo) }.boundsInRoot
+            fun drag(from: Offset, to: Offset) {
+                scene.sendPointerEvent(PointerEventType.Press, from)
+                render()
+                for (step in 1..20) {
+                    scene.sendPointerEvent(PointerEventType.Move, from + (to - from) * (step / 20f))
+                    render()
+                }
+                scene.sendPointerEvent(PointerEventType.Release, to)
+                repeat(30) { render() }
+            }
+            try {
+                repeat(30) { render() }
+                val slider = bounds()
+                val inset = (16 * density).coerceAtMost(slider.width / 4)
+                val right = Offset(slider.right - inset, slider.center.y)
+                val left = Offset(slider.left + inset, slider.center.y)
+                drag(slider.center, right)
+                assertEquals(2, sought, "Actual pointer drag must reach page3 at density$density; slider=$slider")
+                assertEquals(listOf(2), requests, "Pending resolution must not commit the old page again")
+                page = sought
+                enabled = true
+                repeat(3) { render() }
+                drag(right, left)
+                assertEquals(0, sought, "Actual pointer drag must return to page1 at density$density")
+                assertEquals(listOf(2, 0), requests)
+            } finally {
+                scene.close()
+            }
+        }
+    }
+
+    @Test
+    @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
+    fun focusedReaderButtonsAndSliderOwnTheirKeysBeforeCanvasShortcuts() {
+        for (pages in listOf(11, 12_345, 1_000_000, Int.MAX_VALUE)) {
+            for (rtl in listOf(false, true)) {
+                val canvasFocus = FocusRequester()
+                val buttonFocus = FocusRequester()
+                var buttonClicks = 0
+                var canvasKeys = 0
+                val initial = if (pages > 100_000) pages - 3 else 5
+                var page by mutableIntStateOf(initial)
+                var sought = -1
+                val chrome = GalleryReaderChromeState().apply { visible = true }
+                val scene = ImageComposeScene(800, 600, Density(1f)) {
+                    MaterialTheme {
+                        GalleryReaderChrome("Gallery", page, pages, chrome, {}, {}, {
+                            sought = it
+                            page = it
+                        }, modifier = Modifier.focusRequester(canvasFocus), rtl = rtl, onKey = { event ->
+                            if (event.type == KeyEventType.KeyDown && event.key in setOf(Key.Spacebar, Key.DirectionRight, Key.DirectionLeft)) {
+                                canvasKeys++
+                                true
+                            } else {
+                                false
+                            }
+                        }, actions = {
+                            IconButton(onClick = { buttonClicks++ }, modifier = Modifier.focusRequester(buttonFocus)) {}
+                        }) {}
+                    }
+                }
+                var frame = 0L
+                fun render() = repeat(3) {
+                    scene.render(frame).close()
+                    frame += 16_666_667
+                }
+                fun press(key: Key, shift: Boolean = false) {
+                    scene.sendKeyEvent(KeyEvent(key, KeyEventType.KeyDown, isShiftPressed = shift))
+                    scene.sendKeyEvent(KeyEvent(key, KeyEventType.KeyUp, isShiftPressed = shift))
+                    render()
+                }
+                try {
+                    repeat(10) { render() }
+                    buttonFocus.requestFocus()
+                    press(Key.Spacebar)
+                    assertEquals(1, buttonClicks, "Space must activate the focused real Material button")
+                    assertEquals(0, canvasKeys, "The canvas must not steal a focused control's key")
+                    press(Key.Tab, shift = true) // Previous focus target is the actual page slider.
+                    press(Key.DirectionRight)
+                    assertEquals(initial + if (rtl) -1 else 1, sought, "A single slider arrow must seek exactly one page at $pages/RTL=$rtl")
+                    assertEquals(0, canvasKeys)
+                    press(Key.DirectionLeft)
+                    assertEquals(initial, sought)
+                    assertEquals(0, canvasKeys)
+                    canvasFocus.requestFocus()
+                    press(Key.DirectionRight)
+                    assertEquals(1, canvasKeys, "The unfocused canvas retains its reader shortcuts")
+                    assertEquals(initial, sought)
+                } finally {
+                    scene.close()
+                }
+            }
+        }
+    }
+
     @Test
     fun overlayControlsLeaveTheCanvasUnchangedAndReachableAtLargeFontSizes() {
         for (width in listOf(360, 411, 1280)) {

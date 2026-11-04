@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,6 +45,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.contentDescription
@@ -89,6 +97,7 @@ internal fun GalleryReaderChrome(
     onSeek: (Int) -> Unit,
     modifier: Modifier = Modifier,
     seekEnabled: Boolean = true,
+    onKey: (KeyEvent) -> Boolean = { false },
     rtl: Boolean = false,
     status: @Composable () -> Unit = {},
     navigation: @Composable RowScope.() -> Unit = {},
@@ -98,7 +107,7 @@ internal fun GalleryReaderChrome(
     val container = BottomAppBarDefaults.containerColor.copy(alpha = if (isSystemInDarkTheme()) 0.9f else 0.95f)
     val safe = WindowInsets.safeDrawing
     val showLabel = galleryString(Res.string.gallery_reader_show_controls)
-    Box(modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier.onKeyEvent(onKey).focusable().fillMaxSize().background(Color.Black)) {
         content()
         if (!state.visible) {
             // Keep the original small page indicator and an accessible way to reveal touch controls.
@@ -148,8 +157,24 @@ internal fun GalleryReaderChrome(
                                         onSeek(slider.roundToInt().coerceIn(0, pages - 1))
                                     },
                                     valueRange = 0f..(pages - 1).toFloat(),
+                                    // Keep the validated continuous drag path: no per-page fraction
+                                    // allocation, while arrow keys below commit exact integer pages.
                                     enabled = seekEnabled,
-                                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp).semantics { contentDescription = seekLabel },
+                                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp).onPreviewKeyEvent { event ->
+                                        val delta = when (event.key) {
+                                            Key.DirectionLeft -> if (rtl) 1 else -1
+                                            Key.DirectionRight -> if (rtl) -1 else 1
+                                            Key.DirectionUp -> 1
+                                            Key.DirectionDown -> -1
+                                            else -> return@onPreviewKeyEvent false
+                                        }
+                                        if (!seekEnabled) return@onPreviewKeyEvent false
+                                        if (event.type == KeyEventType.KeyDown) {
+                                            val target = (index.toLong() + delta).coerceIn(0, pages.toLong() - 1).toInt()
+                                            if (target != index) onSeek(target)
+                                        }
+                                        true
+                                    }.semantics { contentDescription = seekLabel },
                                 )
                             }
                         }
