@@ -279,4 +279,6 @@
     <string name="gallery_detail_rating9">根本把持不住</string>
     <string name="gallery_detail_rating10">太神啦！</string>
     <string name="gallery_detail_rating_text">%1$s (%2$s, %3$s)</string>
+    <string name="gallery_detail_not_favorited">未收藏</string>
+    <string name="gallery_detail_similar">類似圖庫</string>
 </resources>

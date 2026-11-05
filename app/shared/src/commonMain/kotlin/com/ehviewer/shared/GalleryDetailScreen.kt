@@ -75,7 +75,7 @@ import kotlinx.coroutines.launch
 /** Detail and reader routes retain the original search and detail state when navigating back. */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, downloads: GalleryDownloads?, covers: GalleryCoverCache<CoilImage>, onDownloads: () -> Unit, onCategory: (Int) -> Unit, onUploader: (String) -> Unit, onTag: (String) -> Unit, backLabel: String? = null, onBack: () -> Unit) {
+internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, downloads: GalleryDownloads?, covers: GalleryCoverCache<CoilImage>, onDownloads: () -> Unit, onCategory: (Int) -> Unit, onUploader: (String) -> Unit, onTag: (String) -> Unit, onSimilar: (GallerySimilarSearch) -> Unit, backLabel: String? = null, onBack: () -> Unit) {
     var detail by remember(gallery.gid) { mutableStateOf<GalleryDetail?>(null) }
     var failure by remember(gallery.gid) { mutableStateOf<GalleryFailure?>(null) }
     var loading by remember(gallery.gid) { mutableStateOf(false) }
@@ -258,7 +258,8 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                             if (downloadFailed) Text(galleryString(Res.string.gallery_download_add_failed), color = MaterialTheme.colorScheme.error)
                             if (document != null) {
                                 if (resume != null && resume.index > 0 && first != null) TextButton(onClick = { reader = session.content.pageUrl(document.gid, first.pToken, first.position).toString() }) { Text(galleryString(Res.string.gallery_read_start)) }
-                                Button(onClick = { editingFavorite = true }) { Text(if (document.favoriteSlot in 0..9) galleryString(Res.string.gallery_favorite_edit) else galleryString(Res.string.gallery_favorite_add)) }
+                                androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 16.dp))
+                                GalleryDetailActions(document, onFavorite = { editingFavorite = true }, onSimilar = onSimilar)
                                 GalleryDetailRating(document.rating, document.ratingCount, Modifier.padding(vertical = 16.dp))
                             }
                         }

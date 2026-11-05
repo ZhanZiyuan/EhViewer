@@ -434,6 +434,12 @@ fun GalleryLibraryScreen(
                                     filters = GallerySearchFilters()
                                     query = it
                                     load(GallerySearchRequest(query, filters, tag = it), replaceResults = true)
+                                }, onSimilar = { related ->
+                                    selected = null
+                                    historyOpen = false
+                                    filters = GallerySearchFilters()
+                                    query = related.query
+                                    load(GallerySearchRequest(query, filters, uploader = related.uploader, tag = related.tag), replaceResults = true)
                                 }, backLabel = if (historyOpen) galleryString(Res.string.gallery_back_history) else galleryString(Res.string.gallery_back_search), onBack = { selected = null })
                                 return@Column
                             }

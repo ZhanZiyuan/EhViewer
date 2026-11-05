@@ -279,4 +279,6 @@
     <string name="gallery_detail_rating9">すごくいい</string>
     <string name="gallery_detail_rating10">ものすごくいい</string>
     <string name="gallery_detail_rating_text">%1$s (%2$s - %3$s)</string>
+    <string name="gallery_detail_not_favorited">お気に入り未追加</string>
+    <string name="gallery_detail_similar">類似のギャラリー</string>
 </resources>

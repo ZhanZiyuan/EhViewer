@@ -99,6 +99,8 @@ class GalleryFavoriteIntegrationTest {
         val rejectNext = AtomicBoolean(false)
         val rejectCopy = AtomicBoolean(false)
         val rejectBrowser = AtomicBoolean(false)
+        val rejectSimilar = AtomicBoolean(true)
+        val similarRequests = Collections.synchronizedList(mutableListOf<Url>())
         val openedLinks = Collections.synchronizedList(mutableListOf<Intent>())
         val sharedLinks = Collections.synchronizedList(mutableListOf<Intent>())
         val browserMonitor = object : Instrumentation.ActivityMonitor() {
@@ -162,7 +164,14 @@ class GalleryFavoriteIntegrationTest {
                 }
             } else {
                 when {
-                    request.url.encodedPath == "/" -> respond("""<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/owned.png" style="height:100px;width:80px"><div class="cn">Manga</div><div class="ir" style="background-position:0px -1px"></div></div></div></body></html>""")
+                    request.url.encodedPath == "/" && request.url.parameters["f_search"] == "\"$title\"" && rejectSimilar.getAndSet(false) -> {
+                        similarRequests += request.url
+                        respond("Owned unavailable Similar search", HttpStatusCode.ServiceUnavailable)
+                    }
+                    request.url.encodedPath == "/" -> {
+                        if (request.url.parameters["f_search"] == "\"$title\"") similarRequests += request.url
+                        respond("""<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/owned.png" style="height:100px;width:80px"><div class="cn">Manga</div><div class="ir" style="background-position:0px -1px"></div></div></div></body></html>""")
+                    }
                     request.url.encodedPath == "/uconfig.php" -> respond("<!DOCTYPE html><html><body>" + (0..9).joinToString("") { """<input type="text" name="favorite_$it" value="Shelf $it">""" } + "</body></html>")
                     request.url.encodedPath == "/gallerypopups.php" -> respond("<!DOCTYPE html><html><body><textarea name=\"favnote\" maxlength=\"200\">${escaped(note.get())}</textarea></body></html>")
                     request.url.encodedPath == "/g/$gid/$token/" -> respond(detail())
@@ -186,11 +195,11 @@ class GalleryFavoriteIntegrationTest {
         val downloads = GalleryDownloadQueue(downloadStorage, scope) { task ->
             networkGalleryDownloadSource(task, GalleryContentRepository(client, RustGalleryDecoder)) {}
         }
-        fun click(text: String) {
+        fun click(text: String, icon: Boolean = false) {
             val deadline = SystemClock.uptimeMillis() + 15_000
             while (SystemClock.uptimeMillis() < deadline) {
                 try {
-                    var control = device.findObject(By.text(text)) ?: device.findObject(By.desc(text))
+                    var control = if (icon) device.findObject(By.desc(text)) else device.findObject(By.text(text)) ?: device.findObject(By.desc(text))
                     while (control != null && !control.isClickable) control = control.parent
                     if (control != null && control.isEnabled) {
                         control.click()
@@ -337,10 +346,21 @@ class GalleryFavoriteIntegrationTest {
                     assertEquals(2, posts.size)
                     reveal("Remove favorite")
                     click("Remove favorite")
-                    assertTrue(device.wait(Until.hasObject(By.text("Add to favorites")), 15_000))
+                    assertTrue(device.wait(Until.hasObject(By.desc("Add to favorites")), 15_000))
                     assertNull(category.get())
                     assertEquals("favdel", posts.last()["favcat"])
                     assertEquals(3, posts.size)
+                    click("Similar", icon = true)
+                    assertTrue(device.wait(Until.hasObject(By.text("The site is temporarily unavailable.")), 15_000))
+                    assertEquals("\"$title\"", requireNotNull(device.findObject(By.clazz("android.widget.EditText"))).text)
+                    assertEquals(1, similarRequests.size)
+                    // The original list retries by tapping its actual error card, not a separate button.
+                    click("The site is temporarily unavailable.")
+                    assertTrue(device.wait(Until.hasObject(By.text(title)), 15_000))
+                    assertEquals(2, similarRequests.size)
+                    assertTrue(similarRequests.all { it.parameters["f_search"] == "\"$title\"" && it.parameters["f_cats"] == null && it.parameters["next"] == null })
+                    assertEquals(3, posts.size)
+                    click(title)
                     click("Back to search")
                     device.openSharedDestination("Settings")
                     click("Download")
