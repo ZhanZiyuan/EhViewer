@@ -35,17 +35,26 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 
-@OptIn(androidx.compose.ui.InternalComposeUiApi::class)
+@OptIn(androidx.compose.ui.InternalComposeUiApi::class, ExperimentalCoroutinesApi::class)
 class GalleryCommentsTest {
     private fun comment(id: Long) = GalleryComment(id, 5, false, false, false, false, false, false, null, 1_790_000_000_000, "Reader $id", "<b>Owned $id</b>", 1_790_000_000_000, listOf(GalleryCommentText("Owned $id\n", bold = true), GalleryCommentText("Read page 2", link = "/s/1111111111/1-2")))
     private fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
 
     private class Scene(width: Int, font: Float = 1f, content: @androidx.compose.runtime.Composable () -> Unit) : AutoCloseable {
-        val scene = ImageComposeScene(width, 900, Density(1f, font)) { MaterialTheme(content = content) }
+        private val scheduler = TestCoroutineScheduler()
+
+        // Rendering, pointer input and LaunchedEffect must share one owner thread. The
+        // default scene context can resume a real request/scroll on another dispatcher.
+        val scene = ImageComposeScene(width, 900, Density(1f, font), coroutineContext = StandardTestDispatcher(scheduler)) { MaterialTheme(content = content) }
         private var time = 0L
         fun render() = repeat(3) {
+            scheduler.runCurrent()
             scene.render(time).close()
+            scheduler.runCurrent()
             time += 16_666_667
         }
         fun click(at: Offset) {
