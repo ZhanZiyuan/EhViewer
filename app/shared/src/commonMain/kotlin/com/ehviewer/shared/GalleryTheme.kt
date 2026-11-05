@@ -36,7 +36,7 @@ typealias GalleryPlatformTheme = @Composable (dark: Boolean, content: @Composabl
 @Composable
 internal fun GalleryTheme(dark: Boolean, platformTheme: GalleryPlatformTheme?, content: @Composable () -> Unit) {
     if (platformTheme != null) return platformTheme(dark, content)
-    MaterialTheme(colorScheme = platformDynamicColorScheme(dark) ?: galleryFallbackColorScheme(dark)) {
+    MaterialTheme(colorScheme = platformDynamicColorScheme(dark) ?: galleryFallbackColorScheme(dark), typography = galleryTypography()) {
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground, content = content)
     }
 }

@@ -3,7 +3,6 @@ package com.ehviewer.shared
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.ImageComposeScene
@@ -42,7 +41,7 @@ class GalleryDetailHeaderTest {
                 var download = Rect.Zero
                 val cache = GalleryCoverCache<CoilImage>(load = { error("No thumbnail was supplied") })
                 val scene = ImageComposeScene(width, 720, Density(1f, fontScale)) {
-                    MaterialTheme {
+                    GalleryTheme(false, null) {
                         GalleryDetailHeaderSection(detail(), cache, {}, {}, {}, download = {
                             FilledTonalButton({}, modifier = it.onGloballyPositioned { download = it.boundsInRoot() }) { Text("Download", maxLines = 1) }
                         }, read = {

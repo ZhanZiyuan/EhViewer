@@ -3,7 +3,6 @@ package com.ehviewer.shared
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -37,7 +36,7 @@ class GallerySettingsLayoutTest {
                 var backLabel = ""
                 var backs = 0
                 val scene = ImageComposeScene(width, 720, Density(1f, font)) {
-                    MaterialTheme {
+                    GalleryTheme(false, null) {
                         backLabel = galleryString(Res.string.gallery_back)
                         GalleryNavigationShell(GalleryDestination.entries, GalleryDestination.SETTINGS, {}) {
                             Column(galleryPageModifier(false, false, edgeToEdge = true).onGloballyPositioned { page = it.boundsInRoot() }) {
@@ -81,7 +80,7 @@ class GallerySettingsLayoutTest {
                 var selected by mutableStateOf(false)
                 var changes = 0
                 val scene = ImageComposeScene(width, 1800, Density(1f, font)) {
-                    MaterialTheme {
+                    GalleryTheme(false, null) {
                         Column(Modifier.fillMaxSize()) {
                             SettingsChoice(label, selected, true) {
                                 selected = true

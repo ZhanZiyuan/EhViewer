@@ -115,7 +115,7 @@ class GalleryCommentsIntegrationTest {
                     if (android.os.Build.VERSION.SDK_INT >= 31) {
                         for (weight in listOf(400, 500, 700)) {
                             val paint = android.text.TextPaint(originalComment.paint).apply { typeface = android.graphics.Typeface.create(originalComment.typeface, weight, false) }
-                            val sample = "EhViewer Material 3 画廊詳細設定"
+                            val sample = "EhViewer Material 3 ♥ 画廊詳細設定"
                             val glyphs = android.graphics.text.TextRunShaper.shapeTextRun(sample, 0, sample.length, 0, sample.length, 0f, 0f, false, paint)
                             assertTrue(glyphs.glyphCount() > 0)
                             (0 until glyphs.glyphCount()).map { glyphs.getFont(it) }.distinct().forEach { font ->
