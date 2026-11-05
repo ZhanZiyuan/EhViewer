@@ -172,13 +172,18 @@ fun GalleryLibraryScreen(
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     var listDensity by remember(listPreferences) { mutableStateOf<GalleryListDensity?>(null) }
+    var showComments by remember(listPreferences) { mutableStateOf<Boolean?>(null) }
     var listFailed by remember(listPreferences) { mutableStateOf(false) }
     var listAttempt by remember { mutableIntStateOf(0) }
     LaunchedEffect(listPreferences, listAttempt) {
         listDensity = null
+        showComments = null
         listFailed = false
         try {
-            listDensity = listPreferences?.density() ?: GalleryListDensity.COMPACT
+            val density = listPreferences?.density() ?: GalleryListDensity.COMPACT
+            val comments = listPreferences?.showComments() ?: true
+            listDensity = density
+            showComments = comments
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: GalleryListPreferencesException) {
@@ -365,7 +370,7 @@ fun GalleryLibraryScreen(
                         val searchBarPage = !settingsOpen && !(account && accountContent != null) && !(archivesOpen && archiveContent != null) && !downloadsOpen && selected == null
                         Column(galleryPageModifier(searchBarPage, immersive, edgeToEdge = settingsOpen || selected != null)) {
                             if (settingsOpen) {
-                                GallerySettingsScreen(networkPreferences, appearance, readerState, themeMode, appearanceFailed, language, languageTag, languageReady, languageFailed, onLanguageChanged = { languageTag = it }, onRetryLanguage = { languageAttempt++ }, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = ::leaveSettings, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings, listPreferences = listPreferences, listDensity = listDensity, listFailed = listFailed, onListChanged = { listDensity = it }, onRetryList = { listAttempt++ }, onAccount = { navigate(GalleryDestination.ACCOUNT) }.takeIf { onAccount != null || accountContent != null }, onHistory = { navigate(GalleryDestination.HISTORY) })
+                                GallerySettingsScreen(networkPreferences, appearance, readerState, themeMode, appearanceFailed, language, languageTag, languageReady, languageFailed, onLanguageChanged = { languageTag = it }, onRetryLanguage = { languageAttempt++ }, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = ::leaveSettings, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings, listPreferences = listPreferences, listDensity = listDensity, listFailed = listFailed, onListChanged = { listDensity = it }, showComments = showComments, onCommentsChanged = { showComments = it }, onRetryList = { listAttempt++ }, onAccount = { navigate(GalleryDestination.ACCOUNT) }.takeIf { onAccount != null || accountContent != null }, onHistory = { navigate(GalleryDestination.HISTORY) })
                                 return@Column
                             }
                             if (account && accountContent != null) {
@@ -416,7 +421,7 @@ fun GalleryLibraryScreen(
                                 return@Column
                             }
                             if (gallery != null) {
-                                GalleryDetailScreen(session, gallery, readerState, downloads.takeIf { downloadsReady }, covers = if (historyOpen) historyCovers else covers, onDownloads = { downloadsOpen = true }, onCategory = {
+                                GalleryDetailScreen(session, gallery, readerState, downloads.takeIf { downloadsReady }, covers = if (historyOpen) historyCovers else covers, showComments = showComments == true, onDownloads = { downloadsOpen = true }, onCategory = {
                                     selected = null
                                     historyOpen = false
                                     filters = GallerySearchFilters(includedCategories = it)

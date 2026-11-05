@@ -32,4 +32,17 @@ data class GalleryComment(
     val user: String?,
     val comment: String,
     val lastEdited: Long,
+    /** Parsed by the existing Rust HTML transport; old persisted/wire comments remain readable. */
+    val body: List<GalleryCommentText> = emptyList(),
+)
+
+@Serializable
+data class GalleryCommentText(
+    val text: String,
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val underline: Boolean = false,
+    val strike: Boolean = false,
+    val link: String? = null,
+    val image: String? = null,
 )

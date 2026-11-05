@@ -25,6 +25,10 @@ internal class AndroidGalleryListPreferences : GalleryListPreferences {
     }
 
     override suspend fun density(): GalleryListDensity = stored { decode(Settings.snapshot()[Settings.detailSize]) }
+    override suspend fun showComments(): Boolean = stored { Settings.snapshot()[Settings.showComments] }
+    override suspend fun setShowComments(show: Boolean) = stored {
+        Settings.withMutableSnapshot { it[Settings.showComments] = show }
+    }
 
     override suspend fun setDensity(density: GalleryListDensity) = stored {
         Settings.withMutableSnapshot { snapshot ->

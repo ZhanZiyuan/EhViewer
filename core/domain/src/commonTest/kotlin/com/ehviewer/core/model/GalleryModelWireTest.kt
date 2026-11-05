@@ -58,7 +58,7 @@ class GalleryModelWireTest {
             galleryInfo = gallery,
             tagGroups = listOf(GalleryTagGroup(TagNamespace.Female, listOf(GalleryTag("fixture", PowerStatus.Solid, VoteStatus.Up)))),
             comments = GalleryCommentList(
-                listOf(GalleryComment(9L, 5, false, true, false, true, false, false, null, 1_700_000_000L, null, "<p>fixture 📚</p>", 0)),
+                listOf(GalleryComment(9L, 5, false, true, false, true, false, false, null, 1_700_000_000L, null, "<p>fixture 📚</p>", 0, listOf(GalleryCommentText("fixture 📚", bold = true, link = "#c9")))),
                 false,
             ),
             previewList = previews(),
@@ -69,6 +69,7 @@ class GalleryModelWireTest {
         assertEquals("fixture", decoded.favoriteName)
         assertEquals(TagNamespace.Female, decoded.tagGroups.single().namespace)
         assertEquals("<p>fixture 📚</p>", decoded.comments.comments.single().comment)
+        assertEquals(listOf(GalleryCommentText("fixture 📚", bold = true, link = "#c9")), decoded.comments.comments.single().body)
     }
 
     @Test fun languageTagsAndTitleFallbackKeepExistingPrecedence() {

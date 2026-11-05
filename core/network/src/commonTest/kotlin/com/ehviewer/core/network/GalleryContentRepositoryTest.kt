@@ -1,6 +1,7 @@
 package com.ehviewer.core.network
 
 import com.ehviewer.core.model.BaseGalleryInfo
+import com.ehviewer.core.model.GalleryComment
 import com.ehviewer.core.model.GalleryCommentList
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.model.V1GalleryPreview
@@ -32,6 +33,60 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 
 class GalleryContentRepositoryTest {
+    @Test fun allCommentsUseExplicitServiceQueryAndRejectAmbiguousCommentKeys() = runTest {
+        val comment = GalleryComment(12, 1, false, false, false, false, false, false, null, 1, "Reader", "Body", 0)
+        for (restricted in listOf(false, true)) {
+            val visited = mutableListOf<Url>()
+            var beforeRequests = 0
+            val engine = MockEngine { request ->
+                visited += request.url
+                respond("detail")
+            }
+            val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "test")
+            try {
+                val all = details.copy(comments = GalleryCommentList(listOf(comment), false))
+                assertEquals(all.comments, GalleryContentRepository(client, decoder(all), restricted) { beforeRequests++ }.comments(1, "0123456789"))
+                assertEquals(2, beforeRequests, "The session is checked before transport and again before parsing")
+                assertEquals(if (restricted) "exhentai.org" else "e-hentai.org", visited.single().host)
+                assertEquals("/g/1/0123456789/", visited.single().encodedPath)
+                assertEquals(listOf("1"), visited.single().parameters.getAll("hc"))
+                assertEquals(setOf("hc"), visited.single().parameters.names())
+                for (wrong in listOf(listOf(comment, comment), listOf(comment.copy(id = -1)))) {
+                    val invalid = details.copy(comments = GalleryCommentList(wrong, false))
+                    assertEquals(GalleryFailure.INVALID_RESPONSE, assertFailsWith<GalleryRequestException> { GalleryContentRepository(client, decoder(invalid), restricted).comments(1, "0123456789") }.failure)
+                }
+            } finally {
+                client.close()
+                engine.close()
+            }
+        }
+    }
+
+    @Test fun commentImagesUseTheBoundedTransportWithoutSendingLoginCookiesToUntrustedHosts() = runTest {
+        var requests = 0
+        val engine = MockEngine { request ->
+            requests++
+            assertEquals("ehgt.org", request.url.host)
+            assertEquals("https://e-hentai.org/g/1/0123456789/", request.headers[HttpHeaders.Referrer])
+            assertTrue(request.headers[HttpHeaders.Cookie].isNullOrEmpty())
+            respond(byteArrayOf(1, 2, 3), HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
+        }
+        val cookies = PersistentCookieStorage(TestSessionVault())
+        cookies.addCookie(Url("https://e-hentai.org/"), Cookie("ipb_pass_hash", "owned-test-session", path = "/", domain = "e-hentai.org"))
+        val client = galleryHttpClient(engine, cookies, "test")
+        try {
+            val content = GalleryContentRepository(client, decoder())
+            assertContentEquals(byteArrayOf(1, 2, 3), content.commentImage("https://ehgt.org/comment.png", 1, "0123456789"))
+            for (url in listOf("file:///private/comment.png", "http://ehgt.org/comment.png", "https://evil.example/comment.png", "https://member:secret@ehgt.org/comment.png")) {
+                assertEquals(GalleryFailure.INVALID_RESPONSE, assertFailsWith<GalleryRequestException> { content.commentImage(url, 1, "0123456789") }.failure)
+            }
+            assertEquals(1, requests)
+        } finally {
+            client.close()
+            engine.close()
+        }
+    }
+
     @Test fun actualForumLoginRedirectIsAuthenticationBeforeAnyLoginPageIsFetched() = runTest {
         val visited = mutableListOf<String>()
         val engine = MockEngine { request ->

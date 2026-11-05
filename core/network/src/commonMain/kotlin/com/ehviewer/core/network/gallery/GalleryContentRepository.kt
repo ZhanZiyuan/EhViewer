@@ -1,6 +1,7 @@
 package com.ehviewer.core.network.gallery
 
 import com.ehviewer.core.domain.download.GalleryImageCheckpoint
+import com.ehviewer.core.model.GalleryCommentList
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.model.GalleryPreview
 import io.ktor.client.HttpClient
@@ -29,16 +30,32 @@ class GalleryContentRepository(client: HttpClient, private val decoder: GalleryD
         )
     }
 
-    override suspend fun details(gid: Long, token: String, previewPage: Int): GalleryDetail {
+    override suspend fun details(gid: Long, token: String, previewPage: Int): GalleryDetail = metadata(gid, token, previewPage, false)
+
+    override suspend fun comments(gid: Long, token: String): GalleryCommentList = metadata(gid, token, 0, true).comments
+
+    private suspend fun metadata(gid: Long, token: String, previewPage: Int, allComments: Boolean): GalleryDetail {
         require(gid > 0 && Regex("[a-f0-9]{10}").matches(token) && previewPage >= 0)
         val url = URLBuilder(URLProtocol.HTTPS, host).apply {
             encodedPath = "/g/$gid/$token/"
             if (previewPage > 0) parameters.append("p", previewPage.toString())
+            if (allComments) parameters.append("hc", "1")
         }.build()
         return requests.document(url, decoder::decodeDetails).also { detail ->
             if (detail.gid != gid || detail.token != token || detail.pages <= 0 || detail.previewList.any { it.position !in 0 until detail.pages || !Regex("[a-f0-9]{10}").matches(it.pToken) }) invalid()
             if (detail.previewList.map { it.position }.toSet().size != detail.previewList.size) invalid()
+            if (detail.comments.comments.any { it.id < 0 } || detail.comments.comments.map { it.id }.toSet().size != detail.comments.comments.size) invalid()
         }
+    }
+
+    override suspend fun commentImage(url: String, gid: Long, token: String): ByteArray {
+        require(gid > 0 && Regex("[a-f0-9]{10}").matches(token))
+        val parsed = try {
+            Url(url)
+        } catch (_: Exception) {
+            invalid()
+        }
+        return requests.image(parsed, Url("https://$host/g/$gid/$token/"))
     }
 
     override fun pageUrl(gid: Long, pageToken: String, index: Int): Url {

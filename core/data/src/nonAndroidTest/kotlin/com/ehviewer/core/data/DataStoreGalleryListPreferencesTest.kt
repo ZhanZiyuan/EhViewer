@@ -44,13 +44,16 @@ class DataStoreGalleryListPreferencesTest {
             val first = OwnedStore(path)
             try {
                 assertEquals(GalleryListDensity.COMPACT, first.layout.density())
+                assertEquals(true, first.layout.showComments())
                 first.layout.setDensity(GalleryListDensity.COMFORTABLE)
+                first.layout.setShowComments(false)
             } finally {
                 first.close()
             }
             val second = OwnedStore(path)
             try {
                 assertEquals(GalleryListDensity.COMFORTABLE, second.layout.density())
+                assertEquals(false, second.layout.showComments())
                 second.layout.setDensity(GalleryListDensity.COMPACT)
             } finally {
                 second.close()
@@ -58,10 +61,31 @@ class DataStoreGalleryListPreferencesTest {
             val third = OwnedStore(path)
             try {
                 assertEquals(GalleryListDensity.COMPACT, third.layout.density())
+                assertEquals(false, third.layout.showComments())
+                third.layout.setShowComments(true)
+                assertEquals(true, third.layout.showComments())
+                assertEquals(GalleryListDensity.COMPACT, third.layout.density())
             } finally {
                 third.close()
             }
         } finally {
+            owned.cleanup()
+        }
+    }
+
+    @Test fun invalidCommentPreferenceNeverOverwritesTheExistingRecord() = runTest {
+        val owned = ownedDatabaseFile()
+        val path = (owned.path + ".preferences_pb").toPath()
+        val store = OwnedStore(path)
+        try {
+            store.data.edit { it[stringPreferencesKey("show_comments")] = "invalid-type" }
+            val before = files.read(path) { readByteArray() }
+            assertFailsWith<GalleryListPreferencesException> { store.layout.showComments() }
+            assertFailsWith<GalleryListPreferencesException> { store.layout.setShowComments(false) }
+            assertFailsWith<GalleryListPreferencesException> { store.layout.setDensity(GalleryListDensity.COMFORTABLE) }
+            assertContentEquals(before, files.read(path) { readByteArray() })
+        } finally {
+            store.close()
             owned.cleanup()
         }
     }

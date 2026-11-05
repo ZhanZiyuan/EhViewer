@@ -281,4 +281,22 @@
     <string name="gallery_detail_rating_text">%1$s (%2$s, %3$s)</string>
     <string name="gallery_detail_not_favorited">未收藏</string>
     <string name="gallery_detail_similar">類似圖庫</string>
+    <string name="gallery_comments_empty">沒有留言</string>
+    <string name="gallery_comments_end">已顯示所有的留言了</string>
+    <string name="gallery_comments_more">更多留言</string>
+    <string name="gallery_comments_title">圖庫留言</string>
+    <string name="gallery_comment_uploader">%1$s （上傳者）</string>
+    <string name="gallery_comment_edited">上次修改時間：%1$s</string>
+    <string name="gallery_time_future">來自未來</string>
+    <string name="gallery_time_now">剛剛</string>
+    <string name="gallery_time_yesterday">昨天</string>
+    <string name="gallery_time_days">%1$d 天前</string>
+    <plurals name="gallery_time_minutes">
+        <item quantity="other">%1$d 分鐘前</item>
+    </plurals>
+    <plurals name="gallery_time_hours">
+        <item quantity="other">%1$d 小時前</item>
+    </plurals>
+    <string name="gallery_show_comments">顯示圖庫評論</string>
+    <string name="gallery_show_comments_summary">在圖庫詳情頁中顯示評論</string>
 </resources>

@@ -69,6 +69,7 @@ pub struct GalleryComment {
     pub user: Option<String>,
     pub comment: String,
     pub lastEdited: i64,
+    pub body: Vec<super::comment::GalleryCommentText>,
 }
 
 #[derive(Serialize, Debug, Default)]
@@ -360,6 +361,7 @@ pub fn parse_comments(dom: &mut VDom) -> Result<GalleryCommentList> {
         .query_selector(parser, ".c1")
         .unwrap()
         .collect::<Vec<_>>();
+    let mut comment_budget = super::comment::GALLERY_COMMENT_BUDGET;
     let comments = comment_nodes
         .iter()
         .map(|node_handle| {
@@ -440,6 +442,7 @@ pub fn parse_comments(dom: &mut VDom) -> Result<GalleryCommentList> {
                 .context("Failed to parse comment id")?;
             c.uploader = c.id == 0;
             c.comment = c6.inner_html(parser).to_string();
+            c.body = super::comment::parse_comment_body(c6, parser, &mut comment_budget)?;
 
             Ok(c)
         })

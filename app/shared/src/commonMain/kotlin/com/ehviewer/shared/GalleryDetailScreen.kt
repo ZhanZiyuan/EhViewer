@@ -75,7 +75,7 @@ import kotlinx.coroutines.launch
 /** Detail and reader routes retain the original search and detail state when navigating back. */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, downloads: GalleryDownloads?, covers: GalleryCoverCache<CoilImage>, onDownloads: () -> Unit, onCategory: (Int) -> Unit, onUploader: (String) -> Unit, onTag: (String) -> Unit, onSimilar: (GallerySimilarSearch) -> Unit, backLabel: String? = null, onBack: () -> Unit) {
+internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, downloads: GalleryDownloads?, covers: GalleryCoverCache<CoilImage>, showComments: Boolean, onDownloads: () -> Unit, onCategory: (Int) -> Unit, onUploader: (String) -> Unit, onTag: (String) -> Unit, onSimilar: (GallerySimilarSearch) -> Unit, backLabel: String? = null, onBack: () -> Unit) {
     var detail by remember(gallery.gid) { mutableStateOf<GalleryDetail?>(null) }
     var failure by remember(gallery.gid) { mutableStateOf<GalleryFailure?>(null) }
     var loading by remember(gallery.gid) { mutableStateOf(false) }
@@ -96,6 +96,9 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     var downloadFailed by remember { mutableStateOf(false) }
     var editingFavorite by remember(gallery.gid, session.restricted) { mutableStateOf(false) }
     var information by remember(gallery.gid) { mutableStateOf(false) }
+    var commentsOpen by remember(gallery.gid) { mutableStateOf(false) }
+    var commentState by remember(gallery.gid) { mutableStateOf<GalleryCommentsState?>(null) }
+    val commentImages = rememberCommentImages(session)
     LaunchedEffect(gallery.gid, reader, stateAttempt) {
         if (reader == null) {
             try {
@@ -128,12 +131,17 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     BackHandler {
         when {
             page != null -> reader = null
+            commentsOpen -> commentsOpen = false
             browsingPreviews -> browsingPreviews = false
             else -> onBack()
         }
     }
     if (page != null && document != null) {
         GalleryReaderScreen(session, document, page, readerState, onBack = { reader = null })
+        return
+    }
+    if (commentsOpen && document != null && commentState != null) {
+        GalleryCommentsScreen(session, document.gid, document.token, requireNotNull(commentState), commentImages, onPage = { reader = it }, onBack = { commentsOpen = false })
         return
     }
     if (browsingPreviews && document != null) {
@@ -267,6 +275,15 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                     if (document != null) {
                         items(document.tagGroups, span = { GridItemSpan(maxLineSpan) }) { group ->
                             GalleryDetailTagGroup(group, onTag)
+                        }
+                        if (showComments) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                GalleryCommentPreview(document.comments, commentImages, document.gid, document.token, onOpen = { link ->
+                                    val state = commentState ?: GalleryCommentsState(document.comments).also { commentState = it }
+                                    state.link = link
+                                    commentsOpen = true
+                                })
+                            }
                         }
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

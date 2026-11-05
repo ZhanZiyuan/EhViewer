@@ -34,6 +34,7 @@ kotlin {
         implementation(libs.coil.shared.core)
         implementation(libs.material.kolor)
         implementation(libs.serialization.json)
+        implementation(libs.kotlinx.datetime)
     }
     sourceSets.findByName("androidMain")?.dependencies {
         implementation(project.dependencies.platform(libs.coil.bom))

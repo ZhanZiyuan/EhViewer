@@ -111,6 +111,25 @@ mod tests {
     }
 
     #[test]
+    fn portable_comments_keep_the_existing_html_and_add_shared_rendering_runs() {
+        let original = std::str::from_utf8(DETAIL).unwrap();
+        let html = original.replace(
+            r#"<div id="cdiv"><div id="chd"><a id="postnewcomment">Comment</a></div></div>"#,
+            r##"<div id="cdiv"><div id="chd"><a id="postnewcomment">Comment</a></div><div class="c1"><div class="c3">Posted on 05 November 2026, 10:00 by: <a>Owned reader</a></div><div class="c6" id="comment_12"><b>Shared &amp; tested</b><br><a href="#c12">&#x1F4DA; &hellip;</a></div></div></div>"##,
+        );
+        let actual: serde_json::Value =
+            serde_cbor::from_slice(&parse_detail_cbor(html.as_bytes()).unwrap()).unwrap();
+        let comment = &actual["comments"]["comments"][0];
+        assert_eq!(comment["id"], 12);
+        assert_eq!(comment["user"], "Owned reader");
+        assert!(comment["comment"].as_str().unwrap().contains("<b>"));
+        assert_eq!(comment["body"][0]["text"], "Shared & tested");
+        assert_eq!(comment["body"][0]["bold"], true);
+        assert_eq!(comment["body"][2]["text"], "📚 …");
+        assert_eq!(comment["body"][2]["link"], "#c12");
+    }
+
+    #[test]
     fn image_pages_keep_authorized_source_and_navigation_without_decoding_url_escapes() {
         let html = br#"<!DOCTYPE html><html><body><img id="img" src="https://ehgt.org/fixture%20image.png?first=1&amp;second=2" style="width:80px">
             <a id="next" href="https://e-hentai.org/s/2222222222/1-2">Next</a>

@@ -281,4 +281,22 @@
     <string name="gallery_detail_rating_text">%1$s (%2$s, %3$s)</string>
     <string name="gallery_detail_not_favorited">未收藏</string>
     <string name="gallery_detail_similar">相似画廊</string>
+    <string name="gallery_comments_empty">暂无评论</string>
+    <string name="gallery_comments_end">已显示所有评论</string>
+    <string name="gallery_comments_more">查看更多评论</string>
+    <string name="gallery_comments_title">画廊评论</string>
+    <string name="gallery_comment_uploader">%1$s （上传者）</string>
+    <string name="gallery_comment_edited">上次修改时间：%1$s</string>
+    <string name="gallery_time_future">来自未来</string>
+    <string name="gallery_time_now">刚刚</string>
+    <string name="gallery_time_yesterday">昨天</string>
+    <string name="gallery_time_days">%1$d 天前</string>
+    <plurals name="gallery_time_minutes">
+        <item quantity="other">%1$d 分钟前</item>
+    </plurals>
+    <plurals name="gallery_time_hours">
+        <item quantity="other">%1$d 小时前</item>
+    </plurals>
+    <string name="gallery_show_comments">显示画廊评论</string>
+    <string name="gallery_show_comments_summary">在画廊详情页中显示评论</string>
 </resources>

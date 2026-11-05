@@ -281,4 +281,22 @@
     <string name="gallery_detail_rating_text">%1$s (%2$s - %3$s)</string>
     <string name="gallery_detail_not_favorited">お気に入り未追加</string>
     <string name="gallery_detail_similar">類似のギャラリー</string>
+    <string name="gallery_comments_empty">コメントなし</string>
+    <string name="gallery_comments_end">コメントはこれ以上ありません</string>
+    <string name="gallery_comments_more">他のコメントを見る</string>
+    <string name="gallery_comments_title">ギャラリーのコメント</string>
+    <string name="gallery_comment_uploader">%1$s (アップローダー)</string>
+    <string name="gallery_comment_edited">最終更新: %1$s</string>
+    <string name="gallery_time_future">未来から</string>
+    <string name="gallery_time_now">たった今</string>
+    <string name="gallery_time_yesterday">昨日</string>
+    <string name="gallery_time_days">%1$d 日前</string>
+    <plurals name="gallery_time_minutes">
+        <item quantity="other">%1$d 分前</item>
+    </plurals>
+    <plurals name="gallery_time_hours">
+        <item quantity="other">%1$d 時間前</item>
+    </plurals>
+    <string name="gallery_show_comments">ギャラリーのコメントを表示</string>
+    <string name="gallery_show_comments_summary">ギャラリーの詳細ページにコメントを表示します</string>
 </resources>

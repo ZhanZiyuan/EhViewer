@@ -102,6 +102,8 @@ internal fun GallerySettingsScreen(
     listDensity: GalleryListDensity? = null,
     listFailed: Boolean = false,
     onListChanged: (GalleryListDensity) -> Unit = {},
+    showComments: Boolean? = null,
+    onCommentsChanged: (Boolean) -> Unit = {},
     onRetryList: () -> Unit = {},
     onAccount: (() -> Unit)? = null,
     onHistory: (() -> Unit)? = null,
@@ -208,7 +210,7 @@ internal fun GallerySettingsScreen(
                 }
             }
             if (page == GallerySettingsPage.EH) {
-                listPreferences?.let { GalleryListSettings(it, listDensity, listFailed, onListChanged, onRetryList) }
+                listPreferences?.let { GalleryListSettings(it, listDensity, showComments, listFailed, onListChanged, onCommentsChanged, onRetryList) }
                 Text(galleryString(Res.string.gallery_reading), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
                 val current = preferences
                 if (current != null) {

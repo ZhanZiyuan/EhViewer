@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 regex-lite = "0.1"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
-quick-xml = { default-features = false, version = "0.41" }
+quick-xml = { default-features = false, version = "0.41", features = ["escape-html"] }
 tl = { git = "https://github.com/FooIbar/tl.git", features = ["simd"] }
 log = "0.4"
 serde_cbor = "0.11"

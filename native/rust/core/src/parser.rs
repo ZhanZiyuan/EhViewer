@@ -1,6 +1,7 @@
 pub mod account;
 pub mod api;
 pub mod archive;
+mod comment;
 pub mod config;
 pub mod detail;
 pub mod fav;
