@@ -3,6 +3,7 @@ package com.ehviewer.core.network
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryListDecoder
+import com.ehviewer.core.network.gallery.GalleryQueryError
 import com.ehviewer.core.network.gallery.GalleryRepository
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.gallery.GallerySearchResult
@@ -36,6 +37,53 @@ class GalleryRepositoryTest {
     private val decoder = GalleryListDecoder { bytes ->
         assertEquals("test-html", bytes.decodeToString())
         result
+    }
+
+    @Test fun recognizedQueryWarningsRemainTypedErrorsAndAnEditedQueryCanRecover() = runTest {
+        for (restricted in listOf(false, true)) {
+            var requests = 0
+            var warning = true
+            val engine = MockEngine {
+                requests++
+                respond("owned listing")
+            }
+            val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+            try {
+                val repository = GalleryRepository(
+                    client,
+                    GalleryListDecoder {
+                        if (warning) GallerySearchResult(null, null, emptyList(), GalleryQueryError.TOO_MANY_KEYWORDS) else result
+                    },
+                    restricted,
+                )
+                val routes = listOf<suspend () -> GallerySearchResult>({ repository.search("owned long query") }, { repository.uploader("Owned Uploader") }, { repository.tag("language:english") })
+                for (route in routes) assertEquals(GalleryFailure.SEARCH_QUERY, assertFailsWith<GalleryRequestException> { route() }.failure)
+                assertEquals(3, requests, "A query warning must neither succeed empty nor automatically retry")
+                warning = false
+                assertEquals(result, repository.search("Alice Wonderland"))
+                assertEquals(4, requests)
+            } finally {
+                client.close()
+                engine.close()
+            }
+        }
+    }
+
+    @Test fun inconsistentQueryWarningPayloadsStayInvalidRatherThanDisplayingAdvice() = runTest {
+        val engine = MockEngine { respond("owned listing") }
+        val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+        try {
+            for (bad in listOf(
+                result.copy(queryError = GalleryQueryError.TOO_MANY_KEYWORDS),
+                GallerySearchResult("1", null, emptyList(), GalleryQueryError.TOO_MANY_KEYWORDS),
+                GallerySearchResult(null, "2", emptyList(), GalleryQueryError.TOO_MANY_KEYWORDS),
+            )) {
+                assertEquals(GalleryFailure.INVALID_RESPONSE, assertFailsWith<GalleryRequestException> { GalleryRepository(client, GalleryListDecoder { bad }).search("owned") }.failure)
+            }
+        } finally {
+            client.close()
+            engine.close()
+        }
     }
 
     @Test fun everyListingRouteRestoresLanguageBadgesWithoutInventingOrReplacingMetadata() = runTest {

@@ -306,4 +306,5 @@
     <string name="gallery_torrents">Torrents</string>
     <string name="gallery_no_torrents">No torrents</string>
     <string name="gallery_torrent_open_failed">No torrent application could be opened. Copy the link or try again.</string>
+    <string name="gallery_error_query">You provided too many keywords. Use fewer keywords, or combine keywords with quotes.</string>
 </resources>

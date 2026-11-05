@@ -2,10 +2,13 @@ package com.ehviewer.shared
 
 import androidx.compose.ui.graphics.toPixelMap
 import com.ehviewer.core.network.gallery.GalleryDocumentDecoder
+import com.ehviewer.core.network.gallery.GalleryQueryError
 import kotlin.io.encoding.Base64
 
 /** Offline assertions invoked only by explicit packaged-app regression modes, never normal browsing. */
 fun verifyGalleryProduct(decoder: GalleryDocumentDecoder): Int {
+    val queryWarning = decoder.decode("""<!DOCTYPE html><html><body><div class="searchwarn"><p>You provided too many keywords. Use fewer keywords, or combine keywords with quotes.</p></div></body></html>""".encodeToByteArray())
+    check(queryWarning.queryError == GalleryQueryError.TOO_MANY_KEYWORDS && queryWarning.galleryInfoList.isEmpty() && queryWarning.prev == null && queryWarning.next == null)
     val detail = decoder.decodeDetails(
         """<!DOCTYPE html><html><body>
         <script>var gid = 1; var token = "0123456789"; var apiuid = -1; var apikey = "0000000000"; var average_rating = 4.5;</script>

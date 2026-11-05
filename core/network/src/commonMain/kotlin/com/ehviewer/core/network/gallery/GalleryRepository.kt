@@ -12,13 +12,16 @@ import kotlinx.serialization.Serializable
 
 /** The original Rust HTML parser supplies this CBOR-compatible response on every platform. */
 @Serializable
-data class GallerySearchResult(val prev: String?, val next: String?, val galleryInfoList: List<BaseGalleryInfo>)
+data class GallerySearchResult(val prev: String?, val next: String?, val galleryInfoList: List<BaseGalleryInfo>, val queryError: GalleryQueryError? = null)
+
+@Serializable
+enum class GalleryQueryError { TOO_MANY_KEYWORDS, }
 
 fun interface GalleryListDecoder {
     fun decode(html: ByteArray): GallerySearchResult
 }
 
-enum class GalleryFailure { AUTHENTICATION, CHALLENGE, RATE_LIMIT, OFFLINE, SERVER, INVALID_RESPONSE, RESPONSE_TOO_LARGE, SESSION_STORAGE, LOCAL_STORAGE }
+enum class GalleryFailure { AUTHENTICATION, CHALLENGE, RATE_LIMIT, OFFLINE, SERVER, INVALID_RESPONSE, RESPONSE_TOO_LARGE, SESSION_STORAGE, LOCAL_STORAGE, SEARCH_QUERY }
 
 class GalleryRequestException(val failure: GalleryFailure) : Exception("Gallery request failed: $failure")
 
@@ -35,6 +38,16 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
         page.galleryInfoList.filter { it.simpleLanguage == null }.forEach { it.generateSLang() }
     }
 
+    private suspend fun listing(url: Url): GallerySearchResult = requests.document(url, ::decodeListing).also { page ->
+        // Check the typed envelope after document decoding, so it stays a query error.
+        // An inconsistent envelope must still fail the untrusted-document boundary.
+        if (page.queryError != null) {
+            if (page.prev != null || page.next != null || page.galleryInfoList.isNotEmpty()) invalid()
+            throw GalleryRequestException(GalleryFailure.SEARCH_QUERY)
+        }
+        if (!validSearchCursor(page.prev) || !validSearchCursor(page.next)) invalid()
+    }
+
     suspend fun search(query: String = "", cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult {
         require(query.length <= 4096 && validSearchCursor(cursor))
         val url = URLBuilder(URLProtocol.HTTPS, host).apply {
@@ -43,9 +56,7 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
             if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
             filters.appendTo(this)
         }.build()
-        return requests.document(url, ::decodeListing).also {
-            if (!validSearchCursor(it.prev) || !validSearchCursor(it.next)) invalid()
-        }
+        return listing(url)
     }
 
     /** Match Android's uploader route, including names that cannot be expressed by search operators. */
@@ -56,9 +67,7 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
             if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
             filters.appendTo(this)
         }.build()
-        return requests.document(url, ::decodeListing).also {
-            if (!validSearchCursor(it.prev) || !validSearchCursor(it.next)) invalid()
-        }
+        return listing(url)
     }
 
     /** Match Android's tag route without interpreting literal tag text as search operators. */
@@ -73,9 +82,7 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
             if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
             filters.appendTo(this)
         }.build()
-        return requests.document(url, ::decodeListing).also {
-            if (!validSearchCursor(it.prev) || !validSearchCursor(it.next)) invalid()
-        }
+        return listing(url)
     }
 
     fun galleryUrl(gid: Long, token: String): Url {

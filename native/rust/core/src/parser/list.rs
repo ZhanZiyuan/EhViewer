@@ -42,6 +42,16 @@ pub struct GalleryListResult {
     galleryInfoList: Vec<BaseGalleryInfo>,
 }
 
+// Portable-only envelope: legacy Android keeps its original EhError and wire model.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GalleryQueryFailure {
+    prev: Option<String>,
+    next: Option<String>,
+    gallery_info_list: Vec<BaseGalleryInfo>,
+    query_error: &'static str,
+}
+
 pub fn to_category_i32(category: &str) -> i32 {
     match category {
         "misc" => 0x1,
@@ -248,6 +258,18 @@ pub fn parse_info_list_cbor(input: &[u8]) -> Result<Vec<u8>> {
     let html = std::str::from_utf8(input)?;
     let dom = tl::parse(html, tl::ParserOptions::default().track_ids())?;
     anyhow::ensure!(dom.version().is_some(), "Missing gallery document");
+    if get_vdom_first_element_by_class_name(&dom, "searchwarn").is_some_and(|warning| {
+        warning.inner_text(dom.parser()).trim()
+            == "You provided too many keywords. Use fewer keywords, or combine keywords with quotes."
+    }) {
+        return serde_cbor::to_vec(&GalleryQueryFailure {
+            prev: None,
+            next: None,
+            gallery_info_list: Vec::new(),
+            query_error: "TOO_MANY_KEYWORDS",
+        })
+        .map_err(Into::into);
+    }
     let result = match parse_info_list(&dom, dom.parser()) {
         Ok(result) => result,
         Err(error) => {
@@ -272,6 +294,36 @@ mod portable_tests {
     use super::*;
 
     #[test]
+    fn portable_keyword_limit_is_typed_while_legacy_android_keeps_its_error() {
+        let html = br#"<!DOCTYPE html><html><body><div class="searchwarn"><p>You provided too many keywords. Use fewer keywords, or combine keywords with quotes.</p></div></body></html>"#;
+        let dom = tl::parse(
+            std::str::from_utf8(html).unwrap(),
+            tl::ParserOptions::default(),
+        )
+        .unwrap();
+        assert!(parse_info_list(&dom, dom.parser()).is_err());
+        let bytes = parse_info_list_cbor(html).unwrap();
+        let actual: serde_json::Value = serde_cbor::from_slice(&bytes).unwrap();
+        assert_eq!(actual["queryError"], "TOO_MANY_KEYWORDS");
+        assert!(actual["galleryInfoList"].as_array().unwrap().is_empty());
+        assert!(actual["prev"].is_null() && actual["next"].is_null());
+    }
+
+    #[test]
+    fn unknown_service_warnings_never_become_empty_success_or_query_advice() {
+        for warning in [
+            "An unknown service warning",
+            "No hits found but your session is unavailable",
+            "You provided too many keywords.",
+        ] {
+            let html = format!(
+                "<!DOCTYPE html><html><body><div class=\"searchwarn\">{warning}</div></body></html>"
+            );
+            assert!(parse_info_list_cbor(html.as_bytes()).is_err());
+        }
+    }
+
+    #[test]
     fn portable_search_keeps_existing_models_and_two_part_pagination() {
         let html = br#"<!DOCTYPE html><html><body>
             <a id="uprev" href="/?prev=12-3">Previous</a><a id="unext" href="/?next=42-7">Next</a>
@@ -290,6 +342,16 @@ mod portable_tests {
         assert_eq!(actual["galleryInfoList"][0]["thumbKey"], "test-thumb.jpg");
         assert_eq!(actual["galleryInfoList"][0]["thumbHeight"], 100);
         assert_eq!(actual["galleryInfoList"][0]["thumbWidth"], 80);
+        let mentioned = std::str::from_utf8(html).unwrap().replace(
+            "</body>",
+            "<p>You provided too many keywords. Use fewer keywords, or combine keywords with quotes.</p></body>",
+        );
+        let actual_with_text: serde_json::Value =
+            serde_cbor::from_slice(&parse_info_list_cbor(mentioned.as_bytes()).unwrap()).unwrap();
+        assert_eq!(
+            actual_with_text, actual,
+            "Ordinary page text must not be mistaken for a service warning"
+        );
     }
 
     #[test]

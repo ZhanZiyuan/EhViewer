@@ -45,7 +45,7 @@ import org.junit.runner.RunWith
 /** Controlled HTTP/absent-handler failure; actual installed Ktor, Rust JNI, shared UI and clipboard. */
 @RunWith(AndroidJUnit4::class)
 class GalleryTorrentIntegrationTest {
-    @Test fun actualTorrentDocumentRetriesCopiesAndDistinguishesExplicitEmptyFromServerFailure() {
+    @Test fun queryWarningsRecoverIntoActualTorrentRetryCopyAndExplicitEmpty() {
         System.loadLibrary("ehviewer")
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -58,6 +58,8 @@ class GalleryTorrentIntegrationTest {
         val token = "0123456789"
         val title = "Owned torrent gallery"
         val torrentName = "Alice & friends.zip"
+        val limitQuery = "one two three four five six seven"
+        val limitMessage = "You provided too many keywords. Use fewer keywords, or combine keywords with quotes."
         val expected = "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=Alice%20%26%20friends.zip&tr=https%3A%2F%2Fehtracker.org%2F$gid%2Fannounce"
         val calls = AtomicInteger()
         val png = Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGP4z8AAQv8BD/kD/YURmXYAAAAASUVORK5CYII=")
@@ -89,6 +91,7 @@ class GalleryTorrentIntegrationTest {
                     }
                 }
                 request.url.encodedPath.startsWith("/g/") -> respond(detail)
+                request.url.parameters["f_search"] == limitQuery -> respond("""<!DOCTYPE html><html><body><div class="searchwarn"><p>$limitMessage</p></div></body></html>""")
                 else -> respond("""<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/owned.png" style="height:100px;width:80px"><div class="cn">Non-H</div><div class="ir" style="background-position:0px -1px"></div></div></div></body></html>""")
             }
         }
@@ -127,7 +130,13 @@ class GalleryTorrentIntegrationTest {
                         }
                     }
                 }
-                requireNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = "owned torrent"
+                requireNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = limitQuery
+                device.submitSharedSearch()
+                visible(limitMessage)
+                assertEquals(limitQuery, requireNotNull(device.findObject(By.clazz("android.widget.EditText"))).text)
+                assertFalse(device.hasObject(By.text("The site returned a page that could not be read.")))
+                capture("query-keyword-limit.png")
+                requireNotNull(device.findObject(By.clazz("android.widget.EditText"))).text = "owned torrent"
                 device.submitSharedSearch()
                 visible(title)
                 device.clickSharedControl(title)

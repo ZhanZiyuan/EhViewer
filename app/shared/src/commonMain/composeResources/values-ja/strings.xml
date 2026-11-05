@@ -303,4 +303,5 @@
     <string name="gallery_torrents">Torrent</string>
     <string name="gallery_no_torrents">Torrent なし</string>
     <string name="gallery_torrent_open_failed">Torrent アプリを開けませんでした。リンクをコピーするか、もう一度お試しください。</string>
+    <string name="gallery_error_query">検索キーワードが多すぎます。単語を減らすか、フレーズを引用符で囲んでください。</string>
 </resources>

@@ -303,4 +303,5 @@
     <string name="gallery_torrents">種子</string>
     <string name="gallery_no_torrents">沒有種子</string>
     <string name="gallery_torrent_open_failed">無法開啟種子應用程式。請複製連結或重試。</string>
+    <string name="gallery_error_query">搜尋關鍵字過多。請減少關鍵字，或以引號括起片語。</string>
 </resources>

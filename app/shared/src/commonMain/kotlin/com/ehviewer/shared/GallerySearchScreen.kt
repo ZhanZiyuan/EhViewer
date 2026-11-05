@@ -95,6 +95,7 @@ import ehviewer.app.shared.generated.resources.gallery_error_authentication
 import ehviewer.app.shared.generated.resources.gallery_error_challenge
 import ehviewer.app.shared.generated.resources.gallery_error_local_storage
 import ehviewer.app.shared.generated.resources.gallery_error_offline
+import ehviewer.app.shared.generated.resources.gallery_error_query
 import ehviewer.app.shared.generated.resources.gallery_error_rate_limit
 import ehviewer.app.shared.generated.resources.gallery_error_response
 import ehviewer.app.shared.generated.resources.gallery_error_server
@@ -593,4 +594,5 @@ internal fun GalleryFailure.userMessage(): String = when (this) {
     GalleryFailure.RESPONSE_TOO_LARGE -> galleryString(Res.string.gallery_error_too_large)
     GalleryFailure.SESSION_STORAGE -> galleryString(Res.string.gallery_error_session_storage)
     GalleryFailure.LOCAL_STORAGE -> galleryString(Res.string.gallery_error_local_storage)
+    GalleryFailure.SEARCH_QUERY -> galleryString(Res.string.gallery_error_query)
 }
