@@ -37,8 +37,29 @@ internal fun UiDevice.openSharedDestination(label: String, navigation: String = 
     item.click()
 }
 
-/** Submits the shared floating search bar's query with its Search icon button. */
-internal fun UiDevice.submitSharedSearch() = requireNotNull(wait(Until.findObject(By.desc("Search")), 15_000)).click()
+/** Submits the shared floating search bar without letting Gboard's first-use stylus tour consume it. */
+internal fun UiDevice.submitSharedSearch() {
+    val deadline = SystemClock.uptimeMillis() + 15_000
+    val keyboard = "com.google.android.inputmethod.latin"
+    val application = InstrumentationRegistry.getInstrumentation().targetContext.packageName
+    while (SystemClock.uptimeMillis() < deadline) {
+        // This exact external onboarding window was retained in a real tablet failure.
+        // Never dismiss an application dialog, disable the IME or bypass the focus checks.
+        if (hasObject(By.pkg(keyboard).text("Try out your stylus"))) {
+            requireNotNull(findObject(By.pkg(keyboard).text("Cancel"))).click()
+            check(wait(Until.hasObject(By.pkg(application).clazz("android.widget.EditText").focused(true)), (deadline - SystemClock.uptimeMillis()).coerceAtLeast(1))) {
+                "Dismissing the input-method tutorial lost the actual search field focus"
+            }
+        }
+        val search = findObject(By.desc("Search"))
+        if (search != null) {
+            search.click()
+            return
+        }
+        SystemClock.sleep(25)
+    }
+    throw AssertionError("Shared Search action was unavailable within its original 15s deadline")
+}
 
 private val readerControls = setOf("Back", "Go to page", "Previous page", "Next page", "Continuous reading", "Paged reading", "Left to right", "Right to left", "Reset zoom", "Load original image", "Use display image", "Hide reader controls", "Seek page")
 

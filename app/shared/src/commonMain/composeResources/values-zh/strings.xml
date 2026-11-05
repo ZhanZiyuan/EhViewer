@@ -264,4 +264,7 @@
     <string name="gallery_settings_about">关于</string>
     <string name="gallery_settings_source">源代码</string>
     <string name="gallery_settings_license">许可证</string>
+    <string name="gallery_link_share">分享</string>
+    <string name="gallery_more_options">更多选项</string>
+    <string name="gallery_link_share_failed">无法打开分享面板，请重试。</string>
 </resources>

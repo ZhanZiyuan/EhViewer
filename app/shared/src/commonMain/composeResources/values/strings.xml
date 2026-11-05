@@ -265,4 +265,7 @@
     <string name="gallery_settings_about">About</string>
     <string name="gallery_settings_source">Source code</string>
     <string name="gallery_settings_license">License</string>
+    <string name="gallery_link_share">Share</string>
+    <string name="gallery_more_options">More options</string>
+    <string name="gallery_link_share_failed">Sharing could not be opened. Try again.</string>
 </resources>

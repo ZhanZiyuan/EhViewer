@@ -264,4 +264,7 @@
     <string name="gallery_settings_about">このアプリについて</string>
     <string name="gallery_settings_source">ソースコード</string>
     <string name="gallery_settings_license">ライセンス</string>
+    <string name="gallery_link_share">共有</string>
+    <string name="gallery_more_options">その他のオプション</string>
+    <string name="gallery_link_share_failed">共有画面を開けませんでした。もう一度お試しください。</string>
 </resources>

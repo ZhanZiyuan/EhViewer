@@ -100,8 +100,16 @@ class GalleryFavoriteIntegrationTest {
         val rejectCopy = AtomicBoolean(false)
         val rejectBrowser = AtomicBoolean(false)
         val openedLinks = Collections.synchronizedList(mutableListOf<Intent>())
+        val sharedLinks = Collections.synchronizedList(mutableListOf<Intent>())
         val browserMonitor = object : Instrumentation.ActivityMonitor() {
             override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
+                if (intent.action == Intent.ACTION_CHOOSER) {
+                    val shared = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+                    if (shared?.action == Intent.ACTION_SEND && shared.type == "text/plain") {
+                        sharedLinks += Intent(shared)
+                        return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+                    }
+                }
                 if (intent.action == Intent.ACTION_VIEW && intent.data?.host == "e-hentai.org") {
                     openedLinks += Intent(intent)
                     return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
@@ -244,29 +252,53 @@ class GalleryFavoriteIntegrationTest {
                     }
                     device.submitSharedSearch()
                     click(title)
+                    val readBounds = requireNotNull(device.wait(Until.findObject(By.text("Read").enabled(true)), 15_000)).visibleBounds
+                    fun assertFeedbackDoesNotMoveDetails() {
+                        val current = requireNotNull(device.wait(Until.findObject(By.text("Read").enabled(true)), 15_000)).visibleBounds
+                        if (readBounds != current) {
+                            val image = File(context.cacheDir, "detail-feedback-layout-${SystemClock.uptimeMillis()}.png")
+                            check(device.takeScreenshot(image))
+                            println("Detail feedback layout failure screenshot=$image before=$readBounds after=$current")
+                        }
+                        assertEquals("Link feedback must overlay the detail viewport without moving its content", readBounds, current)
+                    }
                     fun clipboardText(): String? {
                         var value: String? = null
                         scenario.onActivity { activity -> value = activity.getSystemService(AndroidClipboardManager::class.java).primaryClip?.getItemAt(0)?.coerceToText(activity)?.toString() }
                         return value
                     }
                     rejectCopy.set(true)
+                    requireNotNull(device.wait(Until.findObject(By.desc("More options")), 15_000)).click()
                     click("Copy link")
                     assertTrue(device.wait(Until.hasObject(By.text("The link could not be copied. Try again.")), 15_000))
+                    assertFeedbackDoesNotMoveDetails()
                     assertEquals("owned-link-sentinel", clipboardText())
+                    requireNotNull(device.wait(Until.findObject(By.desc("More options")), 15_000)).click()
                     click("Copy link")
                     assertTrue(device.wait(Until.hasObject(By.text("Link copied")), 15_000))
+                    assertFeedbackDoesNotMoveDetails()
                     assertEquals(galleryUrl, clipboardText())
                     rejectBrowser.set(true)
+                    requireNotNull(device.wait(Until.findObject(By.desc("More options")), 15_000)).click()
                     click("Open in browser")
                     assertTrue(device.wait(Until.hasObject(By.text("The browser could not be opened. Try again.")), 15_000))
+                    assertFeedbackDoesNotMoveDetails()
                     assertTrue(openedLinks.isEmpty())
+                    requireNotNull(device.wait(Until.findObject(By.desc("More options")), 15_000)).click()
                     click("Open in browser")
                     assertTrue(device.wait(Until.hasObject(By.text("Sent to the browser")), 15_000))
+                    assertFeedbackDoesNotMoveDetails()
                     assertEquals(1, openedLinks.size)
                     assertEquals(galleryUrl, openedLinks.single().dataString)
                     assertTrue(openedLinks.single().hasExtra("android.support.customtabs.extra.SESSION"))
+                    requireNotNull(device.wait(Until.findObject(By.desc("Share")), 15_000)).click()
+                    val shareDeadline = SystemClock.uptimeMillis() + 15_000
+                    while (sharedLinks.isEmpty() && SystemClock.uptimeMillis() < shareDeadline) SystemClock.sleep(25)
+                    assertEquals(1, sharedLinks.size)
+                    assertEquals(galleryUrl, sharedLinks.single().getStringExtra(Intent.EXTRA_TEXT))
+                    assertEquals("text/plain", sharedLinks.single().type)
                     // The real Android intent was observed and explicitly cancelled by this owned
-                    // monitor. This is not evidence that a real browser rendered the remote page.
+                    // monitor. This does not establish external browser rendering or completed sharing.
                     click("Back to search")
                     click(title)
                     assertFalse(device.hasObject(By.text("Link copied")))
