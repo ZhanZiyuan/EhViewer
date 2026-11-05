@@ -34,6 +34,19 @@ class GalleryContentRepository(client: HttpClient, private val decoder: GalleryD
 
     override suspend fun comments(gid: Long, token: String): GalleryCommentList = metadata(gid, token, 0, true).comments
 
+    override suspend fun torrents(gid: Long, token: String): List<GalleryTorrent> {
+        require(gid > 0 && Regex("[a-f0-9]{10}").matches(token))
+        val url = URLBuilder(URLProtocol.HTTPS, host).apply {
+            encodedPath = "/gallerytorrents.php"
+            parameters.append("gid", gid.toString())
+            parameters.append("t", token)
+        }.build()
+        return requests.freshDocument(url, Url("https://$host/g/$gid/$token/"), decoder::decodeTorrents).also { entries ->
+            if (entries.size > 1024 || entries.map { it.url }.distinct().size != entries.size) invalid()
+            entries.forEach { it.magnet(gid) }
+        }
+    }
+
     private suspend fun metadata(gid: Long, token: String, previewPage: Int, allComments: Boolean): GalleryDetail {
         require(gid > 0 && Regex("[a-f0-9]{10}").matches(token) && previewPage >= 0)
         val url = URLBuilder(URLProtocol.HTTPS, host).apply {

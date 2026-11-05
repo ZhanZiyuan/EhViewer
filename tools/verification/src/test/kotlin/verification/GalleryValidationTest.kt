@@ -34,6 +34,7 @@ class GalleryValidationTest {
             int32_t ehv_parse_account_profile(const uint8_t *input, size_t length, uint64_t *handle);
             int32_t ehv_parse_account_config(const uint8_t *input, size_t length, uint64_t *handle);
             int32_t ehv_parse_favorite_note(const uint8_t *input, size_t length, uint64_t *handle);
+            int32_t ehv_parse_gallery_torrents(const uint8_t *input, size_t length, uint64_t *handle);
             int32_t ehv_session_read(const uint8_t *directory, size_t length, uint64_t *handle);
             int32_t ehv_session_write(const uint8_t *directory, size_t length, const uint8_t *input, size_t size);
             int32_t ehv_session_clear(const uint8_t *directory, size_t length);
@@ -46,7 +47,7 @@ class GalleryValidationTest {
             int32_t ehv_active_archives(size_t *count);
         """.trimIndent() + "\n" + listOf("OK", "INVALID_ARGUMENT", "INVALID_HANDLE", "BUFFER_TOO_SMALL", "LIMIT", "INTERNAL", "PANIC", "PARSE", "STORAGE", "NO_SESSION").mapIndexed { index, name -> "#define EHV_$name $index\n" }.joinToString("")
         verifyGalleryCapiHeader(header)
-        for (bad in listOf(header.replace("uint64_t *handle", "uint32_t *handle"), header.replace("EHV_OK 0", "EHV_OK 1"), header.replace("int32_t ehv_buffer_free(uint64_t handle);", ""), header.replace("uint32_t index", "uint64_t index"), header.replace("int32_t ehv_archive_close(uint64_t handle);", ""), header.replace("int32_t ehv_parse_favorite_note(const uint8_t *input, size_t length, uint64_t *handle);", ""))) {
+        for (bad in listOf(header.replace("uint64_t *handle", "uint32_t *handle"), header.replace("EHV_OK 0", "EHV_OK 1"), header.replace("int32_t ehv_buffer_free(uint64_t handle);", ""), header.replace("uint32_t index", "uint64_t index"), header.replace("int32_t ehv_archive_close(uint64_t handle);", ""), header.replace("int32_t ehv_parse_favorite_note(const uint8_t *input, size_t length, uint64_t *handle);", ""), header.replace("int32_t ehv_parse_gallery_torrents(const uint8_t *input, size_t length, uint64_t *handle);", ""))) {
             assertThrows(IllegalArgumentException::class.java) { verifyGalleryCapiHeader(bad) }
         }
     }

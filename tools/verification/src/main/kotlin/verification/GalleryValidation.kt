@@ -28,6 +28,7 @@ fun verifyGalleryCapiHeader(header: String) {
         "int32_tehv_parse_gallery_list(constuint8_t*input,size_tlength,uint64_t*handle);",
         "int32_tehv_parse_gallery_detail(constuint8_t*input,size_tlength,uint64_t*handle);",
         "int32_tehv_parse_gallery_page(constuint8_t*input,size_tlength,uint64_t*handle);",
+        "int32_tehv_parse_gallery_torrents(constuint8_t*input,size_tlength,uint64_t*handle);",
         "int32_tehv_parse_profile_link(constuint8_t*input,size_tlength,uint64_t*handle);",
         "int32_tehv_parse_account_profile(constuint8_t*input,size_tlength,uint64_t*handle);",
         "int32_tehv_parse_account_config(constuint8_t*input,size_tlength,uint64_t*handle);",

@@ -80,6 +80,7 @@ class ReadingNavigationTest {
         }
         val client = galleryHttpClient(engine, PersistentCookieStorage(vault), "reader-test")
         val decoder = object : GalleryDocumentDecoder {
+            override fun decodeTorrents(html: ByteArray): List<com.ehviewer.core.network.gallery.GalleryTorrent> = error("No torrent request expected")
             override fun decodeProfileLink(html: ByteArray): String? = error("No account request expected")
             override fun decodeProfile(html: ByteArray): com.ehviewer.core.network.session.GalleryAccountProfile = error("No account request expected")
             override fun decodeUserConfig(html: ByteArray): List<String> = error("No account request expected")

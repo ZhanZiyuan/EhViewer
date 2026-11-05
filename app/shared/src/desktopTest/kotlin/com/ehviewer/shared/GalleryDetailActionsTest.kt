@@ -32,6 +32,7 @@ class GalleryDetailActionsTest {
                 for (font in listOf(1f, 1.8f)) {
                     var confirmed by mutableStateOf(false)
                     var edits = 0
+                    var torrents = 0
                     val searches = mutableListOf<GallerySimilarSearch>()
                     val scene = ImageComposeScene(width, 200, Density(1f, font)) {
                         MaterialTheme {
@@ -44,6 +45,7 @@ class GalleryDetailActionsTest {
                                 ),
                                 onFavorite = { edits++ },
                                 onSimilar = { searches += it },
+                                onTorrents = { torrents++ },
                             )
                         }
                     }
@@ -80,6 +82,17 @@ class GalleryDetailActionsTest {
                         click(bounds.center)
                         assertEquals(listOf(GallerySimilarSearch("\"Alice in Wonderland\"")), searches)
                         assertEquals(1, edits)
+                        var torrentBounds = action("Torrent (0)").touchBoundsInRoot
+                        repeat(4) {
+                            if (torrentBounds.center.x !in 0f..width.toFloat()) {
+                                scene.sendPointerEvent(PointerEventType.Scroll, Offset(width / 2f, 32f), scrollDelta = Offset(20f, 0f))
+                                render()
+                                torrentBounds = action("Torrent (0)").touchBoundsInRoot
+                            }
+                        }
+                        assertTrue(torrentBounds.width >= 48 && torrentBounds.height >= 48 && torrentBounds.center.x in 0f..width.toFloat(), "Real Torrent target inaccessible at $width/$font: $torrentBounds")
+                        click(torrentBounds.center)
+                        assertEquals(1, torrents)
                     } finally {
                         scene.close()
                     }

@@ -11,6 +11,7 @@ import com.ehviewer.core.network.gallery.GalleryFavoritesRepository
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.gallery.GallerySearchResult
+import com.ehviewer.core.network.gallery.GalleryTorrent
 import com.ehviewer.core.network.session.GalleryAccountProfile
 import com.ehviewer.core.network.session.PersistentCookieStorage
 import io.ktor.client.engine.mock.MockEngine
@@ -66,6 +67,7 @@ class GalleryFavoritesRepositoryTest {
             override fun decodeProfileLink(html: ByteArray): String? = error("No forum request expected")
             override fun decodeProfile(html: ByteArray): GalleryAccountProfile = error("No profile request expected")
             override fun decode(html: ByteArray): GallerySearchResult = error("No search request expected")
+            override fun decodeTorrents(html: ByteArray): List<GalleryTorrent> = error("Torrent parsing is not requested by this regression")
             override fun decodePage(html: ByteArray): GalleryImagePage = error("No page request expected")
             override fun decodeUserConfig(html: ByteArray): List<String> {
                 check(html.decodeToString() == "owned-config")

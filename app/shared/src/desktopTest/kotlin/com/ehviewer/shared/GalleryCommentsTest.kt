@@ -104,6 +104,7 @@ class GalleryCommentsTest {
         }
         val client = HttpClient(engine) { followRedirects = false }
         val decoder = object : GalleryDocumentDecoder {
+            override fun decodeTorrents(html: ByteArray): List<com.ehviewer.core.network.gallery.GalleryTorrent> = error("No torrent request expected")
             override fun decodeDetails(html: ByteArray) = GalleryDetail(BaseGalleryInfo(gid = 1, token = "0123456789", pages = 2), tagGroups = emptyList(), comments = all, previewList = emptyList())
             override fun decodePage(html: ByteArray): GalleryImagePage = error("The detail reader owns image pages")
             override fun decode(html: ByteArray): GallerySearchResult = error("No listing expected")

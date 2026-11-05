@@ -24,10 +24,11 @@ import ehviewer.app.shared.generated.resources.gallery_detail_similar
 import ehviewer.app.shared.generated.resources.gallery_favorite_add
 import ehviewer.app.shared.generated.resources.gallery_favorite_edit
 import ehviewer.app.shared.generated.resources.gallery_info_favorite_name
+import ehviewer.app.shared.generated.resources.gallery_torrent_count
 
 /** Compact original detail actions, backed by the existing confirmed-state favorite editor. */
 @Composable
-internal fun GalleryDetailActions(detail: GalleryDetail, onFavorite: () -> Unit, onSimilar: (GallerySimilarSearch) -> Unit) {
+internal fun GalleryDetailActions(detail: GalleryDetail, onFavorite: () -> Unit, onSimilar: (GallerySimilarSearch) -> Unit, onTorrents: () -> Unit) {
     val favorited = detail.favoriteSlot != GalleryInfo.NOT_FAVORITED
     val similar = similarGallerySearch(detail)
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)) {
@@ -47,6 +48,13 @@ internal fun GalleryDetailActions(detail: GalleryDetail, onFavorite: () -> Unit,
                 Icon(GalleryIcons.Search, galleryString(Res.string.gallery_detail_similar))
             }
             Text(galleryString(Res.string.gallery_detail_similar))
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            val label = galleryString(Res.string.gallery_torrent_count, detail.torrentCount)
+            FilledIconButton(onClick = onTorrents, colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+                Icon(GalleryIcons.Magnet, label)
+            }
+            Text(label)
         }
     }
 }

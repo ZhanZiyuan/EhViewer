@@ -7,6 +7,7 @@ import com.ehviewer.core.network.gallery.GalleryDocumentDecoder
 import com.ehviewer.core.network.gallery.GalleryFavoriteNote
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GallerySearchResult
+import com.ehviewer.core.network.gallery.GalleryTorrent
 import com.ehviewer.core.network.session.GalleryAccountProfile
 import com.ehviewer.core.network.session.SessionStorageException
 import com.ehviewer.core.network.session.SessionVault
@@ -21,6 +22,7 @@ import com.hippo.ehviewer.rust.capi.ehv_parse_favorite_note
 import com.hippo.ehviewer.rust.capi.ehv_parse_gallery_detail
 import com.hippo.ehviewer.rust.capi.ehv_parse_gallery_list
 import com.hippo.ehviewer.rust.capi.ehv_parse_gallery_page
+import com.hippo.ehviewer.rust.capi.ehv_parse_gallery_torrents
 import com.hippo.ehviewer.rust.capi.ehv_parse_profile_link
 import com.hippo.ehviewer.rust.capi.ehv_session_clear
 import com.hippo.ehviewer.rust.capi.ehv_session_read
@@ -64,6 +66,7 @@ object NativeGalleryDecoder : GalleryDocumentDecoder {
     override fun decode(html: ByteArray): GallerySearchResult = cbor.decodeFromByteArray(parse(html, 0))
     override fun decodeDetails(html: ByteArray): GalleryDetail = cbor.decodeFromByteArray(parse(html, 1))
     override fun decodePage(html: ByteArray): GalleryImagePage = cbor.decodeFromByteArray(parse(html, 2))
+    override fun decodeTorrents(html: ByteArray): List<GalleryTorrent> = cbor.decodeFromByteArray(parse(html, 7))
     override fun decodeProfileLink(html: ByteArray): String? = cbor.decodeFromByteArray(parse(html, 3))
     override fun decodeProfile(html: ByteArray): GalleryAccountProfile = cbor.decodeFromByteArray(parse(html, 4))
     override fun decodeUserConfig(html: ByteArray): List<String> = cbor.decodeFromByteArray(parse(html, 5))
@@ -81,6 +84,7 @@ object NativeGalleryDecoder : GalleryDocumentDecoder {
                 4 -> ehv_parse_account_profile(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
                 5 -> ehv_parse_account_config(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
                 6 -> ehv_parse_favorite_note(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
+                7 -> ehv_parse_gallery_torrents(input.addressOf(0).reinterpret(), html.size.convert(), handle.ptr)
                 else -> error("Unknown account document kind")
             }
             check(status == EHV_OK) { "Invalid gallery response" }

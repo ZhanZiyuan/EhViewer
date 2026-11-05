@@ -12,6 +12,9 @@ interface GalleryContent {
     /** Online comments use the service's explicit all-comments request; local books have none. */
     suspend fun comments(gid: Long, token: String): GalleryCommentList = invalid()
     suspend fun commentImage(url: String, gid: Long, token: String): ByteArray = invalid()
+
+    /** Local books have no service torrent list. The online repository uses the original endpoint. */
+    suspend fun torrents(gid: Long, token: String): List<GalleryTorrent> = invalid()
     fun pageUrl(gid: Long, pageToken: String, index: Int): Url
     fun pageIndex(url: String, gid: Long): Int
     suspend fun page(url: String, gid: Long, reloadKey: String? = null): GalleryImagePage

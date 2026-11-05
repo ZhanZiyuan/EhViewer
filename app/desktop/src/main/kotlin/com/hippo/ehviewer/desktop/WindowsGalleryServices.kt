@@ -14,6 +14,7 @@ import com.ehviewer.core.network.gallery.GalleryDocumentDecoder
 import com.ehviewer.core.network.gallery.GalleryFavoriteNote
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GallerySearchResult
+import com.ehviewer.core.network.gallery.GalleryTorrent
 import com.ehviewer.core.network.session.GalleryAccountProfile
 import com.ehviewer.core.network.session.SessionStorageException
 import com.ehviewer.core.network.session.SessionVault
@@ -178,6 +179,7 @@ internal class WindowsGalleryDecoder(private val library: Path) : GalleryDocumen
     override fun decode(html: ByteArray): GallerySearchResult = cbor.decodeFromByteArray(parse("ehv_parse_gallery_list", html))
     override fun decodeDetails(html: ByteArray): GalleryDetail = cbor.decodeFromByteArray(parse("ehv_parse_gallery_detail", html))
     override fun decodePage(html: ByteArray): GalleryImagePage = cbor.decodeFromByteArray(parse("ehv_parse_gallery_page", html))
+    override fun decodeTorrents(html: ByteArray): List<GalleryTorrent> = cbor.decodeFromByteArray(parse("ehv_parse_gallery_torrents", html))
     override fun decodeProfileLink(html: ByteArray): String? = cbor.decodeFromByteArray(parse("ehv_parse_profile_link", html))
     override fun decodeProfile(html: ByteArray): GalleryAccountProfile = cbor.decodeFromByteArray(parse("ehv_parse_account_profile", html))
     override fun decodeUserConfig(html: ByteArray): List<String> = cbor.decodeFromByteArray(parse("ehv_parse_account_config", html))

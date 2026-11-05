@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.dp
 
-/** Apache-2.0 Material Symbols path data, kept local so the shared UI avoids the large icon artifact. */
+/** Material Symbols (Apache-2.0) and the identified existing EhViewer icons, without the large icon artifact. */
 internal object GalleryIcons {
     val Menu by lazy { icon("Menu", "M3,18h18v-2H3v2zM3,13h18v-2H3v2zM3,6v2h18V6H3z") }
     val Home by lazy { icon("Home", "M10,20v-6h4v6h5v-8h3L12,3 2,12h3v8z") }
@@ -37,6 +37,9 @@ internal object GalleryIcons {
 
     val FavoriteBorder by lazy { icon("FavoriteBorder", "M16.5,3c-1.74,0 -3.41,0.81 -4.5,2.09C10.91,3.81 9.24,3 7.5,3C4.42,3 2,5.42 2,8.5c0,3.78 3.4,6.86 8.55,11.54L12,21.35l1.45,-1.32C18.6,15.36 22,12.28 22,8.5C22,5.42 19.58,3 16.5,3zM12.1,18.55l-0.1,0.1 -0.1,-0.1C7.14,14.24 4,11.39 4,8.5C4,6.5 5.5,5 7.5,5c1.54,0 3.04,1 3.57,2.36h1.87C13.46,6 14.96,5 16.5,5C18.5,5 20,6.5 20,8.5c0,2.89 -3.14,5.74 -7.9,10.05z") }
     val Favorite by lazy { icon("Favorite", "M12,21.35l-1.45,-1.32C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3c1.74,0 3.41,0.81 4.5,2.09C13.09,3.81 14.76,3 16.5,3 19.58,3 22,5.42 22,8.5c0,3.78 -3.4,6.86 -8.55,11.54L12,21.35z") }
+
+    // The existing Android EhIcons.Filled.Magnet path; no external UI implementation is copied.
+    val Magnet by lazy { icon("Magnet", "M3,7V13A9,9 0,0 0,12 22A9,9 0,0 0,21 13V7H17V13A5,5 0,0 1,12 18A5,5 0,0 1,7 13V7M17,5H21V2H17M3,5H7V2H3Z") }
     val Star by lazy { icon("Star", "M12,17.27L18.18,21l-1.64,-7.03L22,9.24l-7.19,-0.61L12,2 9.19,8.63 2,9.24l5.46,4.73L5.82,21z") }
     val StarHalf by lazy { icon("StarHalf", "M22,9.24l-7.19,-0.62L12,2L9.19,8.63L2,9.24l5.46,4.73L5.82,21L12,17.27L18.18,21l-1.63,-7.03L22,9.24zM12,15.4V6.1l1.71,4.04l4.38,0.38l-3.32,2.88l1,4.28L12,15.4z", autoMirror = true) }
     val StarOutline by lazy { icon("StarOutline", "M22,9.24l-7.19,-0.62L12,2L9.19,8.63L2,9.24l5.46,4.73L5.82,21L12,17.27L18.18,21l-1.63,-7.03L22,9.24zM12,15.4l-3.76,2.27l1,-4.28l-3.32,-2.88l4.38,-0.38L12,6.1l1.71,4.04l4.38,0.38l-3.32,2.88l1,4.28L12,15.4z") }

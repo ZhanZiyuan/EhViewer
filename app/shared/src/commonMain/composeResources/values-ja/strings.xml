@@ -299,4 +299,8 @@
     </plurals>
     <string name="gallery_show_comments">ギャラリーのコメントを表示</string>
     <string name="gallery_show_comments_summary">ギャラリーの詳細ページにコメントを表示します</string>
+    <string name="gallery_torrent_count">Torrent (%1$d)</string>
+    <string name="gallery_torrents">Torrent</string>
+    <string name="gallery_no_torrents">Torrent なし</string>
+    <string name="gallery_torrent_open_failed">Torrent アプリを開けませんでした。リンクをコピーするか、もう一度お試しください。</string>
 </resources>

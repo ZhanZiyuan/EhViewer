@@ -26,6 +26,16 @@ fun verifyGalleryProduct(decoder: GalleryDocumentDecoder): Int {
     check(comment.id == 12L && comment.user == "Owned reader" && comment.body.any { it.bold && it.text == "Shared & tested" } && comment.body.any { it.link == "#c12" && it.text == "日本語 📚" })
     val page = decoder.decodePage("""<!DOCTYPE html><html><body><img id="img" src="https://ehgt.org/fixture%20image.png?a=1&amp;b=2"><a id="next" href="https://e-hentai.org/s/2222222222/1-2">Next</a></body></html>""".encodeToByteArray())
     check(page.imageUrl == "https://ehgt.org/fixture%20image.png?a=1&b=2" && page.nextPageUrl == "https://e-hentai.org/s/2222222222/1-2" && page.previousPageUrl == null)
+    // Supplement the existing gallery-document group through every installed JNI/C ABI/FFM adapter.
+    val torrents = decoder.decodeTorrents(
+        """<!DOCTYPE html><html><div id="torrentinfo"><table><tr><td><span style="color:red">2026-11-05 12:34</span></td>
+        <td><span>Size:</span> 63.14 MiB</td><td><span>Seeds:</span> 12</td><td><span>Peers:</span> 3</td>
+        <td><span>Downloads:</span> 42</td><td><span>Uploader:</span> Reader</td>
+        <td><a onclick="document.location='https://ehtracker.org/get/1/0123456789abcdef0123456789abcdef01234567.torrent'">Alice &amp; friends.zip</a></td></tr></table></div></html>""".encodeToByteArray(),
+    )
+    check(torrents.size == 1 && torrents[0].name == "Alice & friends.zip" && torrents[0].outdated && torrents[0].seeds == 12 && torrents[0].peers == 3 && torrents[0].downloads == 42)
+    check(torrents[0].magnet(1).startsWith("magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn="))
+    check(decoder.decodeTorrents("""<!DOCTYPE html><html><div id="torrentinfo">There are no torrents for this gallery.</div></html>""".encodeToByteArray()).isEmpty())
     // Generated two-pixel RGBA PNG, with correct chunk CRCs; no remote image or user data.
     val png = Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGP4z8AAQv8BD/kD/YURmXYAAAAASUVORK5CYII=")
     val image = decodePlatformImage(png)

@@ -299,4 +299,8 @@
     </plurals>
     <string name="gallery_show_comments">显示画廊评论</string>
     <string name="gallery_show_comments_summary">在画廊详情页中显示评论</string>
+    <string name="gallery_torrent_count">种子 (%1$d)</string>
+    <string name="gallery_torrents">种子</string>
+    <string name="gallery_no_torrents">没有种子</string>
+    <string name="gallery_torrent_open_failed">无法打开种子应用。请复制链接或重试。</string>
 </resources>

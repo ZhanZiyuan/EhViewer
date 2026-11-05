@@ -299,4 +299,8 @@
     </plurals>
     <string name="gallery_show_comments">顯示圖庫評論</string>
     <string name="gallery_show_comments_summary">在圖庫詳情頁中顯示評論</string>
+    <string name="gallery_torrent_count">種子 (%1$d)</string>
+    <string name="gallery_torrents">種子</string>
+    <string name="gallery_no_torrents">沒有種子</string>
+    <string name="gallery_torrent_open_failed">無法開啟種子應用程式。請複製連結或重試。</string>
 </resources>

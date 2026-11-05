@@ -302,4 +302,8 @@
     </plurals>
     <string name="gallery_show_comments">Show gallery comments</string>
     <string name="gallery_show_comments_summary">Show comments on the gallery details page</string>
+    <string name="gallery_torrent_count">Torrent (%1$d)</string>
+    <string name="gallery_torrents">Torrents</string>
+    <string name="gallery_no_torrents">No torrents</string>
+    <string name="gallery_torrent_open_failed">No torrent application could be opened. Copy the link or try again.</string>
 </resources>

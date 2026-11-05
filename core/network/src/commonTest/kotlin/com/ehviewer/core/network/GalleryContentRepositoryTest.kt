@@ -11,6 +11,7 @@ import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.gallery.GallerySearchResult
+import com.ehviewer.core.network.gallery.GalleryTorrent
 import com.ehviewer.core.network.session.PersistentCookieStorage
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -121,6 +122,7 @@ class GalleryContentRepositoryTest {
             assertEquals("detail", html.decodeToString())
             return detail
         }
+        override fun decodeTorrents(html: ByteArray): List<GalleryTorrent> = error("Torrent parsing is not requested by this regression")
         override fun decodePage(html: ByteArray): GalleryImagePage {
             assertEquals("page", html.decodeToString())
             return page

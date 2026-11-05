@@ -12,6 +12,7 @@ import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.gallery.GallerySearchResult
+import com.ehviewer.core.network.gallery.GalleryTorrent
 import com.ehviewer.core.network.session.GalleryAccountProfile
 import com.ehviewer.core.network.session.PersistentCookieStorage
 import io.ktor.client.engine.mock.MockEngine
@@ -51,6 +52,7 @@ class NetworkGalleryDownloadSourceTest {
             val window = html.decodeToString().removePrefix("detail:").toIntOrNull() ?: return gallery
             return gallery.copy(previewList = listOf(V1GalleryPreview("https://ehgt.org/preview.png", window, (window + 1).toString().repeat(10))))
         }
+        override fun decodeTorrents(html: ByteArray): List<GalleryTorrent> = error("Torrent parsing is not requested by this regression")
         override fun decodePage(html: ByteArray): GalleryImagePage {
             val index = html.decodeToString().substringAfter("page:").toInt()
             return GalleryImagePage(

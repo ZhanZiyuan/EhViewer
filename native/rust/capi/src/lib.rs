@@ -240,6 +240,24 @@ pub unsafe extern "C" fn ehv_parse_gallery_page(
     }
 }
 
+/// Parse the original service torrent list into an owned CBOR buffer.
+///
+/// # Safety
+/// Nonempty `input` is borrowed for `length` bytes; `handle` is one disjoint writable u64.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn ehv_parse_gallery_torrents(
+    input: *const u8,
+    length: usize,
+    handle: *mut u64,
+) -> i32 {
+    // SAFETY: preserve the existing borrowed-input and owned-buffer contract.
+    unsafe {
+        parse_document(input, length, handle, |bytes| {
+            ehviewer_core::parser::torrent::parse_torrent_list_cbor(bytes).map_err(|_| EHV_PARSE)
+        })
+    }
+}
+
 unsafe fn parse_document(
     input: *const u8,
     length: usize,
@@ -431,6 +449,22 @@ mod tests {
     }
 
     #[test]
+    fn torrent_list_results_keep_the_owned_copy_and_release_contract() {
+        let _serial = SERIAL.lock().unwrap();
+        let html = b"<!DOCTYPE html><html><div id=\"torrentinfo\"><p>There are no torrents for this gallery.</p></div></html>";
+        let mut handle = 0;
+        assert_eq!(unsafe { ehv_parse_gallery_torrents(html.as_ptr(), html.len(), &mut handle) }, EHV_OK);
+        let mut count = 0;
+        assert_eq!(unsafe { ehv_buffer_copy(handle, null_mut(), 0, &mut count) }, EHV_BUFFER_TOO_SMALL);
+        let mut bytes = vec![0; count];
+        assert_eq!(unsafe { ehv_buffer_copy(handle, bytes.as_mut_ptr(), bytes.len(), &mut count) }, EHV_OK);
+        assert_eq!(bytes, [0x80]);
+        assert_eq!(ehv_buffer_free(handle), EHV_OK);
+        assert_eq!(ehv_buffer_free(handle), EHV_INVALID_HANDLE);
+        empty();
+    }
+
+    #[test]
     fn account_documents_cross_the_owned_buffer_abi_and_release_every_result() {
         let _serial = SERIAL.lock().unwrap();
         let forum = br#"<!DOCTYPE html><html><body><div id="userlinks"><a href="https://forums.e-hentai.org/index.php?showuser=123">Profile</a></div><div class="row1"><div>Reader</div><div></div></div></body></html>"#;
@@ -481,6 +515,7 @@ mod tests {
         for parse in [
             ehv_parse_gallery_detail as unsafe extern "C" fn(*const u8, usize, *mut u64) -> i32,
             ehv_parse_gallery_page,
+            ehv_parse_gallery_torrents,
             account::ehv_parse_profile_link,
             account::ehv_parse_account_profile,
             account::ehv_parse_account_config,

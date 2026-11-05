@@ -9,6 +9,7 @@ interface GalleryDocumentDecoder : GalleryListDecoder, GalleryAccountDecoder {
     fun decodeDetails(html: ByteArray): GalleryDetail
     fun decodePage(html: ByteArray): GalleryImagePage
     fun decodeFavoriteNote(html: ByteArray): GalleryFavoriteNote
+    fun decodeTorrents(html: ByteArray): List<GalleryTorrent>
 }
 
 @Serializable

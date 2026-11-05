@@ -21,11 +21,13 @@ object RustGalleryDecoder : GalleryDocumentDecoder {
     private external fun decodeProfileNative(html: ByteArray): ByteArray
     private external fun decodeUserConfigNative(html: ByteArray): ByteArray
     private external fun decodeFavoriteNoteNative(html: ByteArray): ByteArray
+    private external fun decodeTorrentsNative(html: ByteArray): ByteArray
 
     override fun decodeProfileLink(html: ByteArray): String? = cbor.decodeFromByteArray(decodeProfileLinkNative(html))
     override fun decodeProfile(html: ByteArray): GalleryAccountProfile = cbor.decodeFromByteArray(decodeProfileNative(html))
     override fun decodeUserConfig(html: ByteArray): List<String> = cbor.decodeFromByteArray(decodeUserConfigNative(html))
     override fun decodeFavoriteNote(html: ByteArray): GalleryFavoriteNote = cbor.decodeFromByteArray<GalleryFavoriteNote>(decodeFavoriteNoteNative(html)).also { it.validate() }
+    override fun decodeTorrents(html: ByteArray): List<GalleryTorrent> = cbor.decodeFromByteArray(decodeTorrentsNative(html))
 
     override fun decodeDetails(html: ByteArray): GalleryDetail {
         require(html.isNotEmpty() && html.size <= 8 * 1024 * 1024)

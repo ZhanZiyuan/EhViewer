@@ -18,6 +18,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -30,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -63,6 +66,8 @@ import ehviewer.app.shared.generated.resources.gallery_downloaded
 import ehviewer.app.shared.generated.resources.gallery_favorite_add
 import ehviewer.app.shared.generated.resources.gallery_favorite_edit
 import ehviewer.app.shared.generated.resources.gallery_history_unavailable
+import ehviewer.app.shared.generated.resources.gallery_link_copied
+import ehviewer.app.shared.generated.resources.gallery_no_torrents
 import ehviewer.app.shared.generated.resources.gallery_pages
 import ehviewer.app.shared.generated.resources.gallery_previews_browse
 import ehviewer.app.shared.generated.resources.gallery_read_gallery
@@ -96,6 +101,14 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     var downloadFailed by remember { mutableStateOf(false) }
     var editingFavorite by remember(gallery.gid, session.restricted) { mutableStateOf(false) }
     var information by remember(gallery.gid) { mutableStateOf(false) }
+    var torrentsOpen by remember(gallery.gid, gallery.token) { mutableStateOf(false) }
+    val torrentNotices = remember(gallery.gid, gallery.token) { SnackbarHostState() }
+    val noTorrents = galleryString(Res.string.gallery_no_torrents)
+    val torrentCopied = galleryString(Res.string.gallery_link_copied)
+    fun emptyTorrents() {
+        torrentsOpen = false
+        scope.launch { torrentNotices.showSnackbar(noTorrents) }
+    }
     var commentsOpen by remember(gallery.gid) { mutableStateOf(false) }
     var commentState by remember(gallery.gid) { mutableStateOf<GalleryCommentsState?>(null) }
     val commentImages = rememberCommentImages(session)
@@ -155,6 +168,12 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
             editingFavorite = false
             attempt++
         }, onDismiss = { editingFavorite = false })
+    }
+    if (torrentsOpen) {
+        GalleryTorrentDialog(session.content, gallery.gid, gallery.token, onEmpty = ::emptyTorrents, onCopied = {
+            torrentsOpen = false
+            scope.launch { torrentNotices.showSnackbar(torrentCopied) }
+        }, onDismiss = { torrentsOpen = false })
     }
     if (information && document != null) {
         val knownThumb = document.thumbKey?.takeIf(String::isNotBlank) ?: gallery.thumbKey
@@ -267,7 +286,9 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                             if (document != null) {
                                 if (resume != null && resume.index > 0 && first != null) TextButton(onClick = { reader = session.content.pageUrl(document.gid, first.pToken, first.position).toString() }) { Text(galleryString(Res.string.gallery_read_start)) }
                                 androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 16.dp))
-                                GalleryDetailActions(document, onFavorite = { editingFavorite = true }, onSimilar = onSimilar)
+                                GalleryDetailActions(document, onFavorite = { editingFavorite = true }, onSimilar = onSimilar, onTorrents = {
+                                    if (document.torrentCount <= 0) emptyTorrents() else torrentsOpen = true
+                                })
                                 GalleryDetailRating(document.rating, document.ratingCount, Modifier.padding(vertical = 16.dp))
                             }
                         }
@@ -297,6 +318,7 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                     }
                 }
             }
+            SnackbarHost(torrentNotices, Modifier.align(Alignment.BottomCenter).padding(16.dp))
         }
     }
 }

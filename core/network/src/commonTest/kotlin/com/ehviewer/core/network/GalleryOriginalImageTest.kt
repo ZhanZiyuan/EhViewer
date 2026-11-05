@@ -7,6 +7,7 @@ import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.gallery.GallerySearchResult
+import com.ehviewer.core.network.gallery.GalleryTorrent
 import com.ehviewer.core.network.session.PersistentCookieStorage
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -33,6 +34,7 @@ class GalleryOriginalImageTest {
     private val decoder = object : GalleryDocumentDecoder {
         override fun decode(html: ByteArray): GallerySearchResult = error("No list request expected")
         override fun decodeDetails(html: ByteArray): GalleryDetail = error("No detail request expected")
+        override fun decodeTorrents(html: ByteArray): List<GalleryTorrent> = error("Torrent parsing is not requested by this regression")
         override fun decodePage(html: ByteArray) = page
         override fun decodeProfileLink(html: ByteArray): String? = error("No account request expected")
         override fun decodeProfile(html: ByteArray): com.ehviewer.core.network.session.GalleryAccountProfile = error("No account request expected")

@@ -8,6 +8,7 @@ import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryImagePage
 import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.gallery.GallerySearchResult
+import com.ehviewer.core.network.gallery.GalleryTorrent
 import com.ehviewer.core.network.session.GalleryAccountProfile
 import com.ehviewer.core.network.session.PersistentCookieStorage
 import io.ktor.client.engine.mock.MockEngine
@@ -30,6 +31,7 @@ class GalleryPreviewRepositoryTest {
     private val decoder = object : GalleryDocumentDecoder {
         override fun decode(html: ByteArray): GallerySearchResult = error("No HTML decoding expected")
         override fun decodeDetails(html: ByteArray): GalleryDetail = error("No HTML decoding expected")
+        override fun decodeTorrents(html: ByteArray): List<GalleryTorrent> = error("Torrent parsing is not requested by this regression")
         override fun decodePage(html: ByteArray): GalleryImagePage = error("No HTML decoding expected")
         override fun decodeProfileLink(html: ByteArray): String? = error("No HTML decoding expected")
         override fun decodeProfile(html: ByteArray): GalleryAccountProfile = error("No HTML decoding expected")

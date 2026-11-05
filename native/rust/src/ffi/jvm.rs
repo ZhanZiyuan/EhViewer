@@ -67,6 +67,15 @@ pub fn decodePageNative(env: JNIEnv, _: JObject, input: JByteArray) -> jbyteArra
     gallery_document(env, input, ehviewer_core::parser::gallery::parse_page_cbor)
 }
 
+#[jni_fn("com.ehviewer.core.network.gallery.RustGalleryDecoder")]
+pub fn decodeTorrentsNative(env: JNIEnv, _: JObject, input: JByteArray) -> jbyteArray {
+    gallery_document(
+        env,
+        input,
+        ehviewer_core::parser::torrent::parse_torrent_list_cbor,
+    )
+}
+
 fn gallery_document(
     mut env: JNIEnv,
     input: JByteArray,
