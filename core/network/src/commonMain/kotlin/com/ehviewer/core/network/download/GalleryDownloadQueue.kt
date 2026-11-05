@@ -48,6 +48,7 @@ class GalleryDownloadQueue(
     private var initialized = false
     private var runner: Job? = null
     private var active: Long? = null
+    private var stopping: Long? = null
 
     override suspend fun initialize() = commands.withLock {
         mutex.withLock {
@@ -122,21 +123,34 @@ class GalleryDownloadQueue(
 
     private suspend fun pauseLocked(gids: Set<Long>) {
         var failure: GalleryDownloadStorageException? = null
+        suspend fun markPaused(task: GalleryDownload) {
+            try {
+                update(task.copy(state = GalleryDownloadState.PAUSED))
+            } catch (storageFailure: GalleryDownloadStorageException) {
+                failure = storageFailure
+                mutableTasks.value = tasks.value.map { if (it.gid == task.gid) task.copy(state = GalleryDownloadState.FAILED, failure = GalleryDownloadFailure.STORAGE) else it }
+            }
+        }
         val stop = mutex.withLock {
             ready()
             val running = runner.takeIf { active in gids }
+            stopping = active.takeIf { running != null }
             running?.cancel()
-            tasks.value.filter { it.gid in gids && it.state in setOf(GalleryDownloadState.QUEUED, GalleryDownloadState.DOWNLOADING) }.forEach { task ->
-                try {
-                    update(task.copy(state = GalleryDownloadState.PAUSED))
-                } catch (storageFailure: GalleryDownloadStorageException) {
-                    failure = storageFailure
-                    mutableTasks.value = tasks.value.map { if (it.gid == task.gid) task.copy(state = GalleryDownloadState.FAILED, failure = GalleryDownloadFailure.STORAGE) else it }
-                }
-            }
+            tasks.value.filter { it.gid in gids && it.gid != stopping && it.state in setOf(GalleryDownloadState.QUEUED, GalleryDownloadState.DOWNLOADING) }.forEach { markPaused(it) }
             running
         }
-        stop?.cancelAndJoin()
+        // The cancelled source flushes its partial page before the worker publishes PAUSED.
+        // Complete this boundary even if the UI coroutine is cancelled while awaiting it.
+        withContext(NonCancellable) {
+            stop?.join()
+            mutex.withLock {
+                tasks.value.firstOrNull { it.gid == stopping }?.let { task ->
+                    if (task.state == GalleryDownloadState.DOWNLOADING) markPaused(task)
+                    if (task.failure == GalleryDownloadFailure.STORAGE) failure = GalleryDownloadStorageException()
+                }
+                stopping = null
+            }
+        }
         failure?.let { throw it }
     }
 
@@ -212,7 +226,7 @@ class GalleryDownloadQueue(
                                 mutex.withLock {
                                     owner.ensureActive()
                                     val current = tasks.value.firstOrNull { it.gid == task.gid } ?: throw CancellationException("Download was removed")
-                                    if (current.state != GalleryDownloadState.DOWNLOADING) throw CancellationException("Download was paused")
+                                    if (current.state != GalleryDownloadState.DOWNLOADING || current.gid == stopping) throw CancellationException("Download was paused")
                                     storage.writePage(task.gid, index, page.token, page.bytes)
                                     update(current.copy(finished = index + 1))
                                 }

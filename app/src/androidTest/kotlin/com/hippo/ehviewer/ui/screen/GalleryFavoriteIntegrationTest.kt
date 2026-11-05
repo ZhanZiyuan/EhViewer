@@ -311,11 +311,21 @@ class GalleryFavoriteIntegrationTest {
                     assertEquals(3, posts.size)
                     click("Back to search")
                     device.openSharedDestination("Settings")
+                    click("Download")
                     fun storageChoice(text: String) {
                         repeat(12) {
                             try {
                                 if (device.findObject(By.text(text))?.visibleBounds?.isEmpty == false) return
-                                requireNotNull(device.wait(Until.findObject(By.scrollable(true)), 5_000)).scroll(Direction.DOWN, 0.7f)
+                                // This category can fit entirely on screen and expose no scroll node.
+                                // Wait for its actual target as well as a viewport, within the same5s.
+                                val deadline = android.os.SystemClock.uptimeMillis() + 5_000
+                                var viewport = device.findObject(By.scrollable(true))
+                                while (viewport == null && android.os.SystemClock.uptimeMillis() < deadline) {
+                                    if (device.findObject(By.text(text))?.visibleBounds?.isEmpty == false) return
+                                    android.os.SystemClock.sleep(25)
+                                    viewport = device.findObject(By.scrollable(true))
+                                }
+                                viewport?.scroll(Direction.DOWN, 0.7f)
                             } catch (_: StaleObjectException) {
                                 // Reacquire after recomposition within the original12 attempts/5s wait.
                             }

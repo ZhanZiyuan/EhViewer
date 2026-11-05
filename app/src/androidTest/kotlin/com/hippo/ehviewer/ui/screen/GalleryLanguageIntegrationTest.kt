@@ -64,15 +64,17 @@ class GalleryLanguageIntegrationTest {
                 labelled("Search galleries")
                 requireNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = "owned-language-query"
                 var settingsLabel = "Settings"
+                var advancedLabel = "Advanced"
                 var navigationLabel = "Open navigation"
                 for (row in listOf(
-                    listOf("ja", "日本語", "言語", "ギャラリーを検索", "設定", "ナビゲーションを開く"),
-                    listOf("zh-CN", "简体中文", "语言", "搜索图库", "设置", "打开导航"),
-                    listOf("zh-TW", "繁體中文", "語言", "搜尋圖庫", "設定", "開啟導覽"),
-                    listOf("en", "English", "Language", "Search galleries", "Settings", "Open navigation"),
+                    listOf("ja", "日本語", "言語", "ギャラリーを検索", "設定", "ナビゲーションを開く", "その他の設定"),
+                    listOf("zh-CN", "简体中文", "语言", "搜索图库", "设置", "打开导航", "高级"),
+                    listOf("zh-TW", "繁體中文", "語言", "搜尋圖庫", "設定", "開啟導覽", "進階"),
+                    listOf("en", "English", "Language", "Search galleries", "Settings", "Open navigation", "Advanced"),
                 )) {
                     val (tag, choice, heading, search, settings) = row
                     device.openSharedDestination(settingsLabel, navigationLabel)
+                    click(advancedLabel)
                     visible(choice)
                     click(choice)
                     visible(heading)
@@ -84,12 +86,16 @@ class GalleryLanguageIntegrationTest {
                         assertEquals("ja", AppCompatDelegate.getApplicationLocales()[0]?.toLanguageTag())
                     }
                     device.pressBack()
+                    visible(settings)
+                    device.pressBack()
                     labelled(search)
                     visible("owned-language-query")
                     settingsLabel = settings
                     navigationLabel = row[5]
+                    advancedLabel = row[6]
                 }
                 device.openSharedDestination("Settings")
+                click("EH")
                 fun scrollTo(text: String, direction: Direction) {
                     fun <T> snapshot(read: () -> T): T? = try {
                         read()
@@ -168,6 +174,8 @@ class GalleryLanguageIntegrationTest {
                 Settings.edit(blocking = true) { it[detailSize] = 0 }
                 click("Retry")
                 savedDensity(0, "Comfortable columns")
+                device.pressBack()
+                click("Advanced")
                 scrollTo("120 seconds", Direction.DOWN)
                 click("120 seconds")
                 savedTimeout(120)
@@ -177,6 +185,8 @@ class GalleryLanguageIntegrationTest {
                 scrollTo("Platform default", Direction.UP)
                 click("Platform default")
                 savedTimeout(null)
+                device.pressBack()
+                click("Download")
                 scrollTo("Open Android download storage settings", Direction.DOWN)
                 click("Open Android download storage settings")
                 visible(context.getString(R.string.settings_download_download_location))
@@ -184,8 +194,11 @@ class GalleryLanguageIntegrationTest {
                 device.pressBack()
                 scrollTo("Open Android download storage settings", Direction.DOWN)
                 device.pressBack()
+                visible("Settings")
+                device.pressBack()
                 labelled("Search galleries")
                 device.openSharedDestination("Settings")
+                click("Advanced")
                 click("System language")
                 instrumentation.waitForIdleSync()
                 assertTrue(AppCompatDelegate.getApplicationLocales().isEmpty)

@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,7 +103,14 @@ internal fun GallerySettingsScreen(
     listFailed: Boolean = false,
     onListChanged: (GalleryListDensity) -> Unit = {},
     onRetryList: () -> Unit = {},
+    onAccount: (() -> Unit)? = null,
+    onHistory: (() -> Unit)? = null,
 ) {
+    var section by rememberSaveable { mutableStateOf<String?>(null) }
+    val page = GallerySettingsPage.entries.firstOrNull { it.name == section }
+    fun back() {
+        if (page == null) onBack() else section = null
+    }
     var preferences by remember { mutableStateOf<ReaderPreferences?>(null) }
     var failure by remember { mutableStateOf<StringResource?>(null) }
     var attempt by remember { mutableIntStateOf(0) }
@@ -139,75 +147,85 @@ internal fun GallerySettingsScreen(
             }
         }
     }
-    BackHandler(onBack = onBack)
+    BackHandler(onBack = ::back)
     Column(Modifier.fillMaxSize()) {
-        GallerySettingsHeader(onBack)
+        GallerySettingsHeader(title = page?.let { galleryString(it.title) } ?: galleryString(Res.string.gallery_settings), onBack = ::back)
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(galleryString(Res.string.gallery_language), style = MaterialTheme.typography.titleMedium)
-            if (!languageReady || languageSaveFailed) {
-                Text(
-                    galleryString(
-                        when {
-                            languageSaveFailed -> Res.string.gallery_language_save_failed
-                            languageFailed -> Res.string.gallery_language_unavailable
-                            else -> Res.string.gallery_language_loading
+        if (page == null) {
+            GallerySettingsOverview { section = it.name }
+            return@Column
+        }
+        Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (page == GallerySettingsPage.ADVANCED) {
+                Text(galleryString(Res.string.gallery_language), style = MaterialTheme.typography.titleMedium)
+                if (!languageReady || languageSaveFailed) {
+                    Text(
+                        galleryString(
+                            when {
+                                languageSaveFailed -> Res.string.gallery_language_save_failed
+                                languageFailed -> Res.string.gallery_language_unavailable
+                                else -> Res.string.gallery_language_loading
+                            },
+                        ),
+                    )
+                    if (languageFailed || languageSaveFailed) {
+                        TextButton(onClick = {
+                            languageSaveFailed = false
+                            onRetryLanguage()
+                        }, enabled = !busy) { Text(galleryString(Res.string.gallery_language_reload)) }
+                    }
+                }
+                val languages = listOf(null to galleryString(Res.string.gallery_language_system), "en" to "English", "zh-CN" to "简体中文", "zh-TW" to "繁體中文", "ja" to "日本語")
+                for ((tag, label) in languages) {
+                    SettingsChoice(label, languageReady && tag == languageTag, !busy && languageReady && !languageSaveFailed) {
+                        perform {
+                            language.setTag(tag)
+                            onLanguageChanged(tag)
+                        }
+                    }
+                }
+                if (languageReady && languages.none { it.first == languageTag }) Text(galleryString(Res.string.gallery_language_current, languageTag.orEmpty()))
+                Text(galleryString(Res.string.gallery_appearance), style = MaterialTheme.typography.titleMedium)
+                if (mode == null) {
+                    Text(if (appearanceFailed) galleryString(Res.string.gallery_appearance_unavailable) else galleryString(Res.string.gallery_appearance_loading))
+                    if (appearanceFailed) TextButton(onClick = onRetryAppearance) { Text(galleryString(Res.string.gallery_appearance_retry)) }
+                }
+                for (value in GalleryThemeMode.entries) {
+                    SettingsChoice(
+                        when (value) {
+                            GalleryThemeMode.SYSTEM -> galleryString(Res.string.gallery_theme_system)
+                            GalleryThemeMode.LIGHT -> galleryString(Res.string.gallery_theme_light)
+                            GalleryThemeMode.DARK -> galleryString(Res.string.gallery_theme_dark)
                         },
-                    ),
-                )
-                if (languageFailed || languageSaveFailed) {
-                    TextButton(onClick = {
-                        languageSaveFailed = false
-                        onRetryLanguage()
-                    }, enabled = !busy) { Text(galleryString(Res.string.gallery_language_reload)) }
-                }
-            }
-            val languages = listOf(null to galleryString(Res.string.gallery_language_system), "en" to "English", "zh-CN" to "简体中文", "zh-TW" to "繁體中文", "ja" to "日本語")
-            for ((tag, label) in languages) {
-                SettingsChoice(label, languageReady && tag == languageTag, !busy && languageReady && !languageSaveFailed) {
-                    perform {
-                        language.setTag(tag)
-                        onLanguageChanged(tag)
+                        selected = mode == value,
+                        enabled = !busy && mode != null,
+                    ) {
+                        perform {
+                            appearance.setMode(value)
+                            onModeChanged(value)
+                        }
                     }
                 }
             }
-            if (languageReady && languages.none { it.first == languageTag }) Text(galleryString(Res.string.gallery_language_current, languageTag.orEmpty()))
-            Text(galleryString(Res.string.gallery_appearance), style = MaterialTheme.typography.titleMedium)
-            if (mode == null) {
-                Text(if (appearanceFailed) galleryString(Res.string.gallery_appearance_unavailable) else galleryString(Res.string.gallery_appearance_loading))
-                if (appearanceFailed) TextButton(onClick = onRetryAppearance) { Text(galleryString(Res.string.gallery_appearance_retry)) }
-            }
-            for (value in GalleryThemeMode.entries) {
-                SettingsChoice(
-                    when (value) {
-                        GalleryThemeMode.SYSTEM -> galleryString(Res.string.gallery_theme_system)
-                        GalleryThemeMode.LIGHT -> galleryString(Res.string.gallery_theme_light)
-                        GalleryThemeMode.DARK -> galleryString(Res.string.gallery_theme_dark)
-                    },
-                    selected = mode == value,
-                    enabled = !busy && mode != null,
-                ) {
-                    perform {
-                        appearance.setMode(value)
-                        onModeChanged(value)
+            if (page == GallerySettingsPage.EH) {
+                listPreferences?.let { GalleryListSettings(it, listDensity, listFailed, onListChanged, onRetryList) }
+                Text(galleryString(Res.string.gallery_reading), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
+                val current = preferences
+                if (current != null) {
+                    fun update(changed: ReaderPreferences) = perform {
+                        readerState.setPreferences(changed)
+                        preferences = changed
                     }
+                    SettingsChoice(galleryString(Res.string.gallery_reading_paged), current.layout == ReadingLayout.PAGED, !busy) { update(current.copy(layout = ReadingLayout.PAGED)) }
+                    SettingsChoice(galleryString(Res.string.gallery_reading_continuous), current.layout == ReadingLayout.CONTINUOUS, !busy) { update(current.copy(layout = ReadingLayout.CONTINUOUS)) }
+                    SettingsChoice(galleryString(Res.string.gallery_reading_ltr), current.direction == ReadingDirection.LEFT_TO_RIGHT, !busy) { update(current.copy(direction = ReadingDirection.LEFT_TO_RIGHT)) }
+                    SettingsChoice(galleryString(Res.string.gallery_reading_rtl), current.direction == ReadingDirection.RIGHT_TO_LEFT, !busy) { update(current.copy(direction = ReadingDirection.RIGHT_TO_LEFT)) }
                 }
             }
-            listPreferences?.let { GalleryListSettings(it, listDensity, listFailed, onListChanged, onRetryList) }
-            Text(galleryString(Res.string.gallery_reading), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
-            val current = preferences
-            if (current != null) {
-                fun update(changed: ReaderPreferences) = perform {
-                    readerState.setPreferences(changed)
-                    preferences = changed
-                }
-                SettingsChoice(galleryString(Res.string.gallery_reading_paged), current.layout == ReadingLayout.PAGED, !busy) { update(current.copy(layout = ReadingLayout.PAGED)) }
-                SettingsChoice(galleryString(Res.string.gallery_reading_continuous), current.layout == ReadingLayout.CONTINUOUS, !busy) { update(current.copy(layout = ReadingLayout.CONTINUOUS)) }
-                SettingsChoice(galleryString(Res.string.gallery_reading_ltr), current.direction == ReadingDirection.LEFT_TO_RIGHT, !busy) { update(current.copy(direction = ReadingDirection.LEFT_TO_RIGHT)) }
-                SettingsChoice(galleryString(Res.string.gallery_reading_rtl), current.direction == ReadingDirection.RIGHT_TO_LEFT, !busy) { update(current.copy(direction = ReadingDirection.RIGHT_TO_LEFT)) }
-            }
-            networkPreferences?.let { GalleryNetworkSettings(it) }
-            GalleryStorageSettingsSection(storageSettings, onPlatformStorageSettings)
+            if (page == GallerySettingsPage.ADVANCED) networkPreferences?.let { GalleryNetworkSettings(it) }
+            if (page == GallerySettingsPage.DOWNLOAD) GalleryStorageSettingsSection(storageSettings, onPlatformStorageSettings)
+            if (page == GallerySettingsPage.PRIVACY) GalleryPrivacyDestinations(onAccount, onHistory)
+            if (page == GallerySettingsPage.ABOUT) GalleryAboutLinks()
             failure?.let { error ->
                 Text(galleryString(error), color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = { attempt++ }) { Text(galleryString(Res.string.gallery_reading_preferences_reload)) }
@@ -218,9 +236,9 @@ internal fun GallerySettingsScreen(
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-internal fun GallerySettingsHeader(onBack: () -> Unit) {
+internal fun GallerySettingsHeader(title: String = galleryString(Res.string.gallery_settings), onBack: () -> Unit) {
     // The surrounding shared screen already applies the platform's safe drawing insets.
-    TopAppBar(title = { Text(galleryString(Res.string.gallery_settings)) }, navigationIcon = {
+    TopAppBar(title = { Text(title) }, navigationIcon = {
         IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) { Icon(GalleryIcons.ArrowBack, galleryString(Res.string.gallery_back)) }
     }, windowInsets = WindowInsets(0))
 }

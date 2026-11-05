@@ -257,4 +257,11 @@
     <string name="gallery_reader_show_controls">顯示閱讀控制項</string>
     <string name="gallery_reader_hide_controls">隱藏閱讀控制項</string>
     <string name="gallery_reader_seek">拖曳選擇頁碼</string>
+    <string name="gallery_settings_eh">EH</string>
+    <string name="gallery_settings_download">下載</string>
+    <string name="gallery_settings_privacy">隱私</string>
+    <string name="gallery_settings_advanced">進階</string>
+    <string name="gallery_settings_about">關於</string>
+    <string name="gallery_settings_source">原始碼</string>
+    <string name="gallery_settings_license">授權條款</string>
 </resources>

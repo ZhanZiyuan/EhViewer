@@ -257,4 +257,11 @@
     <string name="gallery_reader_show_controls">操作パネルを表示</string>
     <string name="gallery_reader_hide_controls">操作パネルを非表示</string>
     <string name="gallery_reader_seek">ページ位置を選択</string>
+    <string name="gallery_settings_eh">EH</string>
+    <string name="gallery_settings_download">ダウンロード</string>
+    <string name="gallery_settings_privacy">プライバシー</string>
+    <string name="gallery_settings_advanced">その他の設定</string>
+    <string name="gallery_settings_about">このアプリについて</string>
+    <string name="gallery_settings_source">ソースコード</string>
+    <string name="gallery_settings_license">ライセンス</string>
 </resources>

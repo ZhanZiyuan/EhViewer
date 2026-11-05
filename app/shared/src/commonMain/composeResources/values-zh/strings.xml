@@ -257,4 +257,11 @@
     <string name="gallery_reader_show_controls">显示阅读控件</string>
     <string name="gallery_reader_hide_controls">隐藏阅读控件</string>
     <string name="gallery_reader_seek">拖动选择页码</string>
+    <string name="gallery_settings_eh">EH</string>
+    <string name="gallery_settings_download">下载</string>
+    <string name="gallery_settings_privacy">隐私</string>
+    <string name="gallery_settings_advanced">高级</string>
+    <string name="gallery_settings_about">关于</string>
+    <string name="gallery_settings_source">源代码</string>
+    <string name="gallery_settings_license">许可证</string>
 </resources>

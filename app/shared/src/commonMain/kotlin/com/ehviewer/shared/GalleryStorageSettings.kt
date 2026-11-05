@@ -34,7 +34,10 @@ import kotlinx.coroutines.launch
 
 @Composable
 internal fun GalleryStorageSettingsSection(settings: GalleryStorageSettings?, onPlatformSettings: (() -> Unit)?) {
-    if (settings == null && onPlatformSettings == null) return
+    if (settings == null && onPlatformSettings == null) {
+        Text(galleryString(Res.string.gallery_storage_unavailable))
+        return
+    }
     Column(Modifier.fillMaxWidth()) {
         Text(galleryString(Res.string.gallery_storage), style = MaterialTheme.typography.titleMedium)
         onPlatformSettings?.let { TextButton(onClick = it) { Text(galleryString(Res.string.gallery_storage_platform)) } }

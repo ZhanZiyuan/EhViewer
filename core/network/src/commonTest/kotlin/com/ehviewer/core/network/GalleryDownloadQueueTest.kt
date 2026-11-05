@@ -186,6 +186,53 @@ class GalleryDownloadQueueTest {
         }
     }
 
+    @Test fun pausedStateIsNotPublishedUntilTheCancelledWriterHasFinishedSavingItsPrefix() = runTest {
+        for (cancelCaller in listOf(false, true)) {
+            val storage = Storage()
+            val saving = CompletableDeferred<Unit>()
+            val saved = CompletableDeferred<Unit>()
+            var durablePrefix = false
+            val queue = GalleryDownloadQueue(storage, backgroundScope) {
+                GalleryDownloadSource {
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        withContext(NonCancellable) {
+                            saving.complete(Unit)
+                            saved.await()
+                            durablePrefix = true
+                        }
+                    }
+                }
+            }
+            try {
+                queue.initialize()
+                queue.enqueue(gallery(), false)
+                runCurrent()
+                val pause = backgroundScope.async { queue.pause(1) }
+                runCurrent()
+                assertTrue(saving.isCompleted)
+                assertFalse(pause.isCompleted)
+                assertFalse(durablePrefix)
+                assertEquals(GalleryDownloadState.DOWNLOADING, queue.tasks.value.single().state, "The UI must not announce a durable pause while its writer is still flushing")
+                if (cancelCaller) {
+                    pause.cancel()
+                    runCurrent()
+                    assertFalse(pause.isCompleted)
+                }
+                saved.complete(Unit)
+                runCurrent()
+                if (cancelCaller) assertFailsWith<CancellationException> { pause.await() } else pause.await()
+                assertTrue(durablePrefix)
+                assertEquals(GalleryDownloadState.PAUSED, queue.tasks.value.single().state)
+                assertEquals(GalleryDownloadState.PAUSED, storage.saved.getValue(1).state)
+            } finally {
+                saved.complete(Unit)
+                queue.close()
+            }
+        }
+    }
+
     @Test fun cancelledTaskCannotPublishALateUncancellableTransportResult() = runTest {
         val storage = Storage()
         val response = CompletableDeferred<Unit>()

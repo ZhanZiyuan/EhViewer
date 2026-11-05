@@ -29,6 +29,7 @@ import com.hippo.ehviewer.ui.MainActivity
 import com.hippo.ehviewer.updateWhenThemeChanges
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingModeType
 import java.io.File
+import java.io.FileInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -118,6 +119,20 @@ class SharedGalleryIntegrationTest {
                 searchIsVisible()
                 assertFalse("Cancelling filters changed the applied search", device.hasObject(By.desc("Filters applied")))
                 device.openSharedDestination("Settings")
+                fun captureSettingsRoot(theme: String) {
+                    listOf("EH", "Download", "Privacy", "Advanced", "About").forEach {
+                        assertTrue("Missing original settings category: $it", device.wait(Until.hasObject(By.text(it)), 5_000))
+                    }
+                    val file = File(context.cacheDir, "settings-root-$theme-${android.os.SystemClock.uptimeMillis()}.png")
+                    // Match the authoritative SDK screencap path rather than Bitmap re-encoding.
+                    instrumentation.uiAutomation.executeShellCommand("screencap -p").use { descriptor ->
+                        FileInputStream(descriptor.fileDescriptor).use { input -> file.outputStream().use(input::copyTo) }
+                    }
+                    check(file.length() > 0)
+                    println("Actual shared settings root screenshot=$file")
+                }
+                captureSettingsRoot("light")
+                requireNotNull(device.wait(Until.findObject(By.text("Advanced")), 5_000)).click()
                 assertTrue("Common appearance settings did not open", device.wait(Until.hasObject(By.text("Appearance")), 5_000))
                 assertEquals(GalleryThemeMode.LIGHT, runBlocking { AndroidGalleryAppearanceStore().mode() })
                 requireNotNull(device.wait(Until.findObject(By.text("Dark theme")), 5_000)).click()
@@ -134,6 +149,8 @@ class SharedGalleryIntegrationTest {
                 }
                 instrumentation.waitForIdleSync()
                 assertTrue("Restored settings did not render before Back", device.wait(Until.hasObject(By.desc("Back").enabled(true)), 5_000))
+                device.pressBack()
+                captureSettingsRoot("dark")
                 device.pressBack()
                 searchIsVisible("settings-return")
                 device.openSharedDestination("Account")
