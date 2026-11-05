@@ -8,6 +8,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WindowsNativeTest {
+    @Test fun allOriginalAndCommentSuitesRemainRequiredWithoutRejectingAdditionalTests() {
+        val complete = listOf("ehviewer_core", "archive", "comments", "ehviewer_capi", "ehviewer_session")
+        verifyWindowsNativeTestSuites(complete)
+        verifyWindowsNativeTestSuites(complete + "additional_integration_test")
+        for (missing in complete) {
+            assertThrows(IllegalArgumentException::class.java) { verifyWindowsNativeTestSuites(complete - missing) }
+        }
+        assertThrows(IllegalArgumentException::class.java) { verifyWindowsNativeTestSuites(complete + "comments") }
+    }
+
     @Test fun intelAndArmPackagesCannotExchangeNativeBinariesOrTargets() {
         for (platform in WindowsPlatform.entries) {
             val pe = ByteBuffer.allocate(256).order(ByteOrder.LITTLE_ENDIAN).apply {

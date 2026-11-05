@@ -15,6 +15,12 @@ import kotlin.io.path.name
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
+/** Keep every required suite while allowing Cargo to discover additional integration tests. */
+internal fun verifyWindowsNativeTestSuites(names: List<String>) {
+    val required = setOf("ehviewer_core", "archive", "comments", "ehviewer_capi", "ehviewer_session")
+    require(names.size == names.toSet().size && names.containsAll(required)) { "Missing or duplicate Core/archive/comments/C ABI/session test executables: $names" }
+}
+
 /** Reject COFF objects, wrong CPUs/ARM64EC, renamed files and invalid DOS/PE offsets. */
 fun verifyWindowsPe(header: ByteArray, platform: WindowsPlatform) {
     require(header.size >= 64) { "Truncated DOS header" }
@@ -142,7 +148,7 @@ fun windowsNativeCore(output: Path, platform: WindowsPlatform = WindowsPlatform.
     val build = capture("cargo-build.jsonl", *cargo, "--no-run", "--message-format=json", environment = environment)
     val messages = build.lineSequence().filter { it.startsWith("{\"reason\":") }.map { JsonSlurper().parseText(it).obj() }.toList()
     val binaries = messages.filter { it["reason"] == "compiler-artifact" && it["profile"].obj()["test"] == true && it["executable"] is String }
-    require(binaries.map { it["target"].obj().str("name") }.toSet() == setOf("ehviewer_core", "archive", "ehviewer_capi", "ehviewer_session") && binaries.size == 4) { "Missing complete Core/archive/C ABI/session test executables" }
+    verifyWindowsNativeTestSuites(binaries.map { it["target"].obj().str("name") })
     val executableEvidence = output.resolve("test-executables").createDirectories()
     val testImages = binaries.map { artifact ->
         val path = Path.of(artifact.str("executable")).toRealPath()
@@ -164,6 +170,12 @@ fun windowsNativeCore(output: Path, platform: WindowsPlatform = WindowsPlatform.
             "tests::account_documents_cross_the_owned_buffer_abi_and_release_every_result",
         ).all { "test $it ... ok" in testOutput },
     ) { "Real Windows account parsers and owned C ABI tests did not execute" }
+    require(
+        listOf(
+            "repeated_addresses_are_bounded_before_a_small_comment_can_expand_in_memory",
+            "the_whole_gallery_has_a_rendering_budget_shared_by_all_comments",
+        ).all { "test $it ... ok" in testOutput },
+    ) { "Real Windows comment ownership limit tests did not execute" }
     require(ignored == setOf("parser::test_parser::tests::test_parse_gallery_detail", "parser::test_parser::tests::test_parse_info", "parser::test_parser::tests::test_parse_profile")) { "Unexpected ignored native tests" }
     require(testOutput.contains("test zip_file_writer_preserves_ownership_offsets_and_reports_output_errors ... ok")) { "Portable File writer did not execute" }
     capture("rust-clippy.txt", "cargo", "+$toolchain", "clippy", "--locked", "--manifest-path", cargoManifest, "-p", "ehviewer_core", "-p", "ehviewer_capi", "-p", "ehviewer_session", "-p", "ehviewer_browser_client", "--all-targets", "--target", target, "--", "-D", "warnings", environment = environment)
