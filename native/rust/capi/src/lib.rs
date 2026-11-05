@@ -453,11 +453,20 @@ mod tests {
         let _serial = SERIAL.lock().unwrap();
         let html = b"<!DOCTYPE html><html><div id=\"torrentinfo\"><p>There are no torrents for this gallery.</p></div></html>";
         let mut handle = 0;
-        assert_eq!(unsafe { ehv_parse_gallery_torrents(html.as_ptr(), html.len(), &mut handle) }, EHV_OK);
+        assert_eq!(
+            unsafe { ehv_parse_gallery_torrents(html.as_ptr(), html.len(), &mut handle) },
+            EHV_OK
+        );
         let mut count = 0;
-        assert_eq!(unsafe { ehv_buffer_copy(handle, null_mut(), 0, &mut count) }, EHV_BUFFER_TOO_SMALL);
+        assert_eq!(
+            unsafe { ehv_buffer_copy(handle, null_mut(), 0, &mut count) },
+            EHV_BUFFER_TOO_SMALL
+        );
         let mut bytes = vec![0; count];
-        assert_eq!(unsafe { ehv_buffer_copy(handle, bytes.as_mut_ptr(), bytes.len(), &mut count) }, EHV_OK);
+        assert_eq!(
+            unsafe { ehv_buffer_copy(handle, bytes.as_mut_ptr(), bytes.len(), &mut count) },
+            EHV_OK
+        );
         assert_eq!(bytes, [0x80]);
         assert_eq!(ehv_buffer_free(handle), EHV_OK);
         assert_eq!(ehv_buffer_free(handle), EHV_INVALID_HANDLE);

@@ -20,35 +20,61 @@ pub struct Torrent {
 /// Reuse the original parser while rejecting unrelated, partial or amplification-heavy documents.
 pub fn parse_torrent_list_cbor(input: &[u8]) -> Result<Vec<u8>> {
     const MAX_BYTES: usize = 8 * 1024 * 1024;
-    ensure!(!input.is_empty() && input.len() <= MAX_BYTES, "Invalid torrent document size");
+    ensure!(
+        !input.is_empty() && input.len() <= MAX_BYTES,
+        "Invalid torrent document size"
+    );
     let html = std::str::from_utf8(input).context("Invalid torrent document encoding")?;
     let dom = tl::parse(html, tl::ParserOptions::default())?;
     ensure!(dom.version().is_some(), "Missing torrent document");
     let parser = dom.parser();
-    let scope = dom.get_element_by_id("torrentinfo")
+    let scope = dom
+        .get_element_by_id("torrentinfo")
         .and_then(|node| node.get(parser)?.as_tag())
         .context("Missing torrent list")?;
     // Charge nested table content before calling the legacy parser's allocating regex captures.
     let mut count = 0usize;
     let mut budget = 0usize;
-    for node in dom.query_selector("table").context("Invalid torrent tables")? {
+    for node in dom
+        .query_selector("table")
+        .context("Invalid torrent tables")?
+    {
         count += 1;
         ensure!(count <= 1024, "Torrent table limit");
-        let body = node.get(parser).context("Invalid torrent table")?.inner_html(parser);
-        budget = budget.checked_add(body.len()).context("Torrent table budget overflow")?;
+        let body = node
+            .get(parser)
+            .context("Invalid torrent table")?
+            .inner_html(parser);
+        budget = budget
+            .checked_add(body.len())
+            .context("Torrent table budget overflow")?;
         ensure!(budget <= MAX_BYTES, "Torrent table content limit");
     }
     let mut scoped_count = 0usize;
     let mut active = 0usize;
-    for node in scope.query_selector(parser, "table").context("Invalid torrent list")? {
+    for node in scope
+        .query_selector(parser, "table")
+        .context("Invalid torrent list")?
+    {
         scoped_count += 1;
-        if !node.get(parser).context("Invalid torrent record")?.inner_html(parser).contains("Expunged") {
+        if !node
+            .get(parser)
+            .context("Invalid torrent record")?
+            .inner_html(parser)
+            .contains("Expunged")
+        {
             active += 1;
         }
     }
     let list = parse_torrent_list(&dom, parser)?;
     ensure!(list.len() == active, "Partial torrent list");
-    ensure!(scoped_count > 0 || scope.inner_text(parser).contains("There are no torrents for this gallery."), "Unrecognized empty torrent list");
+    ensure!(
+        scoped_count > 0
+            || scope
+                .inner_text(parser)
+                .contains("There are no torrents for this gallery."),
+        "Unrecognized empty torrent list"
+    );
     let output = serde_cbor::to_vec(&list)?;
     ensure!(output.len() <= MAX_BYTES, "Torrent result limit");
     Ok(output)
@@ -99,7 +125,8 @@ mod tests {
     #[test]
     fn portable_torrents_reuse_original_fields_and_exclude_expunged_entries() {
         let html = document(&(record() + "<table><tr><td>Expunged</td></tr></table>"));
-        let values: Vec<serde_json::Value> = serde_cbor::from_slice(&parse_torrent_list_cbor(html.as_bytes()).unwrap()).unwrap();
+        let values: Vec<serde_json::Value> =
+            serde_cbor::from_slice(&parse_torrent_list_cbor(html.as_bytes()).unwrap()).unwrap();
         assert_eq!(values.len(), 1);
         assert_eq!(values[0]["name"], "Alice & friends.zip");
         assert_eq!(values[0]["outdated"], true);
@@ -112,9 +139,15 @@ mod tests {
     #[test]
     fn portable_torrents_distinguish_explicit_empty_from_missing_or_partial_documents() {
         let empty = document("<p>There are no torrents for this gallery.</p>");
-        let values: Vec<serde_json::Value> = serde_cbor::from_slice(&parse_torrent_list_cbor(empty.as_bytes()).unwrap()).unwrap();
+        let values: Vec<serde_json::Value> =
+            serde_cbor::from_slice(&parse_torrent_list_cbor(empty.as_bytes()).unwrap()).unwrap();
         assert!(values.is_empty());
-        for invalid in ["<!DOCTYPE html><html>challenge</html>".to_string(), document(""), document("<table><tr><td>Broken record</td></tr></table>"), document(&(record() + "<table><td>Broken record</td></table>"))] {
+        for invalid in [
+            "<!DOCTYPE html><html>challenge</html>".to_string(),
+            document(""),
+            document("<table><tr><td>Broken record</td></tr></table>"),
+            document(&(record() + "<table><td>Broken record</td></table>")),
+        ] {
             assert!(parse_torrent_list_cbor(invalid.as_bytes()).is_err());
         }
         assert!(parse_torrent_list_cbor(&[0xff]).is_err());
