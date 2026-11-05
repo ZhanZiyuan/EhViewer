@@ -65,7 +65,6 @@ import ehviewer.app.shared.generated.resources.gallery_favorite_edit
 import ehviewer.app.shared.generated.resources.gallery_history_unavailable
 import ehviewer.app.shared.generated.resources.gallery_pages
 import ehviewer.app.shared.generated.resources.gallery_previews_browse
-import ehviewer.app.shared.generated.resources.gallery_rating
 import ehviewer.app.shared.generated.resources.gallery_read_gallery
 import ehviewer.app.shared.generated.resources.gallery_read_start
 import ehviewer.app.shared.generated.resources.gallery_refresh
@@ -251,16 +250,16 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                                             }
                                         }
                                     }, enabled = !opening && document != null && first != null, modifier = modifier) {
-                                        Text(if (resume == null) galleryString(Res.string.gallery_read_gallery) else galleryString(Res.string.gallery_continue_reading, resume.index + 1), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(if (resume == null || resume.index == 0) galleryString(Res.string.gallery_read_gallery) else galleryString(Res.string.gallery_continue_reading, resume.index + 1), maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
                                 },
                                 fallbackCoverKey = gallery.thumbKey,
                             )
                             if (downloadFailed) Text(galleryString(Res.string.gallery_download_add_failed), color = MaterialTheme.colorScheme.error)
                             if (document != null) {
-                                if (resume != null && first != null) TextButton(onClick = { reader = session.content.pageUrl(document.gid, first.pToken, first.position).toString() }) { Text(galleryString(Res.string.gallery_read_start)) }
-                                Text(galleryString(Res.string.gallery_rating, document.rating, document.ratingCount), Modifier.padding(vertical = 8.dp))
+                                if (resume != null && resume.index > 0 && first != null) TextButton(onClick = { reader = session.content.pageUrl(document.gid, first.pToken, first.position).toString() }) { Text(galleryString(Res.string.gallery_read_start)) }
                                 Button(onClick = { editingFavorite = true }) { Text(if (document.favoriteSlot in 0..9) galleryString(Res.string.gallery_favorite_edit) else galleryString(Res.string.gallery_favorite_add)) }
+                                GalleryDetailRating(document.rating, document.ratingCount, Modifier.padding(vertical = 16.dp))
                             }
                         }
                     }

@@ -104,6 +104,7 @@ private fun GalleryDetailHeader(info: GalleryInfo, covers: GalleryCoverCache<Coi
                         onClick = onCategory,
                         enabled = GalleryCategory.entries.any { it.mask == info.category },
                         label = { Text(galleryCategoryName(info.category).uppercase(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        leadingIcon = { Icon(GalleryIcons.Label, contentDescription = null) },
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                     AssistChip(

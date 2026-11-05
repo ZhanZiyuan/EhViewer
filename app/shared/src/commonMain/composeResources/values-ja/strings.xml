@@ -267,4 +267,16 @@
     <string name="gallery_link_share">共有</string>
     <string name="gallery_more_options">その他のオプション</string>
     <string name="gallery_link_share_failed">共有画面を開けませんでした。もう一度お試しください。</string>
+    <string name="gallery_detail_rating_none">(´_ゝ`)</string>
+    <string name="gallery_detail_rating1">悪くて呼吸できない</string>
+    <string name="gallery_detail_rating2">目の障害になる</string>
+    <string name="gallery_detail_rating3">とても悪い</string>
+    <string name="gallery_detail_rating4">悪い</string>
+    <string name="gallery_detail_rating5">普通</string>
+    <string name="gallery_detail_rating6">まあまあ</string>
+    <string name="gallery_detail_rating7">いい</string>
+    <string name="gallery_detail_rating8">とてもいい</string>
+    <string name="gallery_detail_rating9">すごくいい</string>
+    <string name="gallery_detail_rating10">ものすごくいい</string>
+    <string name="gallery_detail_rating_text">%1$s (%2$s - %3$s)</string>
 </resources>

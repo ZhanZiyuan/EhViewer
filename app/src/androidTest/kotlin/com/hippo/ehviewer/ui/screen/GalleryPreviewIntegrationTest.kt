@@ -535,6 +535,12 @@ class GalleryPreviewIntegrationTest {
                     visible("1 / 3")
                     saved(0)
                     assertTrue("Reader should open with its small page indicator", device.hasObject(By.desc("Show reader controls")))
+                    stage = "return from saved first page with the original Read action"
+                    device.pressBack()
+                    visible("Read")
+                    assertFalse("Page1 must not offer a redundant start-over action", device.hasObject(By.text("Read from start")))
+                    click("Read")
+                    visible("1 / 3")
                     stage = "hide and reveal controls without resizing the image"
                     val canvasBefore = checkNotNull(device.wait(Until.findObject(By.desc("Gallery page 1")), 15_000)).visibleBounds
                     click("Go to page")

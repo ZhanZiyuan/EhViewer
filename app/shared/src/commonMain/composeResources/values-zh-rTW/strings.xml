@@ -267,4 +267,16 @@
     <string name="gallery_link_share">分享</string>
     <string name="gallery_more_options">更多選項</string>
     <string name="gallery_link_share_failed">無法開啟分享面板，請重試。</string>
+    <string name="gallery_detail_rating_none">(´_ゝ`)</string>
+    <string name="gallery_detail_rating1">快要窒息了</string>
+    <string name="gallery_detail_rating2">快瞎了</string>
+    <string name="gallery_detail_rating3">超爛</string>
+    <string name="gallery_detail_rating4">不行</string>
+    <string name="gallery_detail_rating5">普通</string>
+    <string name="gallery_detail_rating6">還好</string>
+    <string name="gallery_detail_rating7">不錯</string>
+    <string name="gallery_detail_rating8">很棒</string>
+    <string name="gallery_detail_rating9">根本把持不住</string>
+    <string name="gallery_detail_rating10">太神啦！</string>
+    <string name="gallery_detail_rating_text">%1$s (%2$s, %3$s)</string>
 </resources>

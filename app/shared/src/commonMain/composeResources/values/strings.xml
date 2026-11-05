@@ -268,4 +268,16 @@
     <string name="gallery_link_share">Share</string>
     <string name="gallery_more_options">More options</string>
     <string name="gallery_link_share_failed">Sharing could not be opened. Try again.</string>
+    <string name="gallery_detail_rating_none">(´_ゝ`)</string>
+    <string name="gallery_detail_rating1">UNBEARABLE</string>
+    <string name="gallery_detail_rating2">PAINFUL</string>
+    <string name="gallery_detail_rating3">AWFUL</string>
+    <string name="gallery_detail_rating4">BAD</string>
+    <string name="gallery_detail_rating5">MEDIOCRE</string>
+    <string name="gallery_detail_rating6">OKAY</string>
+    <string name="gallery_detail_rating7">GOOD</string>
+    <string name="gallery_detail_rating8">GREAT</string>
+    <string name="gallery_detail_rating9">AMAZING</string>
+    <string name="gallery_detail_rating10">MASTERPIECE</string>
+    <string name="gallery_detail_rating_text">%1$s (%2$s, %3$s)</string>
 </resources>

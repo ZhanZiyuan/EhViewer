@@ -91,7 +91,7 @@ private val ratingYellow = Color(0xfff9a825)
 
 /** GalleryListCardRating: five 16dp stars, 1dp apart, in half steps. */
 @Composable
-internal fun GalleryRating(rating: Float, modifier: Modifier = Modifier) {
+internal fun GalleryRating(rating: Float, modifier: Modifier = Modifier, starSize: Dp = 16.dp, interval: Dp = 1.dp) {
     val halves = (rating * 2).roundToInt().coerceIn(0, 10)
     Row(modifier) {
         repeat(5) {
@@ -100,8 +100,8 @@ internal fun GalleryRating(rating: Float, modifier: Modifier = Modifier) {
                 it * 2 + 1 == halves -> GalleryIcons.StarHalf
                 else -> GalleryIcons.StarOutline
             }
-            Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = ratingYellow)
-            Spacer(Modifier.width(1.dp))
+            Icon(icon, contentDescription = null, modifier = Modifier.size(starSize), tint = ratingYellow)
+            Spacer(Modifier.width(interval))
         }
     }
 }
