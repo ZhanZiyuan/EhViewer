@@ -337,7 +337,7 @@ class GalleryPreviewIntegrationTest {
                     }
                 }
                 waitForCoverPixels()
-                assertEquals(2, requests.count { it == "/cover.png" }) // One failure, one explicit retry and actual sampled pixels.
+                assertEquals(2, synchronized(requests) { requests.count { it == "/cover.png" } }) // One failure, one explicit retry and actual sampled pixels.
                 click(title)
                 assertTrue(device.wait(Until.hasObject(By.text("Download")), 15_000))
                 requireNotNull(device.wait(Until.findObject(By.desc("Gallery Info")), 15_000)).click()
@@ -347,7 +347,7 @@ class GalleryPreviewIntegrationTest {
                 assertTrue(device.wait(Until.hasObject(By.text("Download")), 15_000))
                 click("Back to search")
                 waitForCoverPixels()
-                assertEquals(2, requests.count { it == "/cover.png" }) // Returning to the same result page reuses the cover.
+                assertEquals(2, synchronized(requests) { requests.count { it == "/cover.png" } }) // Returning to the same result page reuses the cover.
                 click(title)
                 click("Download")
                 runBlocking {
@@ -448,7 +448,7 @@ class GalleryPreviewIntegrationTest {
                 assertEquals(false, File(owned, "images/$gid/partial-1.cbor").exists())
                 assertEquals(false, File(owned, "images/$gid/partial-1.data").exists())
                 // The new detail cover and downloaded page share this fixture URL; neither may repeat.
-                assertEquals(2, requests.count { it == "/0.png" })
+                assertEquals(2, synchronized(requests) { requests.count { it == "/0.png" } })
                 assertEquals(listOf("https://e-hentai.org/g/$gid/$token/", "https://e-hentai.org/s/${"1".repeat(10)}/$gid-1"), firstImageReferers.toList())
                 // Like Android's list, the search card now carries the downloaded mark.
                 device.pressBack()
@@ -623,7 +623,8 @@ class GalleryPreviewIntegrationTest {
                     device.waitForIdle(5_000)
                     val readerCaptures = requireNotNull(context.getExternalFilesDir("kmp-ui-reader-controls")).apply { mkdirs() }
                     assertTrue("Actual reader controls screenshot must be retained", device.takeScreenshot(File(readerCaptures, "reader-paged-controls.png")))
-                    click("Hide reader controls")
+                    // Original reader hides its bars by tapping the canvas's center region.
+                    device.click(canvasBefore.centerX(), canvasBefore.centerY())
                     // IME dismissal and the 200ms overlay exit can still be animating after the tap.
                     // Keep the exact canvas assertion and the same 15-second bound for both conditions.
                     runBlocking {
@@ -642,6 +643,7 @@ class GalleryPreviewIntegrationTest {
                         }
                     }
                     assertEquals(canvasBefore, checkNotNull(device.findObject(By.desc("Gallery page 1"))).visibleBounds)
+                    assertTrue("Actual outlined page indicator screenshot must be retained", device.takeScreenshot(File(readerCaptures, "reader-paged-indicator.png")))
                     stage = "invalid page stays local"
                     click("Go to page")
                     input("0")
@@ -914,11 +916,13 @@ class GalleryPreviewIntegrationTest {
                 assertTrue("Selected reader page did not render", device.wait(Until.hasObject(By.text("3 / 3")), 15_000))
                 click("Load original image")
                 runBlocking {
-                    withTimeout(10_000) { while (requests.none { it == "/original.png?" }) delay(25) }
+                    // synchronizedList serializes individual calls, but not Kotlin iterator
+                    // extensions while the MockEngine records another concurrent image request.
+                    withTimeout(10_000) { while (!requests.contains("/original.png?")) delay(25) }
                 }
                 assertTrue("Original image did not render", device.wait(Until.hasObject(By.desc("Gallery page 3")), 15_000))
                 waitForImagePixels(original = true)
-                assertTrue(requests.any { it == "/fullimg/$gid/3333333333?" })
+                assertTrue(requests.contains("/fullimg/$gid/3333333333?"))
                 click("Use display image")
                 assertTrue("Display image did not render again", device.wait(Until.hasObject(By.desc("Gallery page 3")), 15_000))
                 waitForImagePixels(original = false)
@@ -987,8 +991,8 @@ class GalleryPreviewIntegrationTest {
                 assertTrue("Forgotten entry stayed in the list", device.wait(Until.gone(By.text(title)), 10_000))
                 device.openSharedDestination("Galleries")
                 assertTrue(device.wait(Until.hasObject(By.desc("Search galleries")), 10_000))
-                assertTrue(requests.any { it == "/g/$gid/$token/?p=1" })
-                assertTrue(requests.any { it.startsWith("/s/3333333333/$gid-3") })
+                assertTrue(requests.contains("/g/$gid/$token/?p=1"))
+                assertTrue(synchronized(requests) { requests.any { it.startsWith("/s/3333333333/$gid-3") } })
             }
         } finally {
             client.close()

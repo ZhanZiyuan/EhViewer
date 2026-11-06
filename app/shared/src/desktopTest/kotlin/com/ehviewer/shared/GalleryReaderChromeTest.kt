@@ -1,5 +1,6 @@
 package com.ehviewer.shared
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,9 +29,13 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.unit.Density
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_reader_show_controls
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -41,6 +46,55 @@ import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ImageInfo
 
 class GalleryReaderChromeTest {
+    @Test
+    @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
+    fun hiddenPageIndicatorUsesOutlinedTextAtTheImageEdgeAndStillRevealsControls() {
+        val state = GalleryReaderChromeState()
+        var reveal = ""
+        val scene = ImageComposeScene(411, 720, Density(1f)) {
+            GalleryTheme(false, null) {
+                reveal = galleryString(Res.string.gallery_reader_show_controls)
+                GalleryReaderChrome("Gallery", 0, 61, state, {}, {}, {}, actions = {}) {
+                    Box(Modifier.fillMaxSize().background(Color.White))
+                }
+            }
+        }
+        fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+        try {
+            repeat(30) { scene.render(it * 16_666_667L).close() }
+            val indicator = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single { it.config.getOrNull(SemanticsProperties.ContentDescription)?.contains(reveal) == true }
+            assertEquals(720f, indicator.boundsInRoot.bottom, "Original indicator sits against the bottom inset, without button padding")
+            assertTrue(indicator.boundsInRoot.height < 32, "The original text indicator must not reserve a button-height blank strip")
+            Bitmap().use { pixels ->
+                pixels.allocN32Pixels(411, 720)
+                scene.render(31 * 16_666_667L).use { it.readPixels(pixels) }
+                assertEquals(0xffffffff.toInt(), pixels.getColor(205, 688), "The image above the text remains unobscured")
+                var outlined = 0
+                for (y in 696 until 720) {
+                    for (x in 160 until 251) {
+                        val color = pixels.getColor(x, y)
+                        val red = color shr 16 and 255
+                        val green = color shr 8 and 255
+                        val blue = color and 255
+                        if (red in 45..60 && red == green && green == blue) outlined++
+                    }
+                }
+                assertTrue(outlined > 0, "Actual glyph pixels must include the original dark outline on a bright image")
+            }
+            scene.sendPointerEvent(PointerEventType.Press, indicator.boundsInRoot.center)
+            scene.render(32 * 16_666_667L).close()
+            scene.sendPointerEvent(PointerEventType.Release, indicator.boundsInRoot.center)
+            scene.render(33 * 16_666_667L).close()
+            assertTrue(state.visible, "The real pointer action still reveals the existing reader controls")
+            repeat(30) { scene.render((34 + it) * 16_666_667L).close() }
+            val hide = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.flatMap { it.config.getOrNull(SemanticsActions.CustomActions).orEmpty() }.single()
+            assertTrue(hide.action(), "The original title bar retains an accessible hide action without an extra visual icon")
+            assertFalse(state.visible)
+        } finally {
+            scene.close()
+        }
+    }
+
     @Test
     fun seekPillUsesOriginalRoundedKeylinesAndSeparatesTheBottomBarFromTheCanvas() {
         for (width in listOf(411, 1280)) {

@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
@@ -59,11 +61,18 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_back
 import ehviewer.app.shared.generated.resources.gallery_go_to_page
@@ -113,22 +122,41 @@ internal fun GalleryReaderChrome(
     val container = BottomAppBarDefaults.containerColor.copy(alpha = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) 0.9f else 0.95f)
     val safe = WindowInsets.safeDrawing
     val showLabel = galleryString(Res.string.gallery_reader_show_controls)
+    val hideLabel = galleryString(Res.string.gallery_reader_hide_controls)
     Box(modifier.onKeyEvent(onKey).focusable().fillMaxSize().background(Color.Black)) {
         content()
         if (!state.visible) {
-            // Keep the original small page indicator and an accessible way to reveal touch controls.
-            TextButton(onClick = state::toggle, modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(safe.only(WindowInsetsSides.Bottom)).semantics { contentDescription = showLabel }) {
-                Text("${index + 1} / $pages", color = Color.White, style = MaterialTheme.typography.bodySmall, modifier = Modifier.background(Color.Black.copy(alpha = 0.5f)).padding(horizontal = 4.dp))
+            // PageIndicatorText uses outlined, bold numbers directly over the image. A clickable
+            // wrapper keeps the shared reader's accessible reveal action without button padding.
+            val indicatorStyle = TextStyle(color = Color(235, 235, 235), fontSize = MaterialTheme.typography.bodySmall.fontSize, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Box(Modifier.align(Alignment.BottomCenter).windowInsetsPadding(safe.only(WindowInsetsSides.Bottom))) {
+                Box(Modifier.clickable(role = Role.Button, onClick = state::toggle).semantics(mergeDescendants = true) { contentDescription = showLabel }, contentAlignment = Alignment.Center) {
+                    Text("${index + 1} / $pages", style = indicatorStyle.copy(color = Color(45, 45, 45), drawStyle = Stroke(width = 4f)), modifier = Modifier.clearAndSetSemantics {})
+                    Text("${index + 1} / $pages", style = indicatorStyle)
+                }
             }
         }
         Column(Modifier.align(Alignment.TopCenter).fillMaxWidth().windowInsetsPadding(safe.only(WindowInsetsSides.Horizontal))) {
             AnimatedVisibility(state.visible, enter = slideInVertically(tween(200)) { -it }, exit = slideOutVertically(tween(200)) { -it }) {
                 TopAppBar(
-                    title = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                    title = {
+                        Text(
+                            title,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.semantics {
+                                customActions = listOf(
+                                    CustomAccessibilityAction(hideLabel) {
+                                        state.visible = false
+                                        true
+                                    },
+                                )
+                            },
+                        )
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = container),
                     expandedHeight = maxOf(64.dp, (64 * LocalDensity.current.fontScale).dp),
                     navigationIcon = { IconButton(onClick = onBack) { Icon(GalleryIcons.ArrowBack, galleryString(Res.string.gallery_back)) } },
-                    actions = { IconButton(onClick = state::toggle) { Icon(GalleryIcons.Close, galleryString(Res.string.gallery_reader_hide_controls)) } },
                 )
             }
             Surface(color = container) { status() }
