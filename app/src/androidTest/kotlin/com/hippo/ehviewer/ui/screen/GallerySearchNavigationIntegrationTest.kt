@@ -87,6 +87,7 @@ class GallerySearchNavigationIntegrationTest {
                 assertEquals("/", request.url.encodedPath)
                 requests += request.url
                 when {
+                    request.url.parameters["f_search"] == null -> respond(listing(listOf("Owned initial homepage")))
                     request.url.parameters["f_search"] == "cancelled query" -> {
                         blockedStarted.complete(Unit)
                         try {
@@ -139,7 +140,7 @@ class GallerySearchNavigationIntegrationTest {
         }
         fun visible(text: String) = assertTrue("Missing actual search result/control: $text", device.wait(Until.hasObject(By.text(text)), 15_000))
         fun query(text: String) {
-            checkNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = text
+            device.setSharedSearchText(text)
             visible(text)
         }
         downloadLocation = owned.toOkioPath()
@@ -157,11 +158,18 @@ class GallerySearchNavigationIntegrationTest {
                     activity.setContent {
                         val scope = rememberCoroutineScope()
                         val downloads = remember { AndroidGalleryDownloads(scope) }
-                        GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() })
+                        GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() }, browseOnEntry = true)
                     }
                 }
                 try {
                     assertTrue(device.wait(Until.hasObject(By.desc("Search galleries")), 15_000))
+                    visible("Owned initial homepage")
+                    assertEquals(1, requests.size)
+                    assertTrue(requests.single().parameters.isEmpty())
+                    device.openSharedDestination("Downloads")
+                    device.openSharedDestination("Galleries")
+                    visible("Owned initial homepage")
+                    assertEquals("Returning to Galleries must keep the loaded homepage", 1, requests.size)
                     query("committed query")
                     requireNotNull(device.wait(Until.findObject(By.desc("Filters")), 15_000)).click()
                     visible("Minimum rating (2–5)")
@@ -185,7 +193,7 @@ class GallerySearchNavigationIntegrationTest {
                     click("Sort this page")
                     click("Title")
                     runBlocking { withTimeout(5_000) { while (cardOrder() != listOf("A owned gallery", "B owned gallery")) delay(25) } }
-                    assertEquals(1, requests.size) // Sorting the page never repeats its HTTP search.
+                    assertEquals(2, requests.size) // Homepage + search; sorting never repeats HTTP.
                     click("Next")
                     visible("Retry")
                     visible("A owned gallery") // The preceding page remains usable on failure.
@@ -214,7 +222,8 @@ class GallerySearchNavigationIntegrationTest {
                     instrumentation.waitForIdleSync()
                     visible("Replacement gallery")
                     assertFalse(device.hasObject(By.text("Stale cancelled gallery")))
-                    val actual = requests.toList()
+                    assertEquals(9, requests.size) // The initial homepage plus the original eight requests.
+                    val actual = requests.toList().drop(1)
                     assertEquals(8, actual.size)
                     assertEquals(List(6) { "committed query" } + listOf("cancelled query", "replacement query"), actual.map { it.parameters["f_search"] })
                     assertEquals(listOf(null, "200-300", "200-300", "200-300", null, null, null, null), actual.map { it.parameters["next"] })

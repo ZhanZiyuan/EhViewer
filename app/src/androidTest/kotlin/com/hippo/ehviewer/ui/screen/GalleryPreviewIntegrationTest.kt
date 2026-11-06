@@ -149,7 +149,7 @@ class GalleryPreviewIntegrationTest {
         val library = AndroidGalleryLibrary(false, client)
         fun visible(text: String) = assertTrue("Missing tag flow control: $text", device.wait(Until.hasObject(By.text(text)), 15_000))
         fun query(value: String) {
-            checkNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = value
+            device.setSharedSearchText(value)
         }
         downloadLocation = owned.toOkioPath()
         Settings.appLinkVerifyTip = true
@@ -377,7 +377,7 @@ class GalleryPreviewIntegrationTest {
                 val beforeLocalSearch = requests.size
                 val downloadsCaptures = requireNotNull(context.getExternalFilesDir("kmp-ui-downloads")).apply { mkdirs() }
                 fun downloadSearch(value: String) {
-                    requireNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = value
+                    device.setSharedSearchText(value)
                     device.submitSharedSearch()
                 }
 

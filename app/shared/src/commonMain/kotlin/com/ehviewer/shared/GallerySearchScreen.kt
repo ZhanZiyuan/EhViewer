@@ -118,6 +118,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
@@ -125,9 +126,15 @@ private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
     restore = { runCatching { Json.decodeFromString<GallerySearchFilters>(it) }.getOrNull() },
 )
 
+@Serializable
 private data class GallerySearchRequest(val query: String, val filters: GallerySearchFilters, val cursor: String? = null, val previous: Boolean = false, val uploader: String? = null, val tag: String? = null)
 
-/** Search UI shared by the actual applications; requests run only after an explicit user action. */
+private val searchRequestSaver = Saver<GallerySearchRequest, String>(
+    save = { Json.encodeToString(it) },
+    restore = { runCatching { Json.decodeFromString<GallerySearchRequest>(it) }.getOrNull() },
+)
+
+/** Product entry shared by Desktop/iOS, loading the homepage when online browsing is entered. */
 @Composable
 fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, downloads: GalleryDownloads, language: GalleryLanguageSettings, backgroundDownloadsNote: Boolean = false, archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null, browserFactory: ((String) -> GalleryLoginBrowser)? = null, storageSettings: GalleryStorageSettings? = null, listPreferences: GalleryListPreferences? = null, initialLocalLibrary: Boolean = false, onReady: () -> Unit = {}) {
     DisposableEffect(session) { onDispose { session.close() } }
@@ -144,7 +151,7 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
     }
     GalleryLibraryScreen(library, readerState, appearance, history, downloads, language, networkPreferences = session.networkPreferences, storageSettings = storageSettings, listPreferences = listPreferences, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
-    }, initialLocalLibrary = initialLocalLibrary, onReady = onReady)
+    }, initialLocalLibrary = initialLocalLibrary, browseOnEntry = true, onReady = onReady)
 }
 
 /** Android uses the same views while its original session/history adapters remain authoritative. */
@@ -168,6 +175,7 @@ fun GalleryLibraryScreen(
     accountContent: (@Composable (onIdentityAction: () -> Unit, onBack: () -> Unit) -> Unit)? = null,
     archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null,
     initialLocalLibrary: Boolean = false,
+    browseOnEntry: Boolean = false,
     onReady: () -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
@@ -252,6 +260,9 @@ fun GalleryLibraryScreen(
     var loading by remember { mutableStateOf(false) }
     var generation by remember { mutableIntStateOf(0) }
     var request by remember { mutableStateOf<Job?>(null) }
+    var entryStarted by remember(session) { mutableStateOf(false) }
+    // Restore the submitted route, rather than accidentally submitting an unfinished draft.
+    var entrySearch by rememberSaveable(stateSaver = searchRequestSaver) { mutableStateOf(GallerySearchRequest("", GallerySearchFilters())) }
     val scope = rememberCoroutineScope()
     var selected by remember { mutableStateOf<BaseGalleryInfo?>(null) }
     var account by remember { mutableStateOf(false) }
@@ -266,6 +277,8 @@ fun GalleryLibraryScreen(
     val historyCovers = remember(coverLoader, historyOpen) { GalleryCoverCache(load = coverLoader::get) }
 
     fun load(search: GallerySearchRequest, replaceResults: Boolean = false) {
+        entryStarted = true
+        entrySearch = search
         request?.cancel()
         val current = ++generation
         if (replaceResults) page = null
@@ -316,6 +329,8 @@ fun GalleryLibraryScreen(
     }
 
     fun openAccount() {
+        // Returning from an account page must resume an initial/replacement load that it cancelled.
+        if (loading && page == null) entryStarted = false
         request?.cancel()
         generation++
         loading = false
@@ -337,6 +352,14 @@ fun GalleryLibraryScreen(
         downloadsOpen -> GalleryDestination.DOWNLOADS
         historyOpen -> GalleryDestination.HISTORY
         else -> GalleryDestination.GALLERIES
+    }
+
+    // The original HomePageScreen immediately collects its default Pager. Embedded search
+    // may opt in; opening a local document stays offline until Galleries is actually chosen.
+    LaunchedEffect(session, browseOnEntry, destination) {
+        if (browseOnEntry && destination == GalleryDestination.GALLERIES && !entryStarted) {
+            load(entrySearch, replaceResults = true)
+        }
     }
 
     // Like Android's drawer, choosing a destination returns to its root; reselecting pops a child.
@@ -396,6 +419,8 @@ fun GalleryLibraryScreen(
                                     failedSearch = null
                                     failure = null
                                     loading = false
+                                    entryStarted = false
+                                    entrySearch = GallerySearchRequest("", filters)
                                 }, { account = false })
                                 return@Column
                             }
