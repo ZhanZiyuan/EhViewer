@@ -5,12 +5,19 @@ import com.ehviewer.core.domain.download.GalleryDownload
 import com.ehviewer.core.domain.download.GalleryDownloadFailure
 import com.ehviewer.core.domain.download.GalleryDownloadState
 import com.ehviewer.core.domain.download.GalleryDownloadStorageException
+import com.ehviewer.core.domain.download.downloadMetadata
+import com.ehviewer.core.files.SystemFileSystem
+import com.ehviewer.core.files.find
+import com.ehviewer.core.files.isFile
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.download.GalleryDownloadOpen
 import com.ehviewer.core.network.download.GalleryDownloads
+import com.hippo.ehviewer.EhApplication
 import com.hippo.ehviewer.Settings
 import com.hippo.ehviewer.client.EhUrl
 import com.hippo.ehviewer.download.DownloadManager
+import com.hippo.ehviewer.download.downloadDir
+import com.hippo.ehviewer.spider.SpiderDen
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +32,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import okio.Buffer
+import okio.Path
+import okio.buffer
 
 /** Borrow original Android downloads, workers, files, labels and recovery; own only the UI observer. */
 internal class AndroidGalleryDownloads(parent: CoroutineScope) : GalleryDownloads {
@@ -54,6 +64,7 @@ internal class AndroidGalleryDownloads(parent: CoroutineScope) : GalleryDownload
                 state,
                 if (state == GalleryDownloadState.COMPLETE) pages else info.finished.coerceIn(0, pages),
                 GalleryDownloadFailure.NETWORK_OR_IMAGE.takeIf { state == GalleryDownloadState.FAILED },
+                metadata = info.downloadMetadata(),
             )
         }
     }
@@ -77,6 +88,35 @@ internal class AndroidGalleryDownloads(parent: CoroutineScope) : GalleryDownload
                 scope.launch(Dispatchers.IO) { DownloadManager.notifyFlow.collect { refresh() } }
             }
         }
+    }
+
+    override suspend fun preview(gid: Long, token: String): ByteArray? = original {
+        val info = DownloadManager.getDownloadInfo(gid) ?: return@original null
+        if (info.token != token) return@original null
+        val directory = info.downloadDir
+        val key = info.thumbKey
+        val extension = key?.substringAfterLast('.')?.takeIf { it in setOf("jpg", "jpeg", "png", "webp", "gif", "avif") }
+        val names = listOfNotNull(extension?.let { "thumb.$it" }, "thumb.jpg", "thumb.png", "thumb.webp").distinct()
+        names.firstNotNullOfOrNull { directory?.find(it)?.takeIf { file -> file.isFile } }?.let { return@original previewBytes(it) }
+        if (key != null) EhApplication.thumbCache.openSnapshot(key)?.use { return@original previewBytes(it.data) }
+        if (info.state != DownloadInfo.STATE_FINISH && info.finished <= 0 || info.dirname.isNullOrBlank()) return@original null
+        val source = try {
+            SpiderDen(info, checkNotNull(info.dirname)).getImageSource(0)
+        } catch (_: IllegalArgumentException) {
+            // Older archived tasks may have no remaining loose page or thumbnail.
+            return@original null
+        }
+        source.use { previewBytes(it.source) }
+    }
+
+    private fun previewBytes(path: Path): ByteArray = SystemFileSystem.source(path).buffer().use { input ->
+        val bytes = Buffer()
+        val limit = 32L * 1024 * 1024
+        while (bytes.size <= limit) {
+            if (input.read(bytes, minOf(16_384L, limit + 1 - bytes.size)) == -1L) break
+        }
+        check(bytes.size in 1..limit)
+        bytes.readByteArray()
     }
 
     override suspend fun enqueue(gallery: GalleryDetail, restricted: Boolean) = original {

@@ -1,5 +1,9 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package com.ehviewer.core.database.download
 
+import androidx.room.AutoMigration
+import androidx.room.ColumnInfo
 import androidx.room.ConstructedBy
 import androidx.room.Dao
 import androidx.room.Database
@@ -12,7 +16,9 @@ import androidx.room.RoomDatabaseConstructor
 import androidx.room.Upsert
 import com.ehviewer.core.domain.download.GalleryDownload
 import com.ehviewer.core.domain.download.GalleryDownloadFailure
+import com.ehviewer.core.domain.download.GalleryDownloadMetadata
 import com.ehviewer.core.domain.download.GalleryDownloadState
+import kotlinx.serialization.cbor.Cbor
 
 /** Separate new-platform queue: the existing Android DOWNLOADS table and migrations remain intact. */
 @Entity(tableName = "TASKS")
@@ -26,11 +32,12 @@ data class GalleryDownloadEntity(
     val finished: Int,
     val failure: String?,
     val position: Long,
+    @ColumnInfo(defaultValue = "NULL") val metadata: ByteArray? = null,
 ) {
-    fun domain() = GalleryDownload(gid, token, title, pages, restricted, GalleryDownloadState.valueOf(state), finished, failure?.let(GalleryDownloadFailure::valueOf), position).also { it.validate() }
+    fun domain() = GalleryDownload(gid, token, title, pages, restricted, GalleryDownloadState.valueOf(state), finished, failure?.let(GalleryDownloadFailure::valueOf), position, metadata?.let { Cbor.decodeFromByteArray(GalleryDownloadMetadata.serializer(), it) }).also { it.validate() }
 }
 
-fun GalleryDownload.entity() = GalleryDownloadEntity(gid, token, title, pages, restricted, state.name, finished, failure?.name, position)
+fun GalleryDownload.entity() = GalleryDownloadEntity(gid, token, title, pages, restricted, state.name, finished, failure?.name, position, metadata?.let { Cbor.encodeToByteArray(GalleryDownloadMetadata.serializer(), it) })
 
 @Entity(
     tableName = "PAGES",
@@ -66,7 +73,7 @@ interface GalleryDownloadsDao {
     suspend fun remove(gid: Long)
 }
 
-@Database(entities = [GalleryDownloadEntity::class, DownloadPageEntity::class], version = 1, exportSchema = true)
+@Database(entities = [GalleryDownloadEntity::class, DownloadPageEntity::class], version = 2, autoMigrations = [AutoMigration(from = 1, to = 2)], exportSchema = true)
 @ConstructedBy(DownloadDatabaseConstructor::class)
 abstract class DownloadDatabase : RoomDatabase() {
     abstract fun downloads(): GalleryDownloadsDao

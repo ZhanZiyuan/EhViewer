@@ -401,7 +401,7 @@ class GalleryPreviewIntegrationTest {
                         val screenshot = checkNotNull(device.takeScreenshot())
                         try {
                             val isRow = text == title
-                            val semantics = if (isRow) device.hasObject(By.text("Resume")) && !device.hasObject(By.text("Download items will be shown here")) else !device.hasObject(By.text("Resume")) && !device.hasObject(By.text(title))
+                            val semantics = if (isRow) device.hasObject(By.desc("Resume")) && device.hasObject(By.desc("Downloaded")) && !device.hasObject(By.text("Download items will be shown here")) else !device.hasObject(By.desc("Resume")) && !device.hasObject(By.text(title))
                             val rendered = bounds != null && (ink(screenshot, bounds) ?: 0) > 32 && ink(screenshot, cleared) == 0 && semantics
                             val file = if (rendered) name else name.removeSuffix(".png") + "-unrendered.png"
                             File(downloadsCaptures, file).outputStream().use { assertTrue(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) }

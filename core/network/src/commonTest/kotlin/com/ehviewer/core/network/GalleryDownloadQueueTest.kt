@@ -13,9 +13,11 @@ import com.ehviewer.core.network.download.DownloadPageBytes
 import com.ehviewer.core.network.download.GalleryDownloadQueue
 import com.ehviewer.core.network.download.GalleryDownloadSource
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -65,6 +67,42 @@ class GalleryDownloadQueueTest {
         previewList = emptyList(),
     )
     private fun image(index: Int) = DownloadPageBytes("0123456789", byteArrayOf(index.toByte(), 42))
+
+    @Test fun cardMetadataAndCommittedPreviewNeverStartANetworkSourceOrModifySavedImages() = runTest {
+        val storage = Storage()
+        val opened = mutableListOf<Long>()
+        val queue = GalleryDownloadQueue(storage, backgroundScope) { task ->
+            opened += task.gid
+            GalleryDownloadSource { index -> if (index == 0) image(index) else awaitCancellation() }
+        }
+        try {
+            queue.initialize()
+            val book = gallery().also {
+                it.galleryInfo.uploader = "Owned artist"
+                it.galleryInfo.category = 512
+                it.galleryInfo.rating = 4.5f
+            }
+            queue.enqueue(book, false)
+            queue.enqueue(gallery(2), false)
+            runCurrent()
+            assertEquals("Owned artist", queue.tasks.value.first().metadata?.uploader)
+            assertEquals("Owned artist", storage.saved.getValue(1).metadata?.uploader)
+            val preview = requireNotNull(queue.preview(1, "0123456789"))
+            assertContentEquals(image(0).bytes, preview)
+            preview[0] = 99
+            assertContentEquals(image(0).bytes, queue.preview(1, "0123456789"))
+            assertNull(queue.preview(1, "aaaaaaaaaa"))
+            assertNull(queue.preview(2, "0123456789"))
+            assertEquals(listOf(1L), opened, "Previews must not open a queued network source")
+            assertEquals(1, storage.images.size)
+            queue.pauseAll()
+            queue.cancel(1)
+            assertNull(queue.preview(1, "0123456789"))
+            assertEquals(listOf(1L), opened)
+        } finally {
+            queue.close()
+        }
+    }
 
     @Test fun oneDamagedDownloadRemainsVisibleAndDeletableWithoutBlockingHealthyTasks() = runTest {
         val storage = Storage().apply {

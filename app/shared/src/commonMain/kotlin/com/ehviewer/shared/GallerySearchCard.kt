@@ -100,7 +100,7 @@ internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCach
 }
 
 @Composable
-internal fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCoverCache<CoilImage>) {
+internal fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCoverCache<CoilImage>, imageDescription: String? = null) {
     var image by remember(request, cache) { mutableStateOf<CoilImage?>(null) }
     var failed by remember(request, cache) { mutableStateOf(false) }
     var attempt by remember(request, cache) { mutableIntStateOf(0) }
@@ -119,7 +119,7 @@ internal fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCove
         val bitmap = image
         if (bitmap != null) {
             val context = LocalPlatformContext.current
-            Image(remember(bitmap, context) { bitmap.asPainter(context) }, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            Image(remember(bitmap, context) { bitmap.asPainter(context) }, contentDescription = imageDescription, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         } else if (request == null) {
             Text(galleryString(Res.string.gallery_cover_unavailable), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, modifier = Modifier.padding(4.dp))
         } else if (failed) {

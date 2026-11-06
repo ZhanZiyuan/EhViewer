@@ -12,6 +12,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Density
 import com.ehviewer.core.domain.download.GalleryDownload
+import com.ehviewer.core.domain.download.GalleryDownloadMetadata
 import com.ehviewer.core.domain.download.GalleryDownloadState
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.download.GalleryDownloadOpen
@@ -118,6 +119,7 @@ class GalleryDownloadsScreenTest {
             view.click("Search")
             view.click("Resume")
             assertEquals("resume:2", queue.actions.last())
+            view.click("Second book")
             view.click("Delete download and files")
             assertEquals("cancel:2", queue.actions.last())
             assertTrue(view.text("Download items will be shown here") != null, "Keep the original Downloads empty presentation for a filtered page")
@@ -153,6 +155,34 @@ class GalleryDownloadsScreenTest {
                         view.click("Retry")
                         assertEquals(1, retries)
                         assertTrue(view.all().any { "Search Downloads" in it.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() })
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun actualCardTextCategoryAndControlsRemainInsideNarrowLargeFontAndWideLayouts() = english {
+        val title = "Owned long download title 日本語"
+        val uploader = "Owned artist with a long public name"
+        val task = GalleryDownload(1, "0123456789", title, 3, false, GalleryDownloadState.PAUSED, 1, metadata = GalleryDownloadMetadata(uploader, true, 4.5f, 512))
+        for (width in listOf(320, 840, 1280)) {
+            for (font in listOf(1f, 1.8f)) {
+                for (dark in listOf(false, true)) {
+                    val queue = Queue(listOf(task))
+                    View(width, font, dark) { GalleryDownloadsScreen(queue, true, false, {}, null, {}, {}) }.use { view ->
+                        view.render()
+                        for (label in listOf(title, uploader, galleryCategoryName(512).uppercase())) {
+                            val node = requireNotNull(view.text(label)) { "Missing actual card text $label at $width/$font/$dark" }
+                            val bounds = node.boundsInRoot
+                            assertTrue(bounds.left >= 0 && bounds.right <= width && bounds.top > 72 && bounds.bottom <= 1000, "Card text clipped at $width/$font/$dark: $label $bounds")
+                        }
+                        val resume = view.all().single { "Resume" in it.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() }
+                        val bounds = resume.touchBoundsInRoot
+                        assertTrue(bounds.left >= 0 && bounds.right <= width && bounds.top > 72 && bounds.bottom <= 1000, "Actual action is outside the viewport: $bounds")
+                        assertTrue(view.all().any { it.config.getOrNull(SemanticsProperties.StateDescription) == "Paused · 1 / 3" })
+                        view.click("Resume")
+                        assertEquals(listOf("resume:1"), queue.actions)
                     }
                 }
             }

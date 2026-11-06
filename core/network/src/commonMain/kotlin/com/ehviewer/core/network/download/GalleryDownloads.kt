@@ -13,6 +13,9 @@ interface GalleryDownloads : AutoCloseable {
     suspend fun resume(gid: Long)
     suspend fun cancel(gid: Long)
     suspend fun pauseAll()
+
+    /** Available local thumbnail/page only; absence never permits a site request. */
+    suspend fun preview(gid: Long, token: String): ByteArray? = null
     suspend fun open(gid: Long): GalleryDownloadOpen
 }
 

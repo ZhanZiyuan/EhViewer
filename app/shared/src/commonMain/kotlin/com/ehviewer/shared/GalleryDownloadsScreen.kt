@@ -11,19 +11,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,26 +39,16 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
-import com.ehviewer.core.domain.download.GalleryDownloadFailure
 import com.ehviewer.core.domain.download.GalleryDownloadState
 import com.ehviewer.core.network.download.GalleryDownloadOpen
 import com.ehviewer.core.network.download.GalleryDownloads
+import com.ehviewer.core.network.gallery.GalleryFailure
+import com.ehviewer.core.network.gallery.GalleryRequestException
 import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_back
-import ehviewer.app.shared.generated.resources.gallery_download_complete
-import ehviewer.app.shared.generated.resources.gallery_download_delete
-import ehviewer.app.shared.generated.resources.gallery_download_downloading
-import ehviewer.app.shared.generated.resources.gallery_download_failed
-import ehviewer.app.shared.generated.resources.gallery_download_paused
-import ehviewer.app.shared.generated.resources.gallery_download_queued
-import ehviewer.app.shared.generated.resources.gallery_download_storage_failed
-import ehviewer.app.shared.generated.resources.gallery_download_unknown
 import ehviewer.app.shared.generated.resources.gallery_download_update_failed
 import ehviewer.app.shared.generated.resources.gallery_downloads
 import ehviewer.app.shared.generated.resources.gallery_downloads_empty
-import ehviewer.app.shared.generated.resources.gallery_pause
-import ehviewer.app.shared.generated.resources.gallery_read_offline
-import ehviewer.app.shared.generated.resources.gallery_resume
 import ehviewer.app.shared.generated.resources.gallery_retry
 import ehviewer.app.shared.generated.resources.gallery_search
 import ehviewer.app.shared.generated.resources.gallery_search_in
@@ -65,6 +57,7 @@ import kotlinx.coroutines.launch
 
 /** Original Downloads floating search/empty state; filtering never changes the underlying queue. */
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 internal fun GalleryDownloadsScreen(downloads: GalleryDownloads, ready: Boolean, failed: Boolean, retry: () -> Unit, backgroundNote: String?, onOpen: suspend (GalleryDownloadOpen) -> Unit, onBack: () -> Unit, openNavigation: (() -> Unit)? = null) {
     val tasks by downloads.tasks.collectAsState()
     var busy by remember { mutableStateOf(false) }
@@ -77,7 +70,21 @@ internal fun GalleryDownloadsScreen(downloads: GalleryDownloads, ready: Boolean,
     }
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
-    val listState = rememberLazyListState()
+    val listState = rememberLazyGridState()
+    val context = coil3.compose.LocalPlatformContext.current
+    val loader = remember(downloads, context) {
+        GalleryCoverLoader(context) { request ->
+            try {
+                downloads.preview(request.gid, request.token) ?: throw GalleryRequestException(GalleryFailure.INVALID_RESPONSE)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                throw GalleryRequestException(GalleryFailure.LOCAL_STORAGE)
+            }
+        }
+    }
+    DisposableEffect(loader) { onDispose { loader.close() } }
+    val previews = remember(loader) { GalleryCoverCache(load = loader::get) }
     val scope = rememberCoroutineScope()
     fun search() {
         appliedQuery = query
@@ -116,37 +123,28 @@ internal fun GalleryDownloadsScreen(downloads: GalleryDownloads, ready: Boolean,
                     }, enabled = !busy) { Text(galleryString(Res.string.gallery_retry)) }
                 }
             }
-            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (busy) LinearWavyProgressIndicator(Modifier.fillMaxWidth())
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
+                LazyVerticalGrid(columns = GridCells.Adaptive(336.dp), modifier = Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 12.dp, vertical = GalleryListMarginV), horizontalArrangement = Arrangement.spacedBy(GalleryListInterval), verticalArrangement = Arrangement.spacedBy(GalleryListInterval)) {
                     items(shown, key = { it.gid }) { task ->
-                        ListItem(
-                            headlineContent = { Text(task.title) },
-                            supportingContent = {
-                                Column {
-                                    val state = when (task.state) {
-                                        GalleryDownloadState.QUEUED -> galleryString(Res.string.gallery_download_queued)
-                                        GalleryDownloadState.DOWNLOADING -> galleryString(Res.string.gallery_download_downloading)
-                                        GalleryDownloadState.PAUSED -> galleryString(Res.string.gallery_download_paused)
-                                        GalleryDownloadState.FAILED -> if (task.failure == GalleryDownloadFailure.STORAGE) galleryString(Res.string.gallery_download_storage_failed) else galleryString(Res.string.gallery_download_failed)
-                                        GalleryDownloadState.COMPLETE -> galleryString(Res.string.gallery_download_complete)
-                                    }
-                                    Text(if (task.pages > 0) "$state · ${task.finished} / ${task.pages}" else galleryString(Res.string.gallery_download_unknown, state))
-                                    Row {
-                                        when (task.state) {
-                                            GalleryDownloadState.QUEUED, GalleryDownloadState.DOWNLOADING -> TextButton(onClick = { perform { downloads.pause(task.gid) } }, enabled = ready && !busy) { Text(galleryString(Res.string.gallery_pause)) }
-                                            GalleryDownloadState.PAUSED, GalleryDownloadState.FAILED -> TextButton(onClick = { perform { downloads.resume(task.gid) } }, enabled = ready && !busy) { Text(galleryString(Res.string.gallery_resume)) }
-                                            GalleryDownloadState.COMPLETE -> TextButton(onClick = { perform { onOpen(downloads.open(task.gid)) } }, enabled = ready && !busy) { Text(galleryString(Res.string.gallery_read_offline)) }
-                                        }
-                                        TextButton(onClick = { perform { downloads.cancel(task.gid) } }, enabled = ready && !busy) { Text(galleryString(Res.string.gallery_download_delete)) }
-                                    }
+                        GalleryDownloadCard(task, previews, enabled = ready && !busy, previewReady = ready, onAction = {
+                            perform {
+                                when (task.state) {
+                                    GalleryDownloadState.QUEUED, GalleryDownloadState.DOWNLOADING -> downloads.pause(task.gid)
+                                    GalleryDownloadState.PAUSED, GalleryDownloadState.FAILED -> downloads.resume(task.gid)
+                                    GalleryDownloadState.COMPLETE -> onOpen(downloads.open(task.gid))
                                 }
-                            },
-                        )
+                            }
+                        }, onDelete = {
+                            perform {
+                                downloads.cancel(task.gid)
+                                previews.invalidate(task.previewRequest.key)
+                            }
+                        })
                     }
                 }
                 when {
-                    !ready && !failed -> CircularProgressIndicator()
+                    !ready && !failed -> CircularWavyProgressIndicator()
                     ready && !failed && !operationFailed && shown.isEmpty() -> Column(
                         Modifier.padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.Center,

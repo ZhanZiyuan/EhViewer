@@ -1,7 +1,10 @@
 package com.ehviewer.core.data
 
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import com.ehviewer.core.database.download.DownloadDatabase
 import com.ehviewer.core.domain.download.GalleryDownload
+import com.ehviewer.core.domain.download.GalleryDownloadMetadata
 import com.ehviewer.core.domain.download.GalleryDownloadState
 import com.ehviewer.core.domain.download.GalleryDownloadStorageException
 import kotlin.test.Test
@@ -16,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import okio.ByteString.Companion.toByteString
 import okio.FileSystem
 import okio.ForwardingFileSystem
 import okio.IOException
@@ -23,9 +27,50 @@ import okio.Path
 import okio.Path.Companion.toPath
 
 internal expect fun fileDownloadDatabase(path: String): DownloadDatabase
+internal expect fun rawDownloadConnection(path: String): SQLiteConnection
 
 class DownloadStorageTest {
     private fun task() = GalleryDownload(1, "0123456789", "Owned 日本語", 2, false, GalleryDownloadState.DOWNLOADING)
+
+    @Test fun schemaOneMigrationPreservesCommittedImagesAndAddsOptionalPublicMetadata() = runTest {
+        val owned = ownedDatabaseFile()
+        val path = owned.path + "-downloads"
+        val images = (owned.path + "-images").toPath()
+        val original = byteArrayOf(1, 2, 3, 4)
+        FileSystem.SYSTEM.createDirectories(images / "1")
+        FileSystem.SYSTEM.write(images / "1" / "page-0.bin") { write(original) }
+        // Exact v1 schema/identity from the retained Room schema, not a new-version fixture.
+        rawDownloadConnection(path).use { connection ->
+            connection.execSQL("CREATE TABLE IF NOT EXISTS `TASKS` (`gid` INTEGER NOT NULL, `token` TEXT NOT NULL, `title` TEXT NOT NULL, `pages` INTEGER NOT NULL, `restricted` INTEGER NOT NULL, `state` TEXT NOT NULL, `finished` INTEGER NOT NULL, `failure` TEXT, `position` INTEGER NOT NULL, PRIMARY KEY(`gid`))")
+            connection.execSQL("CREATE TABLE IF NOT EXISTS `PAGES` (`gid` INTEGER NOT NULL, `index` INTEGER NOT NULL, `token` TEXT NOT NULL, `bytes` INTEGER NOT NULL, `sha256` TEXT NOT NULL, PRIMARY KEY(`gid`, `index`), FOREIGN KEY(`gid`) REFERENCES `TASKS`(`gid`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+            connection.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)")
+            connection.execSQL("INSERT INTO room_master_table VALUES (42,'f6a8cdf9993ed897d4ef43629e702acf')")
+            connection.execSQL("INSERT INTO TASKS VALUES (1,'0123456789','Owned old book',2,0,'PAUSED',1,NULL,7)")
+            connection.execSQL("INSERT INTO PAGES VALUES (1,0,'0123456789',4,'${original.toByteString().sha256().hex()}')")
+            connection.execSQL("PRAGMA user_version=1")
+        }
+        var db = fileDownloadDatabase(path)
+        try {
+            var storage = RoomGalleryDownloadStorage(db, images)
+            val old = storage.list().single()
+            assertNull(old.metadata)
+            assertEquals(1, old.finished)
+            assertEquals(7L, old.position)
+            assertContentEquals(original, storage.readPage(1, 0))
+            val metadata = GalleryDownloadMetadata("Owned artist", false, 4.5f, 512)
+            storage.save(old.copy(metadata = metadata))
+            db.close()
+            db = fileDownloadDatabase(path)
+            storage = RoomGalleryDownloadStorage(db, images)
+            assertEquals(old.copy(metadata = metadata), storage.list().single())
+            assertContentEquals(original, storage.readPage(1, 0))
+            assertEquals(1, db.downloads().pages(1).size)
+        } finally {
+            db.close()
+            FileSystem.SYSTEM.deleteRecursively(images, mustExist = false)
+            owned.cleanup()
+        }
+    }
 
     @Test fun committedImagesAndSeparateRoomQueueSurviveClosingAndReopening() = runTest {
         val owned = ownedDatabaseFile()

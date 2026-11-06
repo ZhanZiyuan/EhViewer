@@ -1,6 +1,22 @@
 package com.ehviewer.core.domain.download
 
+import com.ehviewer.core.model.GalleryInfo
 import kotlinx.serialization.Serializable
+
+/** Public card information only: no favorite notes, session cookies or account API credentials. */
+@Serializable
+data class GalleryDownloadMetadata(val uploader: String?, val disowned: Boolean, val rating: Float?, val category: Int) {
+    fun validate() {
+        require(uploader == null || uploader.length <= 4096)
+        require(rating == null || rating.isFinite() && rating in 0f..5f)
+    }
+}
+
+fun GalleryInfo.downloadMetadata(): GalleryDownloadMetadata? {
+    val rating = rating.takeIf { it.isFinite() && it in 0f..5f }
+    if (uploader.isNullOrEmpty() && !disowned && (rating == null || rating == 0f) && category == 0) return null
+    return GalleryDownloadMetadata(uploader?.take(4096), disowned, rating, category)
+}
 
 @Serializable
 enum class GalleryDownloadState { QUEUED, DOWNLOADING, PAUSED, FAILED, COMPLETE }
@@ -20,6 +36,7 @@ data class GalleryDownload(
     val finished: Int = 0,
     val failure: GalleryDownloadFailure? = null,
     val position: Long = 0,
+    val metadata: GalleryDownloadMetadata? = null,
 ) {
     fun validate() {
         require(gid > 0 && Regex("[a-f0-9]{10}").matches(token))
@@ -27,6 +44,7 @@ data class GalleryDownload(
         require(state != GalleryDownloadState.COMPLETE || finished == pages)
         require((state == GalleryDownloadState.FAILED) == (failure != null))
         require(position >= 0)
+        metadata?.validate()
     }
 }
 

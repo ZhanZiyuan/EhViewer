@@ -38,4 +38,9 @@ internal class GalleryCoverCache<T>(private val budget: Long = 16L * 1024 * 1024
         images[request.key] = image
         image
     }
+
+    suspend fun invalidate(key: String) = mutex.withLock {
+        images.remove(key)
+        Unit
+    }
 }

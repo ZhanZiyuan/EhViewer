@@ -7,6 +7,7 @@ import com.ehviewer.core.domain.download.GalleryDownloadStorage
 import com.ehviewer.core.domain.download.GalleryDownloadStorageException
 import com.ehviewer.core.domain.download.GalleryImageCheckpoint
 import com.ehviewer.core.domain.download.PartialGalleryDownloadStorage
+import com.ehviewer.core.domain.download.downloadMetadata
 import com.ehviewer.core.model.GalleryDetail
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -102,7 +103,7 @@ class GalleryDownloadQueue(
             ready()
             val last = tasks.value.maxOfOrNull { it.position } ?: -1L
             check(last < Long.MAX_VALUE)
-            val task = GalleryDownload(gallery.gid, gallery.token, gallery.title ?: gallery.titleJpn.orEmpty(), gallery.pages, restricted, position = last + 1)
+            val task = GalleryDownload(gallery.gid, gallery.token, gallery.title ?: gallery.titleJpn.orEmpty(), gallery.pages, restricted, position = last + 1, metadata = gallery.downloadMetadata())
             task.validate()
             require(task.pages > 0)
             val existing = tasks.value.firstOrNull { it.gid == task.gid }
@@ -174,6 +175,12 @@ class GalleryDownloadQueue(
             storage.remove(gid)
             mutableTasks.value = tasks.value.filterNot { it.gid == gid }
         }
+    }
+
+    override suspend fun preview(gid: Long, token: String): ByteArray? = mutex.withLock {
+        ready()
+        val task = tasks.value.singleOrNull { it.gid == gid } ?: return@withLock null
+        if (task.token != token || task.finished == 0) null else storage.readPage(gid, 0)
     }
 
     override suspend fun open(gid: Long): GalleryDownloadOpen = mutex.withLock {
