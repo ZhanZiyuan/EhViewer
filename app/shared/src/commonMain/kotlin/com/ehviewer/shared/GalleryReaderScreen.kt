@@ -28,7 +28,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -64,7 +63,6 @@ import ehviewer.app.shared.generated.resources.gallery_reading_rtl
 import ehviewer.app.shared.generated.resources.gallery_reset_zoom
 import ehviewer.app.shared.generated.resources.gallery_retry
 import ehviewer.app.shared.generated.resources.gallery_settings
-import kotlin.math.min
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -78,8 +76,8 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
     var url by remember(initial) { mutableStateOf(initial) }
     var reloadKey by remember(url) { mutableStateOf<String?>(null) }
     var original by remember(url) { mutableStateOf(false) }
-    var document by remember { mutableStateOf<GalleryImagePage?>(null) }
-    var bitmap by remember { mutableStateOf<GalleryMedia?>(null) }
+    var document by remember(url) { mutableStateOf<GalleryImagePage?>(null) }
+    var bitmap by remember(url) { mutableStateOf<GalleryMedia?>(null) }
     var failure by remember { mutableStateOf<GalleryFailure?>(null) }
     var loading by remember { mutableStateOf(false) }
     var attempt by remember { mutableIntStateOf(0) }
@@ -101,6 +99,12 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
     val currentUrl = url
     val index = session.content.pageIndex(currentUrl, detail.gid)
     val rtl = preferences.direction == ReadingDirection.RIGHT_TO_LEFT
+    fun transform(factor: Float, centroid: Offset = Offset.Unspecified, delta: Offset = Offset.Zero) {
+        val image = bitmap ?: return
+        val changed = readerZoom(ReaderZoom(zoom, pan), viewport, IntSize(image.width, image.height), factor, centroid, delta)
+        zoom = changed.scale
+        pan = changed.pan
+    }
     suspend fun saveProgress() {
         try {
             readerState.savePosition(detail.gid, index, currentUrl.substringAfter("/s/").substringBefore('/'))
@@ -244,6 +248,18 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
             modifier = Modifier.focusRequester(focus),
             onKey = readerKey@{ event ->
                 if (event.type != KeyEventType.KeyDown || seeking && event.key != Key.Escape) return@readerKey false
+                readerZoomAction(event)?.let { action ->
+                    if (bitmap == null || loading) return@readerKey false
+                    when (action) {
+                        ReaderZoomAction.IN -> transform(1.25f)
+                        ReaderZoomAction.OUT -> transform(0.8f)
+                        ReaderZoomAction.RESET -> {
+                            zoom = 1f
+                            pan = Offset.Zero
+                        }
+                    }
+                    return@readerKey true
+                }
                 when (event.key) {
                     Key.Escape -> onBack()
                     Key.Spacebar -> chrome.toggle()
@@ -291,62 +307,69 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                 GalleryReaderAction(galleryString(Res.string.gallery_settings), GalleryIcons.Settings, !settingsSaving) { optionsOpen = true }
             },
         ) {
-            Box(
-                Modifier.fillMaxSize().clipToBounds().onSizeChanged { viewport = it }
-                    .pointerInput(url, previous, next, rtl, preferences.doubleTapToZoom) {
-                        detectTapGestures(
-                            onTap = { point ->
-                                val target = if (zoom == 1f && !seeking) {
-                                    when {
-                                        point.x < size.width / 3f -> if (rtl) next else previous
-                                        point.x > size.width * 2f / 3f -> if (rtl) previous else next
-                                        else -> null
+            GalleryReaderPagedCanvas(index, detail.pages, rtl, bitmap != null && !loading && !seeking && zoom == 1f, onPageRequested = { selected ->
+                val target = when (selected) {
+                    index - 1 -> previous
+                    index + 1 -> next
+                    else -> null
+                }
+                if (target != null) navigate(target)
+                target != null
+            }) { page ->
+                if (page != index) {
+                    // Unrequested neighbors retain the real canvas, not a fabricated image
+                    // or loading claim. Network/decode starts only after a valid settled link.
+                    Box(Modifier.fillMaxSize())
+                    return@GalleryReaderPagedCanvas
+                }
+                Box(
+                    Modifier.fillMaxSize().clipToBounds().onSizeChanged { viewport = it }
+                        .galleryReaderWheelZoom(bitmap != null && !loading && !seeking) { factor, position -> transform(factor, position) }
+                        .pointerInput(url, previous, next, rtl, preferences.doubleTapToZoom) {
+                            detectTapGestures(
+                                onTap = { point ->
+                                    val target = if (zoom == 1f && !seeking) {
+                                        when {
+                                            point.x < size.width / 3f -> if (rtl) next else previous
+                                            point.x > size.width * 2f / 3f -> if (rtl) previous else next
+                                            else -> null
+                                        }
+                                    } else {
+                                        null
+                                    }
+                                    if (target == null) chrome.toggle() else navigate(target)
+                                },
+                                onDoubleTap = if (preferences.doubleTapToZoom) {
+                                    {
+                                        zoom = if (zoom > 1f) 1f else 2f
+                                        pan = Offset.Zero
                                     }
                                 } else {
                                     null
-                                }
-                                if (target == null) chrome.toggle() else navigate(target)
+                                },
+                            )
+                        }
+                        .transformable(
+                            rememberTransformableState { centroid, scale, offset, _ ->
+                                transform(scale, centroid, offset)
                             },
-                            onDoubleTap = if (preferences.doubleTapToZoom) {
-                                {
-                                    zoom = if (zoom > 1f) 1f else 2f
-                                    pan = Offset.Zero
-                                }
-                            } else {
-                                null
+                            canPan = { zoom > 1f },
+                            enabled = bitmap != null && !loading && !seeking,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    bitmap?.let { image ->
+                        GalleryMediaImage(
+                            image,
+                            galleryString(Res.string.gallery_gallery_page, index + 1),
+                            Modifier.fillMaxSize().graphicsLayer {
+                                scaleX = zoom
+                                scaleY = zoom
+                                translationX = pan.x
+                                translationY = pan.y
                             },
                         )
                     }
-                    .transformable(
-                        rememberTransformableState { centroid, scale, offset, _ ->
-                            val oldZoom = zoom
-                            zoom = (zoom * scale).coerceIn(1f, 5f)
-                            val anchor = if (centroid.isSpecified) centroid - Offset(viewport.width / 2f, viewport.height / 2f) else Offset.Zero
-                            val moved = (pan - anchor) * (zoom / oldZoom) + anchor + offset
-                            val image = bitmap
-                            pan = if (zoom == 1f || image == null) {
-                                Offset.Zero
-                            } else {
-                                val fit = min(viewport.width.toFloat() / image.width, viewport.height.toFloat() / image.height)
-                                val maxX = ((image.width * fit * zoom - viewport.width) / 2).coerceAtLeast(0f)
-                                val maxY = ((image.height * fit * zoom - viewport.height) / 2).coerceAtLeast(0f)
-                                Offset(moved.x.coerceIn(-maxX, maxX), moved.y.coerceIn(-maxY, maxY))
-                            }
-                        },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                bitmap?.let { image ->
-                    GalleryMediaImage(
-                        image,
-                        galleryString(Res.string.gallery_gallery_page, index + 1),
-                        Modifier.fillMaxSize().graphicsLayer {
-                            scaleX = zoom
-                            scaleY = zoom
-                            translationX = pan.x
-                            translationY = pan.y
-                        },
-                    )
                 }
             }
         }

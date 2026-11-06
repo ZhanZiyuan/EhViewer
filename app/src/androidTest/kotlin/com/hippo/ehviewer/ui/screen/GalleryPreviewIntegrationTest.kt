@@ -614,6 +614,18 @@ class GalleryPreviewIntegrationTest {
                     visible("1 / 3")
                     saved(0)
                     assertTrue("Reader should open with its small page indicator", device.hasObject(By.desc("Show reader controls")))
+                    stage = "real horizontal swipes decode the next and previous pages"
+                    val swipeCanvas = checkNotNull(device.wait(Until.findObject(By.desc("Gallery page 1")), 15_000)).visibleBounds
+                    // Cross the original pager's half-page threshold after touch slop,
+                    // independently of the emulator's gesture sampling velocity.
+                    device.swipe(swipeCanvas.left + swipeCanvas.width() * 4 / 5, swipeCanvas.centerY(), swipeCanvas.left + swipeCanvas.width() / 5, swipeCanvas.centerY(), 24)
+                    assertTrue("Forward swipe must load the actual next image", device.wait(Until.hasObject(By.desc("Gallery page 2")), 15_000))
+                    visible("2 / 3")
+                    saved(1)
+                    device.swipe(swipeCanvas.left + swipeCanvas.width() / 5, swipeCanvas.centerY(), swipeCanvas.left + swipeCanvas.width() * 4 / 5, swipeCanvas.centerY(), 24)
+                    assertTrue("Backward swipe must decode the first image", device.wait(Until.hasObject(By.desc("Gallery page 1")), 15_000))
+                    visible("1 / 3")
+                    saved(0)
                     stage = "return from saved first page with the original Read action"
                     device.pressBack()
                     visible("Read")
@@ -820,6 +832,10 @@ class GalleryPreviewIntegrationTest {
                     SystemClock.sleep(70)
                     device.click(canvas.centerX(), canvas.centerY())
                     awaitZoomed(true)
+                    saved(0)
+                    stage = "dragging a zoomed image must pan without changing pages"
+                    device.swipe(canvas.left + canvas.width() * 3 / 4, canvas.centerY(), canvas.left + canvas.width() / 4, canvas.centerY(), 24)
+                    assertTrue("A zoomed drag must not flip to another page", device.hasObject(By.desc("Gallery page 1")))
                     saved(0)
                 } catch (failure: Throwable) {
                     device.dumpWindowHierarchy(File(context.cacheDir, "reader-jump-$gid-failure.xml"))
