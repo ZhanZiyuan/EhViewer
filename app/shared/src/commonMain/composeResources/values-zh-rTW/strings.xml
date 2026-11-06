@@ -134,6 +134,9 @@
     <string name="gallery_download_queued">等候中</string>
     <string name="gallery_download_downloading">下載中</string>
     <string name="gallery_download_paused">已暫停</string>
+    <string name="gallery_download_idle">閒置中</string>
+    <string name="gallery_download_waiting">等待中</string>
+    <string name="gallery_download_failure_caption">下載失敗</string>
     <string name="gallery_download_storage_failed">下載儲存空間無法使用 — 重試或刪除</string>
     <string name="gallery_download_failed">下載失敗 — 繼續以重試</string>
     <string name="gallery_download_complete">已完成</string>

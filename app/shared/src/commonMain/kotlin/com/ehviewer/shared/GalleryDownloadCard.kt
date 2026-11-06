@@ -56,10 +56,12 @@ import ehviewer.app.shared.generated.resources.gallery_download_complete
 import ehviewer.app.shared.generated.resources.gallery_download_delete
 import ehviewer.app.shared.generated.resources.gallery_download_downloading
 import ehviewer.app.shared.generated.resources.gallery_download_failed
+import ehviewer.app.shared.generated.resources.gallery_download_failure_caption
+import ehviewer.app.shared.generated.resources.gallery_download_idle
 import ehviewer.app.shared.generated.resources.gallery_download_paused
 import ehviewer.app.shared.generated.resources.gallery_download_queued
 import ehviewer.app.shared.generated.resources.gallery_download_storage_failed
-import ehviewer.app.shared.generated.resources.gallery_downloaded
+import ehviewer.app.shared.generated.resources.gallery_download_waiting
 import ehviewer.app.shared.generated.resources.gallery_more_options
 import ehviewer.app.shared.generated.resources.gallery_pause
 import ehviewer.app.shared.generated.resources.gallery_read_offline
@@ -123,7 +125,7 @@ internal fun GalleryDownloadCard(task: GalleryDownload, previews: GalleryCoverCa
             border = galleryCrystalBorder(),
         ) {
             Row {
-                Card(Modifier.width(baseHeight * GALLERY_COVER_RATIO).height(baseHeight).align(Alignment.CenterVertically)) { GalleryCoverImage(task.previewRequest.takeIf { previewReady && task.finished > 0 }, previews, galleryString(Res.string.gallery_downloaded)) }
+                Card(Modifier.width(baseHeight * GALLERY_COVER_RATIO).height(baseHeight).align(Alignment.CenterVertically)) { GalleryCoverImage(task.previewRequest.takeIf { previewReady && task.finished > 0 }, previews) }
                 Column(Modifier.padding(start = 8.dp, top = 2.dp, end = 4.dp)) {
                     Text(task.title, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.weight(1f))
@@ -141,7 +143,9 @@ internal fun GalleryDownloadCard(task: GalleryDownload, previews: GalleryCoverCa
                             Text(task.metadata?.uploader.orEmpty(), Modifier.weight(1f).alpha(if (task.metadata?.disowned == true) 0.5f else 1f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge)
                             val caption = when (task.state) {
                                 GalleryDownloadState.COMPLETE -> "${task.pages}P"
-                                GalleryDownloadState.PAUSED -> ""
+                                GalleryDownloadState.PAUSED -> galleryString(Res.string.gallery_download_idle)
+                                GalleryDownloadState.QUEUED -> galleryString(Res.string.gallery_download_waiting)
+                                GalleryDownloadState.FAILED -> if (task.failure == GalleryDownloadFailure.STORAGE) state else galleryString(Res.string.gallery_download_failure_caption)
                                 else -> state
                             }
                             Text(caption, maxLines = 2, style = MaterialTheme.typography.labelLarge)

@@ -134,6 +134,9 @@
     <string name="gallery_download_queued">Queued</string>
     <string name="gallery_download_downloading">Downloading</string>
     <string name="gallery_download_paused">Paused</string>
+    <string name="gallery_download_idle">Idle</string>
+    <string name="gallery_download_waiting">Waiting</string>
+    <string name="gallery_download_failure_caption">Failed</string>
     <string name="gallery_download_storage_failed">Download storage unavailable — retry or delete</string>
     <string name="gallery_download_failed">Failed — resume to retry</string>
     <string name="gallery_download_complete">Complete</string>

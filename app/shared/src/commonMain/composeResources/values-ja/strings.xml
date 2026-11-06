@@ -134,6 +134,9 @@
     <string name="gallery_download_queued">待機中</string>
     <string name="gallery_download_downloading">ダウンロード中</string>
     <string name="gallery_download_paused">一時停止</string>
+    <string name="gallery_download_idle">一時停止中</string>
+    <string name="gallery_download_waiting">待機中</string>
+    <string name="gallery_download_failure_caption">ダウンロードエラー</string>
     <string name="gallery_download_storage_failed">保存先を利用できません — 再試行または削除</string>
     <string name="gallery_download_failed">失敗 — 再開して再試行</string>
     <string name="gallery_download_complete">完了</string>

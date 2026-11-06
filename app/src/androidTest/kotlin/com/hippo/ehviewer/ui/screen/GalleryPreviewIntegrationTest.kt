@@ -393,16 +393,32 @@ class GalleryPreviewIntegrationTest {
                 fun captureRenderedText(text: String, name: String, cleared: android.graphics.Rect): android.graphics.Rect {
                     val deadline = SystemClock.uptimeMillis() + 5_000
                     while (SystemClock.uptimeMillis() < deadline) {
-                        val bounds = try {
-                            device.findObject(By.text(text))?.visibleBounds
+                        val isRow = text == title
+                        val (bounds, card) = try {
+                            device.findObject(By.text(text))?.visibleBounds to if (isRow) device.findObject(By.clickable(true).hasDescendant(By.text(title)))?.visibleBounds else null
                         } catch (_: StaleObjectException) {
-                            null
+                            null to null
                         }
                         val screenshot = checkNotNull(device.takeScreenshot())
                         try {
-                            val isRow = text == title
-                            val semantics = if (isRow) device.hasObject(By.desc("Resume")) && device.hasObject(By.desc("Downloaded")) && !device.hasObject(By.text("Download items will be shown here")) else !device.hasObject(By.desc("Resume")) && !device.hasObject(By.text(title))
-                            val rendered = bounds != null && (ink(screenshot, bounds) ?: 0) > 32 && ink(screenshot, cleared) == 0 && semantics
+                            // The actual owned red/blue image must be presented, not just a decoded
+                            // image node whose pixels can still be the preceding loading frame.
+                            val coverDrawn = if (!isRow) {
+                                true
+                            } else if (bounds != null && card != null) {
+                                val x = (card.left + bounds.left - (8 * context.resources.displayMetrics.density).toInt()) / 2
+                                val y = card.centerY()
+                                if (x in card.left until card.right && x in 0 until screenshot.width && y in 0 until screenshot.height) {
+                                    val color = screenshot.getPixel(x, y)
+                                    Color.green(color) < 30 && Color.red(color) > 50 && Color.blue(color) > 50
+                                } else {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
+                            val semantics = if (isRow) device.hasObject(By.desc("Resume")) && !device.hasObject(By.text("Download items will be shown here")) else !device.hasObject(By.desc("Resume")) && !device.hasObject(By.text(title))
+                            val rendered = bounds != null && (ink(screenshot, bounds) ?: 0) > 32 && ink(screenshot, cleared) == 0 && semantics && coverDrawn
                             val file = if (rendered) name else name.removeSuffix(".png") + "-unrendered.png"
                             File(downloadsCaptures, file).outputStream().use { assertTrue(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) }
                             if (rendered) return checkNotNull(bounds)

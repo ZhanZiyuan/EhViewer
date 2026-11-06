@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -100,7 +100,7 @@ internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCach
 }
 
 @Composable
-internal fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCoverCache<CoilImage>, imageDescription: String? = null) {
+internal fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCoverCache<CoilImage>) {
     var image by remember(request, cache) { mutableStateOf<CoilImage?>(null) }
     var failed by remember(request, cache) { mutableStateOf(false) }
     var attempt by remember(request, cache) { mutableIntStateOf(0) }
@@ -115,11 +115,11 @@ internal fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCove
             failed = true
         }
     }
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(CardDefaults.cardColors().containerColor), contentAlignment = Alignment.Center) {
         val bitmap = image
         if (bitmap != null) {
             val context = LocalPlatformContext.current
-            Image(remember(bitmap, context) { bitmap.asPainter(context) }, contentDescription = imageDescription, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            Image(remember(bitmap, context) { bitmap.asPainter(context) }, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = galleryImageContentScale(bitmap.width, bitmap.height))
         } else if (request == null) {
             Text(galleryString(Res.string.gallery_cover_unavailable), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center, modifier = Modifier.padding(4.dp))
         } else if (failed) {

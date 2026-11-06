@@ -41,10 +41,10 @@ internal fun rememberGalleryPreviewCache(session: GalleryLibrary, gid: Long, tok
     }
 }
 
-internal fun galleryPreviewContentScale(preview: GalleryPreview, width: Int, height: Int): ContentScale {
-    val ratio = if (preview is V2GalleryPreview) preview.clipWidth.toFloat() / preview.clipHeight else width.toFloat() / height
-    return if (ratio in 0.5f..0.8f) ContentScale.Crop else ContentScale.Fit
-}
+internal fun galleryPreviewContentScale(preview: GalleryPreview, width: Int, height: Int): ContentScale = if (preview is V2GalleryPreview) galleryImageContentScale(preview.clipWidth, preview.clipHeight) else galleryImageContentScale(width, height)
+
+/** Original Android CropDefaults: keep square, wide and unusually tall images fully visible. */
+internal fun galleryImageContentScale(width: Int, height: Int): ContentScale = if (width.toFloat() / height in 0.5f..0.8f) ContentScale.Crop else ContentScale.Fit
 
 @Composable
 internal fun GalleryPreviewImage(preview: GalleryPreview, cache: GalleryPreviewCache<ImageBitmap>, modifier: Modifier = Modifier.height(180.dp)) {

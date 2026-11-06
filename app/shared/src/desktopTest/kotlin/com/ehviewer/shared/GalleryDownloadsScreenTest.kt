@@ -172,7 +172,7 @@ class GalleryDownloadsScreenTest {
                     val queue = Queue(listOf(task))
                     View(width, font, dark) { GalleryDownloadsScreen(queue, true, false, {}, null, {}, {}) }.use { view ->
                         view.render()
-                        for (label in listOf(title, uploader, galleryCategoryName(512).uppercase())) {
+                        for (label in listOf(title, uploader, galleryCategoryName(512).uppercase(), "Idle")) {
                             val node = requireNotNull(view.text(label)) { "Missing actual card text $label at $width/$font/$dark" }
                             val bounds = node.boundsInRoot
                             assertTrue(bounds.left >= 0 && bounds.right <= width && bounds.top > 72 && bounds.bottom <= 1000, "Card text clipped at $width/$font/$dark: $label $bounds")
