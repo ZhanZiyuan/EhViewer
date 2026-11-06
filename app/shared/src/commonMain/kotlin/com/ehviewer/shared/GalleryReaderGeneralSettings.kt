@@ -1,6 +1,7 @@
 package com.ehviewer.shared
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.reader.ReaderBackground
@@ -123,9 +123,11 @@ internal fun GalleryReaderOptionsSheet(preferences: ReaderPreferences, saving: B
 }
 
 @Composable
-internal fun readerBackgroundColor(value: ReaderBackground): Color = when (value) {
+internal fun readerBackgroundColor(value: ReaderBackground): Color = readerBackgroundColor(value, isSystemInDarkTheme())
+
+internal fun readerBackgroundColor(value: ReaderBackground, systemDark: Boolean): Color = when (value) {
     ReaderBackground.BLACK -> Color.Black
     ReaderBackground.GRAY -> Color(0xff202125)
     ReaderBackground.WHITE -> Color.White
-    ReaderBackground.AUTOMATIC -> if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color(0xff202125) else Color.White
+    ReaderBackground.AUTOMATIC -> if (systemDark) Color(0xff202125) else Color.White
 }

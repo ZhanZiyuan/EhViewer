@@ -730,7 +730,19 @@ class GalleryPreviewIntegrationTest {
                     awaitPreference { !it.doubleTapToZoom }
                     assertTrue("Committed switches did not update the actual sheet", device.wait(Until.hasObject(By.checkable(true).checked(false).enabled(true).hasDescendant(By.text("Double tap to zoom"))), 5_000))
                     device.waitForIdle(5_000)
-                    assertTrue(device.takeScreenshot(File(readerCaptures, "reader-general-white-options.png")))
+                    val generalHeading = checkNotNull(device.wait(Until.findObject(By.text("General")), 5_000)).visibleBounds
+                    val settingsScreenshot = checkNotNull(device.takeScreenshot())
+                    try {
+                        // Original ReaderScreen uses a light reader theme for White, even
+                        // when the application itself is dark. Sample real sheet padding.
+                        val x = generalHeading.left - (4 * context.resources.displayMetrics.density).toInt()
+                        assertTrue(x in 0 until settingsScreenshot.width)
+                        val color = settingsScreenshot.getPixel(x, generalHeading.centerY())
+                        assertTrue("White canvas must render the original light settings sheet", Color.red(color) > 200 && Color.green(color) > 200 && Color.blue(color) > 200)
+                        File(readerCaptures, "reader-general-white-options.png").outputStream().use { assertTrue(settingsScreenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) }
+                    } finally {
+                        settingsScreenshot.recycle()
+                    }
                     device.pressBack()
                     val canvas = checkNotNull(device.wait(Until.findObject(By.desc("Gallery page 1")), 15_000)).visibleBounds
                     assertFalse("Hidden seekbar still renders", device.hasObject(By.desc("Seek page")))

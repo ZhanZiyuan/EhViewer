@@ -7,7 +7,9 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.ehviewer.core.domain.reader.ReaderBackground
 
 /** The platform's dynamic palette (Android 12+ wallpaper colors), or null where none exists. */
 @Composable
@@ -28,6 +30,8 @@ internal fun galleryFallbackColorScheme(dark: Boolean) = if (dark) darkColorSche
 /** A platform's own Material 3 theme for the shared screens, given whether it should be dark. */
 typealias GalleryPlatformTheme = @Composable (dark: Boolean, content: @Composable () -> Unit) -> Unit
 
+private val LocalGalleryPlatformTheme = staticCompositionLocalOf<GalleryPlatformTheme?> { null }
+
 /**
  * Material 3 theme shared by all platforms. Android supplies its original EhTheme as [platformTheme]
  * (wallpaper/AMOLED colors and expressive motion); elsewhere dynamic color is used when the platform
@@ -35,8 +39,19 @@ typealias GalleryPlatformTheme = @Composable (dark: Boolean, content: @Composabl
  */
 @Composable
 internal fun GalleryTheme(dark: Boolean, platformTheme: GalleryPlatformTheme?, content: @Composable () -> Unit) {
-    if (platformTheme != null) return platformTheme(dark, content)
-    MaterialTheme(colorScheme = platformDynamicColorScheme(dark) ?: galleryFallbackColorScheme(dark), typography = galleryTypography()) {
-        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground, content = content)
+    CompositionLocalProvider(LocalGalleryPlatformTheme provides platformTheme) {
+        if (platformTheme != null) {
+            platformTheme(dark, content)
+        } else {
+            MaterialTheme(colorScheme = platformDynamicColorScheme(dark) ?: galleryFallbackColorScheme(dark), typography = galleryTypography()) {
+                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground, content = content)
+            }
+        }
     }
+}
+
+/** v1.15.10 ReaderScreen selects its Material theme from the reader canvas, independently of the app. */
+@Composable
+internal fun GalleryReaderTheme(background: ReaderBackground, content: @Composable () -> Unit) {
+    GalleryTheme(readerBackgroundColor(background) != Color.White, LocalGalleryPlatformTheme.current, content)
 }

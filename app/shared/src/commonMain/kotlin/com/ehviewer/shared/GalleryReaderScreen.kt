@@ -146,206 +146,208 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
             }
         }
     }
-    if (optionsOpen) {
-        GalleryReaderOptionsSheet(preferences, settingsSaving || !preferencesReady && !preferencesFailure, preferencesFailure, onChange = { changePreferences(it) }, retry = {
-            pendingPreferences?.let { changePreferences(it) } ?: run { preferencesAttempt++ }
-        }, onJump = {
-            optionsOpen = false
-            if (preferences.layout == ReadingLayout.CONTINUOUS) continuousJumpRequested = true else jumpOpen = true
-        }, onDismiss = { optionsOpen = false }, available = preferencesReady)
-    }
-    if (preferences.layout == ReadingLayout.CONTINUOUS) {
-        val start = remember(preferences.layout) { currentUrl }
-        Column(Modifier.fillMaxSize()) {
-            if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
-            GalleryContinuousReader(session, detail, start, readerState, onBack, chrome, onPaged = { position ->
-                if (!settingsSaving) {
-                    changePreferences(preferences.copy(layout = ReadingLayout.PAGED)) {
-                        url = position
-                        chrome.visible = false
+    GalleryReaderTheme(preferences.background) {
+        if (optionsOpen) {
+            GalleryReaderOptionsSheet(preferences, settingsSaving || !preferencesReady && !preferencesFailure, preferencesFailure, onChange = { changePreferences(it) }, retry = {
+                pendingPreferences?.let { changePreferences(it) } ?: run { preferencesAttempt++ }
+            }, onJump = {
+                optionsOpen = false
+                if (preferences.layout == ReadingLayout.CONTINUOUS) continuousJumpRequested = true else jumpOpen = true
+            }, onDismiss = { optionsOpen = false }, available = preferencesReady)
+        }
+        if (preferences.layout == ReadingLayout.CONTINUOUS) {
+            val start = remember(preferences.layout) { currentUrl }
+            Column(Modifier.fillMaxSize()) {
+                if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
+                GalleryContinuousReader(session, detail, start, readerState, onBack, chrome, onPaged = { position ->
+                    if (!settingsSaving) {
+                        changePreferences(preferences.copy(layout = ReadingLayout.PAGED)) {
+                            url = position
+                            chrome.visible = false
+                        }
                     }
+                }, preferences = preferences, onSettings = { optionsOpen = true }, settingsEnabled = !settingsSaving, requestPageJump = continuousJumpRequested, onPageJumpHandled = { continuousJumpRequested = false })
+            }
+            return@GalleryReaderTheme
+        }
+        fun target(link: String?, delta: Int): String? = link?.takeIf { session.content.pageIndex(it, detail.gid) == index + delta && index + delta in 0 until detail.pages }
+        val previous = target(document?.previousPageUrl, -1)
+        val next = target(document?.nextPageUrl, 1)
+        LaunchedEffect(currentUrl, attempt, original) {
+            loading = true
+            document = null
+            bitmap = null
+            failure = null
+            zoom = 1f
+            pan = Offset.Zero
+            try {
+                val page = session.content.page(currentUrl, detail.gid, reloadKey)
+                document = page
+                val bytes = if (original) session.content.originalImage(page, currentUrl, detail.gid) else session.content.image(page, currentUrl, detail.gid)
+                bitmap = decodeGalleryMedia(bytes)
+                saveProgress()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: GalleryRequestException) {
+                failure = error.failure
+            } finally {
+                loading = false
+            }
+        }
+        LaunchedEffect(Unit) { focus.requestFocus() }
+        var pendingSeek by remember { mutableStateOf<Int?>(null) }
+        var seekFailure by remember { mutableStateOf<GalleryFailure?>(null) }
+        var seekAttempt by remember { mutableIntStateOf(0) }
+        val seeking = pendingSeek != null && seekFailure == null
+        if (jumpOpen) {
+            GalleryReaderPageDialog(index, detail.pages, onJump = { target ->
+                if (target != index) {
+                    val resolved = readingResumeUrl(session.content, detail, ReadingPosition(detail.gid, target, null, 0))
+                    currentCoroutineContext().ensureActive()
+                    pendingSeek = null
+                    seekFailure = null
+                    url = resolved
                 }
-            }, preferences = preferences, onSettings = { optionsOpen = true }, settingsEnabled = !settingsSaving, requestPageJump = continuousJumpRequested, onPageJumpHandled = { continuousJumpRequested = false })
+            }, onDismiss = { jumpOpen = false })
         }
-        return
-    }
-    fun target(link: String?, delta: Int): String? = link?.takeIf { session.content.pageIndex(it, detail.gid) == index + delta && index + delta in 0 until detail.pages }
-    val previous = target(document?.previousPageUrl, -1)
-    val next = target(document?.nextPageUrl, 1)
-    LaunchedEffect(currentUrl, attempt, original) {
-        loading = true
-        document = null
-        bitmap = null
-        failure = null
-        zoom = 1f
-        pan = Offset.Zero
-        try {
-            val page = session.content.page(currentUrl, detail.gid, reloadKey)
-            document = page
-            val bytes = if (original) session.content.originalImage(page, currentUrl, detail.gid) else session.content.image(page, currentUrl, detail.gid)
-            bitmap = decodeGalleryMedia(bytes)
-            saveProgress()
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: GalleryRequestException) {
-            failure = error.failure
-        } finally {
-            loading = false
-        }
-    }
-    LaunchedEffect(Unit) { focus.requestFocus() }
-    var pendingSeek by remember { mutableStateOf<Int?>(null) }
-    var seekFailure by remember { mutableStateOf<GalleryFailure?>(null) }
-    var seekAttempt by remember { mutableIntStateOf(0) }
-    val seeking = pendingSeek != null && seekFailure == null
-    if (jumpOpen) {
-        GalleryReaderPageDialog(index, detail.pages, onJump = { target ->
-            if (target != index) {
+        LaunchedEffect(pendingSeek, seekAttempt) {
+            val target = pendingSeek ?: return@LaunchedEffect
+            seekFailure = null
+            try {
                 val resolved = readingResumeUrl(session.content, detail, ReadingPosition(detail.gid, target, null, 0))
                 currentCoroutineContext().ensureActive()
-                pendingSeek = null
-                seekFailure = null
                 url = resolved
+                pendingSeek = null
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: GalleryRequestException) {
+                currentCoroutineContext().ensureActive()
+                seekFailure = error.failure
             }
-        }, onDismiss = { jumpOpen = false })
-    }
-    LaunchedEffect(pendingSeek, seekAttempt) {
-        val target = pendingSeek ?: return@LaunchedEffect
-        seekFailure = null
-        try {
-            val resolved = readingResumeUrl(session.content, detail, ReadingPosition(detail.gid, target, null, 0))
-            currentCoroutineContext().ensureActive()
-            url = resolved
-            pendingSeek = null
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: GalleryRequestException) {
-            currentCoroutineContext().ensureActive()
-            seekFailure = error.failure
         }
-    }
-    fun navigate(target: String) {
-        pendingSeek = null
-        seekFailure = null
-        url = target
-    }
-    GalleryReaderChrome(
-        title = detail.title.orEmpty(), index = index, pages = detail.pages, state = chrome,
-        onBack = onBack, onJump = { jumpOpen = true },
-        onSeek = {
-            if (it != index) {
-                seekFailure = null
-                pendingSeek = it
-            }
-        },
-        seekEnabled = !loading && !seeking, rtl = rtl,
-        showPageNumber = preferences.showPageNumber, showSeekBar = preferences.showSeekBar, background = readerBackgroundColor(preferences.background),
-        modifier = Modifier.focusRequester(focus),
-        onKey = readerKey@{ event ->
-            if (event.type != KeyEventType.KeyDown || seeking && event.key != Key.Escape) return@readerKey false
-            when (event.key) {
-                Key.Escape -> onBack()
-                Key.Spacebar -> chrome.toggle()
-                Key.DirectionLeft -> (if (rtl) next else previous)?.let(::navigate) ?: return@readerKey false
-                Key.DirectionRight -> (if (rtl) previous else next)?.let(::navigate) ?: return@readerKey false
-                Key.PageUp -> previous?.let(::navigate) ?: return@readerKey false
-                Key.PageDown -> next?.let(::navigate) ?: return@readerKey false
-                else -> return@readerKey false
-            }
-            true
-        },
-        status = {
-            if (loading || seeking) LinearProgressIndicator(Modifier.fillMaxWidth())
-            if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
-            if (saveFailure) ReaderStateError(galleryString(Res.string.gallery_reading_progress_save_failed)) { scope.launch { saveProgress() } }
-            seekFailure?.let {
-                GalleryError(it) {
+        fun navigate(target: String) {
+            pendingSeek = null
+            seekFailure = null
+            url = target
+        }
+        GalleryReaderChrome(
+            title = detail.title.orEmpty(), index = index, pages = detail.pages, state = chrome,
+            onBack = onBack, onJump = { jumpOpen = true },
+            onSeek = {
+                if (it != index) {
                     seekFailure = null
-                    seekAttempt++
+                    pendingSeek = it
                 }
-            }
-            failure?.let {
-                GalleryError(it) {
-                    reloadKey = document?.skipHathKey
-                    attempt++
+            },
+            seekEnabled = !loading && !seeking, rtl = rtl,
+            showPageNumber = preferences.showPageNumber, showSeekBar = preferences.showSeekBar, background = readerBackgroundColor(preferences.background),
+            modifier = Modifier.focusRequester(focus),
+            onKey = readerKey@{ event ->
+                if (event.type != KeyEventType.KeyDown || seeking && event.key != Key.Escape) return@readerKey false
+                when (event.key) {
+                    Key.Escape -> onBack()
+                    Key.Spacebar -> chrome.toggle()
+                    Key.DirectionLeft -> (if (rtl) next else previous)?.let(::navigate) ?: return@readerKey false
+                    Key.DirectionRight -> (if (rtl) previous else next)?.let(::navigate) ?: return@readerKey false
+                    Key.PageUp -> previous?.let(::navigate) ?: return@readerKey false
+                    Key.PageDown -> next?.let(::navigate) ?: return@readerKey false
+                    else -> return@readerKey false
                 }
-            }
-        },
-        navigation = {
-            ReaderPageButton(if (rtl) galleryString(Res.string.gallery_next_page) else galleryString(Res.string.gallery_previous_page), (if (rtl) next else previous)?.takeUnless { seeking }, right = false, navigate = ::navigate)
-            ReaderPageButton(if (rtl) galleryString(Res.string.gallery_previous_page) else galleryString(Res.string.gallery_next_page), (if (rtl) previous else next)?.takeUnless { seeking }, right = true, navigate = ::navigate)
-        },
-        actions = {
-            GalleryReaderAction(galleryString(Res.string.gallery_reading_continuous), GalleryIcons.LibraryBooks, preferencesReady && !settingsSaving && !seeking) { changePreferences(preferences.copy(layout = ReadingLayout.CONTINUOUS)) { chrome.visible = false } }
-            GalleryReaderAction(if (rtl) galleryString(Res.string.gallery_reading_rtl) else galleryString(Res.string.gallery_reading_ltr), GalleryIcons.SwapHoriz, preferencesReady && !settingsSaving) {
-                changePreferences(preferences.copy(direction = if (rtl) ReadingDirection.LEFT_TO_RIGHT else ReadingDirection.RIGHT_TO_LEFT))
-            }
-            GalleryReaderAction(galleryString(Res.string.gallery_reset_zoom), GalleryIcons.ZoomOutMap) {
-                zoom = 1f
-                pan = Offset.Zero
-            }
-            if (original || document?.originImageUrl != null) {
-                GalleryReaderAction(if (original) galleryString(Res.string.gallery_display_image) else galleryString(Res.string.gallery_original_image), GalleryIcons.Download, !loading && !seeking) { original = !original }
-            }
-            GalleryReaderAction(galleryString(Res.string.gallery_settings), GalleryIcons.Settings, !settingsSaving) { optionsOpen = true }
-        },
-    ) {
-        Box(
-            Modifier.fillMaxSize().clipToBounds().onSizeChanged { viewport = it }
-                .pointerInput(url, previous, next, rtl, preferences.doubleTapToZoom) {
-                    detectTapGestures(
-                        onTap = { point ->
-                            val target = if (zoom == 1f && !seeking) {
-                                when {
-                                    point.x < size.width / 3f -> if (rtl) next else previous
-                                    point.x > size.width * 2f / 3f -> if (rtl) previous else next
-                                    else -> null
+                true
+            },
+            status = {
+                if (loading || seeking) LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
+                if (saveFailure) ReaderStateError(galleryString(Res.string.gallery_reading_progress_save_failed)) { scope.launch { saveProgress() } }
+                seekFailure?.let {
+                    GalleryError(it) {
+                        seekFailure = null
+                        seekAttempt++
+                    }
+                }
+                failure?.let {
+                    GalleryError(it) {
+                        reloadKey = document?.skipHathKey
+                        attempt++
+                    }
+                }
+            },
+            navigation = {
+                ReaderPageButton(if (rtl) galleryString(Res.string.gallery_next_page) else galleryString(Res.string.gallery_previous_page), (if (rtl) next else previous)?.takeUnless { seeking }, right = false, navigate = ::navigate)
+                ReaderPageButton(if (rtl) galleryString(Res.string.gallery_previous_page) else galleryString(Res.string.gallery_next_page), (if (rtl) previous else next)?.takeUnless { seeking }, right = true, navigate = ::navigate)
+            },
+            actions = {
+                GalleryReaderAction(galleryString(Res.string.gallery_reading_continuous), GalleryIcons.LibraryBooks, preferencesReady && !settingsSaving && !seeking) { changePreferences(preferences.copy(layout = ReadingLayout.CONTINUOUS)) { chrome.visible = false } }
+                GalleryReaderAction(if (rtl) galleryString(Res.string.gallery_reading_rtl) else galleryString(Res.string.gallery_reading_ltr), GalleryIcons.SwapHoriz, preferencesReady && !settingsSaving) {
+                    changePreferences(preferences.copy(direction = if (rtl) ReadingDirection.LEFT_TO_RIGHT else ReadingDirection.RIGHT_TO_LEFT))
+                }
+                GalleryReaderAction(galleryString(Res.string.gallery_reset_zoom), GalleryIcons.ZoomOutMap) {
+                    zoom = 1f
+                    pan = Offset.Zero
+                }
+                if (original || document?.originImageUrl != null) {
+                    GalleryReaderAction(if (original) galleryString(Res.string.gallery_display_image) else galleryString(Res.string.gallery_original_image), GalleryIcons.Download, !loading && !seeking) { original = !original }
+                }
+                GalleryReaderAction(galleryString(Res.string.gallery_settings), GalleryIcons.Settings, !settingsSaving) { optionsOpen = true }
+            },
+        ) {
+            Box(
+                Modifier.fillMaxSize().clipToBounds().onSizeChanged { viewport = it }
+                    .pointerInput(url, previous, next, rtl, preferences.doubleTapToZoom) {
+                        detectTapGestures(
+                            onTap = { point ->
+                                val target = if (zoom == 1f && !seeking) {
+                                    when {
+                                        point.x < size.width / 3f -> if (rtl) next else previous
+                                        point.x > size.width * 2f / 3f -> if (rtl) previous else next
+                                        else -> null
+                                    }
+                                } else {
+                                    null
+                                }
+                                if (target == null) chrome.toggle() else navigate(target)
+                            },
+                            onDoubleTap = if (preferences.doubleTapToZoom) {
+                                {
+                                    zoom = if (zoom > 1f) 1f else 2f
+                                    pan = Offset.Zero
                                 }
                             } else {
                                 null
+                            },
+                        )
+                    }
+                    .transformable(
+                        rememberTransformableState { centroid, scale, offset, _ ->
+                            val oldZoom = zoom
+                            zoom = (zoom * scale).coerceIn(1f, 5f)
+                            val anchor = if (centroid.isSpecified) centroid - Offset(viewport.width / 2f, viewport.height / 2f) else Offset.Zero
+                            val moved = (pan - anchor) * (zoom / oldZoom) + anchor + offset
+                            val image = bitmap
+                            pan = if (zoom == 1f || image == null) {
+                                Offset.Zero
+                            } else {
+                                val fit = min(viewport.width.toFloat() / image.width, viewport.height.toFloat() / image.height)
+                                val maxX = ((image.width * fit * zoom - viewport.width) / 2).coerceAtLeast(0f)
+                                val maxY = ((image.height * fit * zoom - viewport.height) / 2).coerceAtLeast(0f)
+                                Offset(moved.x.coerceIn(-maxX, maxX), moved.y.coerceIn(-maxY, maxY))
                             }
-                            if (target == null) chrome.toggle() else navigate(target)
                         },
-                        onDoubleTap = if (preferences.doubleTapToZoom) {
-                            {
-                                zoom = if (zoom > 1f) 1f else 2f
-                                pan = Offset.Zero
-                            }
-                        } else {
-                            null
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                bitmap?.let { image ->
+                    GalleryMediaImage(
+                        image,
+                        galleryString(Res.string.gallery_gallery_page, index + 1),
+                        Modifier.fillMaxSize().graphicsLayer {
+                            scaleX = zoom
+                            scaleY = zoom
+                            translationX = pan.x
+                            translationY = pan.y
                         },
                     )
                 }
-                .transformable(
-                    rememberTransformableState { centroid, scale, offset, _ ->
-                        val oldZoom = zoom
-                        zoom = (zoom * scale).coerceIn(1f, 5f)
-                        val anchor = if (centroid.isSpecified) centroid - Offset(viewport.width / 2f, viewport.height / 2f) else Offset.Zero
-                        val moved = (pan - anchor) * (zoom / oldZoom) + anchor + offset
-                        val image = bitmap
-                        pan = if (zoom == 1f || image == null) {
-                            Offset.Zero
-                        } else {
-                            val fit = min(viewport.width.toFloat() / image.width, viewport.height.toFloat() / image.height)
-                            val maxX = ((image.width * fit * zoom - viewport.width) / 2).coerceAtLeast(0f)
-                            val maxY = ((image.height * fit * zoom - viewport.height) / 2).coerceAtLeast(0f)
-                            Offset(moved.x.coerceIn(-maxX, maxX), moved.y.coerceIn(-maxY, maxY))
-                        }
-                    },
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            bitmap?.let { image ->
-                GalleryMediaImage(
-                    image,
-                    galleryString(Res.string.gallery_gallery_page, index + 1),
-                    Modifier.fillMaxSize().graphicsLayer {
-                        scaleX = zoom
-                        scaleY = zoom
-                        translationX = pan.x
-                        translationY = pan.y
-                    },
-                )
             }
         }
     }
