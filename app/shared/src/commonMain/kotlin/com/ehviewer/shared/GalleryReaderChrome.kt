@@ -6,10 +6,10 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -17,14 +17,17 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,7 +46,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
@@ -86,7 +91,7 @@ internal class GalleryReaderChromeState {
 internal fun rememberGalleryReaderChromeState() = remember { GalleryReaderChromeState() }
 
 /** Original Android's full canvas and sliding app bars, shared by all real reader sources. */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun GalleryReaderChrome(
     title: String,
@@ -105,7 +110,7 @@ internal fun GalleryReaderChrome(
     actions: @Composable RowScope.() -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val container = BottomAppBarDefaults.containerColor.copy(alpha = if (isSystemInDarkTheme()) 0.9f else 0.95f)
+    val container = BottomAppBarDefaults.containerColor.copy(alpha = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) 0.9f else 0.95f)
     val safe = WindowInsets.safeDrawing
     val showLabel = galleryString(Res.string.gallery_reader_show_controls)
     Box(modifier.onKeyEvent(onKey).focusable().fillMaxSize().background(Color.Black)) {
@@ -134,15 +139,16 @@ internal fun GalleryReaderChrome(
             enter = slideInVertically(tween(200)) { it },
             exit = slideOutVertically(tween(200)) { it },
         ) {
-            Surface(color = container) {
-                Column(Modifier.fillMaxWidth().windowInsetsPadding(safe.only(WindowInsetsSides.Bottom))) {
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val outerKeyline = if (maxWidth >= 840.dp) 24.dp else 16.dp
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     var seeking by remember { mutableStateOf(false) }
                     var slider by remember(index) { mutableFloatStateOf(index.toFloat()) }
                     val jumpLabel = galleryString(Res.string.gallery_go_to_page)
                     val seekLabel = galleryString(Res.string.gallery_reader_seek)
-                    // Original ChapterNavigator's 16dp outer + 16dp inner keyline keeps the
-                    // thumb away from system back-gesture edges on touch devices.
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 32.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // Original ChapterNavigator: rounded seek surface, 16/24dp outer keyline,
+                    // 16dp inner keyline and an 8dp gap above the separate bottom action bar.
+                    Row(Modifier.fillMaxWidth().padding(horizontal = outerKeyline).clip(CircleShape).background(container).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                         navigation()
                         TextButton(onClick = onJump, enabled = seekEnabled, modifier = Modifier.widthIn(max = 144.dp).semantics { contentDescription = jumpLabel }) { Text("${index + 1} / $pages", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall) }
                         if (pages > 1) {
@@ -180,7 +186,9 @@ internal fun GalleryReaderChrome(
                             }
                         }
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically, content = actions)
+                    Surface(color = container) {
+                        Row(Modifier.fillMaxWidth().windowInsetsPadding(safe.only(WindowInsetsSides.Bottom)).heightIn(min = BottomAppBarDefaults.FlexibleBottomAppBarHeight), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically, content = actions)
+                    }
                 }
             }
         }

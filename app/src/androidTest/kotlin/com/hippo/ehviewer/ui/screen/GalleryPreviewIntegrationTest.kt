@@ -620,6 +620,9 @@ class GalleryPreviewIntegrationTest {
                     val canvasBefore = checkNotNull(device.wait(Until.findObject(By.desc("Gallery page 1")), 15_000)).visibleBounds
                     click("Go to page")
                     click("Cancel")
+                    device.waitForIdle(5_000)
+                    val readerCaptures = requireNotNull(context.getExternalFilesDir("kmp-ui-reader-controls")).apply { mkdirs() }
+                    assertTrue("Actual reader controls screenshot must be retained", device.takeScreenshot(File(readerCaptures, "reader-paged-controls.png")))
                     click("Hide reader controls")
                     // IME dismissal and the 200ms overlay exit can still be animating after the tap.
                     // Keep the exact canvas assertion and the same 15-second bound for both conditions.

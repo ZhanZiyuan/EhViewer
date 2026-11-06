@@ -3,6 +3,7 @@ package com.ehviewer.shared
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
@@ -16,6 +17,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -27,6 +31,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.unit.Density
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -36,6 +41,53 @@ import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ImageInfo
 
 class GalleryReaderChromeTest {
+    @Test
+    fun seekPillUsesOriginalRoundedKeylinesAndSeparatesTheBottomBarFromTheCanvas() {
+        for (width in listOf(411, 1280)) {
+            for (dark in listOf(false, true)) {
+                val state = GalleryReaderChromeState().apply { visible = true }
+                var action = Rect.Zero
+                var actionBar = Rect.Zero
+                var expectedContainer = 0
+                val scene = ImageComposeScene(width, 720, Density(1f)) {
+                    GalleryTheme(dark, null) {
+                        expectedContainer = BottomAppBarDefaults.containerColor.copy(alpha = if (dark) 0.9f else 0.95f).compositeOver(Color.Black).toArgb()
+                        GalleryReaderChrome("Gallery", 0, 61, state, {}, {}, {}, actions = {
+                            Box(
+                                Modifier.onGloballyPositioned {
+                                    action = it.boundsInRoot()
+                                    actionBar = requireNotNull(it.parentLayoutCoordinates).boundsInRoot()
+                                },
+                            ) { GalleryReaderAction("Action", GalleryIcons.LibraryBooks) {} }
+                        }) {}
+                    }
+                }
+                fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+                try {
+                    repeat(30) { scene.render(it * 16_666_667L).close() }
+                    val slider = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single { it.config.contains(SemanticsProperties.ProgressBarRangeInfo) }.boundsInRoot
+                    val keyline = if (width == 411) 16 else 24
+                    assertEquals(64f, actionBar.height, "Original FlexibleBottomAppBar content height; system insets are outside it")
+                    Bitmap().use { pixels ->
+                        pixels.allocN32Pixels(width, 720)
+                        scene.render(31 * 16_666_667L).use { it.readPixels(pixels) }
+                        assertEquals(0xff000000.toInt(), pixels.getColor(1, slider.center.y.toInt()), "Image remains visible outside the pill at $width/$dark")
+                        assertEquals(0xff000000.toInt(), pixels.getColor(keyline + 1, slider.top.toInt() + 1), "Original rounded corner must reveal the image")
+                        val actualContainer = pixels.getColor(keyline + 6, slider.center.y.toInt())
+                        for (shift in listOf(0, 8, 16)) {
+                            // Allow only one 8-bit compositing rounding unit; geometry remains exact.
+                            assertTrue(abs((actualContainer shr shift and 255) - (expectedContainer shr shift and 255)) <= 1, "Overlay opacity must follow the selected app theme at $width/$dark")
+                        }
+                        assertEquals(0xff000000.toInt(), pixels.getColor(width / 2, actionBar.top.toInt() - 4), "The original 8dp gap reveals the unchanged image canvas")
+                        assertTrue(pixels.getColor(1, action.center.y.toInt()) != 0xff000000.toInt(), "Only the separate bottom bar spans the window")
+                    }
+                } finally {
+                    scene.close()
+                }
+            }
+        }
+    }
+
     @Test
     @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
     fun aRealPointerDragSeeksTheLastAndFirstIntegerPages() {
