@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,9 +50,7 @@ import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_back
 import ehviewer.app.shared.generated.resources.gallery_display_image
 import ehviewer.app.shared.generated.resources.gallery_gallery_page
-import ehviewer.app.shared.generated.resources.gallery_next_page
 import ehviewer.app.shared.generated.resources.gallery_original_image
-import ehviewer.app.shared.generated.resources.gallery_previous_page
 import ehviewer.app.shared.generated.resources.gallery_reading_continuous
 import ehviewer.app.shared.generated.resources.gallery_reading_ltr
 import ehviewer.app.shared.generated.resources.gallery_reading_preferences_unavailable
@@ -288,10 +284,6 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                     }
                 }
             },
-            navigation = {
-                ReaderPageButton(if (rtl) galleryString(Res.string.gallery_next_page) else galleryString(Res.string.gallery_previous_page), (if (rtl) next else previous)?.takeUnless { seeking }, right = false, navigate = ::navigate)
-                ReaderPageButton(if (rtl) galleryString(Res.string.gallery_previous_page) else galleryString(Res.string.gallery_next_page), (if (rtl) previous else next)?.takeUnless { seeking }, right = true, navigate = ::navigate)
-            },
             actions = {
                 GalleryReaderAction(galleryString(Res.string.gallery_reading_continuous), GalleryIcons.LibraryBooks, preferencesReady && !settingsSaving && !seeking) { changePreferences(preferences.copy(layout = ReadingLayout.CONTINUOUS)) { chrome.visible = false } }
                 GalleryReaderAction(if (rtl) galleryString(Res.string.gallery_reading_rtl) else galleryString(Res.string.gallery_reading_ltr), GalleryIcons.SwapHoriz, preferencesReady && !settingsSaving) {
@@ -374,11 +366,6 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
             }
         }
     }
-}
-
-@Composable
-private fun ReaderPageButton(label: String, target: String?, right: Boolean, navigate: (String) -> Unit) {
-    IconButton(onClick = { target?.let(navigate) }, enabled = target != null) { Icon(GalleryIcons.ArrowBack, label, Modifier.graphicsLayer { rotationZ = if (right) 180f else 0f }) }
 }
 
 @Composable

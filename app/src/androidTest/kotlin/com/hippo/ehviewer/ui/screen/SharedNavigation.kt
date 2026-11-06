@@ -120,3 +120,26 @@ internal fun UiDevice.hasSharedControl(label: String): Boolean {
     }
     return false
 }
+
+/** Assert the real hidden indicator or both visible ChapterNavigator end labels. */
+internal fun UiDevice.hasSharedReaderPosition(current: Int, total: Int, timeoutMillis: Long = 15_000): Boolean {
+    val deadline = SystemClock.uptimeMillis() + timeoutMillis
+    while (SystemClock.uptimeMillis() < deadline) {
+        try {
+            if (hasObject(By.text("$current / $total"))) return true
+            val page = findObject(By.desc("Go to page").text("$current"))?.visibleBounds
+            if (page != null && !page.isEmpty && findObjects(By.text("$total")).any {
+                    val bounds = it.visibleBounds
+                    // The page label's 48dp accessibility touch bounds are larger
+                    // than the total's text bounds; integer centers can differ by1px.
+                    !bounds.isEmpty && bounds.top >= page.top && bounds.bottom <= page.bottom &&
+                        (bounds.right <= page.left || bounds.left >= page.right)
+                }
+            ) {
+                return true
+            }
+        } catch (_: StaleObjectException) { /* Reacquire within the original bound. */ }
+        SystemClock.sleep(25)
+    }
+    return false
+}

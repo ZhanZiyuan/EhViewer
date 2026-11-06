@@ -78,7 +78,10 @@ class GalleryPreviewIntegrationTest {
     // Each JUnit instance owns its fixture; repeated runs retain unrelated data.
     private val gid = 8_000_000_000_000L + (UUID.randomUUID().mostSignificantBits and 0xff_ffff_ffffL)
     private val token = "0123456789"
-    private val title = "Preview integration fixture"
+
+    // Interrupted runs can retain another owned GID. Select this fixture without
+    // deleting old test evidence or mistaking its identical title for a failed removal.
+    private val title = "Preview ${gid.toString(16)}"
     private val png = Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGP4z8AAQv8BD/kD/YURmXYAAAAASUVORK5CYII=")
     private val originalPng = Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAADklEQVR4XmNg+A+CQAAAF/IF+w/LXpgAAAAASUVORK5CYII=")
     private val animatedGif = Base64.decode("R0lGODlhAgABAPAAAP8AAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQADAAAACwAAAAAAgABAAACAgQKACH5BAASAAAALAAAAAACAAEAgAAA/wAAAAICBAoAOw==")
@@ -465,7 +468,8 @@ class GalleryPreviewIntegrationTest {
                 }
                 click("Read offline")
                 assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 1")), 15_000))
-                click("Next page")
+                val firstPage = checkNotNull(device.findObject(By.desc("Gallery page 1"))).visibleBounds
+                device.click(firstPage.left + firstPage.width() * 5 / 6, firstPage.centerY())
                 assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 2")), 15_000))
                 runBlocking { withTimeout(10_000) { while (EhDB.getReadingPosition(gid)?.page != 1) delay(25) } }
                 runBlocking {
@@ -482,7 +486,7 @@ class GalleryPreviewIntegrationTest {
                 attach(scenario)
                 device.openSharedDestination("Downloads")
                 click("Read offline")
-                assertTrue(device.wait(Until.hasObject(By.text("2 / 3")), 15_000))
+                assertTrue(device.hasSharedReaderPosition(2, 3))
                 assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 2")), 15_000))
                 assertEquals(3, downloads.tasks.value.single().finished)
             }
@@ -579,6 +583,7 @@ class GalleryPreviewIntegrationTest {
         val client = HttpClient(engine) { followRedirects = false }
         val library = AndroidGalleryLibrary(false, client)
         fun visible(text: String) = assertTrue("Missing reader control: $text", device.hasSharedControl(text))
+        fun position(current: Int) = assertTrue("Missing reader position: $current / 3", device.hasSharedReaderPosition(current, 3))
         fun click(text: String) = device.clickSharedControl(text)
         fun input(value: String) {
             checkNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = value
@@ -611,7 +616,7 @@ class GalleryPreviewIntegrationTest {
                     device.submitSharedSearch()
                     click(title)
                     click("Read")
-                    visible("1 / 3")
+                    position(1)
                     saved(0)
                     assertTrue("Reader should open with its small page indicator", device.hasObject(By.desc("Show reader controls")))
                     stage = "real horizontal swipes decode the next and previous pages"
@@ -620,18 +625,18 @@ class GalleryPreviewIntegrationTest {
                     // independently of the emulator's gesture sampling velocity.
                     device.swipe(swipeCanvas.left + swipeCanvas.width() * 4 / 5, swipeCanvas.centerY(), swipeCanvas.left + swipeCanvas.width() / 5, swipeCanvas.centerY(), 24)
                     assertTrue("Forward swipe must load the actual next image", device.wait(Until.hasObject(By.desc("Gallery page 2")), 15_000))
-                    visible("2 / 3")
+                    position(2)
                     saved(1)
                     device.swipe(swipeCanvas.left + swipeCanvas.width() / 5, swipeCanvas.centerY(), swipeCanvas.left + swipeCanvas.width() * 4 / 5, swipeCanvas.centerY(), 24)
                     assertTrue("Backward swipe must decode the first image", device.wait(Until.hasObject(By.desc("Gallery page 1")), 15_000))
-                    visible("1 / 3")
+                    position(1)
                     saved(0)
                     stage = "return from saved first page with the original Read action"
                     device.pressBack()
                     visible("Read")
                     assertFalse("Page1 must not offer a redundant start-over action", device.hasObject(By.text("Read from start")))
                     click("Read")
-                    visible("1 / 3")
+                    position(1)
                     stage = "hide and reveal controls without resizing the image"
                     val canvasBefore = checkNotNull(device.wait(Until.findObject(By.desc("Gallery page 1")), 15_000)).visibleBounds
                     click("Go to page")
@@ -639,6 +644,15 @@ class GalleryPreviewIntegrationTest {
                     device.waitForIdle(5_000)
                     val readerCaptures = requireNotNull(context.getExternalFilesDir("kmp-ui-reader-controls")).apply { mkdirs() }
                     assertTrue("Actual reader controls screenshot must be retained", device.takeScreenshot(File(readerCaptures, "reader-paged-controls.png")))
+                    click("Left to right")
+                    visible("Right to left")
+                    position(1)
+                    saved(0)
+                    assertTrue("Actual RTL end-label screenshot must be retained", device.takeScreenshot(File(readerCaptures, "reader-paged-controls-rtl.png")))
+                    click("Right to left")
+                    visible("Left to right")
+                    position(1)
+                    saved(0)
                     // Original reader hides its bars by tapping the canvas's center region.
                     device.click(canvasBefore.centerX(), canvasBefore.centerY())
                     // IME dismissal and the 200ms overlay exit can still be animating after the tap.
@@ -675,7 +689,7 @@ class GalleryPreviewIntegrationTest {
                     releaseMetadata.complete(Unit)
                     runBlocking { withTimeout(5_000) { metadataFinished.await() } }
                     instrumentation.waitForIdleSync()
-                    visible("1 / 3")
+                    position(1)
                     assertEquals(0, runBlocking { EhDB.getReadingPosition(gid)?.page })
                     stage = "metadata failure preserves page and explicit retry"
                     click("Go to page")
@@ -687,7 +701,7 @@ class GalleryPreviewIntegrationTest {
                     runBlocking { withTimeout(5_000) { imageStarted.await() } }
                     assertEquals(0, runBlocking { EhDB.getReadingPosition(gid)?.page }) // Metadata alone never advances progress.
                     releaseImage.complete(Unit)
-                    visible("3 / 3")
+                    position(3)
                     assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 3")), 15_000))
                     saved(2)
                     assertEquals(3, metadataAttempts.get())
@@ -697,13 +711,13 @@ class GalleryPreviewIntegrationTest {
                     click("Go to page")
                     input("2")
                     click("Open page")
-                    visible("2 / 3")
+                    position(2)
                     assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 2")), 15_000))
                     saved(1)
                     click("Go to page")
                     input("1")
                     click("Cancel")
-                    visible("2 / 3")
+                    position(2)
                     assertEquals(1, runBlocking { EhDB.getReadingPosition(gid)?.page })
                     assertFalse(device.hasObject(By.text("Open page")))
                     assertEquals(3, metadataAttempts.get())
@@ -711,7 +725,7 @@ class GalleryPreviewIntegrationTest {
                     val continuousSeek = checkNotNull(device.wait(Until.findObject(By.desc("Seek page").enabled(true)), 15_000)).visibleBounds
                     val continuousInset = (16 * context.resources.displayMetrics.density).toInt().coerceAtMost(continuousSeek.width() / 4)
                     device.drag(continuousSeek.centerX(), continuousSeek.centerY(), continuousSeek.right - continuousInset, continuousSeek.centerY(), 20)
-                    visible("3 / 3")
+                    position(3)
                     saved(2)
                     stage = "paged slider resolves and decodes the real first page"
                     click("Paged reading")
@@ -723,7 +737,7 @@ class GalleryPreviewIntegrationTest {
                     // the thumb/track interior rather than the system edge or the image below it.
                     val pagedInset = (16 * context.resources.displayMetrics.density).toInt().coerceAtMost(pagedSeek.width() / 4)
                     device.drag(pagedSeek.right - pagedInset, pagedSeek.centerY(), pagedSeek.left + pagedInset, pagedSeek.centerY(), 20)
-                    visible("1 / 3")
+                    position(1)
                     assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 1")), 15_000))
                     saved(0)
                     stage = "persist original general settings through the actual shared sheet"
@@ -1044,7 +1058,7 @@ class GalleryPreviewIntegrationTest {
                 click("Next previews")
                 val third = requireNotNull(device.wait(Until.findObject(By.desc("Preview of page 3")), 15_000))
                 third.click()
-                assertTrue("Selected reader page did not render", device.wait(Until.hasObject(By.text("3 / 3")), 15_000))
+                assertTrue("Selected reader page did not render", device.hasSharedReaderPosition(3, 3))
                 click("Load original image")
                 runBlocking {
                     // synchronizedList serializes individual calls, but not Kotlin iterator
@@ -1078,7 +1092,7 @@ class GalleryPreviewIntegrationTest {
                 waitForImagePixels(original = false)
                 displayBytes.set(animatedWebp)
                 click("Continuous reading")
-                assertTrue("Continuous reader moved away from the selected last page", device.wait(Until.hasObject(By.text("3 / 3")), 10_000))
+                assertTrue("Continuous reader moved away from the selected last page", device.hasSharedReaderPosition(3, 3, 10_000))
                 waitForAnimatedPixels("WebP continuous")
                 displayBytes.set(png)
                 click("Paged reading")
@@ -1119,7 +1133,12 @@ class GalleryPreviewIntegrationTest {
                     withTimeout(10_000) { while (EhDB.sharedHistory.recent().any { it.gid == gid }) delay(25) }
                     assertEquals(2, EhDB.getReadingPosition(gid)?.page)
                 }
-                assertTrue("Forgotten entry stayed in the list", device.wait(Until.gone(By.text(title)), 10_000))
+                val forgotten = device.wait(Until.gone(By.text(title)), 10_000)
+                if (!forgotten) {
+                    device.dumpWindowHierarchy(File(context.cacheDir, "history-forget-$gid-failure.xml"))
+                    device.takeScreenshot(File(context.cacheDir, "history-forget-$gid-failure.png"))
+                }
+                assertTrue("Forgotten entry stayed in the list", forgotten)
                 device.openSharedDestination("Galleries")
                 assertTrue(device.wait(Until.hasObject(By.desc("Search galleries")), 10_000))
                 assertTrue(requests.contains("/g/$gid/$token/?p=1"))

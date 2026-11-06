@@ -33,15 +33,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SliderDefaults.drawStopIndicator
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,9 +71,11 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -117,7 +121,6 @@ internal fun GalleryReaderChrome(
     onKey: (KeyEvent) -> Boolean = { false },
     rtl: Boolean = false,
     status: @Composable () -> Unit = {},
-    navigation: @Composable RowScope.() -> Unit = {},
     showPageNumber: Boolean = true,
     showSeekBar: Boolean = true,
     background: Color = Color.Black,
@@ -209,34 +212,48 @@ internal fun GalleryReaderChrome(
             exit = slideOutVertically(tween(200)) { it },
         ) {
             BoxWithConstraints(Modifier.fillMaxWidth()) {
-                val outerKeyline = if (maxWidth >= 840.dp) 24.dp else 16.dp
+                val width = maxWidth
+                val outerKeyline = if (width >= 840.dp) 24.dp else 16.dp
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (showSeekBar) {
-                        var seeking by remember { mutableStateOf(false) }
-                        var slider by remember(index) { mutableFloatStateOf(index.toFloat()) }
+                    if (showSeekBar && pages > 1) {
                         val seekLabel = galleryString(Res.string.gallery_reader_seek)
+                        val maxTickCount = with(LocalDensity.current) { (width.toPx() / (SliderDefaults.TickSize.toPx() * 2.5f).toInt().coerceAtLeast(1)).toInt() }
+                        // Match the original visible integer ticks only while they fit. Large
+                        // galleries keep bounded storage and exact integer keyboard/page seeks.
+                        val steps = (pages - 2).takeIf { it < maxTickCount } ?: 0
+                        // Android Material3's legacy value/track overload discards valueRange
+                        // when forwarding to its newer overload. Explicit state preserves the
+                        // real page range on Android and the same shared navigator elsewhere.
+                        val slider = remember(pages, steps) { SliderState(index.toFloat(), steps, valueRange = 0f..(pages - 1).toFloat()) }
+                        LaunchedEffect(index, seekEnabled, slider) {
+                            if (seekEnabled) slider.value = index.toFloat()
+                        }
+                        slider.onValueChangeFinished = {
+                            if (seekEnabled) onSeek(slider.value.roundToInt().coerceIn(0, pages - 1))
+                        }
                         // Original ChapterNavigator: rounded seek surface, 16/24dp outer keyline,
                         // 16dp inner keyline and an 8dp gap above the separate bottom action bar.
-                        Row(Modifier.fillMaxWidth().padding(horizontal = outerKeyline).clip(CircleShape).background(container).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            navigation()
-                            TextButton(onClick = onJump, enabled = seekEnabled, modifier = Modifier.widthIn(max = 144.dp).semantics { contentDescription = jumpLabel }) { Text("${index + 1} / $pages", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall) }
-                            if (pages > 1) {
-                                CompositionLocalProvider(LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+                        CompositionLocalProvider(LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+                            Row(Modifier.fillMaxWidth().padding(horizontal = outerKeyline).clip(CircleShape).background(container).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                // Original ChapterNavigator places body-sized page numbers at
+                                // opposite ends and mirrors the whole row with reading direction.
+                                // Keep the existing jump action without adding button padding.
+                                Text(
+                                    "${index + 1}",
+                                    Modifier.clickable(enabled = seekEnabled, role = Role.Button, onClick = onJump).semantics {
+                                        contentDescription = jumpLabel
+                                        stateDescription = "${index + 1} / $pages"
+                                    },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                                if (pages > 1) {
                                     Slider(
-                                        value = if (seeking) slider else index.toFloat(),
-                                        onValueChange = {
-                                            seeking = true
-                                            slider = it
+                                        state = slider,
+                                        track = { sliderState ->
+                                            SliderDefaults.Track(sliderState, enabled = seekEnabled, trackCornerSize = Dp.Unspecified, drawTick = { offset, color -> drawStopIndicator(offset = offset, color = color, size = SliderDefaults.TickSize) })
                                         },
-                                        onValueChangeFinished = {
-                                            seeking = false
-                                            onSeek(slider.roundToInt().coerceIn(0, pages - 1))
-                                        },
-                                        valueRange = 0f..(pages - 1).toFloat(),
-                                        // Keep the validated continuous drag path: no per-page fraction
-                                        // allocation, while arrow keys below commit exact integer pages.
                                         enabled = seekEnabled,
-                                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp).onPreviewKeyEvent { event ->
+                                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp).onPreviewKeyEvent { event ->
                                             val delta = when (event.key) {
                                                 Key.DirectionLeft -> if (rtl) 1 else -1
                                                 Key.DirectionRight -> if (rtl) -1 else 1
@@ -253,6 +270,7 @@ internal fun GalleryReaderChrome(
                                         }.semantics { contentDescription = seekLabel },
                                     )
                                 }
+                                Text("$pages", style = MaterialTheme.typography.bodyLarge)
                             }
                         }
                     }

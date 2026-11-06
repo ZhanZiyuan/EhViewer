@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.BottomAppBarDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -27,13 +28,21 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.WindowInfo
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.sp
 import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_reader_show_controls
 import kotlin.math.abs
@@ -46,6 +55,106 @@ import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ImageInfo
 
 class GalleryReaderChromeTest {
+    @Test
+    @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+    fun visibleTicksUseTheActualReaderWidthWhenHostWindowMetadataIsUnready() {
+        var pages by mutableIntStateOf(11)
+        val chrome = GalleryReaderChromeState().apply { visible = true }
+        val scene = ImageComposeScene(1206, 2622, Density(3f)) {
+            val host = LocalWindowInfo.current
+            CompositionLocalProvider(
+                LocalWindowInfo provides object : WindowInfo by host {
+                    override val containerSize: IntSize get() = IntSize.Zero
+                },
+            ) {
+                GalleryTheme(false, null) {
+                    GalleryReaderChrome("Gallery", 0, pages, chrome, {}, {}, {}, actions = {}) {}
+                }
+            }
+        }
+        fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+        fun steps() = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single { it.config.contains(SemanticsProperties.ProgressBarRangeInfo) }.config[SemanticsProperties.ProgressBarRangeInfo].steps
+        try {
+            repeat(30) { scene.render(it * 16_666_667L).close() }
+            assertEquals(9, steps(), "Eleven-page ticks must fit the actual phone viewport even before host metadata is ready")
+            pages = Int.MAX_VALUE
+            repeat(3) { scene.render((31 + it) * 16_666_667L).close() }
+            assertEquals(0, steps(), "Dense galleries must not allocate billions of tick fractions")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
+    @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
+    fun navigatorEndLabelsUseOriginalBodyTypographyAndMirrorWithReadingDirection() {
+        for (width in listOf(360, 1280)) {
+            for (dark in listOf(false, true)) {
+                for (font in listOf(1f, 1.8f)) {
+                    for (rtl in listOf(false, true)) {
+                        for (uiRtl in listOf(false, true)) {
+                            var enabled by mutableStateOf(true)
+                            var jumps = 0
+                            val chrome = GalleryReaderChromeState().apply { visible = true }
+                            val scene = ImageComposeScene(width, 720, Density(1f, font)) {
+                                GalleryTheme(dark, null) {
+                                    CompositionLocalProvider(LocalLayoutDirection provides if (uiRtl) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+                                        GalleryReaderChrome("Gallery", 0, 61, chrome, {}, { jumps++ }, {}, rtl = rtl, seekEnabled = enabled, actions = {}) {}
+                                    }
+                                }
+                            }
+                            var frame = 0L
+                            fun render(times: Int = 3) = repeat(times) { scene.render(frame++ * 16_666_667L).close() }
+                            fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+                            fun text(value: String) = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single {
+                                it.config.getOrNull(SemanticsProperties.Text)?.joinToString("") { text -> text.text } == value
+                            }
+                            fun click(point: Offset) {
+                                scene.sendPointerEvent(PointerEventType.Press, point)
+                                render(1)
+                                scene.sendPointerEvent(PointerEventType.Release, point)
+                                render()
+                            }
+                            try {
+                                render(30)
+                                val current = text("1")
+                                val total = text("61")
+                                val progress = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single { it.config.contains(SemanticsProperties.ProgressBarRangeInfo) }.config[SemanticsProperties.ProgressBarRangeInfo]
+                                assertEquals(if (width == 360) 0 else 59, progress.steps, "Original4dp tick density intentionally suppresses61-page ticks on phones")
+                                assertEquals("1 / 61", current.config[SemanticsProperties.StateDescription], "The separate visual labels must retain an announced current/total position")
+                                val keyline = if (width == 360) 32f else 40f
+                                assertEquals(keyline, if (rtl) width - current.boundsInRoot.right else current.boundsInRoot.left)
+                                assertEquals(keyline, if (rtl) total.boundsInRoot.left else width - total.boundsInRoot.right)
+                                assertEquals(current.boundsInRoot.center.y, total.boundsInRoot.center.y)
+                                for (label in listOf(current, total)) {
+                                    val layouts = mutableListOf<TextLayoutResult>()
+                                    assertTrue(requireNotNull(label.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action).invoke(layouts))
+                                    assertEquals(16.sp, layouts.single().layoutInput.style.fontSize, "Original default bodyLarge page labels")
+                                    val layout = layouts.single()
+                                    assertEquals(1, layout.lineCount)
+                                    assertFalse(layout.isLineEllipsized(0))
+                                    assertFalse(layout.didOverflowHeight, "Page labels must retain their full line height at font scale$font")
+                                    // Skiko reports width overflow when fractional intrinsic text width
+                                    // exceeds its rounded integer size (even '1' at 10x24). Check the
+                                    // actual available width, retaining exact keylines and typography.
+                                    assertTrue(layout.multiParagraph.width <= layout.layoutInput.constraints.maxWidth, "Page labels must fit the available row at font scale$font")
+                                }
+                                click(current.boundsInRoot.center)
+                                assertEquals(1, jumps, "The actual current-page label must retain page jumping")
+                                enabled = false
+                                render()
+                                click(text("1").boundsInRoot.center)
+                                assertEquals(1, jumps, "Pending page resolution must disable the jump target")
+                            } finally {
+                                scene.close()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     @Test
     @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
     fun hiddenIndicatorAndSeekbarKeepTheFullCanvasAndAccessibleRevealAndJump() {
@@ -178,7 +287,7 @@ class GalleryReaderChromeTest {
     @Test
     @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
     fun aRealPointerDragSeeksTheLastAndFirstIntegerPages() {
-        for (density in listOf(1f, 2.625f)) {
+        for ((density, pointer) in listOf(1f to PointerType.Mouse, 1f to PointerType.Touch, 2.625f to PointerType.Mouse, 2.625f to PointerType.Touch)) {
             var page by mutableIntStateOf(1)
             var enabled by mutableStateOf(true)
             var sought = -1
@@ -201,13 +310,13 @@ class GalleryReaderChromeTest {
             fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
             fun bounds() = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single { it.config.contains(SemanticsProperties.ProgressBarRangeInfo) }.boundsInRoot
             fun drag(from: Offset, to: Offset) {
-                scene.sendPointerEvent(PointerEventType.Press, from)
+                scene.sendPointerEvent(PointerEventType.Press, from, timeMillis = frame / 1_000_000, type = pointer)
                 render()
                 for (step in 1..20) {
-                    scene.sendPointerEvent(PointerEventType.Move, from + (to - from) * (step / 20f))
+                    scene.sendPointerEvent(PointerEventType.Move, from + (to - from) * (step / 20f), timeMillis = frame / 1_000_000, type = pointer)
                     render()
                 }
-                scene.sendPointerEvent(PointerEventType.Release, to)
+                scene.sendPointerEvent(PointerEventType.Release, to, timeMillis = frame / 1_000_000, type = pointer)
                 repeat(30) { render() }
             }
             try {
@@ -219,12 +328,19 @@ class GalleryReaderChromeTest {
                 drag(slider.center, right)
                 assertEquals(2, sought, "Actual pointer drag must reach page3 at density$density; slider=$slider")
                 assertEquals(listOf(2), requests, "Pending resolution must not commit the old page again")
+                enabled = true // A failed resolution retains the actual page and resets the thumb.
+                repeat(3) { render() }
+                val progress = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single { it.config.contains(SemanticsProperties.ProgressBarRangeInfo) }.config[SemanticsProperties.ProgressBarRangeInfo]
+                assertEquals(0f..2f, progress.range, "Three actual pages must retain the explicit page range")
+                assertEquals(1f, progress.current, "A failed seek must restore the decoded page rather than leave a requested position")
+                drag(slider.center, right)
+                assertEquals(listOf(2, 2), requests, "The same real page must remain retryable after failure")
                 page = sought
                 enabled = true
                 repeat(3) { render() }
                 drag(right, left)
                 assertEquals(0, sought, "Actual pointer drag must return to page1 at density$density")
-                assertEquals(listOf(2, 0), requests)
+                assertEquals(listOf(2, 2, 0), requests)
             } finally {
                 scene.close()
             }
@@ -304,9 +420,7 @@ class GalleryReaderChromeTest {
                 val buttons = mutableMapOf<Int, Rect>()
                 val scene = ImageComposeScene(width, 720, Density(1f, font)) {
                     MaterialTheme {
-                        GalleryReaderChrome("A long gallery title ".repeat(12), 12344, 12345, state, {}, {}, {}, navigation = {
-                            repeat(2) { IconButton({}) {} }
-                        }, actions = {
+                        GalleryReaderChrome("A long gallery title ".repeat(12), 12344, 12345, state, {}, {}, {}, actions = {
                             repeat(4) { index ->
                                 Box(Modifier.onGloballyPositioned { buttons[index] = it.boundsInRoot() }) { GalleryReaderAction("Action $index", GalleryIcons.LibraryBooks) {} }
                             }
