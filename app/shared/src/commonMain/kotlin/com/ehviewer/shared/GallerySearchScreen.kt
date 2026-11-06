@@ -437,7 +437,7 @@ fun GalleryLibraryScreen(
                                     GalleryDownloadsScreen(downloads, downloadsReady, downloadsFailed, retry = { downloadsAttempt++ }, backgroundNote = if (backgroundDownloadsNote) galleryString(Res.string.gallery_download_background) else null, onOpen = {
                                         when (it) {
                                             is GalleryDownloadOpen.Cached -> {
-                                                history.touch(it.pages.gallery.gid)
+                                                history.recordDownloaded(it.pages.gallery)
                                                 cached = it.pages
                                             }
                                             is GalleryDownloadOpen.PlatformReader -> checkNotNull(onPlatformDownloadOpen)(it.gid)

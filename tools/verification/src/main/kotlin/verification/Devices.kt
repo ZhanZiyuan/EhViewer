@@ -2,6 +2,7 @@ package verification
 
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.Duration
 import kotlin.io.path.createDirectories
 import kotlin.io.path.name
 import kotlin.io.path.writeText
@@ -11,7 +12,8 @@ fun deviceTests(sdk: Path, serial: String, output: Path, app: Path, test: Path, 
     val adb = sdk.resolve("platform-tools/adb")
     fun run(name: String, vararg args: String): String {
         val text = try {
-            command(adb, "-s", serial, *args)
+            // Collect the whole growing suite; individual JUnit/UI deadlines remain unchanged.
+            command(adb, "-s", serial, *args, timeout = if (name == "instrumentation.log") Duration.ofMinutes(10) else Duration.ofMinutes(5))
         } catch (failure: CommandFailure) {
             output.resolve(name).writeText(failure.output)
             throw failure

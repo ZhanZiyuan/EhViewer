@@ -18,19 +18,20 @@ import kotlinx.coroutines.withTimeout
  */
 internal fun UiDevice.openSharedDestination(label: String, navigation: String = "Open navigation") {
     val compact = InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration.screenWidthDp < 600
-    if (compact) requireNotNull(wait(Until.findObject(By.desc(navigation)), 15_000)).click()
+    // Recomposition after activity restoration may replace a rail node before dispatch.
+    // Reuse the existing bounded lookup/click rather than retaining that obsolete node.
+    if (!compact) return clickSharedControl(label)
+    requireNotNull(wait(Until.findObject(By.desc(navigation)), 15_000)).click()
     val item = requireNotNull(wait(Until.findObject(By.text(label)), 15_000))
-    if (compact) {
-        // Tap the drawer item only after its opening animation has settled.
-        runBlocking {
-            withTimeout(5_000) {
-                var bounds = item.visibleBounds
-                while (true) {
-                    delay(100)
-                    val current = item.visibleBounds
-                    if (current == bounds && current.left >= 0) break
-                    bounds = current
-                }
+    // Tap the drawer item only after its opening animation has settled.
+    runBlocking {
+        withTimeout(5_000) {
+            var bounds = item.visibleBounds
+            while (true) {
+                delay(100)
+                val current = item.visibleBounds
+                if (current == bounds && current.left >= 0) break
+                bounds = current
             }
         }
     }

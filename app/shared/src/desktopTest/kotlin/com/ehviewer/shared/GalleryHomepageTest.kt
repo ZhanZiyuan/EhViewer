@@ -97,6 +97,7 @@ class GalleryHomepageTest {
             override suspend fun recent(limit: Int) = emptyList<BaseGalleryInfo>()
             override suspend fun record(gallery: GalleryInfo) = error("Browsing must not record an unopened gallery")
             override suspend fun touch(gid: Long) = error("Browsing must not touch history")
+            override suspend fun recordDownloaded(gallery: com.ehviewer.core.domain.download.GalleryDownload) = error("Browsing must not record a download")
             override suspend fun forget(gid: Long) = error("Browsing must not remove history")
             override suspend fun clear() = error("Browsing must not clear history")
         }

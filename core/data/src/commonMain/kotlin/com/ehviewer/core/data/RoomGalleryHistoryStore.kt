@@ -7,6 +7,8 @@ import com.ehviewer.core.database.EhDatabase
 import com.ehviewer.core.database.model.HistoryInfo
 import com.ehviewer.core.domain.GalleryHistoryException
 import com.ehviewer.core.domain.GalleryHistoryStore
+import com.ehviewer.core.domain.download.GalleryDownload
+import com.ehviewer.core.domain.download.GalleryDownloadState
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.model.GalleryInfo
 import kotlinx.coroutines.CancellationException
@@ -49,6 +51,34 @@ class RoomGalleryHistoryStore(private val database: EhDatabase) : GalleryHistory
             connection.immediateTransaction {
                 checkNotNull(database.galleryDao().load(gid))
                 database.historyDao().upsert(HistoryInfo(gid))
+            }
+        }
+    }
+
+    override suspend fun recordDownloaded(gallery: GalleryDownload) = stored {
+        gallery.validate()
+        require(gallery.state == GalleryDownloadState.COMPLETE && gallery.pages > 0)
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                val existing = database.galleryDao().load(gallery.gid)
+                if (existing == null) {
+                    val metadata = gallery.metadata
+                    database.galleryDao().upsert(
+                        BaseGalleryInfo(
+                            gid = gallery.gid,
+                            token = gallery.token,
+                            title = gallery.title,
+                            pages = gallery.pages,
+                            uploader = metadata?.uploader,
+                            disowned = metadata?.disowned ?: false,
+                            rating = metadata?.rating ?: 0f,
+                            category = metadata?.category ?: 0,
+                        ).asEntity(),
+                    )
+                } else {
+                    check(existing.token == gallery.token)
+                }
+                database.historyDao().upsert(HistoryInfo(gallery.gid))
             }
         }
     }

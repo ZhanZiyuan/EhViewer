@@ -442,11 +442,20 @@ class GalleryPreviewIntegrationTest {
                 device.openSharedDestination("Downloads")
                 offline.set(true)
                 val beforeOffline = requests.size
+                runBlocking {
+                    // Restore the independent queue without its history database's gallery parent.
+                    EhDB.deleteHistoryInfo(checkNotNull(EhDB.getGalleryInfo(gid)))
+                    assertNull(EhDB.getGalleryInfo(gid))
+                }
                 click("Read offline")
                 assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 1")), 15_000))
                 click("Next page")
                 assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 2")), 15_000))
                 runBlocking { withTimeout(10_000) { while (EhDB.getReadingPosition(gid)?.page != 1) delay(25) } }
+                runBlocking {
+                    assertEquals(title, EhDB.getGalleryInfo(gid)?.title)
+                    assertEquals(3, EhDB.getGalleryInfo(gid)?.pages)
+                }
                 assertEquals(beforeOffline, requests.size)
             }
             runBlocking { downloads.closeAndJoin() }

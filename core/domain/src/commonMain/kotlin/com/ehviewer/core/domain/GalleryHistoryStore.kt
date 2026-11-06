@@ -1,5 +1,6 @@
 package com.ehviewer.core.domain
 
+import com.ehviewer.core.domain.download.GalleryDownload
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.model.GalleryInfo
 
@@ -9,6 +10,9 @@ interface GalleryHistoryStore {
     suspend fun recent(limit: Int = 100): List<BaseGalleryInfo>
     suspend fun record(gallery: GalleryInfo)
     suspend fun touch(gid: Long)
+
+    /** Restore history from a complete cached queue entry, preserving any existing gallery details. */
+    suspend fun recordDownloaded(gallery: GalleryDownload)
     suspend fun forget(gid: Long)
 
     /** Android's Clear all: removes every history entry. */
