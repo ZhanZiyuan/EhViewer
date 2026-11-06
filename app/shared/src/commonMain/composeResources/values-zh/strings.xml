@@ -130,7 +130,7 @@
     <string name="gallery_category_western">西方</string>
     <string name="gallery_download_open_failed">无法打开此下载，已保存的页面保持不变。</string>
     <string name="gallery_download_update_failed">无法更新下载，请重试。</string>
-    <string name="gallery_downloads_empty">暂无下载。</string>
+    <string name="gallery_downloads_empty">这里是下载项目</string>
     <string name="gallery_download_queued">等待中</string>
     <string name="gallery_download_downloading">下载中</string>
     <string name="gallery_download_paused">已暂停</string>

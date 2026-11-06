@@ -130,7 +130,7 @@
     <string name="gallery_category_western">Western</string>
     <string name="gallery_download_open_failed">This download could not be opened. Saved pages have been kept.</string>
     <string name="gallery_download_update_failed">Downloads could not be updated. Try again.</string>
-    <string name="gallery_downloads_empty">No downloads yet.</string>
+    <string name="gallery_downloads_empty">Download items will be shown here</string>
     <string name="gallery_download_queued">Queued</string>
     <string name="gallery_download_downloading">Downloading</string>
     <string name="gallery_download_paused">Paused</string>

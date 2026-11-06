@@ -130,7 +130,7 @@
     <string name="gallery_category_western">欧米</string>
     <string name="gallery_download_open_failed">ダウンロードを開けません。保存したページは保持されています。</string>
     <string name="gallery_download_update_failed">ダウンロードを更新できません。再試行してください。</string>
-    <string name="gallery_downloads_empty">ダウンロードはまだありません。</string>
+    <string name="gallery_downloads_empty">ダウンロードタスクはここに表示されます</string>
     <string name="gallery_download_queued">待機中</string>
     <string name="gallery_download_downloading">ダウンロード中</string>
     <string name="gallery_download_paused">一時停止</string>

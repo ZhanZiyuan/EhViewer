@@ -367,8 +367,8 @@ fun GalleryLibraryScreen(
                 GalleryNavigationShell(destinations, destination, ::navigate) { openNavigation ->
                     val immersive = galleryIsImmersive()
                     Box(Modifier.fillMaxSize().then(if (immersive) Modifier else Modifier.windowInsetsPadding(WindowInsets.safeDrawing)), contentAlignment = Alignment.TopCenter) {
-                        // Search and History are Android's floating-search-bar pages; the others keep the content column.
-                        val searchBarPage = !settingsOpen && !(account && accountContent != null) && !(archivesOpen && archiveContent != null) && !downloadsOpen && selected == null
+                        // Search, History and Downloads use Android's floating search bar.
+                        val searchBarPage = !settingsOpen && !(account && accountContent != null) && !(archivesOpen && archiveContent != null) && (if (downloadsOpen) cached == null else selected == null)
                         Column(galleryPageModifier(searchBarPage, immersive, edgeToEdge = settingsOpen || selected != null)) {
                             if (settingsOpen) {
                                 GallerySettingsScreen(networkPreferences, appearance, readerState, themeMode, appearanceFailed, language, languageTag, languageReady, languageFailed, onLanguageChanged = { languageTag = it }, onRetryLanguage = { languageAttempt++ }, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = ::leaveSettings, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings, listPreferences = listPreferences, listDensity = listDensity, listFailed = listFailed, onListChanged = { listDensity = it }, showComments = showComments, onCommentsChanged = { showComments = it }, onRetryList = { listAttempt++ }, onAccount = { navigate(GalleryDestination.ACCOUNT) }.takeIf { onAccount != null || accountContent != null }, onHistory = { navigate(GalleryDestination.HISTORY) })
@@ -417,7 +417,7 @@ fun GalleryLibraryScreen(
                                             }
                                             is GalleryDownloadOpen.PlatformReader -> checkNotNull(onPlatformDownloadOpen)(it.gid)
                                         }
-                                    }, onBack = { downloadsOpen = false })
+                                    }, onBack = { downloadsOpen = false }, openNavigation = openNavigation)
                                 }
                                 return@Column
                             }

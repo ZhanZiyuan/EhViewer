@@ -47,7 +47,10 @@ internal object GalleryIcons {
     /** Android's EhIcons.Big.Default.SadAndroid, shown at 120dp by its ErrorTip. */
     val SadAndroid by lazy { icon("SadAndroid", "M16.5,10.8c-0.61,0 -1.1,0.49 -1.1,1.1c0,0.61 0.49,1.1 1.1,1.1s1.1,-0.49 1.1,-1.1C17.6,11.29 17.11,10.8 16.5,10.8zM8.2,10.1c-0.61,0 -1.1,0.49 -1.1,1.1s0.49,1.1 1.1,1.1s1.1,-0.49 1.1,-1.1S8.81,10.1 8.2,10.1zM22.1,16.4c-0.46,-3.33 -2.24,-5.93 -4.81,-7.45L19.5,6.3c0.1,-0.1 0.1,-0.3 0,-0.4c-0.1,-0.1 -0.3,-0.1 -0.4,0l-2.27,2.79c-1.26,-0.66 -2.69,-1.07 -4.23,-1.19c-1.4,-0.15 -2.77,-0.01 -4.05,0.37L6.7,4.7C6.6,4.6 6.4,4.5 6.3,4.6C6.2,4.7 6.1,4.9 6.2,5l1.79,3.05c-2.83,1.02 -5.12,3.3 -6.19,6.55l15.44,1.37c0,0.02 -0.01,0.04 -0.01,0.05c0,0.59 0.48,1.07 1.07,1.07c0.54,0 0.97,-0.41 1.04,-0.93L22.1,16.4zM2.63,14.07c1.51,-3.74 4.83,-6.03 8.84,-6.03c0.35,0 0.71,0.02 1.07,0.06c4.55,0.36 7.94,3.33 8.84,7.64l-2.12,-0.19c-0.27,-0.68 -0.95,-1.46 -0.95,-1.46s-0.58,0.66 -0.89,1.29L2.63,14.07z") }
 
-    private fun icon(name: String, path: String, autoMirror: Boolean = false) = ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f, autoMirror = autoMirror)
+    // Existing EhViewer Big.Download artwork, retaining its original 120dp intrinsic size.
+    val DownloadEmpty by lazy { icon("DownloadEmpty", "M0,19V24H24V19H0ZM16,22H15V21H16V22ZM19,22H18V21H19V22ZM22,22H21V21H22V22M15,11L15,0L9,0L9,11L5,11L12,18L19,11Z", defaultSize = 120f) }
+
+    private fun icon(name: String, path: String, autoMirror: Boolean = false, defaultSize: Float = 24f) = ImageVector.Builder(name, defaultSize.dp, defaultSize.dp, 24f, 24f, autoMirror = autoMirror)
         .addPath(addPathNodes(path), fill = SolidColor(Color.Black))
         .build()
 }

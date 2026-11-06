@@ -57,9 +57,10 @@ class GalleryCommentsIntegrationTest {
         val title = "Owned comment gallery"
         val allRequests = Collections.synchronizedList(mutableListOf<Url>())
         val png = Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGP4z8AAQv8BD/kD/YURmXYAAAAASUVORK5CYII=")
-        fun detail(all: Boolean): String {
+        fun detail(all: Boolean, refreshed: Boolean = false): String {
             val comments = (1..if (all) 3 else 2).joinToString("") { index ->
-                """<div class="c1"><div class="c3">Posted on 05 November 2026, 10:00 by: <a>Reader $index</a></div><div class="c6" id="comment_$index"><b>Owned comment $index</b><br>日本語 &amp; English</div><div class="c8">Last edited on 05 November 2026, 10:02</div></div>"""
+                val marker = if (refreshed && index == 3) "<br>Owned refresh completed" else ""
+                """<div class="c1"><div class="c3">Posted on 05 November 2026, 10:00 by: <a>Reader $index</a></div><div class="c6" id="comment_$index"><b>Owned comment $index</b><br>日本語 &amp; English$marker</div><div class="c8">Last edited on 05 November 2026, 10:02</div></div>"""
             }
             val heading = if (all) """<a id="postnewcomment">Comment</a>""" else """<a href="?hc=1">All</a>"""
             return """<!DOCTYPE html><html><body>
@@ -77,7 +78,7 @@ class GalleryCommentsIntegrationTest {
                 request.url.host == "ehgt.org" -> respond(png, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
                 request.url.parameters["hc"] == "1" -> {
                     allRequests += request.url
-                    if (allRequests.size == 1) respond("Owned failure", HttpStatusCode.ServiceUnavailable) else respond(detail(true))
+                    if (allRequests.size == 1) respond("Owned failure", HttpStatusCode.ServiceUnavailable) else respond(detail(true, refreshed = allRequests.size >= 3))
                 }
                 request.url.encodedPath.startsWith("/g/") -> respond(detail(false))
                 else -> respond("""<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/owned.png" style="height:100px;width:80px"><div class="cn">Non-H</div><div class="ir" style="background-position:0px -1px"></div></div></div></body></html>""")
@@ -161,6 +162,9 @@ class GalleryCommentsIntegrationTest {
                 assertEquals(2, allRequests.size)
                 assertTrue(allRequests.all { it.host == "e-hentai.org" && it.encodedPath == "/g/$gid/$token/" && it.parameters.names() == setOf("hc") })
                 device.clickSharedControl("Refresh")
+                // The old footer already exists while Refresh is still scheduling its request.
+                // Require the new response's actual rendered body before asserting its count.
+                reveal("Owned refresh completed")
                 visible("No more comments")
                 assertEquals(3, allRequests.size)
                 device.clickSharedControl("Back to details")
@@ -168,6 +172,7 @@ class GalleryCommentsIntegrationTest {
                 assertFalse(device.hasObject(By.textContains("Owned comment 3")))
                 device.clickSharedControl("More comments")
                 reveal("Owned comment 3")
+                visible("Owned refresh completed")
                 assertEquals("Reopening the owned route must retain loaded comments", 3, allRequests.size)
             }
         } finally {

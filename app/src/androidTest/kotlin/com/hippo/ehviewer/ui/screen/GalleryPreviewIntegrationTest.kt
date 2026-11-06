@@ -374,6 +374,56 @@ class GalleryPreviewIntegrationTest {
                 attach(scenario)
                 device.openSharedDestination("Downloads")
                 waitFor(GalleryDownloadState.PAUSED)
+                val beforeLocalSearch = requests.size
+                val downloadsCaptures = requireNotNull(context.getExternalFilesDir("kmp-ui-downloads")).apply { mkdirs() }
+                fun downloadSearch(value: String) {
+                    requireNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = value
+                    device.submitSharedSearch()
+                }
+
+                // A semantic update can precede the presented frame in either direction.
+                // Validate new text ink and removal of the old text before saving raw pixels.
+                fun ink(image: android.graphics.Bitmap, bounds: android.graphics.Rect): Int? {
+                    if (bounds.isEmpty || bounds.left < 0 || bounds.top < 0 || bounds.right > image.width || bounds.bottom > image.height) return null
+                    val background = image.getPixel(bounds.left, bounds.top)
+                    var count = 0
+                    for (y in bounds.top until bounds.bottom) for (x in bounds.left until bounds.right) if (image.getPixel(x, y) != background) count++
+                    return count
+                }
+                fun captureRenderedText(text: String, name: String, cleared: android.graphics.Rect): android.graphics.Rect {
+                    val deadline = SystemClock.uptimeMillis() + 5_000
+                    while (SystemClock.uptimeMillis() < deadline) {
+                        val bounds = try {
+                            device.findObject(By.text(text))?.visibleBounds
+                        } catch (_: StaleObjectException) {
+                            null
+                        }
+                        val screenshot = checkNotNull(device.takeScreenshot())
+                        try {
+                            val isRow = text == title
+                            val semantics = if (isRow) device.hasObject(By.text("Resume")) && !device.hasObject(By.text("Download items will be shown here")) else !device.hasObject(By.text("Resume")) && !device.hasObject(By.text(title))
+                            val rendered = bounds != null && (ink(screenshot, bounds) ?: 0) > 32 && ink(screenshot, cleared) == 0 && semantics
+                            val file = if (rendered) name else name.removeSuffix(".png") + "-unrendered.png"
+                            File(downloadsCaptures, file).outputStream().use { assertTrue(screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) }
+                            if (rendered) return checkNotNull(bounds)
+                        } finally {
+                            screenshot.recycle()
+                        }
+                        SystemClock.sleep(25)
+                    }
+                    throw AssertionError("New download text or removal of old pixels was not drawn within 5s: $text; raw frames retained")
+                }
+                val originalRow = requireNotNull(device.wait(Until.findObject(By.text(title)), 5_000)).visibleBounds
+                downloadSearch("owned missing download")
+                assertTrue(device.wait(Until.hasObject(By.text("Download items will be shown here")), 5_000))
+                assertEquals(1, downloads.tasks.value.single().finished)
+                assertEquals(GalleryDownloadState.PAUSED, downloads.tasks.value.single().state)
+                val emptyText = captureRenderedText("Download items will be shown here", "downloads-search-empty.png", originalRow)
+                downloadSearch(title.uppercase())
+                assertTrue(device.wait(Until.hasObject(By.text(title)), 5_000))
+                assertEquals("Local search must not issue site requests", beforeLocalSearch, requests.size)
+                captureRenderedText(title, "downloads-search-paused.png", emptyText)
+                downloadSearch("")
                 blockSecond.set(false)
                 click("Resume")
                 waitFor(GalleryDownloadState.COMPLETE)
@@ -385,7 +435,7 @@ class GalleryPreviewIntegrationTest {
                 assertEquals(2, requests.count { it == "/0.png" })
                 assertEquals(listOf("https://e-hentai.org/g/$gid/$token/", "https://e-hentai.org/s/${"1".repeat(10)}/$gid-1"), firstImageReferers.toList())
                 // Like Android's list, the search card now carries the downloaded mark.
-                click("Back")
+                device.pressBack()
                 device.submitSharedSearch()
                 assertTrue(device.wait(Until.hasObject(By.text(title)), 15_000))
                 assertTrue("The downloaded gallery's card has no downloaded mark", device.wait(Until.hasObject(By.desc("Downloaded")), 10_000))
