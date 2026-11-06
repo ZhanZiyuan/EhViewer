@@ -66,6 +66,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -116,6 +118,9 @@ internal fun GalleryReaderChrome(
     rtl: Boolean = false,
     status: @Composable () -> Unit = {},
     navigation: @Composable RowScope.() -> Unit = {},
+    showPageNumber: Boolean = true,
+    showSeekBar: Boolean = true,
+    background: Color = Color.Black,
     actions: @Composable RowScope.() -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -123,9 +128,45 @@ internal fun GalleryReaderChrome(
     val safe = WindowInsets.safeDrawing
     val showLabel = galleryString(Res.string.gallery_reader_show_controls)
     val hideLabel = galleryString(Res.string.gallery_reader_hide_controls)
-    Box(modifier.onKeyEvent(onKey).focusable().fillMaxSize().background(Color.Black)) {
+    val jumpLabel = galleryString(Res.string.gallery_go_to_page)
+    Box(
+        modifier.onKeyEvent(onKey).focusable().fillMaxSize().background(background).semantics {
+            if (!showPageNumber && !state.visible) {
+                // UIKit omits an unnamed container's custom actions. Expose the same
+                // real canvas action without restoring the user's hidden visual counter.
+                contentDescription = showLabel
+                role = Role.Button
+                onClick(label = showLabel) {
+                    state.visible = true
+                    true
+                }
+            }
+            customActions = buildList {
+                if (!showPageNumber && !state.visible) {
+                    add(
+                        CustomAccessibilityAction(showLabel) {
+                            state.visible = true
+                            true
+                        },
+                    )
+                }
+                if (!showSeekBar) {
+                    add(
+                        CustomAccessibilityAction(jumpLabel) {
+                            if (seekEnabled) {
+                                onJump()
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                    )
+                }
+            }
+        },
+    ) {
         content()
-        if (!state.visible) {
+        if (!state.visible && showPageNumber) {
             // PageIndicatorText uses outlined, bold numbers directly over the image. A clickable
             // wrapper keeps the shared reader's accessible reveal action without button padding.
             val indicatorStyle = TextStyle(color = Color(235, 235, 235), fontSize = MaterialTheme.typography.bodySmall.fontSize, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
@@ -170,47 +211,48 @@ internal fun GalleryReaderChrome(
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val outerKeyline = if (maxWidth >= 840.dp) 24.dp else 16.dp
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    var seeking by remember { mutableStateOf(false) }
-                    var slider by remember(index) { mutableFloatStateOf(index.toFloat()) }
-                    val jumpLabel = galleryString(Res.string.gallery_go_to_page)
-                    val seekLabel = galleryString(Res.string.gallery_reader_seek)
-                    // Original ChapterNavigator: rounded seek surface, 16/24dp outer keyline,
-                    // 16dp inner keyline and an 8dp gap above the separate bottom action bar.
-                    Row(Modifier.fillMaxWidth().padding(horizontal = outerKeyline).clip(CircleShape).background(container).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        navigation()
-                        TextButton(onClick = onJump, enabled = seekEnabled, modifier = Modifier.widthIn(max = 144.dp).semantics { contentDescription = jumpLabel }) { Text("${index + 1} / $pages", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall) }
-                        if (pages > 1) {
-                            CompositionLocalProvider(LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr) {
-                                Slider(
-                                    value = if (seeking) slider else index.toFloat(),
-                                    onValueChange = {
-                                        seeking = true
-                                        slider = it
-                                    },
-                                    onValueChangeFinished = {
-                                        seeking = false
-                                        onSeek(slider.roundToInt().coerceIn(0, pages - 1))
-                                    },
-                                    valueRange = 0f..(pages - 1).toFloat(),
-                                    // Keep the validated continuous drag path: no per-page fraction
-                                    // allocation, while arrow keys below commit exact integer pages.
-                                    enabled = seekEnabled,
-                                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp).onPreviewKeyEvent { event ->
-                                        val delta = when (event.key) {
-                                            Key.DirectionLeft -> if (rtl) 1 else -1
-                                            Key.DirectionRight -> if (rtl) -1 else 1
-                                            Key.DirectionUp -> 1
-                                            Key.DirectionDown -> -1
-                                            else -> return@onPreviewKeyEvent false
-                                        }
-                                        if (!seekEnabled) return@onPreviewKeyEvent false
-                                        if (event.type == KeyEventType.KeyDown) {
-                                            val target = (index.toLong() + delta).coerceIn(0, pages.toLong() - 1).toInt()
-                                            if (target != index) onSeek(target)
-                                        }
-                                        true
-                                    }.semantics { contentDescription = seekLabel },
-                                )
+                    if (showSeekBar) {
+                        var seeking by remember { mutableStateOf(false) }
+                        var slider by remember(index) { mutableFloatStateOf(index.toFloat()) }
+                        val seekLabel = galleryString(Res.string.gallery_reader_seek)
+                        // Original ChapterNavigator: rounded seek surface, 16/24dp outer keyline,
+                        // 16dp inner keyline and an 8dp gap above the separate bottom action bar.
+                        Row(Modifier.fillMaxWidth().padding(horizontal = outerKeyline).clip(CircleShape).background(container).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            navigation()
+                            TextButton(onClick = onJump, enabled = seekEnabled, modifier = Modifier.widthIn(max = 144.dp).semantics { contentDescription = jumpLabel }) { Text("${index + 1} / $pages", maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall) }
+                            if (pages > 1) {
+                                CompositionLocalProvider(LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr) {
+                                    Slider(
+                                        value = if (seeking) slider else index.toFloat(),
+                                        onValueChange = {
+                                            seeking = true
+                                            slider = it
+                                        },
+                                        onValueChangeFinished = {
+                                            seeking = false
+                                            onSeek(slider.roundToInt().coerceIn(0, pages - 1))
+                                        },
+                                        valueRange = 0f..(pages - 1).toFloat(),
+                                        // Keep the validated continuous drag path: no per-page fraction
+                                        // allocation, while arrow keys below commit exact integer pages.
+                                        enabled = seekEnabled,
+                                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp).onPreviewKeyEvent { event ->
+                                            val delta = when (event.key) {
+                                                Key.DirectionLeft -> if (rtl) 1 else -1
+                                                Key.DirectionRight -> if (rtl) -1 else 1
+                                                Key.DirectionUp -> 1
+                                                Key.DirectionDown -> -1
+                                                else -> return@onPreviewKeyEvent false
+                                            }
+                                            if (!seekEnabled) return@onPreviewKeyEvent false
+                                            if (event.type == KeyEventType.KeyDown) {
+                                                val target = (index.toLong() + delta).coerceIn(0, pages.toLong() - 1).toInt()
+                                                if (target != index) onSeek(target)
+                                            }
+                                            true
+                                        }.semantics { contentDescription = seekLabel },
+                                    )
+                                }
                             }
                         }
                     }

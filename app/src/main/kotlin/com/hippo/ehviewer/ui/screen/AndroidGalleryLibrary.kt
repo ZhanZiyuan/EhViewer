@@ -1,5 +1,6 @@
 package com.hippo.ehviewer.ui.screen
 
+import com.ehviewer.core.domain.reader.ReaderBackground
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
@@ -65,13 +66,20 @@ internal class AndroidReadingState(private val current: () -> GalleryDetail?) : 
     override suspend fun preferences(): ReaderPreferences = stored {
         val snapshot = Settings.snapshot()
         val mode = ReadingModeType.fromPreference(snapshot[Settings.readingMode])
-        val webtoon = current()?.let { gallery ->
-            gallery.simpleTags?.any { it.endsWith("webtoon") } == true || gallery.tagGroups.any { group -> group.tags.any { it.text == "webtoon" } }
-        } == true
+        val webtoon = currentHasWebtoonTag()
         val continuous = ReadingModeType.isWebtoon(mode) || mode == ReadingModeType.DEFAULT && webtoon
         ReaderPreferences(
             layout = if (continuous) ReadingLayout.CONTINUOUS else ReadingLayout.PAGED,
             direction = if (if (continuous) snapshot[Settings.continuousReadingRtl] else mode in setOf(ReadingModeType.DEFAULT, ReadingModeType.RIGHT_TO_LEFT)) ReadingDirection.RIGHT_TO_LEFT else ReadingDirection.LEFT_TO_RIGHT,
+            background = when (snapshot[Settings.readerTheme]) {
+                0 -> ReaderBackground.WHITE
+                2 -> ReaderBackground.GRAY
+                3 -> ReaderBackground.AUTOMATIC
+                else -> ReaderBackground.BLACK
+            },
+            showPageNumber = snapshot[Settings.showPageNumber],
+            showSeekBar = snapshot[Settings.showReaderSeekbar],
+            doubleTapToZoom = snapshot[Settings.doubleTapToZoom],
         )
     }
 
@@ -86,17 +94,37 @@ internal class AndroidReadingState(private val current: () -> GalleryDetail?) : 
     }
 
     override suspend fun setPreferences(preferences: ReaderPreferences) = stored {
+        val webtoon = currentHasWebtoonTag()
         Settings.withMutableSnapshot { snapshot ->
             val old = ReadingModeType.fromPreference(snapshot[Settings.readingMode])
-            val mode = when {
-                preferences.layout == ReadingLayout.CONTINUOUS -> old.takeIf { ReadingModeType.isWebtoon(it) } ?: ReadingModeType.WEBTOON
-                preferences.direction == ReadingDirection.RIGHT_TO_LEFT -> ReadingModeType.RIGHT_TO_LEFT
-                else -> ReadingModeType.LEFT_TO_RIGHT
+            val oldContinuous = ReadingModeType.isWebtoon(old) || old == ReadingModeType.DEFAULT && webtoon
+            val oldLayout = if (oldContinuous) ReadingLayout.CONTINUOUS else ReadingLayout.PAGED
+            val oldDirection = if (if (oldContinuous) snapshot[Settings.continuousReadingRtl] else old in setOf(ReadingModeType.DEFAULT, ReadingModeType.RIGHT_TO_LEFT)) ReadingDirection.RIGHT_TO_LEFT else ReadingDirection.LEFT_TO_RIGHT
+            // General settings must not replace the original default/vertical/webtoon mode.
+            if (preferences.layout != oldLayout || preferences.direction != oldDirection) {
+                val mode = when {
+                    preferences.layout == ReadingLayout.CONTINUOUS -> old.takeIf { ReadingModeType.isWebtoon(it) } ?: ReadingModeType.WEBTOON
+                    preferences.direction == ReadingDirection.RIGHT_TO_LEFT -> ReadingModeType.RIGHT_TO_LEFT
+                    else -> ReadingModeType.LEFT_TO_RIGHT
+                }
+                snapshot[Settings.readingMode] = mode.prefValue
+                snapshot[Settings.continuousReadingRtl] = preferences.direction == ReadingDirection.RIGHT_TO_LEFT
             }
-            snapshot[Settings.readingMode] = mode.prefValue
-            snapshot[Settings.continuousReadingRtl] = preferences.direction == ReadingDirection.RIGHT_TO_LEFT
+            snapshot[Settings.readerTheme] = when (preferences.background) {
+                ReaderBackground.WHITE -> 0
+                ReaderBackground.BLACK -> 1
+                ReaderBackground.GRAY -> 2
+                ReaderBackground.AUTOMATIC -> 3
+            }
+            snapshot[Settings.showPageNumber] = preferences.showPageNumber
+            snapshot[Settings.showReaderSeekbar] = preferences.showSeekBar
+            snapshot[Settings.doubleTapToZoom] = preferences.doubleTapToZoom
         }
     }
+
+    private fun currentHasWebtoonTag() = current()?.let { gallery ->
+        gallery.simpleTags?.any { it.endsWith("webtoon") } == true || gallery.tagGroups.any { group -> group.tags.any { it.text == "webtoon" } }
+    } == true
 
     override suspend fun savePosition(gid: Long, index: Int, pageToken: String?) = stored {
         require(gid > 0 && index >= 0 && (pageToken == null || Regex("[a-f0-9]{10}").matches(pageToken)))

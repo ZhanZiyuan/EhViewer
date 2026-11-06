@@ -222,6 +222,7 @@ internal fun GallerySettingsScreen(
                     SettingsChoice(galleryString(Res.string.gallery_reading_continuous), current.layout == ReadingLayout.CONTINUOUS, !busy) { update(current.copy(layout = ReadingLayout.CONTINUOUS)) }
                     SettingsChoice(galleryString(Res.string.gallery_reading_ltr), current.direction == ReadingDirection.LEFT_TO_RIGHT, !busy) { update(current.copy(direction = ReadingDirection.LEFT_TO_RIGHT)) }
                     SettingsChoice(galleryString(Res.string.gallery_reading_rtl), current.direction == ReadingDirection.RIGHT_TO_LEFT, !busy) { update(current.copy(direction = ReadingDirection.RIGHT_TO_LEFT)) }
+                    GalleryReaderGeneralSettings(current, !busy, ::update)
                 }
             }
             if (page == GallerySettingsPage.ADVANCED) networkPreferences?.let { GalleryNetworkSettings(it) }

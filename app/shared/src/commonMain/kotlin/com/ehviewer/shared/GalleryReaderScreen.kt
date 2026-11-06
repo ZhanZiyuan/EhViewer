@@ -63,6 +63,7 @@ import ehviewer.app.shared.generated.resources.gallery_reading_progress_save_fai
 import ehviewer.app.shared.generated.resources.gallery_reading_rtl
 import ehviewer.app.shared.generated.resources.gallery_reset_zoom
 import ehviewer.app.shared.generated.resources.gallery_retry
+import ehviewer.app.shared.generated.resources.gallery_settings
 import kotlin.math.min
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -86,6 +87,10 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
     var pan by remember { mutableStateOf(Offset.Zero) }
     var viewport by remember { mutableStateOf(IntSize.Zero) }
     var preferences by remember { mutableStateOf(ReaderPreferences()) }
+    var preferencesReady by remember { mutableStateOf(false) }
+    var pendingPreferences by remember { mutableStateOf<ReaderPreferences?>(null) }
+    var optionsOpen by remember { mutableStateOf(false) }
+    var continuousJumpRequested by remember { mutableStateOf(false) }
     var preferencesFailure by remember { mutableStateOf(false) }
     var preferencesAttempt by remember { mutableIntStateOf(0) }
     var settingsSaving by remember { mutableStateOf(false) }
@@ -107,22 +112,30 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
         }
     }
     LaunchedEffect(readerState, preferencesAttempt) {
+        preferencesReady = false
+        preferencesFailure = false
+        pendingPreferences = null
         try {
             preferences = readerState.preferences()
+            preferencesReady = true
             preferencesFailure = false
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: ReaderStateException) {
+            preferencesReady = false
             preferencesFailure = true
         }
     }
     fun changePreferences(changed: ReaderPreferences, afterSave: () -> Unit = {}) {
+        if (settingsSaving || !preferencesReady) return
+        pendingPreferences = changed
         settingsSaving = true
         scope.launch {
             try {
                 readerState.setPreferences(changed)
                 afterSave()
                 preferences = changed
+                pendingPreferences = null
                 preferencesFailure = false
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -132,6 +145,14 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                 settingsSaving = false
             }
         }
+    }
+    if (optionsOpen) {
+        GalleryReaderOptionsSheet(preferences, settingsSaving || !preferencesReady && !preferencesFailure, preferencesFailure, onChange = { changePreferences(it) }, retry = {
+            pendingPreferences?.let { changePreferences(it) } ?: run { preferencesAttempt++ }
+        }, onJump = {
+            optionsOpen = false
+            if (preferences.layout == ReadingLayout.CONTINUOUS) continuousJumpRequested = true else jumpOpen = true
+        }, onDismiss = { optionsOpen = false }, available = preferencesReady)
     }
     if (preferences.layout == ReadingLayout.CONTINUOUS) {
         val start = remember(preferences.layout) { currentUrl }
@@ -144,7 +165,7 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                         chrome.visible = false
                     }
                 }
-            })
+            }, preferences = preferences, onSettings = { optionsOpen = true }, settingsEnabled = !settingsSaving, requestPageJump = continuousJumpRequested, onPageJumpHandled = { continuousJumpRequested = false })
         }
         return
     }
@@ -218,6 +239,7 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
             }
         },
         seekEnabled = !loading && !seeking, rtl = rtl,
+        showPageNumber = preferences.showPageNumber, showSeekBar = preferences.showSeekBar, background = readerBackgroundColor(preferences.background),
         modifier = Modifier.focusRequester(focus),
         onKey = readerKey@{ event ->
             if (event.type != KeyEventType.KeyDown || seeking && event.key != Key.Escape) return@readerKey false
@@ -254,8 +276,8 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
             ReaderPageButton(if (rtl) galleryString(Res.string.gallery_previous_page) else galleryString(Res.string.gallery_next_page), (if (rtl) previous else next)?.takeUnless { seeking }, right = true, navigate = ::navigate)
         },
         actions = {
-            GalleryReaderAction(galleryString(Res.string.gallery_reading_continuous), GalleryIcons.LibraryBooks, !settingsSaving && !seeking) { changePreferences(preferences.copy(layout = ReadingLayout.CONTINUOUS)) { chrome.visible = false } }
-            GalleryReaderAction(if (rtl) galleryString(Res.string.gallery_reading_rtl) else galleryString(Res.string.gallery_reading_ltr), GalleryIcons.SwapHoriz, !settingsSaving) {
+            GalleryReaderAction(galleryString(Res.string.gallery_reading_continuous), GalleryIcons.LibraryBooks, preferencesReady && !settingsSaving && !seeking) { changePreferences(preferences.copy(layout = ReadingLayout.CONTINUOUS)) { chrome.visible = false } }
+            GalleryReaderAction(if (rtl) galleryString(Res.string.gallery_reading_rtl) else galleryString(Res.string.gallery_reading_ltr), GalleryIcons.SwapHoriz, preferencesReady && !settingsSaving) {
                 changePreferences(preferences.copy(direction = if (rtl) ReadingDirection.LEFT_TO_RIGHT else ReadingDirection.RIGHT_TO_LEFT))
             }
             GalleryReaderAction(galleryString(Res.string.gallery_reset_zoom), GalleryIcons.ZoomOutMap) {
@@ -265,26 +287,34 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
             if (original || document?.originImageUrl != null) {
                 GalleryReaderAction(if (original) galleryString(Res.string.gallery_display_image) else galleryString(Res.string.gallery_original_image), GalleryIcons.Download, !loading && !seeking) { original = !original }
             }
+            GalleryReaderAction(galleryString(Res.string.gallery_settings), GalleryIcons.Settings, !settingsSaving) { optionsOpen = true }
         },
     ) {
         Box(
             Modifier.fillMaxSize().clipToBounds().onSizeChanged { viewport = it }
-                .pointerInput(url, previous, next, rtl) {
-                    detectTapGestures(onTap = { point ->
-                        val target = if (zoom == 1f && !seeking) {
-                            when {
-                                point.x < size.width / 3f -> if (rtl) next else previous
-                                point.x > size.width * 2f / 3f -> if (rtl) previous else next
-                                else -> null
+                .pointerInput(url, previous, next, rtl, preferences.doubleTapToZoom) {
+                    detectTapGestures(
+                        onTap = { point ->
+                            val target = if (zoom == 1f && !seeking) {
+                                when {
+                                    point.x < size.width / 3f -> if (rtl) next else previous
+                                    point.x > size.width * 2f / 3f -> if (rtl) previous else next
+                                    else -> null
+                                }
+                            } else {
+                                null
+                            }
+                            if (target == null) chrome.toggle() else navigate(target)
+                        },
+                        onDoubleTap = if (preferences.doubleTapToZoom) {
+                            {
+                                zoom = if (zoom > 1f) 1f else 2f
+                                pan = Offset.Zero
                             }
                         } else {
                             null
-                        }
-                        if (target == null) chrome.toggle() else navigate(target)
-                    }, onDoubleTap = {
-                        zoom = if (zoom > 1f) 1f else 2f
-                        pan = Offset.Zero
-                    })
+                        },
+                    )
                 }
                 .transformable(
                     rememberTransformableState { centroid, scale, offset, _ ->

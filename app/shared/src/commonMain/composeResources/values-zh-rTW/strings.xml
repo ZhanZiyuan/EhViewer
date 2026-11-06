@@ -307,4 +307,13 @@
     <string name="gallery_no_torrents">沒有種子</string>
     <string name="gallery_torrent_open_failed">無法開啟種子應用程式。請複製連結或重試。</string>
     <string name="gallery_error_query">搜尋關鍵字過多。請減少關鍵字，或以引號括起片語。</string>
+    <string name="gallery_reader_pref_category_general">一般</string>
+    <string name="gallery_reader_pref_reader_theme">背景顏色</string>
+    <string name="gallery_reader_pref_show_page_number">顯示頁碼</string>
+    <string name="gallery_reader_pref_show_reader_seekbar">顯示跳頁拖動條</string>
+    <string name="gallery_reader_pref_double_tap_to_zoom">雙擊縮放</string>
+    <string name="gallery_reader_black_background">黑色</string>
+    <string name="gallery_reader_gray_background">灰色</string>
+    <string name="gallery_reader_white_background">白色</string>
+    <string name="gallery_reader_automatic_background">自動</string>
 </resources>

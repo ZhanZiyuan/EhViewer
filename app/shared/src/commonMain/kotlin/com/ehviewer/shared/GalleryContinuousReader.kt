@@ -45,6 +45,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.GalleryDetail
@@ -58,12 +59,13 @@ import ehviewer.app.shared.generated.resources.gallery_page_number
 import ehviewer.app.shared.generated.resources.gallery_reading_paged
 import ehviewer.app.shared.generated.resources.gallery_reading_progress_save_failed
 import ehviewer.app.shared.generated.resources.gallery_retry
+import ehviewer.app.shared.generated.resources.gallery_settings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit, chrome: GalleryReaderChromeState, onPaged: (String) -> Unit) {
+internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit, chrome: GalleryReaderChromeState, onPaged: (String) -> Unit, preferences: ReaderPreferences = ReaderPreferences(), onSettings: () -> Unit = {}, settingsEnabled: Boolean = true, requestPageJump: Boolean = false, onPageJumpHandled: () -> Unit = {}) {
     val first = session.content.pageIndex(initial, detail.gid)
     val list = rememberLazyListState(first)
     val scope = rememberCoroutineScope()
@@ -78,6 +80,13 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
     var jumpOrigin by remember(window) { mutableStateOf<Pair<Int, Int>?>(null) }
     var jumpTarget by remember(window) { mutableStateOf<Int?>(null) }
     var pendingPosition by remember(window) { mutableStateOf<Pair<Int, Int>?>(null) }
+    LaunchedEffect(requestPageJump) {
+        if (requestPageJump) {
+            jumpTarget = null
+            jumpOrigin = list.firstVisibleItemIndex to list.firstVisibleItemScrollOffset
+            onPageJumpHandled()
+        }
+    }
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
     val index = list.firstVisibleItemIndex
     val current = pages[index] as? ReaderPageState.Ready<GalleryMedia>
@@ -130,6 +139,7 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
         },
         onSeek = { if (it != index) pendingPosition = it to 0 },
         seekEnabled = pendingPosition == null,
+        showPageNumber = preferences.showPageNumber, showSeekBar = preferences.showSeekBar, background = readerBackgroundColor(preferences.background),
         modifier = Modifier.focusRequester(focus),
         onKey = readerKey@{ event ->
             if (event.type != KeyEventType.KeyDown) return@readerKey false
@@ -150,7 +160,10 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
                 }
             }
         },
-        actions = { GalleryReaderAction(galleryString(Res.string.gallery_reading_paged), GalleryIcons.LibraryBooks, current != null) { current?.page?.url?.let(onPaged) } },
+        actions = {
+            GalleryReaderAction(galleryString(Res.string.gallery_reading_paged), GalleryIcons.LibraryBooks, current != null && settingsEnabled) { current?.page?.url?.let(onPaged) }
+            GalleryReaderAction(galleryString(Res.string.gallery_settings), GalleryIcons.Settings, settingsEnabled, onSettings)
+        },
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val viewportHeight = maxHeight

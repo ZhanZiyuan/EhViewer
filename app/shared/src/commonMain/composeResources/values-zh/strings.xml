@@ -307,4 +307,13 @@
     <string name="gallery_no_torrents">没有种子</string>
     <string name="gallery_torrent_open_failed">无法打开种子应用。请复制链接或重试。</string>
     <string name="gallery_error_query">搜索关键词过多。请减少关键词，或用引号括起短语。</string>
+    <string name="gallery_reader_pref_category_general">通用</string>
+    <string name="gallery_reader_pref_reader_theme">背景颜色</string>
+    <string name="gallery_reader_pref_show_page_number">显示页码</string>
+    <string name="gallery_reader_pref_show_reader_seekbar">显示跳页拖动条</string>
+    <string name="gallery_reader_pref_double_tap_to_zoom">双击缩放</string>
+    <string name="gallery_reader_black_background">黑色</string>
+    <string name="gallery_reader_gray_background">灰色</string>
+    <string name="gallery_reader_white_background">白色</string>
+    <string name="gallery_reader_automatic_background">自动</string>
 </resources>

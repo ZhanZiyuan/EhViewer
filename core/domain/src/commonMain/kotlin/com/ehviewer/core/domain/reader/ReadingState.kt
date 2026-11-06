@@ -9,9 +9,16 @@ enum class ReadingLayout { PAGED, CONTINUOUS }
 enum class ReadingDirection { LEFT_TO_RIGHT, RIGHT_TO_LEFT }
 
 @Serializable
+enum class ReaderBackground { BLACK, GRAY, WHITE, AUTOMATIC }
+
+@Serializable
 data class ReaderPreferences(
     val layout: ReadingLayout = ReadingLayout.PAGED,
     val direction: ReadingDirection = ReadingDirection.LEFT_TO_RIGHT,
+    val background: ReaderBackground = ReaderBackground.BLACK,
+    val showPageNumber: Boolean = true,
+    val showSeekBar: Boolean = true,
+    val doubleTapToZoom: Boolean = true,
 )
 
 @Serializable

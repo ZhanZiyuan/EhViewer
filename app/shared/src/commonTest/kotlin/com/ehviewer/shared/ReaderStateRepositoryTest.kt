@@ -1,5 +1,6 @@
 package com.ehviewer.shared
 
+import com.ehviewer.core.domain.reader.ReaderBackground
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReadingDirection
@@ -35,6 +36,47 @@ private class ReaderTestVault : SessionVault {
 }
 
 class ReaderStateRepositoryTest {
+    @Test fun legacySchemaOneLoadsNewGeneralDefaultsWithoutRewritingProgress() = runTest {
+        val before = """{"schema":1,"preferences":{"layout":"PAGED","direction":"RIGHT_TO_LEFT"},"positions":[{"gid":5,"index":42,"pageToken":"0123456789","updatedAt":123}]}""".encodeToByteArray()
+        val vault = ReaderTestVault().apply { bytes = before.copyOf() }
+        val restored = ReaderStateRepository(vault)
+        assertEquals(ReaderPreferences(direction = ReadingDirection.RIGHT_TO_LEFT), restored.preferences())
+        assertEquals(42, restored.position(5)?.index)
+        assertContentEquals(before, vault.bytes)
+        assertEquals(0, vault.writes)
+    }
+
+    @Test fun allBackgroundsAndGeneralOptionsSurviveRecreationWithoutReplacingProgress() = runTest {
+        for (background in ReaderBackground.entries) {
+            val vault = ReaderTestVault()
+            val first = ReaderStateRepository(vault) { 123 }
+            first.savePosition(5, 42, "0123456789")
+            val preference = ReaderPreferences(ReadingLayout.CONTINUOUS, ReadingDirection.RIGHT_TO_LEFT, background, showPageNumber = false, showSeekBar = false, doubleTapToZoom = false)
+            first.setPreferences(preference)
+            val restored = ReaderStateRepository(vault)
+            assertEquals(preference, restored.preferences())
+            assertEquals(42, restored.position(5)?.index)
+            assertEquals("0123456789", restored.position(5)?.pageToken)
+        }
+    }
+
+    @Test fun failedGeneralSavePreservesActualPreferencesAndCanRetryWithoutLosingProgress() = runTest {
+        val vault = ReaderTestVault()
+        val repository = ReaderStateRepository(vault) { 123 }
+        repository.savePosition(5, 42, "0123456789")
+        val before = vault.bytes!!.copyOf()
+        val changed = ReaderPreferences(background = ReaderBackground.WHITE, showPageNumber = false, doubleTapToZoom = false)
+        vault.failWrite = true
+        assertFailsWith<ReaderStateException> { repository.setPreferences(changed) }
+        assertContentEquals(before, vault.bytes)
+        assertEquals(ReaderPreferences(), repository.preferences())
+        vault.failWrite = false
+        repository.setPreferences(changed)
+        val restored = ReaderStateRepository(vault)
+        assertEquals(changed, restored.preferences())
+        assertEquals(42, restored.position(5)?.index)
+    }
+
     @Test fun aNewStoreHasRealDefaultsWithoutWritingAnInventedHistory() = runTest {
         val vault = ReaderTestVault()
         val repository = ReaderStateRepository(vault)

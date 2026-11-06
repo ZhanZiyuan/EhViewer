@@ -591,6 +591,10 @@ class GalleryPreviewIntegrationTest {
             it[updateIntervalDays] = 0
             it[launchPage] = 8
             it[readingMode] = ReadingModeType.LEFT_TO_RIGHT.prefValue
+            it[readerTheme] = 1
+            it[showPageNumber] = true
+            it[showReaderSeekbar] = true
+            it[doubleTapToZoom] = true
         }
         runBlocking { assertNull(EhDB.getGalleryInfo(gid)) }
         try {
@@ -710,6 +714,101 @@ class GalleryPreviewIntegrationTest {
                     visible("1 / 3")
                     assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 1")), 15_000))
                     saved(0)
+                    stage = "persist original general settings through the actual shared sheet"
+                    click("Settings")
+                    click("Background color")
+                    click("White")
+                    fun awaitPreference(predicate: (com.ehviewer.core.domain.reader.ReaderPreferences) -> Boolean) = runBlocking {
+                        withTimeout(10_000) { while (!predicate(library.readerState.preferences())) delay(25) }
+                    }
+                    awaitPreference { it.background == com.ehviewer.core.domain.reader.ReaderBackground.WHITE }
+                    click("Show page number")
+                    awaitPreference { !it.showPageNumber }
+                    click("Show page jumping seekbar")
+                    awaitPreference { !it.showSeekBar }
+                    click("Double tap to zoom")
+                    awaitPreference { !it.doubleTapToZoom }
+                    assertTrue("Committed switches did not update the actual sheet", device.wait(Until.hasObject(By.checkable(true).checked(false).enabled(true).hasDescendant(By.text("Double tap to zoom"))), 5_000))
+                    device.waitForIdle(5_000)
+                    assertTrue(device.takeScreenshot(File(readerCaptures, "reader-general-white-options.png")))
+                    device.pressBack()
+                    val canvas = checkNotNull(device.wait(Until.findObject(By.desc("Gallery page 1")), 15_000)).visibleBounds
+                    assertFalse("Hidden seekbar still renders", device.hasObject(By.desc("Seek page")))
+                    device.click(canvas.centerX(), canvas.centerY())
+                    assertTrue("Reader controls did not hide", device.wait(Until.gone(By.desc("Settings")), 5_000))
+                    assertFalse("Hidden page indicator still renders", device.hasObject(By.text("1 / 3")))
+                    // A 2:1 owned bitmap leaves this real letterbox pixel blank at 1x, and
+                    // fills it at 2x. Check presented pixels rather than an invented zoom flag.
+                    device.waitForIdle(5_000)
+                    val unoccluded = checkNotNull(device.wait(Until.findObject(By.desc("Gallery page 1")), 15_000)).visibleBounds
+                    val fitWidth = minOf(unoccluded.width().toFloat(), unoccluded.height() * 2f)
+                    val fitHeight = fitWidth / 2f
+                    val probe = if (unoccluded.height() > fitHeight) {
+                        val offset = (fitHeight / 2 + minOf(fitHeight, unoccluded.height() / 2f)) / 2
+                        Point(unoccluded.centerX(), unoccluded.centerY() + offset.toInt())
+                    } else {
+                        val offset = (fitWidth / 2 + minOf(fitWidth, unoccluded.width() / 2f)) / 2
+                        Point(unoccluded.centerX() + offset.toInt(), unoccluded.centerY())
+                    }
+                    assertTrue("Owned image needs an actual letterbox sample", unoccluded.contains(probe.x, probe.y))
+                    fun awaitZoomed(zoomed: Boolean) = runBlocking {
+                        withTimeout(10_000) {
+                            while (true) {
+                                val screenshot = checkNotNull(device.takeScreenshot())
+                                val pixel = try {
+                                    screenshot.getPixel(probe.x, probe.y)
+                                } finally {
+                                    screenshot.recycle()
+                                }
+                                val white = Color.red(pixel) > 245 && Color.green(pixel) > 245 && Color.blue(pixel) > 245
+                                val image = Color.green(pixel) < 30 && maxOf(Color.red(pixel), Color.blue(pixel)) > 50
+                                if (if (zoomed) image else white) break
+                                delay(50)
+                            }
+                        }
+                    }
+                    awaitZoomed(false)
+                    device.waitForIdle(5_000)
+                    assertTrue(device.takeScreenshot(File(readerCaptures, "reader-general-white-no-indicator.png")))
+                    device.click(canvas.centerX(), canvas.centerY())
+                    SystemClock.sleep(70)
+                    device.click(canvas.centerX(), canvas.centerY())
+                    device.waitForIdle(5_000)
+                    awaitZoomed(false)
+                    // Recreate the entire Activity/composition, then reattach the same real
+                    // library; Android's DataStore, rather than local Compose state, must win.
+                    device.pressBack()
+                    visible("Read")
+                    scenario.recreate()
+                    scenario.onActivity { activity ->
+                        activity.setContent {
+                            val scope = rememberCoroutineScope()
+                            GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, remember { AndroidGalleryDownloads(scope) }, remember { androidGalleryLanguageSettings() })
+                        }
+                    }
+                    device.submitSharedSearch()
+                    click(title)
+                    click("Read")
+                    assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 1")), 15_000))
+                    awaitZoomed(false)
+                    assertFalse(device.hasObject(By.text("1 / 3")))
+                    device.click(canvas.centerX(), canvas.centerY())
+                    click("Settings")
+                    click("Double tap to zoom")
+                    awaitPreference { it.doubleTapToZoom }
+                    assertTrue("Enabled zoom did not render in the sheet", device.wait(Until.hasObject(By.checkable(true).checked(true).enabled(true).hasDescendant(By.text("Double tap to zoom"))), 5_000))
+                    device.pressBack()
+                    // Modal dismissal is asynchronous. Do not send the canvas tap to the
+                    // outgoing modal window, while retaining the original hide/zoom checks.
+                    assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 1")), 15_000))
+                    device.waitForIdle(5_000)
+                    device.click(canvas.centerX(), canvas.centerY())
+                    assertTrue(device.wait(Until.gone(By.desc("Settings")), 5_000))
+                    device.click(canvas.centerX(), canvas.centerY())
+                    SystemClock.sleep(70)
+                    device.click(canvas.centerX(), canvas.centerY())
+                    awaitZoomed(true)
+                    saved(0)
                 } catch (failure: Throwable) {
                     device.dumpWindowHierarchy(File(context.cacheDir, "reader-jump-$gid-failure.xml"))
                     device.takeScreenshot(File(context.cacheDir, "reader-jump-$gid-failure.png"))
@@ -735,6 +834,10 @@ class GalleryPreviewIntegrationTest {
                 restore(launchPage)
                 restore(readingMode)
                 restore(continuousReadingRtl)
+                restore(readerTheme)
+                restore(showPageNumber)
+                restore(showReaderSeekbar)
+                restore(doubleTapToZoom)
             }
             Settings.appLinkVerifyTip = tip
             with(Settings) {

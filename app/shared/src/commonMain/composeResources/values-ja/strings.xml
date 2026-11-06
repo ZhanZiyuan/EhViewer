@@ -307,4 +307,13 @@
     <string name="gallery_no_torrents">Torrent なし</string>
     <string name="gallery_torrent_open_failed">Torrent アプリを開けませんでした。リンクをコピーするか、もう一度お試しください。</string>
     <string name="gallery_error_query">検索キーワードが多すぎます。単語を減らすか、フレーズを引用符で囲んでください。</string>
+    <string name="gallery_reader_pref_category_general">一般</string>
+    <string name="gallery_reader_pref_reader_theme">背景の色</string>
+    <string name="gallery_reader_pref_show_page_number">ページ番号を表示</string>
+    <string name="gallery_reader_pref_show_reader_seekbar">ページジャンプシークバーを表示</string>
+    <string name="gallery_reader_pref_double_tap_to_zoom">ダブルタップで拡大</string>
+    <string name="gallery_reader_black_background">ブラック</string>
+    <string name="gallery_reader_gray_background">グレー</string>
+    <string name="gallery_reader_white_background">ホワイト</string>
+    <string name="gallery_reader_automatic_background">自動</string>
 </resources>

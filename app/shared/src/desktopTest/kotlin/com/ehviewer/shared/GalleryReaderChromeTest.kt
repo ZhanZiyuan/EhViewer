@@ -48,6 +48,39 @@ import org.jetbrains.skia.ImageInfo
 class GalleryReaderChromeTest {
     @Test
     @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
+    fun hiddenIndicatorAndSeekbarKeepTheFullCanvasAndAccessibleRevealAndJump() {
+        val state = GalleryReaderChromeState()
+        var jumps = 0
+        val scene = ImageComposeScene(411, 720, Density(1f)) {
+            GalleryTheme(false, null) {
+                GalleryReaderChrome("Gallery", 0, 61, state, {}, { jumps++ }, {}, showPageNumber = false, showSeekBar = false, background = Color.White, actions = {}) {}
+            }
+        }
+        fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
+        try {
+            repeat(30) { scene.render(it * 16_666_667L).close() }
+            Bitmap().use { pixels ->
+                pixels.allocN32Pixels(411, 720)
+                scene.render(31 * 16_666_667L).use { it.readPixels(pixels) }
+                assertEquals(0xffffffff.toInt(), pixels.getColor(205, 710), "Hiding the indicator preserves the selected real canvas background")
+            }
+            val actions = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.flatMap { it.config.getOrNull(SemanticsActions.CustomActions).orEmpty() }
+            assertEquals(2, actions.size)
+            val canvas = scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.single { it.config.getOrNull(SemanticsActions.CustomActions)?.size == 2 }
+            assertTrue(canvas.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().isNotEmpty(), "UIKit must expose a named canvas rather than omit an unnamed container's actions")
+            assertTrue(requireNotNull(canvas.config[SemanticsActions.OnClick].action).invoke())
+            assertTrue(state.visible, "Hiding page numbers must retain an accessible way to reveal controls")
+            assertTrue(actions[1].action())
+            assertEquals(1, jumps)
+            repeat(30) { scene.render((32 + it) * 16_666_667L).close() }
+            assertFalse(scene.semanticsOwners.flatMap { nodes(it.rootSemanticsNode) }.any { it.config.contains(SemanticsProperties.ProgressBarRangeInfo) }, "A disabled seekbar must actually leave the rendered controls")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
+    @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
     fun hiddenPageIndicatorUsesOutlinedTextAtTheImageEdgeAndStillRevealsControls() {
         val state = GalleryReaderChromeState()
         var reveal = ""

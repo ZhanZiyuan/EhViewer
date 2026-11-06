@@ -310,4 +310,13 @@
     <string name="gallery_no_torrents">No torrents</string>
     <string name="gallery_torrent_open_failed">No torrent application could be opened. Copy the link or try again.</string>
     <string name="gallery_error_query">You provided too many keywords. Use fewer keywords, or combine keywords with quotes.</string>
+    <string name="gallery_reader_pref_category_general">General</string>
+    <string name="gallery_reader_pref_reader_theme">Background color</string>
+    <string name="gallery_reader_pref_show_page_number">Show page number</string>
+    <string name="gallery_reader_pref_show_reader_seekbar">Show page jumping seekbar</string>
+    <string name="gallery_reader_pref_double_tap_to_zoom">Double tap to zoom</string>
+    <string name="gallery_reader_black_background">Black</string>
+    <string name="gallery_reader_gray_background">Gray</string>
+    <string name="gallery_reader_white_background">White</string>
+    <string name="gallery_reader_automatic_background">Auto</string>
 </resources>

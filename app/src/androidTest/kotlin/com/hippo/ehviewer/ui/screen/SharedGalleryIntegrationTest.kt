@@ -11,6 +11,7 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.ehviewer.core.data.model.asEntity
+import com.ehviewer.core.domain.reader.ReaderBackground
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReadingDirection
@@ -213,10 +214,29 @@ class SharedGalleryIntegrationTest {
             reader.setPreferences(paged)
             assertEquals(paged, AndroidReadingState { null }.preferences())
             assertEquals(ReadingModeType.RIGHT_TO_LEFT.prefValue, Settings.snapshot()[Settings.readingMode])
+            // Changing general options must preserve original modes outside the two common layouts.
+            for (mode in ReadingModeType.entries) {
+                Settings.withMutableSnapshot { it[Settings.readingMode] = mode.prefValue }
+                for ((background, originalValue) in listOf(ReaderBackground.BLACK to 1, ReaderBackground.GRAY to 2, ReaderBackground.WHITE to 0, ReaderBackground.AUTOMATIC to 3)) {
+                    val changed = reader.preferences().copy(background = background, showPageNumber = false, showSeekBar = false, doubleTapToZoom = false)
+                    reader.setPreferences(changed)
+                    assertEquals("General options replaced the original $mode", mode.prefValue, Settings.snapshot()[Settings.readingMode])
+                    assertEquals(originalValue, Settings.snapshot()[Settings.readerTheme])
+                    assertEquals(changed, AndroidReadingState { null }.preferences())
+                    assertEquals(5, EhDB.getReadProgress(fixture.gid))
+                }
+            }
         } finally {
             Settings.withMutableSnapshot { snapshot ->
-                if (Settings.readingMode in before) snapshot[Settings.readingMode] = before[Settings.readingMode] else snapshot.remove(Settings.readingMode)
-                if (Settings.continuousReadingRtl in before) snapshot[Settings.continuousReadingRtl] = before[Settings.continuousReadingRtl] else snapshot.remove(Settings.continuousReadingRtl)
+                fun <T> restore(pref: PrefDelegate<T>) {
+                    if (pref in before) snapshot[pref] = before[pref] else snapshot.remove(pref)
+                }
+                restore(Settings.readingMode)
+                restore(Settings.continuousReadingRtl)
+                restore(Settings.readerTheme)
+                restore(Settings.showPageNumber)
+                restore(Settings.showReaderSeekbar)
+                restore(Settings.doubleTapToZoom)
             }
             EhDB.deleteHistoryInfo(fixture.asEntity())
         }
