@@ -16,6 +16,13 @@ import kotlin.io.path.readBytes
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
+fun verifyStagedDomainTests(xml: List<ByteArray>, expected: Map<String, Any?>, jvm: Boolean, repository: Path = root) {
+    verifyDomainTests(expected, jvm = jvm)
+    val sources = filesBelow(repository.resolve("core/domain/src/commonTest"), ".kt").size
+    val actual = sharedHostTestEvidence(xml, sources)
+    require(actual == expected) { "Actual domain test XML differs from shared producer: ${if (jvm) "domain-jvm" else "domain"}" }
+}
+
 /** Actual current-stage installation bytes and native receipts, deliberately short of final delivery. */
 fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<String, Any?> {
     val source = command("git", "rev-parse", "HEAD").trim()
@@ -68,14 +75,11 @@ fun stagedPackageCheck(input: Path, output: Path, tools: AndroidTools): Map<Stri
     verifyProductTestReceipts(shared, path("shared", "shared-core"))
     val domain = shared["domain_jvm"].obj()
     require(domain["artifact"] == "domain-jvm.jar") { "Missing actual portable domain JAR" }
-    verifyDomainTests(domain["host_tests"].obj(), jvm = true)
-    verifyDomainTests(shared["modules"].obj().getValue("domain").obj()["host_tests"].obj())
     for ((name, expected) in listOf(
         "domain" to shared["modules"].obj().getValue("domain").obj()["host_tests"].obj(),
         "domain-jvm" to domain["host_tests"].obj(),
     )) {
-        val actual = sharedHostTestEvidence(filesBelow(path("shared", "shared-core/tests/$name"), ".xml").map(Path::readBytes), 2)
-        require(actual == expected) { "Actual domain test XML differs from shared producer: $name" }
+        verifyStagedDomainTests(filesBelow(path("shared", "shared-core/tests/$name"), ".xml").map(Path::readBytes), expected, jvm = name == "domain-jvm")
     }
     val domainJar = path("shared", "shared-core/domain-jvm.jar")
     checkedDomainJvmArtifact(domainJar, domain)
