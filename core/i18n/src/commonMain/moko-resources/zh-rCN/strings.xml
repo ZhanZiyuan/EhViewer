@@ -14,6 +14,7 @@
   ~ limitations under the License.
   -->
 <resources>
+    <string name="browse_galleries">浏览图库</string>
     <!-- Theme -->
     <string name="homepage">主页</string>
     <string name="subscription">订阅</string>

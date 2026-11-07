@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.pm.verify.domain.DomainVerificationManager
 import android.content.pm.verify.domain.DomainVerificationUserState.DOMAIN_STATE_NONE
 import android.os.Build
+import android.os.SystemClock
 import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.view.ViewCompat
@@ -12,6 +13,8 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.UiScrollable
@@ -58,6 +61,19 @@ class AboutUpdateTest {
         fun clickPreference(text: String) {
             assertTrue("Click rejected: $text", preference(text).accessibilityNodeInfo.performAction(AccessibilityNodeInfo.ACTION_CLICK))
         }
+        fun revealPreference(text: String) {
+            val deadline = SystemClock.uptimeMillis() + 10_000
+            while (!device.hasObject(By.text(text))) {
+                val remaining = deadline - SystemClock.uptimeMillis()
+                assertTrue("Missing visible preference: $text", remaining > 0)
+                val scrollable = requireNotNull(device.wait(Until.findObject(By.scrollable(true)), minOf(remaining, 1_000)))
+                try {
+                    scrollable.scroll(Direction.DOWN, 0.7f)
+                } catch (_: StaleObjectException) {
+                    // Reacquire after recomposition within the same bounded reveal operation.
+                }
+            }
+        }
         fun toggleChannel(expected: Boolean) {
             // Observe the initial value before dispatching the action. Keep collection off the
             // instrumentation event loop, which UiAutomator blocks while waiting for UI events.
@@ -84,6 +100,8 @@ class AboutUpdateTest {
         Settings.edit(blocking = true) {
             it[needSignIn] = false
             it[updateIntervalDays] = 0
+            // The shared search has its own Settings action; this test targets the original updater.
+            it[launchPage] = 0
         }
         try {
             // MainActivity is singleTask. Give this test its own fresh activity stack without
@@ -120,15 +138,11 @@ class AboutUpdateTest {
                     clickPreference(context.getString(R.string.settings))
                     clickPreference(context.getString(R.string.settings_about))
                     assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.settings_about_declaration))), 10_000))
-                    if (!device.hasObject(By.text(channelTitle))) {
-                        assertTrue(UiScrollable(UiSelector().scrollable(true)).scrollTextIntoView(channelTitle))
-                    }
+                    revealPreference(channelTitle)
                     assertFalse(device.hasObject(By.textContains("GitHub token")))
                     toggleChannel(!channel)
                     toggleChannel(channel)
-                    if (!device.hasObject(By.text(context.getString(R.string.settings_about_check_for_updates)))) {
-                        assertTrue(UiScrollable(UiSelector().scrollable(true)).scrollTextIntoView(context.getString(R.string.settings_about_check_for_updates)))
-                    }
+                    revealPreference(context.getString(R.string.settings_about_check_for_updates))
                     assertNotNull(device.findObject(By.text(context.getString(R.string.settings_about_check_for_updates))))
                     assertFalse(device.hasObject(By.textContains("GitHub token")))
                 } finally {
@@ -144,6 +158,7 @@ class AboutUpdateTest {
                 }
                 restore(needSignIn)
                 restore(updateIntervalDays)
+                restore(launchPage)
                 restore(useCIUpdateChannel)
             }
             with(Settings) {

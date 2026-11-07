@@ -1,0 +1,16 @@
+[package]
+name = "ehviewer_session"
+version = "0.0.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+ehviewer_core = { path = "../core" }
+ring = "=0.17.14"
+zeroize = "=1.9.0"
+
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))'.dependencies]
+keyring = { version = "=4.2.0", default-features = true }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+security-framework = "=3.7.0"

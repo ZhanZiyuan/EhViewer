@@ -1,0 +1,388 @@
+package com.ehviewer.shared
+
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
+import com.ehviewer.core.domain.reader.ReaderMode
+import com.ehviewer.core.domain.reader.ReaderPreferences
+import com.ehviewer.core.domain.reader.ReaderStateException
+import com.ehviewer.core.domain.reader.ReaderStateStore
+import com.ehviewer.core.domain.reader.ReadingPosition
+import com.ehviewer.core.model.GalleryDetail
+import com.ehviewer.core.network.GalleryLibrary
+import com.ehviewer.core.network.gallery.GalleryFailure
+import com.ehviewer.core.network.gallery.GalleryImagePage
+import com.ehviewer.core.network.gallery.GalleryRequestException
+import com.ehviewer.shared.reader.readingResumeUrl
+import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_back
+import ehviewer.app.shared.generated.resources.gallery_display_image
+import ehviewer.app.shared.generated.resources.gallery_gallery_page
+import ehviewer.app.shared.generated.resources.gallery_original_image
+import ehviewer.app.shared.generated.resources.gallery_reading_ltr
+import ehviewer.app.shared.generated.resources.gallery_reading_preferences_unavailable
+import ehviewer.app.shared.generated.resources.gallery_reading_progress_save_failed
+import ehviewer.app.shared.generated.resources.gallery_reading_rtl
+import ehviewer.app.shared.generated.resources.gallery_reset_zoom
+import ehviewer.app.shared.generated.resources.gallery_retry
+import ehviewer.app.shared.generated.resources.gallery_settings
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
+
+/** A bounded, cancellable online page reader shared by touch and desktop applications. */
+@Composable
+internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit) {
+    val chrome = rememberGalleryReaderChromeState()
+    GalleryImmersive(chrome.visible)
+    var url by remember(initial) { mutableStateOf(initial) }
+    var reloadKey by remember(url) { mutableStateOf<String?>(null) }
+    var original by remember(url) { mutableStateOf(false) }
+    var document by remember(url) { mutableStateOf<GalleryImagePage?>(null) }
+    var bitmap by remember(url) { mutableStateOf<GalleryMedia?>(null) }
+    var failure by remember { mutableStateOf<GalleryFailure?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    var attempt by remember { mutableIntStateOf(0) }
+    var zoom by remember { mutableFloatStateOf(1f) }
+    var pan by remember { mutableStateOf(Offset.Zero) }
+    var viewport by remember { mutableStateOf(IntSize.Zero) }
+    var preferences by remember { mutableStateOf(ReaderPreferences()) }
+    var preferencesReady by remember { mutableStateOf(false) }
+    var pendingPreferences by remember { mutableStateOf<ReaderPreferences?>(null) }
+    var optionsOpen by remember { mutableStateOf(false) }
+    var continuousJumpRequested by remember { mutableStateOf(false) }
+    var preferencesFailure by remember { mutableStateOf(false) }
+    var preferencesAttempt by remember { mutableIntStateOf(0) }
+    var settingsSaving by remember { mutableStateOf(false) }
+    var saveFailure by remember(url) { mutableStateOf(false) }
+    var jumpOpen by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val focus = remember { FocusRequester() }
+    val currentUrl = url
+    val index = session.content.pageIndex(currentUrl, detail.gid)
+    val webtoon = remember(detail) { detail.hasReaderWebtoonTag() }
+    val mode = preferences.resolvedMode(webtoon)
+    val rtl = mode == ReaderMode.RIGHT_TO_LEFT
+    val vertical = mode == ReaderMode.VERTICAL
+    val mediaProjection = rememberGalleryReaderMedia(bitmap, preferences.cropBorders)
+    LaunchedEffect(mediaProjection.media) {
+        zoom = 1f
+        pan = Offset.Zero
+    }
+    fun transform(factor: Float, centroid: Offset = Offset.Unspecified, delta: Offset = Offset.Zero) {
+        val image = mediaProjection.media ?: return
+        val changed = readerZoom(ReaderZoom(zoom, pan), viewport, IntSize(image.width, image.height), factor, centroid, delta)
+        zoom = changed.scale
+        pan = changed.pan
+    }
+    suspend fun saveProgress() {
+        try {
+            readerState.savePosition(detail.gid, index, currentUrl.substringAfter("/s/").substringBefore('/'))
+            saveFailure = false
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: ReaderStateException) {
+            saveFailure = true
+        }
+    }
+    LaunchedEffect(readerState, preferencesAttempt) {
+        preferencesReady = false
+        preferencesFailure = false
+        pendingPreferences = null
+        try {
+            preferences = readerState.preferences()
+            preferencesReady = true
+            preferencesFailure = false
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: ReaderStateException) {
+            preferencesReady = false
+            preferencesFailure = true
+        }
+    }
+    fun changePreferences(changed: ReaderPreferences, afterSave: () -> Unit = {}) {
+        if (settingsSaving || !preferencesReady) return
+        pendingPreferences = changed
+        settingsSaving = true
+        scope.launch {
+            try {
+                readerState.setPreferences(changed)
+                afterSave()
+                preferences = changed
+                pendingPreferences = null
+                preferencesFailure = false
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: ReaderStateException) {
+                preferencesFailure = true
+            } finally {
+                settingsSaving = false
+            }
+        }
+    }
+    fun changeMode(selected: ReaderMode, position: String = currentUrl) {
+        changePreferences(preferences.withMode(selected, webtoon)) {
+            // Continuous reading owns its own visible position. Transfer its actual
+            // decoded URL before replacing that layout, rather than reopen the old page.
+            url = position
+            zoom = 1f
+            pan = Offset.Zero
+        }
+    }
+    GalleryReaderTheme(preferences.background) {
+        if (optionsOpen) {
+            GalleryReaderOptionsSheet(preferences, settingsSaving || !preferencesReady && !preferencesFailure, preferencesFailure, onChange = { changePreferences(it) }, retry = {
+                pendingPreferences?.let { changePreferences(it) } ?: run { preferencesAttempt++ }
+            }, onJump = {
+                optionsOpen = false
+                if (mode.continuous) continuousJumpRequested = true else jumpOpen = true
+            }, onDismiss = { optionsOpen = false }, available = preferencesReady)
+        }
+        if (mode.continuous) {
+            val start = remember { currentUrl }
+            Column(Modifier.fillMaxSize()) {
+                if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
+                GalleryContinuousReader(session, detail, start, readerState, onBack, chrome, onMode = { selected, position -> changeMode(selected, position) }, onCrop = { changePreferences(preferences.copy(cropBorders = !preferences.cropBorders)) }, preferences = preferences, onSettings = { optionsOpen = true }, settingsEnabled = preferencesReady && !settingsSaving, requestPageJump = continuousJumpRequested, onPageJumpHandled = { continuousJumpRequested = false })
+            }
+            return@GalleryReaderTheme
+        }
+        fun target(link: String?, delta: Int): String? = link?.takeIf { session.content.pageIndex(it, detail.gid) == index + delta && index + delta in 0 until detail.pages }
+        val previous = target(document?.previousPageUrl, -1)
+        val next = target(document?.nextPageUrl, 1)
+        LaunchedEffect(currentUrl, attempt, original) {
+            loading = true
+            document = null
+            bitmap = null
+            failure = null
+            zoom = 1f
+            pan = Offset.Zero
+            try {
+                val page = session.content.page(currentUrl, detail.gid, reloadKey)
+                document = page
+                val bytes = if (original) session.content.originalImage(page, currentUrl, detail.gid) else session.content.image(page, currentUrl, detail.gid)
+                bitmap = decodeGalleryMedia(bytes)
+                saveProgress()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: GalleryRequestException) {
+                failure = error.failure
+            } finally {
+                loading = false
+            }
+        }
+        LaunchedEffect(Unit) { focus.requestFocus() }
+        var pendingSeek by remember { mutableStateOf<Int?>(null) }
+        var seekFailure by remember { mutableStateOf<GalleryFailure?>(null) }
+        var seekAttempt by remember { mutableIntStateOf(0) }
+        val seeking = pendingSeek != null && seekFailure == null
+        if (jumpOpen) {
+            GalleryReaderPageDialog(index, detail.pages, onJump = { target ->
+                if (target != index) {
+                    val resolved = readingResumeUrl(session.content, detail, ReadingPosition(detail.gid, target, null, 0))
+                    currentCoroutineContext().ensureActive()
+                    pendingSeek = null
+                    seekFailure = null
+                    url = resolved
+                }
+            }, onDismiss = { jumpOpen = false })
+        }
+        LaunchedEffect(pendingSeek, seekAttempt) {
+            val target = pendingSeek ?: return@LaunchedEffect
+            seekFailure = null
+            try {
+                val resolved = readingResumeUrl(session.content, detail, ReadingPosition(detail.gid, target, null, 0))
+                currentCoroutineContext().ensureActive()
+                url = resolved
+                pendingSeek = null
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: GalleryRequestException) {
+                currentCoroutineContext().ensureActive()
+                seekFailure = error.failure
+            }
+        }
+        fun navigate(target: String) {
+            pendingSeek = null
+            seekFailure = null
+            url = target
+        }
+        GalleryReaderChrome(
+            title = detail.title.orEmpty(), index = index, pages = detail.pages, state = chrome,
+            onBack = onBack, onJump = { jumpOpen = true },
+            onSeek = {
+                if (it != index) {
+                    seekFailure = null
+                    pendingSeek = it
+                }
+            },
+            seekEnabled = !loading && !seeking, rtl = rtl,
+            showPageNumber = preferences.showPageNumber, showSeekBar = preferences.showSeekBar, background = readerBackgroundColor(preferences.background),
+            modifier = Modifier.focusRequester(focus),
+            onKey = readerKey@{ event ->
+                if (event.type != KeyEventType.KeyDown || seeking && event.key != Key.Escape) return@readerKey false
+                readerZoomAction(event)?.let { action ->
+                    if (bitmap == null || loading) return@readerKey false
+                    when (action) {
+                        ReaderZoomAction.IN -> transform(1.25f)
+                        ReaderZoomAction.OUT -> transform(0.8f)
+                        ReaderZoomAction.RESET -> {
+                            zoom = 1f
+                            pan = Offset.Zero
+                        }
+                    }
+                    return@readerKey true
+                }
+                when (event.key) {
+                    Key.Escape -> onBack()
+                    Key.Spacebar -> chrome.toggle()
+                    Key.DirectionLeft -> (if (rtl) next else previous)?.let(::navigate) ?: return@readerKey false
+                    Key.DirectionRight -> (if (rtl) previous else next)?.let(::navigate) ?: return@readerKey false
+                    Key.DirectionUp -> if (vertical) previous?.let(::navigate) ?: return@readerKey false else return@readerKey false
+                    Key.DirectionDown -> if (vertical) next?.let(::navigate) ?: return@readerKey false else return@readerKey false
+                    Key.PageUp -> previous?.let(::navigate) ?: return@readerKey false
+                    Key.PageDown -> next?.let(::navigate) ?: return@readerKey false
+                    else -> return@readerKey false
+                }
+                true
+            },
+            status = {
+                if (loading || seeking) LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
+                if (saveFailure) ReaderStateError(galleryString(Res.string.gallery_reading_progress_save_failed)) { scope.launch { saveProgress() } }
+                seekFailure?.let {
+                    GalleryError(it) {
+                        seekFailure = null
+                        seekAttempt++
+                    }
+                }
+                failure?.let {
+                    GalleryError(it) {
+                        reloadKey = document?.skipHathKey
+                        attempt++
+                    }
+                }
+            },
+            actions = {
+                GalleryReaderModeButton(preferences, preferencesReady && !settingsSaving && !seeking && !loading && bitmap != null, onSelect = { changeMode(it) })
+                // Retain the existing horizontal-direction shortcut during the
+                // staged toolbar migration; it is inapplicable to vertical paging.
+                GalleryReaderAction(galleryString(if (rtl) Res.string.gallery_reading_rtl else Res.string.gallery_reading_ltr), GalleryIcons.SwapHoriz, preferencesReady && !settingsSaving && !vertical) {
+                    changeMode(if (rtl) ReaderMode.LEFT_TO_RIGHT else ReaderMode.RIGHT_TO_LEFT)
+                }
+                GalleryReaderCropButton(preferences.cropBorders, preferencesReady && !settingsSaving && bitmap != null) { changePreferences(preferences.copy(cropBorders = !preferences.cropBorders)) }
+                if (original || document?.originImageUrl != null) {
+                    GalleryReaderAction(if (original) galleryString(Res.string.gallery_display_image) else galleryString(Res.string.gallery_original_image), GalleryIcons.Download, !loading && !seeking) { original = !original }
+                }
+                GalleryReaderAction(galleryString(Res.string.gallery_settings), GalleryIcons.SettingsOutlined, !settingsSaving) { optionsOpen = true }
+            },
+        ) {
+            GalleryReaderPagedCanvas(index, detail.pages, rtl, bitmap != null && !loading && !seeking && zoom == 1f, vertical = vertical, onPageRequested = { selected ->
+                val target = when (selected) {
+                    index - 1 -> previous
+                    index + 1 -> next
+                    else -> null
+                }
+                if (target != null) navigate(target)
+                target != null
+            }) { page ->
+                if (page != index) {
+                    // Unrequested neighbors retain the real canvas, not a fabricated image
+                    // or loading claim. Network/decode starts only after a valid settled link.
+                    Box(Modifier.fillMaxSize())
+                    return@GalleryReaderPagedCanvas
+                }
+                Box(
+                    Modifier.fillMaxSize().clipToBounds().onSizeChanged { viewport = it }
+                        .galleryReaderWheelZoom(bitmap != null && !loading && !seeking) { factor, position -> transform(factor, position) }
+                        .pointerInput(url, previous, next, rtl, vertical, preferences.doubleTapToZoom) {
+                            detectTapGestures(
+                                onTap = { point ->
+                                    val target = if (zoom == 1f && !seeking) {
+                                        val coordinate = if (vertical) point.y else point.x
+                                        val extent = if (vertical) size.height else size.width
+                                        when {
+                                            coordinate < extent / 3f -> if (rtl) next else previous
+                                            coordinate > extent * 2f / 3f -> if (rtl) previous else next
+                                            else -> null
+                                        }
+                                    } else {
+                                        null
+                                    }
+                                    if (target == null) chrome.toggle() else navigate(target)
+                                },
+                                onDoubleTap = if (preferences.doubleTapToZoom) {
+                                    {
+                                        zoom = if (zoom > 1f) 1f else 2f
+                                        pan = Offset.Zero
+                                    }
+                                } else {
+                                    null
+                                },
+                            )
+                        }
+                        .transformable(
+                            rememberTransformableState { centroid, scale, offset, _ ->
+                                transform(scale, centroid, offset)
+                            },
+                            canPan = { zoom > 1f },
+                            enabled = bitmap != null && !loading && !seeking,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    mediaProjection.media?.let {
+                        GalleryReaderMediaImage(
+                            mediaProjection,
+                            galleryString(Res.string.gallery_gallery_page, index + 1),
+                            Modifier.fillMaxSize().graphicsLayer {
+                                scaleX = zoom
+                                scaleY = zoom
+                                translationX = pan.x
+                                translationY = pan.y
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReaderStateError(message: String, retry: () -> Unit) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(message, Modifier.weight(1f))
+        TextButton(onClick = retry) { Text(galleryString(Res.string.gallery_retry)) }
+    }
+}

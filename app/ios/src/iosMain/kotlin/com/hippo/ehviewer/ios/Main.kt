@@ -1,0 +1,241 @@
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, kotlinx.cinterop.BetaInteropApi::class)
+
+package com.hippo.ehviewer.ios
+
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import com.ehviewer.core.data.DataStoreGalleryFavoritePreferences
+import com.ehviewer.core.data.DataStoreGalleryListPreferences
+import com.ehviewer.core.data.DataStoreLanguageStore
+import com.ehviewer.core.data.DataStoreNetworkPreferences
+import com.ehviewer.core.data.DataStoreStoragePreferences
+import com.ehviewer.core.data.FileArchiveLibrary
+import com.ehviewer.core.data.RoomGalleryDownloadStorage
+import com.ehviewer.core.data.RoomGalleryHistoryStore
+import com.ehviewer.core.data.RoomGalleryLocalFavorites
+import com.ehviewer.core.database.DataDirectory
+import com.ehviewer.core.database.EhDatabase
+import com.ehviewer.core.database.Schema17to18
+import com.ehviewer.core.database.download.DownloadDatabase
+import com.ehviewer.core.database.ownedRoomDb
+import com.ehviewer.core.network.GallerySession
+import com.ehviewer.shared.AppleGalleryLoginBrowser
+import com.ehviewer.shared.ArchiveLibraryScreen
+import com.ehviewer.shared.GalleryBuildInfo
+import com.ehviewer.shared.GalleryFavoriteControls
+import com.ehviewer.shared.GallerySearchScreen
+import com.ehviewer.shared.galleryViewController
+import com.ehviewer.shared.reader.ReaderStateRepository
+import com.ehviewer.shared.settings.GalleryAppearanceRepository
+import com.ehviewer.shared.settings.GalleryLanguageSettings
+import com.ehviewer.shared.verifyAccountProduct
+import com.ehviewer.shared.verifyAnimatedGalleryProduct
+import com.ehviewer.shared.verifyAppleBrowserCookieTransfer
+import com.ehviewer.shared.verifyGalleryProduct
+import com.ehviewer.shared.verifyHistoryProduct
+import kotlinx.cinterop.ByteVar
+import kotlinx.cinterop.CPointerVar
+import kotlinx.cinterop.ExportObjCClass
+import kotlinx.cinterop.ObjCObjectBase.OverrideInit
+import kotlinx.cinterop.allocArray
+import kotlinx.cinterop.autoreleasepool
+import kotlinx.cinterop.cstr
+import kotlinx.cinterop.get
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
+import kotlinx.cinterop.set
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import okio.Path.Companion.toPath
+import platform.Foundation.NSApplicationSupportDirectory
+import platform.Foundation.NSBundle
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSLog
+import platform.Foundation.NSProcessInfo
+import platform.Foundation.NSURL
+import platform.Foundation.NSUserDomainMask
+import platform.UIKit.UIApplication
+import platform.UIKit.UIApplicationDelegateProtocol
+import platform.UIKit.UIApplicationMain
+import platform.UIKit.UIResponder
+import platform.UIKit.UIScene
+import platform.UIKit.UISceneConnectionOptions
+import platform.UIKit.UISceneSession
+import platform.UIKit.UIWindow
+import platform.UIKit.UIWindowScene
+import platform.UIKit.UIWindowSceneDelegateProtocol
+
+private val startupRegression: Boolean
+    get() = NSProcessInfo.processInfo.arguments.any { it as String == "--startup-regression" }
+
+private fun applicationDirectory(): String {
+    val support = NSFileManager.defaultManager.URLsForDirectory(NSApplicationSupportDirectory, NSUserDomainMask).first() as NSURL
+    return checkNotNull(support.URLByAppendingPathComponent("EhViewer", true)?.path)
+}
+
+private fun applicationSession(): GallerySession {
+    val directory = applicationDirectory()
+    DataDirectory.configure("$directory/database".toPath())
+    val version = NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "development"
+    return GallerySession(AppleSessionVault(directory), NativeGalleryDecoder, "EhViewer/$version", networkPreferences = DataStoreNetworkPreferences())
+}
+
+@ExportObjCClass(name = "EhViewerAppDelegate")
+class EhViewerDelegate : UIResponder, UIApplicationDelegateProtocol {
+    @OverrideInit
+    constructor() : super()
+
+    override fun application(application: UIApplication, didFinishLaunchingWithOptions: Map<Any?, *>?): Boolean {
+        if (startupRegression) {
+            NSLog("EhViewerM1:cold-start")
+            val rust = verifyRustInterop()
+            NSLog("EhViewerM1:rust-ffi-ready completed=${rust.completed} live=${rust.live}")
+            check(verifyGalleryProduct(NativeGalleryDecoder) + verifyAnimatedGalleryProduct() == 5)
+            NSLog("EhViewerM3:gallery-product checks=5")
+            check(verifyAccountProduct(NativeGalleryDecoder) == 4)
+            NSLog("EhViewerM3:account-product checks=4")
+        }
+        return true
+    }
+}
+
+@ExportObjCClass(name = "EhViewerSceneDelegate")
+class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
+    @OverrideInit
+    constructor() : super()
+
+    private var appWindow: UIWindow? = null
+    private var pauseDownloads: (() -> Unit)? = null
+
+    override fun scene(scene: UIScene, willConnectToSession: UISceneSession, options: UISceneConnectionOptions) {
+        val windowScene = scene as? UIWindowScene ?: error("Expected UIWindowScene")
+        appWindow = UIWindow(windowScene = windowScene).apply {
+            rootViewController = galleryViewController {
+                val session = remember { applicationSession() }
+                val readerState = remember { ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/reader-state")) }
+                val appearance = remember { GalleryAppearanceRepository(AppleSessionVault("${applicationDirectory()}/appearance")) }
+                val databaseOwner = remember {
+                    DataDirectory.configure("${applicationDirectory()}/database".toPath())
+                    ownedRoomDb<EhDatabase>("eh.db") { addMigrations(Schema17to18()) }
+                }
+                val database = databaseOwner.database
+                val language = remember { GalleryLanguageSettings(DataStoreLanguageStore(), AppleGalleryLanguage()::apply) }
+                val listPreferences = remember { DataStoreGalleryListPreferences() }
+                var languageVerified by remember { mutableStateOf(!startupRegression) }
+                if (startupRegression) {
+                    LaunchedEffect(language) {
+                        val checks = verifyAppleLanguageProduct(language)
+                        check(checks == 4)
+                        NSLog("EhViewerM1:language-product-ready checks=$checks")
+                        languageVerified = true
+                    }
+                }
+                DisposableEffect(databaseOwner) { onDispose { databaseOwner.close() } }
+                val history = remember(database) { RoomGalleryHistoryStore(database) }
+                val favoriteControls = remember(database) { GalleryFavoriteControls(DataStoreGalleryFavoritePreferences(), RoomGalleryLocalFavorites(database)) }
+                val downloadDatabaseOwner = remember { ownedRoomDb<DownloadDatabase>("downloads.db") {} }
+                val downloadDatabase = downloadDatabaseOwner.database
+                val scope = rememberCoroutineScope()
+                val downloadStorage = remember(downloadDatabase) { RoomGalleryDownloadStorage(downloadDatabase, "${applicationDirectory()}/downloads".toPath(), preferences = DataStoreStoragePreferences()) }
+                val downloads = remember(session, downloadStorage) { session.downloads(downloadStorage, scope) }
+                val archives = remember { FileArchiveLibrary("${applicationDirectory()}/local-library".toPath(), AppleArchiveFactory) }
+                val archivePicker = remember { AppleArchivePicker { appWindow?.rootViewController } }
+                val archiveShare = remember { AppleArchiveShare { appWindow?.rootViewController } }
+                DisposableEffect(archives, archivePicker, archiveShare) {
+                    onDispose {
+                        archivePicker.close()
+                        archiveShare.close()
+                        val cleanup = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+                        cleanup.launch {
+                            try {
+                                archives.close()
+                            } finally {
+                                cleanup.cancel()
+                            }
+                        }
+                    }
+                }
+                SideEffect {
+                    pauseDownloads = {
+                        scope.launch {
+                            try {
+                                downloads.pauseAll()
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (_: Exception) {
+                                NSLog("EhViewer: downloads could not be paused")
+                            }
+                        }
+                    }
+                }
+                DisposableEffect(downloads) {
+                    onDispose {
+                        pauseDownloads = null
+                        downloads.close()
+                        downloadDatabaseOwner.close()
+                    }
+                }
+                if (startupRegression) {
+                    LaunchedEffect(history) {
+                        check(verifyHistoryProduct(history) == 3)
+                        NSLog("EhViewerM1:history-product-ready checks=3")
+                        check(verifyAppleArchives(applicationDirectory()) == 9)
+                        NSLog("EhViewerM1:archive-product-ready checks=9")
+                        check(verifyAppleArchiveSharing(applicationDirectory()) { appWindow?.rootViewController } == 4)
+                        NSLog("EhViewerM1:archive-share-ready checks=4")
+                    }
+                }
+                if (startupRegression) {
+                    LaunchedEffect(session) {
+                        check(verifyAppleBrowserCookieTransfer(AppleSessionVault("${applicationDirectory()}/browser-regression")) == 4)
+                        NSLog("EhViewerM1:browser-cookie-ready checks=4")
+                    }
+                }
+                if (languageVerified) {
+                    val buildInfo = remember {
+                        val bundle = NSBundle.mainBundle
+                        val version = bundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "development"
+                        GalleryBuildInfo(version, bundle.objectForInfoDictionaryKey("CFBundleVersion") as? String)
+                    }
+                    GallerySearchScreen(session, readerState, appearance, history, downloads, language, storageSettings = downloadStorage, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = listPreferences, favoriteControls = favoriteControls, backgroundDownloadsNote = true, archiveContent = { back ->
+                        ArchiveLibraryScreen(archives, session, pickAndImport = { archivePicker.pickAndImport(archives) }, pickAndImportDirectory = { archivePicker.pickAndImport(archives, directory = true) }, pickAndExport = { book -> archivePicker.pickAndExport(archives, book) }, readingState = { book -> ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/archive-reading-state/${book.id}")) }, onBack = back, shareComic = { book -> archiveShare.share(archives, book) })
+                    }, browserFactory = ::AppleGalleryLoginBrowser, buildInfo = buildInfo) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
+                }
+            }
+            makeKeyAndVisible()
+        }
+    }
+
+    override fun sceneDidBecomeActive(scene: UIScene) {
+        if (startupRegression) NSLog("EhViewerM1:active")
+    }
+
+    override fun sceneDidEnterBackground(scene: UIScene) {
+        pauseDownloads?.invoke()
+        if (startupRegression) NSLog("EhViewerM1:background")
+    }
+}
+
+fun main() {
+    autoreleasepool {
+        memScoped {
+            val arguments = NSProcessInfo.processInfo.arguments.map { it as String }
+            require(arguments.isNotEmpty()) { "UIKit requires the executable argument" }
+            val argv = allocArray<CPointerVar<ByteVar>>(arguments.size + 1)
+            arguments.forEachIndexed { index, argument -> argv[index] = argument.cstr.ptr }
+            argv[arguments.size] = null
+            UIApplicationMain(arguments.size, argv, null, "EhViewerAppDelegate")
+        }
+    }
+}

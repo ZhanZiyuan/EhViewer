@@ -91,6 +91,7 @@
 - [Coil](https://coil-kt.github.io/coil/)
 - [Compose Destinations](https://composedestinations.rafaelcosta.xyz/)
 - [libarchive](https://www.libarchive.org/)
+- [Animeko](https://github.com/open-ani/animeko/)
 
 # 許可證書
 

@@ -27,11 +27,18 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 private val intent = CustomTabsIntent.Builder().apply { setShowTitle(true) }.build()
 
+/** Shared CMP controls surface recoverable failures themselves. */
+context(ctx: Context)
+fun openBrowserOrThrow(url: String) {
+    require(url.isNotEmpty())
+    intent.launchUrl(ctx, url.toUri())
+}
+
 context(ctx: Context)
 fun openBrowser(url: String) {
     if (url.isEmpty()) return
     try {
-        intent.launchUrl(ctx, url.toUri())
+        openBrowserOrThrow(url)
     } catch (_: ActivityNotFoundException) {
         Toast.makeText(ctx, R.string.no_browser_installed, Toast.LENGTH_LONG).show()
     }

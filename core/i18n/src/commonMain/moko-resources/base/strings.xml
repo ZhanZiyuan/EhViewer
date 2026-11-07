@@ -14,6 +14,7 @@
   ~ limitations under the License.
   -->
 <resources>
+    <string name="browse_galleries">Browse galleries</string>
     <string name="app_name" translatable="false">EhViewer</string>
     <string name="site_e" translatable="false">e-hentai</string>
     <string name="site_ex" translatable="false">exhentai</string>
