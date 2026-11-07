@@ -370,4 +370,20 @@
     <string name="gallery_about_declaration">EhViewer 与 E-Hentai.org 没有任何关联</string>
     <string name="gallery_about_latest_release">最新版本</string>
     <string name="gallery_about_source">源代码</string>
+    <string name="gallery_quick_search">快速搜索</string>
+    <string name="gallery_quick_search_add">添加快速搜索</string>
+    <string name="gallery_quick_search_delete">删除</string>
+    <string name="gallery_quick_search_delete_named">删除快速搜索“%1$s”？</string>
+    <string name="gallery_quick_search_duplicate">已有快速搜索保存了这个位置。</string>
+    <string name="gallery_quick_search_empty">点击“+”来添加快速搜索</string>
+    <string name="gallery_quick_search_help">说明</string>
+    <string name="gallery_quick_search_help_body">画廊列表的状态将被保存为快速搜索。如果你想保存搜索面板的状态，请先执行搜索。</string>
+    <string name="gallery_quick_search_move_down">下移</string>
+    <string name="gallery_quick_search_move_up">上移</string>
+    <string name="gallery_quick_search_name_empty">名称为空</string>
+    <string name="gallery_quick_search_name_in_use">已存在相同名称</string>
+    <string name="gallery_quick_search_reorder">调整快速搜索顺序</string>
+    <string name="gallery_quick_search_save_progress">保存进度</string>
+    <string name="gallery_quick_search_unavailable">无法使用快速搜索。</string>
+    <string name="gallery_quick_search_unsupported">此快速搜索的路由无法在此处打开。</string>
 </resources>

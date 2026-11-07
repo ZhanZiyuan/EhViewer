@@ -30,6 +30,9 @@ import com.ehviewer.core.domain.GalleryListMode
 import com.ehviewer.core.domain.GalleryListPreferences
 import com.ehviewer.core.domain.GalleryListPresentation
 import com.ehviewer.core.domain.GalleryListPresentationPreferences
+import com.ehviewer.core.domain.GalleryQuickSearch
+import com.ehviewer.core.domain.GalleryQuickSearchPreferences
+import com.ehviewer.core.domain.GalleryQuickSearchStore
 import com.ehviewer.core.domain.GalleryToplistPeriod
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateStore
@@ -150,7 +153,7 @@ class GalleryHomepageTest {
         }
     }
 
-    private class View(library: Library, browse: Boolean = true, local: Boolean = false, saved: Map<String, List<Any?>>? = null, appearance: GalleryAppearanceStore = browsingAppearance, listPreferences: ListingPreferences? = null, width: Int = 1000, launchPreferences: GalleryLaunchPreferences? = null, height: Int = 900, readingPositions: Map<Long, ReadingPosition> = emptyMap()) : AutoCloseable {
+    private class View(library: Library, browse: Boolean = true, local: Boolean = false, saved: Map<String, List<Any?>>? = null, appearance: GalleryAppearanceStore = browsingAppearance, listPreferences: ListingPreferences? = null, width: Int = 1000, launchPreferences: GalleryLaunchPreferences? = null, height: Int = 900, readingPositions: Map<Long, ReadingPosition> = emptyMap(), quickSearch: GalleryQuickSearchControls? = null) : AutoCloseable {
         var identityPauses = 0
             private set
         private val scheduler = TestCoroutineScheduler()
@@ -212,7 +215,7 @@ class GalleryHomepageTest {
                             }) { Text("Change owned identity") }
                         }
                     }
-                }, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = launchPreferences, initialLocalLibrary = local, browseOnEntry = browse, restoreLaunchPage = launchPreferences != null)
+                }, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = launchPreferences, quickSearch = quickSearch, initialLocalLibrary = local, browseOnEntry = browse, restoreLaunchPage = launchPreferences != null)
             }
         }
         private var frame = 0L
@@ -238,11 +241,23 @@ class GalleryHomepageTest {
                 if (predicate()) return
                 Thread.sleep(5)
             } while (System.nanoTime() < deadline)
-            error("Missing rendered homepage state: $value")
+            val labels = all().flatMap { node ->
+                node.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } +
+                    node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
+            }.distinct().take(30)
+            error("Missing rendered homepage state: $value. Current labels: $labels")
         }
         fun click(value: String) {
             val node = all().firstOrNull { value in it.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() } ?: requireNotNull(text(value))
             tap(node.touchBoundsInRoot.center)
+        }
+        fun clickIconButton(label: String) {
+            val button = all().last { node ->
+                node.config.getOrNull(SemanticsActions.OnClick) != null && nodes(node).any {
+                    label in it.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
+                }
+            }
+            tap(button.boundsInRoot.center)
         }
         fun tap(at: Offset) {
             scene.sendPointerEvent(PointerEventType.Press, at)
@@ -551,6 +566,42 @@ class GalleryHomepageTest {
                 assertNull(library.requests.last().parameters["prev"])
                 assertNull(library.requests.last().parameters["seek"])
                 assertEquals("submitted title", library.requests.last().parameters["f_search"])
+            }
+        }
+    }
+
+    @Test fun originalQuickSearchSavesTheCommittedQueryAndResumesAtTheVisibleGallery() = english {
+        val saved = mutableListOf<GalleryQuickSearch>()
+        val store = object : GalleryQuickSearchStore {
+            override suspend fun list() = saved.toList()
+            override suspend fun save(search: GalleryQuickSearch) {
+                saved += search.copy(id = 1)
+            }
+            override suspend fun remove(id: Long) = error("Saving and reopening must preserve the bookmark")
+            override suspend fun move(id: Long, before: Long?) = error("Saving and reopening must preserve the bookmark order")
+        }
+        val preferences = object : GalleryQuickSearchPreferences {
+            override suspend fun saveQuickSearchProgress() = true
+            override suspend fun setSaveQuickSearchProgress(enabled: Boolean) = error("The unchanged original default needs no write")
+        }
+        Library().use { library ->
+            View(library, quickSearch = GalleryQuickSearchControls(store, preferences)).use { view ->
+                view.await("Homepage")
+                view.click("Search galleries")
+                view.query("saved search")
+                view.click("Search")
+                view.await("saved search")
+                view.clickIconButton("Quick search")
+                view.await("Tap \"+\" to add Quick Search")
+                view.clickIconButton("Add Quick Search")
+                view.await("Save progress")
+                view.click("OK")
+                view.await("saved search@2")
+                assertEquals("saved search", saved.single().keyword)
+                view.click("saved search@2")
+                view.await("saved shortcut request") { library.requests.size == 3 }
+                assertEquals("saved search", library.requests.last().parameters["f_search"])
+                assertEquals("2", library.requests.last().parameters["next"])
             }
         }
     }

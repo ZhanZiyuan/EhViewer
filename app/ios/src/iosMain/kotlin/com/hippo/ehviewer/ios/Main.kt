@@ -19,6 +19,7 @@ import com.ehviewer.core.data.FileArchiveLibrary
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
 import com.ehviewer.core.data.RoomGalleryLocalFavorites
+import com.ehviewer.core.data.RoomGalleryQuickSearchStore
 import com.ehviewer.core.database.DataDirectory
 import com.ehviewer.core.database.EhDatabase
 import com.ehviewer.core.database.Schema17to18
@@ -29,6 +30,7 @@ import com.ehviewer.shared.AppleGalleryLoginBrowser
 import com.ehviewer.shared.ArchiveLibraryScreen
 import com.ehviewer.shared.GalleryBuildInfo
 import com.ehviewer.shared.GalleryFavoriteControls
+import com.ehviewer.shared.GalleryQuickSearchControls
 import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.galleryViewController
 import com.ehviewer.shared.reader.ReaderStateRepository
@@ -144,6 +146,7 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                 DisposableEffect(databaseOwner) { onDispose { databaseOwner.close() } }
                 val history = remember(database) { RoomGalleryHistoryStore(database) }
                 val favoriteControls = remember(database) { GalleryFavoriteControls(DataStoreGalleryFavoritePreferences(), RoomGalleryLocalFavorites(database)) }
+                val quickSearch = remember(database, listPreferences) { GalleryQuickSearchControls(RoomGalleryQuickSearchStore(database), listPreferences) }
                 val downloadDatabaseOwner = remember { ownedRoomDb<DownloadDatabase>("downloads.db") {} }
                 val downloadDatabase = downloadDatabaseOwner.database
                 val scope = rememberCoroutineScope()
@@ -208,7 +211,7 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                         val version = bundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "development"
                         GalleryBuildInfo(version, bundle.objectForInfoDictionaryKey("CFBundleVersion") as? String)
                     }
-                    GallerySearchScreen(session, readerState, appearance, history, downloads, language, storageSettings = downloadStorage, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = listPreferences, favoriteControls = favoriteControls, backgroundDownloadsNote = true, archiveContent = { back ->
+                    GallerySearchScreen(session, readerState, appearance, history, downloads, language, storageSettings = downloadStorage, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = listPreferences, favoriteControls = favoriteControls, quickSearch = quickSearch, backgroundDownloadsNote = true, archiveContent = { back ->
                         ArchiveLibraryScreen(archives, session, pickAndImport = { archivePicker.pickAndImport(archives) }, pickAndImportDirectory = { archivePicker.pickAndImport(archives, directory = true) }, pickAndExport = { book -> archivePicker.pickAndExport(archives, book) }, readingState = { book -> ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/archive-reading-state/${book.id}")) }, onBack = back, shareComic = { book -> archiveShare.share(archives, book) })
                     }, browserFactory = ::AppleGalleryLoginBrowser, buildInfo = buildInfo) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
                 }

@@ -368,4 +368,20 @@
     <string name="gallery_about_declaration">EhViewer は E-Hentai.org とは一切関係ありません</string>
     <string name="gallery_about_latest_release">最新リリース</string>
     <string name="gallery_about_source">ソース</string>
+    <string name="gallery_quick_search">クイック検索</string>
+    <string name="gallery_quick_search_add">クイック検索を追加</string>
+    <string name="gallery_quick_search_delete">削除</string>
+    <string name="gallery_quick_search_delete_named">クイック検索の「%1$s」を削除しますか？</string>
+    <string name="gallery_quick_search_duplicate">この位置はすでにクイック検索に保存されています。</string>
+    <string name="gallery_quick_search_empty">「+」をタップしてクイック検索を追加します</string>
+    <string name="gallery_quick_search_help">ヘルプ</string>
+    <string name="gallery_quick_search_help_body">ギャラリー検索結果の設定などはクイック検索として保存されます。検索の設定などを保存するには、まず検索を実行してください。</string>
+    <string name="gallery_quick_search_move_down">下へ移動</string>
+    <string name="gallery_quick_search_move_up">上へ移動</string>
+    <string name="gallery_quick_search_name_empty">タイトルが空欄です</string>
+    <string name="gallery_quick_search_name_in_use">この名前はすでに使用されています。</string>
+    <string name="gallery_quick_search_reorder">クイック検索を並べ替え</string>
+    <string name="gallery_quick_search_save_progress">進捗を保存</string>
+    <string name="gallery_quick_search_unavailable">クイック検索を利用できません。</string>
+    <string name="gallery_quick_search_unsupported">この検索はここでは開けません。</string>
 </resources>

@@ -16,6 +16,7 @@ import com.ehviewer.core.domain.GalleryListPreferences
 import com.ehviewer.core.domain.GalleryListPreferencesException
 import com.ehviewer.core.domain.GalleryListPresentation
 import com.ehviewer.core.domain.GalleryListPresentationPreferences
+import com.ehviewer.core.domain.GalleryQuickSearchPreferences
 import com.ehviewer.core.domain.GalleryToplistPeriod
 import com.ehviewer.core.preferences.getDateStore
 import kotlinx.coroutines.CancellationException
@@ -24,7 +25,7 @@ import kotlinx.coroutines.flow.first
 private val applicationGalleryListStore by lazy { getDateStore("gallery-list") }
 
 /** Nonsecret atomic preferences; missing records keep the previous shared compact default. */
-class DataStoreGalleryListPreferences(private val store: DataStore<Preferences>) : GalleryListPreferences, GalleryListPresentationPreferences, GalleryLaunchPreferences {
+class DataStoreGalleryListPreferences(private val store: DataStore<Preferences>) : GalleryListPreferences, GalleryListPresentationPreferences, GalleryLaunchPreferences, GalleryQuickSearchPreferences {
     constructor() : this(applicationGalleryListStore)
 
     private val schema = intPreferencesKey("schema")
@@ -35,6 +36,7 @@ class DataStoreGalleryListPreferences(private val store: DataStore<Preferences>)
     private val showReadingProgress = booleanPreferencesKey("show_reading_progress")
     private val density = stringPreferencesKey("density")
     private val comments = booleanPreferencesKey("show_comments")
+    private val quickSearchProgress = booleanPreferencesKey("qs_save_progress")
     private val launchPage = intPreferencesKey("launch_page_2")
     private val toplistPeriod = stringPreferencesKey("recent_toplist")
     private data class Snapshot(val density: GalleryListDensity, val comments: Boolean)
@@ -106,6 +108,21 @@ class DataStoreGalleryListPreferences(private val store: DataStore<Preferences>)
     override suspend fun setThumbnailColumns(columns: Int) = setPresentation(thumbnailColumns, columns) { it.copy(thumbnailColumns = columns) }
     override suspend fun setShowPages(enabled: Boolean) = setPresentation(showPages, enabled) { it.copy(showPages = enabled) }
     override suspend fun setShowReadingProgress(enabled: Boolean) = setPresentation(showReadingProgress, enabled) { it.copy(showReadingProgress = enabled) }
+
+    override suspend fun saveQuickSearchProgress(): Boolean = stored {
+        store.data.first().let { preferences ->
+            check((preferences[schema] ?: 1) == 1)
+            preferences[quickSearchProgress] ?: true
+        }
+    }
+
+    override suspend fun setSaveQuickSearchProgress(enabled: Boolean) = stored {
+        store.edit { preferences ->
+            check((preferences[schema] ?: 1) == 1)
+            preferences[quickSearchProgress] = enabled
+        }
+        Unit
+    }
 
     private suspend fun <T> storedLaunch(block: suspend () -> T): T = try {
         block()

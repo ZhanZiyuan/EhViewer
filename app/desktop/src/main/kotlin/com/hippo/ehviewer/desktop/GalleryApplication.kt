@@ -16,6 +16,7 @@ import com.ehviewer.core.data.FileArchiveLibrary
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
 import com.ehviewer.core.data.RoomGalleryLocalFavorites
+import com.ehviewer.core.data.RoomGalleryQuickSearchStore
 import com.ehviewer.core.database.DataDirectory
 import com.ehviewer.core.database.EhDatabase
 import com.ehviewer.core.database.Schema17to18
@@ -29,6 +30,7 @@ import com.ehviewer.core.network.session.NativeSessionVault
 import com.ehviewer.shared.ArchiveLibraryScreen
 import com.ehviewer.shared.GalleryBuildInfo
 import com.ehviewer.shared.GalleryFavoriteControls
+import com.ehviewer.shared.GalleryQuickSearchControls
 import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.reader.ReaderStateRepository
 import com.ehviewer.shared.settings.GalleryAppearanceRepository
@@ -82,6 +84,7 @@ fun galleryApplication(initialDocument: Path? = null) {
     val database = databaseOwner.database
     val history = RoomGalleryHistoryStore(database)
     val favoriteControls = GalleryFavoriteControls(DataStoreGalleryFavoritePreferences(), RoomGalleryLocalFavorites(database))
+    val quickSearch = GalleryQuickSearchControls(RoomGalleryQuickSearchStore(database), listPreferences)
     val downloadDatabaseOwner = ownedRoomDb<DownloadDatabase>("downloads.db") {}
     val downloadDatabase = downloadDatabaseOwner.database
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -118,7 +121,7 @@ fun galleryApplication(initialDocument: Path? = null) {
                             }
                         },
                     )
-                }, browserFactory = browsers::create, storageSettings = downloadStorage, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = listPreferences, favoriteControls = favoriteControls, initialLocalLibrary = initialDocument != null, buildInfo = GalleryBuildInfo(version))
+                }, browserFactory = browsers::create, storageSettings = downloadStorage, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = listPreferences, favoriteControls = favoriteControls, quickSearch = quickSearch, initialLocalLibrary = initialDocument != null, buildInfo = GalleryBuildInfo(version))
             }
         }
     } finally {

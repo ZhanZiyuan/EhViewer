@@ -10,6 +10,7 @@ import com.ehviewer.core.domain.GalleryListPreferences
 import com.ehviewer.core.domain.GalleryListPreferencesException
 import com.ehviewer.core.domain.GalleryListPresentation
 import com.ehviewer.core.domain.GalleryListPresentationPreferences
+import com.ehviewer.core.domain.GalleryQuickSearchPreferences
 import com.ehviewer.core.domain.GalleryToplistPeriod
 import com.hippo.ehviewer.Settings
 import kotlinx.coroutines.CancellationException
@@ -17,7 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** Read/write the original preference directly; retain its default, key and unrelated settings. */
-internal class AndroidGalleryListPreferences : GalleryListPreferences, GalleryListPresentationPreferences, GalleryLaunchPreferences {
+internal class AndroidGalleryListPreferences : GalleryListPreferences, GalleryListPresentationPreferences, GalleryLaunchPreferences, GalleryQuickSearchPreferences {
     private suspend fun <T> stored(block: suspend () -> T): T = try {
         withContext(Dispatchers.IO) { block() }
     } catch (cancelled: CancellationException) {
@@ -85,6 +86,12 @@ internal class AndroidGalleryListPreferences : GalleryListPreferences, GalleryLi
 
     override suspend fun setShowReadingProgress(enabled: Boolean) = stored {
         Settings.withMutableSnapshot { it[Settings.showReadingProgress] = enabled }
+    }
+
+    override suspend fun saveQuickSearchProgress() = stored { Settings.snapshot()[Settings.qSSaveProgress] }
+
+    override suspend fun setSaveQuickSearchProgress(enabled: Boolean) = stored {
+        Settings.withMutableSnapshot { it[Settings.qSSaveProgress] = enabled }
     }
 
     private suspend fun <T> storedLaunch(block: suspend () -> T): T = try {

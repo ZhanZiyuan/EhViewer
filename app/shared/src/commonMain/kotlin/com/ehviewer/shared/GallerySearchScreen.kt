@@ -110,6 +110,7 @@ import com.ehviewer.shared.settings.GalleryAppearanceStore
 import com.ehviewer.shared.settings.GalleryLanguageSettings
 import com.ehviewer.shared.settings.GalleryThemeMode
 import ehviewer.app.shared.generated.resources.Res
+import ehviewer.app.shared.generated.resources.gallery_account
 import ehviewer.app.shared.generated.resources.gallery_appearance_unavailable
 import ehviewer.app.shared.generated.resources.gallery_back
 import ehviewer.app.shared.generated.resources.gallery_back_history
@@ -132,6 +133,7 @@ import ehviewer.app.shared.generated.resources.gallery_filters_applied
 import ehviewer.app.shared.generated.resources.gallery_launch_preferences_unavailable
 import ehviewer.app.shared.generated.resources.gallery_list_unavailable
 import ehviewer.app.shared.generated.resources.gallery_no_galleries
+import ehviewer.app.shared.generated.resources.gallery_quick_search
 import ehviewer.app.shared.generated.resources.gallery_retry
 import ehviewer.app.shared.generated.resources.gallery_search
 import ehviewer.app.shared.generated.resources.gallery_search_galleries
@@ -151,7 +153,7 @@ private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
 )
 
 @Serializable
-private data class GallerySearchRequest(
+internal data class GallerySearchRequest(
     val query: String,
     val filters: GallerySearchFilters,
     val cursor: String? = null,
@@ -186,6 +188,7 @@ fun GallerySearchScreen(
     presentationPreferences: GalleryListPresentationPreferences? = null,
     launchPreferences: GalleryLaunchPreferences? = null,
     favoriteControls: GalleryFavoriteControls? = null,
+    quickSearch: GalleryQuickSearchControls? = null,
     initialLocalLibrary: Boolean = false,
     buildInfo: GalleryBuildInfo? = null,
     onReady: () -> Unit = {},
@@ -204,7 +207,7 @@ fun GallerySearchScreen(
     }
     GalleryLibraryScreen(library, readerState, appearance, history, downloads, language, networkPreferences = session.networkPreferences, storageSettings = storageSettings, listPreferences = listPreferences, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
-    }, presentationPreferences = presentationPreferences, launchPreferences = launchPreferences, favoriteControls = favoriteControls, initialLocalLibrary = initialLocalLibrary, browseOnEntry = true, restoreLaunchPage = true, buildInfo = buildInfo, onReady = onReady)
+    }, presentationPreferences = presentationPreferences, launchPreferences = launchPreferences, favoriteControls = favoriteControls, quickSearch = quickSearch, initialLocalLibrary = initialLocalLibrary, browseOnEntry = true, restoreLaunchPage = true, buildInfo = buildInfo, onReady = onReady)
 }
 
 /** Android uses the same views while its original session/history adapters remain authoritative. */
@@ -222,6 +225,8 @@ fun GalleryLibraryScreen(
     presentationPreferences: GalleryListPresentationPreferences? = null,
     launchPreferences: GalleryLaunchPreferences? = null,
     favoriteControls: GalleryFavoriteControls? = null,
+    quickSearch: GalleryQuickSearchControls? = null,
+    platformAvatar: (@Composable () -> Unit)? = null,
     backgroundDownloadsNote: Boolean = false,
     onPlatformDownloadOpen: ((Long) -> Unit)? = null,
     onBack: (() -> Unit)? = null,
@@ -297,6 +302,7 @@ fun GalleryLibraryScreen(
     var loadedSearch by remember { mutableStateOf<GallerySearchRequest?>(null) }
     var failedSearch by remember { mutableStateOf<GallerySearchRequest?>(null) }
     var filtersOpen by remember { mutableStateOf(false) }
+    var quickSearchOpen by rememberSaveable { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var favoritesOpen by rememberSaveable { mutableStateOf(false) }
     var historyOpen by rememberSaveable { mutableStateOf(false) }
@@ -820,12 +826,28 @@ fun GalleryLibraryScreen(
                                         }
                                     },
                                     modifier = Modifier.align(Alignment.TopCenter).then(offset),
+                                    collapsedTrailing = if (quickSearch != null && feed != GalleryLaunchPage.TOPLIST) {
+                                        {
+                                            IconButton(onClick = { quickSearchOpen = true }) {
+                                                Icon(GalleryIcons.Bookmarks, galleryString(Res.string.gallery_quick_search))
+                                            }
+                                            if (platformAvatar != null) {
+                                                platformAvatar()
+                                            } else if (onAccount != null || accountContent != null) {
+                                                IconButton(onClick = ::openAccount) {
+                                                    Icon(GalleryIcons.AccountCircle, galleryString(Res.string.gallery_account))
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        null
+                                    },
                                 ) {
                                     if (feed == GalleryLaunchPage.TOPLIST && launchPreferences != null) {
                                         var periodOpen by remember { mutableStateOf(false) }
                                         Box {
                                             IconButton(onClick = { periodOpen = true }, enabled = !launchSaving && !launchReadFailed && !launchSaveFailed) {
-                                                Icon(GalleryIcons.MoreVert, contentDescription = galleryString(Res.string.gallery_feed_toplist))
+                                                Icon(GalleryIcons.Bookmarks, contentDescription = galleryString(Res.string.gallery_feed_toplist))
                                             }
                                             DropdownMenu(periodOpen, onDismissRequest = { periodOpen = false }) {
                                                 GalleryToplistPeriod.entries.forEach { period ->
@@ -853,6 +875,32 @@ fun GalleryLibraryScreen(
                                             Icon(GalleryIcons.FilterList, contentDescription = description, tint = if (filtered) MaterialTheme.colorScheme.primary else LocalContentColor.current)
                                         }
                                     }
+                                }
+                                if (quickSearch != null && quickSearchOpen) {
+                                    val completed = loadedSearch.takeIf { !loading && error == null && result?.galleryInfoList?.isNotEmpty() == true }
+                                    val firstGid = if (thumbnails) {
+                                        thumbnailState.layoutInfo.visibleItemsInfo.firstNotNullOfOrNull { it.key as? Long }
+                                    } else {
+                                        resultsState.layoutInfo.visibleItemsInfo.firstNotNullOfOrNull { it.key as? Long }
+                                    }
+                                    val name = completed?.query.orEmpty().ifBlank { if (feed == GalleryLaunchPage.HOMEPAGE) "" else feedTitle }
+                                    GalleryQuickSearchSheet(
+                                        quickSearch,
+                                        snapshot = completed?.asQuickSearch(name),
+                                        resumeCursor = firstGid?.takeIf { it in 1 until Long.MAX_VALUE && feed != GalleryLaunchPage.WHATS_HOT }?.plus(1)?.toString(),
+                                        onOpen = { shortcut ->
+                                            val next = shortcut.toSearchRequest()
+                                            if (next == null) {
+                                                false
+                                            } else {
+                                                query = next.query
+                                                filters = next.filters
+                                                load(next, replaceResults = true)
+                                                true
+                                            }
+                                        },
+                                        onClose = { quickSearchOpen = false },
+                                    )
                                 }
                                 val actionRoute = if (loading) entrySearch else failedSearch ?: loadedSearch ?: entrySearch
                                 val actionFeed = actionRoute.feed ?: GalleryLaunchPage.HOMEPAGE

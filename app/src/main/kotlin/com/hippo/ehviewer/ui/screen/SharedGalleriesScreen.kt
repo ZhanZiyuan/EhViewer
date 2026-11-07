@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.UriHandler
 import com.ehviewer.core.data.DataStoreNetworkPreferences
 import com.ehviewer.shared.GalleryFavoriteControls
 import com.ehviewer.shared.GalleryLibraryScreen
+import com.ehviewer.shared.GalleryQuickSearchControls
 import com.ehviewer.shared.GallerySettingsPage
 import com.hippo.ehviewer.EhDB
 import com.hippo.ehviewer.Settings
@@ -24,6 +25,7 @@ import com.hippo.ehviewer.ui.destinations.AboutScreenDestination
 import com.hippo.ehviewer.ui.destinations.DownloadScreenDestination
 import com.hippo.ehviewer.ui.destinations.EhScreenDestination
 import com.hippo.ehviewer.ui.destinations.PrivacyScreenDestination
+import com.hippo.ehviewer.ui.main.AvatarIcon
 import com.hippo.ehviewer.ui.navToReader
 import com.hippo.ehviewer.ui.openBrowserOrThrow
 import com.hippo.ehviewer.ui.theme.EhTheme
@@ -42,6 +44,7 @@ fun AnimatedVisibilityScope.SharedGalleriesScreen(navigator: DestinationsNavigat
     val language = remember { androidGalleryLanguageSettings() }
     val listPreferences = remember { AndroidGalleryListPreferences() }
     val favoriteControls = remember { GalleryFavoriteControls(AndroidGalleryFavoritePreferences(), EhDB.sharedLocalFavorites) }
+    val quickSearch = remember(listPreferences) { GalleryQuickSearchControls(EhDB.sharedQuickSearch, listPreferences) }
     val scope = rememberCoroutineScope()
     val downloads = remember { AndroidGalleryDownloads(scope) }
     key(site, signedIn) {
@@ -54,6 +57,8 @@ fun AnimatedVisibilityScope.SharedGalleriesScreen(navigator: DestinationsNavigat
                 presentationPreferences = listPreferences,
                 launchPreferences = listPreferences,
                 favoriteControls = favoriteControls,
+                quickSearch = quickSearch,
+                platformAvatar = { AvatarIcon() },
                 onPlatformDownloadOpen = { gid -> with(navigator) { navToReader(checkNotNull(DownloadManager.getDownloadInfo(gid)).galleryInfo) } },
                 onBack = { navigator.popBackStack() },
                 onAccount = { navigator.navigate(EhScreenDestination) },

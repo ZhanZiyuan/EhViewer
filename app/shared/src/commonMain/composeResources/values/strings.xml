@@ -373,4 +373,20 @@
     <string name="gallery_about_declaration">EhViewer is not affiliated with E-Hentai.org in any way</string>
     <string name="gallery_about_latest_release">Latest release</string>
     <string name="gallery_about_source">Source</string>
+    <string name="gallery_quick_search">Quick search</string>
+    <string name="gallery_quick_search_add">Add Quick Search</string>
+    <string name="gallery_quick_search_delete">Delete</string>
+    <string name="gallery_quick_search_delete_named">Delete quick search &quot;%1$s&quot;?</string>
+    <string name="gallery_quick_search_duplicate">A quick search already saves this position.</string>
+    <string name="gallery_quick_search_empty">Tap &quot;+&quot; to add Quick Search</string>
+    <string name="gallery_quick_search_help">Readme</string>
+    <string name="gallery_quick_search_help_body">The state of gallery list will be saved as quick search. Perform a search first to save the state of search panel.</string>
+    <string name="gallery_quick_search_move_down">Move down</string>
+    <string name="gallery_quick_search_move_up">Move up</string>
+    <string name="gallery_quick_search_name_empty">Name is empty</string>
+    <string name="gallery_quick_search_name_in_use">This name is already in use.</string>
+    <string name="gallery_quick_search_reorder">Reorder quick search</string>
+    <string name="gallery_quick_search_save_progress">Save progress</string>
+    <string name="gallery_quick_search_unavailable">Quick searches are unavailable.</string>
+    <string name="gallery_quick_search_unsupported">This quick search uses a route that cannot be opened here.</string>
 </resources>

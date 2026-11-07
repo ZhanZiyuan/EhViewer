@@ -123,12 +123,18 @@ class SharedGalleryIntegrationTest {
                 }
                 rotate(true)
                 rotate(false)
+                device.clickSharedControl("Quick search")
+                assertTrue("The original trailing shortcut sheet did not open", device.wait(Until.hasObject(By.text("Quick search")), 5_000))
+                device.pressBack()
+                device.clickSharedControl("Search galleries")
                 requireNotNull(device.wait(Until.findObject(By.desc("Filters")), 5_000)).click()
                 assertTrue("Common filters did not open", device.wait(Until.hasObject(By.text("Search filters")), 5_000))
                 requireNotNull(device.wait(Until.findObject(By.text("Use site category preferences")), 5_000)).click()
                 assertTrue("Category draft did not change", device.wait(Until.hasObject(By.text("Miscellaneous")), 5_000))
                 requireNotNull(device.wait(Until.findObject(By.text("Cancel")), 5_000)).click()
                 searchIsVisible()
+                device.clickSharedControl("Search galleries")
+                assertTrue("Unchanged filters must be visible while editing", device.wait(Until.hasObject(By.desc("Filters")), 5_000))
                 assertFalse("Cancelling filters changed the applied search", device.hasObject(By.desc("Filters applied")))
                 device.openSharedDestination("Settings")
                 fun capturePage(name: String) {
