@@ -1,11 +1,15 @@
 package com.ehviewer.shared
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
 import androidx.compose.runtime.saveable.SaveableStateRegistry
 import androidx.compose.ui.ImageComposeScene
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
@@ -34,8 +38,10 @@ import com.ehviewer.shared.settings.GalleryThemeMode
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
+import io.ktor.http.headersOf
 import java.util.Collections
 import java.util.Locale
 import kotlin.test.Test
@@ -53,20 +59,29 @@ import kotlinx.coroutines.test.setMain
 /** Actual shared screen, pointer actions, saved composition state and Ktor requests. */
 @OptIn(androidx.compose.ui.InternalComposeUiApi::class, ExperimentalCoroutinesApi::class)
 class GalleryHomepageTest {
-    private class Library : GalleryLibrary, AutoCloseable {
+    private class Library(val withCovers: Boolean = false) : GalleryLibrary, AutoCloseable {
         val requests = Collections.synchronizedList(mutableListOf<Url>())
+        val coverRequests = Collections.synchronizedList(mutableListOf<Url>())
+
+        @Volatile var changedIdentity = false
+        private val changedCover by lazy { SkiaGalleryCoverTest().ownedPng(16, 16) }
 
         @Volatile var unavailable = false
 
         @Volatile var blocked = false
         private val engine = MockEngine { request ->
+            if (request.url.host == "ehgt.org") {
+                check(withCovers)
+                coverRequests += request.url
+                return@MockEngine respond(if (changedIdentity) changedCover else GalleryAnimationFixtures.gif, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, if (changedIdentity) "image/png" else "image/gif"))
+            }
             requests += request.url
             if (blocked) awaitCancellation()
             if (unavailable) respond("Unavailable", HttpStatusCode.ServiceUnavailable) else respond(request.url.parameters["f_search"] ?: "Homepage")
         }
         private val client = HttpClient(engine)
         override val restricted = false
-        override val galleries = GalleryRepository(client, { bytes -> GallerySearchResult(null, null, listOf(BaseGalleryInfo(1, "0123456789", bytes.decodeToString(), category = 512))) })
+        override val galleries = GalleryRepository(client, { bytes -> GallerySearchResult(null, null, listOf(BaseGalleryInfo(1, "0123456789", bytes.decodeToString(), thumbKey = "owned-cover.png".takeIf { withCovers }, category = 512))) })
         override val content: GalleryContent get() = error("Browsing must not request details")
         override val favorites: GalleryFavoritesRepository get() = error("Browsing must not mutate favorites")
         override fun close() {
@@ -76,6 +91,8 @@ class GalleryHomepageTest {
     }
 
     private class View(library: Library, browse: Boolean = true, local: Boolean = false, saved: Map<String, List<Any?>>? = null) : AutoCloseable {
+        var identityPauses = 0
+            private set
         private val scheduler = TestCoroutineScheduler()
         private val dispatcher = StandardTestDispatcher(scheduler)
         val registry = SaveableStateRegistry(saved) { true }
@@ -108,7 +125,10 @@ class GalleryHomepageTest {
             override suspend fun pause(gid: Long) = error("Browsing must not pause")
             override suspend fun resume(gid: Long) = error("Browsing must not resume")
             override suspend fun cancel(gid: Long) = error("Browsing must not cancel")
-            override suspend fun pauseAll() = error("Browsing must not pause all")
+            override suspend fun pauseAll() {
+                check(library.withCovers) { "Browsing must not pause all" }
+                identityPauses++
+            }
             override suspend fun open(gid: Long): GalleryDownloadOpen = error("Browsing must not read downloads")
             override fun close() = error("A child screen must not close the queue")
         }
@@ -117,13 +137,25 @@ class GalleryHomepageTest {
         }
         val scene = ImageComposeScene(1000, 900, Density(1f), coroutineContext = dispatcher) {
             CompositionLocalProvider(LocalSaveableStateRegistry provides registry) {
-                GalleryLibraryScreen(library, reader, appearance, history, downloads, language, archiveContent = { Text("Owned local library") }, accountContent = { _, back -> TextButton(onClick = back) { Text("Back from account") } }, initialLocalLibrary = local, browseOnEntry = browse)
+                GalleryLibraryScreen(library, reader, appearance, history, downloads, language, archiveContent = { Text("Owned local library") }, accountContent = { changed, back ->
+                    Column {
+                        TextButton(onClick = back) { Text("Back from account") }
+                        if (library.withCovers) {
+                            TextButton(onClick = {
+                                library.changedIdentity = true
+                                changed()
+                                back()
+                            }) { Text("Change owned identity") }
+                        }
+                    }
+                }, initialLocalLibrary = local, browseOnEntry = browse)
             }
         }
         private var frame = 0L
         fun render() = repeat(4) {
             scheduler.runCurrent()
             scene.render(frame).close()
+            scheduler.advanceTimeBy(16)
             scheduler.runCurrent()
             frame += 16_666_667
         }
@@ -145,12 +177,37 @@ class GalleryHomepageTest {
             scene.sendPointerEvent(PointerEventType.Press, at)
             render()
             scene.sendPointerEvent(PointerEventType.Release, at)
+            // Once a destination replaces its button, that pointer may hover the new cover.
+            // Leave the window and settle the real interaction layer before pixel assertions.
+            scene.sendPointerEvent(PointerEventType.Exit, Offset(-1f, -1f))
             render()
         }
         fun query(value: String) {
             val field = all().single { it.config.getOrNull(SemanticsActions.SetText) != null }
             assertTrue(requireNotNull(field.config[SemanticsActions.SetText].action).invoke(AnnotatedString(value)))
             render()
+        }
+        fun coverPixels(magenta: Boolean): Int {
+            val image = scene.render(frame)
+            frame += 16_666_667
+            return image.use {
+                val pixels = it.toComposeImageBitmap().toPixelMap()
+                var count = 0
+                for (y in 0 until pixels.height) {
+                    for (x in 0 until pixels.width) {
+                        val color = pixels[x, y]
+                        if (color.red > 0.99f && color.green < 0.01f && (if (magenta) color.blue > 0.99f else color.blue < 0.01f)) count++
+                    }
+                }
+                count
+            }
+        }
+        fun captureFailure() {
+            val output = java.io.File("build/tmp/gallery-identity-cover-failure.png").also { it.parentFile.mkdirs() }
+            scene.render(frame).use { image ->
+                frame += 16_666_667
+                checkNotNull(image.encodeToData()).use { output.writeBytes(it.bytes) }
+            }
         }
         override fun close() {
             scene.close()
@@ -253,6 +310,30 @@ class GalleryHomepageTest {
                 view.click("Search")
                 view.await("explicit")
                 assertEquals(listOf("explicit"), library.requests.map { it.parameters["f_search"] })
+            }
+        }
+    }
+
+    @Test fun identityActionDiscardsDecodedCoversBeforeReusingTheSameGalleryKey() = english {
+        Library(withCovers = true).use { library ->
+            View(library).use { view ->
+                view.await("Original identity's actual decoded red cover") { library.coverRequests.size == 1 && view.coverPixels(false) > 100 }
+                assertEquals(1, library.requests.size)
+                view.click("Account")
+                view.await("Change owned identity")
+                view.click("Change owned identity")
+                assertTrue(library.changedIdentity, "The actual identity action must execute before testing cache ownership")
+                try {
+                    view.await("New identity must fetch and present its actual magenta pixels") { library.coverRequests.size == 2 && view.coverPixels(true) > 100 }
+                } catch (failure: Throwable) {
+                    view.captureFailure()
+                    val texts = view.all().flatMap { it.config.getOrNull(SemanticsProperties.Text).orEmpty().map { text -> text.text } }
+                    throw AssertionError("Identity callback=${library.changedIdentity}, galleries=${library.requests.size}, covers=${library.coverRequests.size}, red=${view.coverPixels(false)}, magenta=${view.coverPixels(true)}, pauses=${view.identityPauses}, texts=$texts", failure)
+                }
+                assertEquals(0, view.coverPixels(false), "No old decoded cover may survive the identity action")
+                assertEquals(2, library.requests.size)
+                assertEquals(2, library.coverRequests.size)
+                assertEquals(1, view.identityPauses)
             }
         }
     }

@@ -82,6 +82,7 @@ internal class AndroidReadingState(private val current: () -> GalleryDetail?) : 
             showSeekBar = snapshot[Settings.showReaderSeekbar],
             doubleTapToZoom = snapshot[Settings.doubleTapToZoom],
             mode = ReaderMode.valueOf(mode.name),
+            cropBorders = snapshot[Settings.cropBorder],
         )
     }
 
@@ -129,6 +130,7 @@ internal class AndroidReadingState(private val current: () -> GalleryDetail?) : 
             snapshot[Settings.showPageNumber] = preferences.showPageNumber
             snapshot[Settings.showReaderSeekbar] = preferences.showSeekBar
             snapshot[Settings.doubleTapToZoom] = preferences.doubleTapToZoom
+            snapshot[Settings.cropBorder] = preferences.cropBorders
         }
     }
 

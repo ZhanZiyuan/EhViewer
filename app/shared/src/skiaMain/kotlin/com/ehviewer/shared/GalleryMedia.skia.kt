@@ -123,7 +123,7 @@ private class GalleryAnimationPainter(private val poster: BitmapPainter) : Paint
 
 @Composable
 internal actual fun rememberGalleryMediaPainter(media: GalleryMedia, playing: Boolean, attempt: Int, failed: () -> Unit): Painter {
-    val poster = remember(media) { BitmapPainter(media.poster) }
+    val poster = remember(media) { media.posterPainter() }
     val bytes = media.animation ?: return poster
     val painter = remember(media, playing, attempt) { GalleryAnimationPainter(poster) }
     LaunchedEffect(media, playing, attempt) {

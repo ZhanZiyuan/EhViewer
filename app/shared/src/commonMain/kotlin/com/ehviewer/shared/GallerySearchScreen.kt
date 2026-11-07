@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -19,13 +18,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBarDefaults
@@ -33,12 +35,16 @@ import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.pullToRefresh
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -104,15 +111,11 @@ import ehviewer.app.shared.generated.resources.gallery_error_too_large
 import ehviewer.app.shared.generated.resources.gallery_filters
 import ehviewer.app.shared.generated.resources.gallery_filters_applied
 import ehviewer.app.shared.generated.resources.gallery_list_unavailable
-import ehviewer.app.shared.generated.resources.gallery_next
 import ehviewer.app.shared.generated.resources.gallery_no_galleries
-import ehviewer.app.shared.generated.resources.gallery_previous
-import ehviewer.app.shared.generated.resources.gallery_reload_page
 import ehviewer.app.shared.generated.resources.gallery_retry
 import ehviewer.app.shared.generated.resources.gallery_search
 import ehviewer.app.shared.generated.resources.gallery_search_galleries
 import ehviewer.app.shared.generated.resources.gallery_search_hint
-import ehviewer.app.shared.generated.resources.gallery_sort_page
 import kotlin.math.roundToInt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -220,9 +223,6 @@ fun GalleryLibraryScreen(
     var loadedSearch by remember { mutableStateOf<GallerySearchRequest?>(null) }
     var failedSearch by remember { mutableStateOf<GallerySearchRequest?>(null) }
     var filtersOpen by remember { mutableStateOf(false) }
-    var orderName by rememberSaveable { mutableStateOf(GalleryPageOrder.SERVICE.name) }
-    val order = GalleryPageOrder.entries.firstOrNull { it.name == orderName } ?: GalleryPageOrder.SERVICE
-    var orderOpen by remember { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var historyOpen by rememberSaveable { mutableStateOf(false) }
     var downloadsOpen by rememberSaveable { mutableStateOf(false) }
@@ -260,6 +260,10 @@ fun GalleryLibraryScreen(
     var loading by remember { mutableStateOf(false) }
     var generation by remember { mutableIntStateOf(0) }
     var request by remember { mutableStateOf<Job?>(null) }
+    var merging by remember { mutableStateOf(false) }
+    var refreshing by remember { mutableStateOf(false) }
+    var failedMerge by remember { mutableStateOf(false) }
+    var consumedCursors by remember { mutableStateOf(emptySet<Pair<String, Boolean>>()) }
     var entryStarted by remember(session) { mutableStateOf(false) }
     // Restore the submitted route, rather than accidentally submitting an unfinished draft.
     var entrySearch by rememberSaveable(stateSaver = searchRequestSaver) { mutableStateOf(GallerySearchRequest("", GallerySearchFilters())) }
@@ -271,18 +275,26 @@ fun GalleryLibraryScreen(
     // Android marks list cards whose gallery has any download entry.
     val downloadedGids by remember(downloads) { downloads.tasks.map { tasks -> tasks.mapTo(HashSet()) { it.gid } } }.collectAsState(emptySet())
     val coverContext = coil3.compose.LocalPlatformContext.current
-    val coverLoader = remember(session, coverContext) { GalleryCoverLoader(coverContext) { session.galleries.cover(it.gid, it.token, it.key) } }
+    // Keep one pipeline across cursor merges, but discard it on replacement routes and the
+    // existing identity callback's loadedSearch=null transition, cancelling old decode work.
+    val coverRoute = loadedSearch?.copy(cursor = null, previous = false)
+    val coverLoader = remember(session, coverContext, coverRoute) { GalleryCoverLoader(coverContext) { session.galleries.cover(it.gid, it.token, it.key) } }
     DisposableEffect(coverLoader) { onDispose { coverLoader.close() } }
-    val covers = remember(coverLoader, page) { GalleryCoverCache(load = coverLoader::get) }
+    val covers = remember(coverLoader) { GalleryCoverCache(load = coverLoader::get) }
     val historyCovers = remember(coverLoader, historyOpen) { GalleryCoverCache(load = coverLoader::get) }
 
-    fun load(search: GallerySearchRequest, replaceResults: Boolean = false) {
+    fun load(search: GallerySearchRequest, replaceResults: Boolean = false, mergeResults: Boolean = false, refreshGesture: Boolean = false) {
         entryStarted = true
         entrySearch = search
         request?.cancel()
         val current = ++generation
+        val before = page
+        if (!mergeResults) consumedCursors = emptySet()
         if (replaceResults) page = null
         loading = true
+        merging = mergeResults
+        refreshing = refreshGesture
+        failedMerge = false
         failure = null
         failedSearch = null
         request = scope.launch {
@@ -291,20 +303,33 @@ fun GalleryLibraryScreen(
                     ?: search.uploader?.let { session.galleries.uploader(it, search.cursor, search.previous, search.filters) }
                     ?: session.galleries.search(search.query, search.cursor, search.previous, search.filters)
                 if (current == generation) {
-                    page = result
+                    page = if (mergeResults && before != null) {
+                        val cursor = requireNotNull(search.cursor)
+                        mergeGalleryBrowsePages(before, result, cursor, search.previous, consumedCursors).also {
+                            consumedCursors = consumedCursors + (cursor to search.previous)
+                        }
+                    } else {
+                        result
+                    }
                     loadedSearch = search
-                    resultsState.requestScrollToItem(0)
-                    searchBarOffsetY = 0
+                    if (!mergeResults) {
+                        resultsState.requestScrollToItem(0)
+                        searchBarOffsetY = 0
+                    }
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: GalleryRequestException) {
                 if (current == generation) {
                     failedSearch = search
+                    failedMerge = mergeResults
                     failure = error.failure
                 }
             } finally {
-                if (current == generation) loading = false
+                if (current == generation) {
+                    loading = false
+                    refreshing = false
+                }
             }
         }
     }
@@ -318,8 +343,14 @@ fun GalleryLibraryScreen(
     }
 
     fun turnPage(cursor: String?, previous: Boolean = false) {
-        if (cursor != null) loadedSearch?.let { load(it.copy(cursor = cursor, previous = previous)) }
+        if (cursor != null) loadedSearch?.let { load(it.copy(cursor = cursor, previous = previous), mergeResults = true) }
     }
+
+    fun retryPage() {
+        failedSearch?.let { load(it, mergeResults = failedMerge) }
+    }
+
+    fun refresh() = loadedSearch?.let { load(it.copy(cursor = null, previous = false), refreshGesture = true) }
 
     fun leaveSettings() {
         settingsOpen = false
@@ -334,6 +365,7 @@ fun GalleryLibraryScreen(
         request?.cancel()
         generation++
         loading = false
+        refreshing = false
         if (onAccount != null) onAccount() else account = true
     }
 
@@ -419,6 +451,7 @@ fun GalleryLibraryScreen(
                                     failedSearch = null
                                     failure = null
                                     loading = false
+                                    refreshing = false
                                     entryStarted = false
                                     entrySearch = GallerySearchRequest("", filters)
                                 }, { account = false })
@@ -487,18 +520,27 @@ fun GalleryLibraryScreen(
                                     search()
                                 }, onDismiss = { filtersOpen = false })
                             }
-                            if (orderOpen) {
-                                GalleryPageOrderDialog(order, onApply = {
-                                    orderName = it.name
-                                    orderOpen = false
-                                    resultsState.requestScrollToItem(0)
-                                    searchBarOffsetY = 0
-                                }, onDismiss = { orderOpen = false })
-                            }
                             val result = page
                             val error = failure
+                            val pendingCursor by remember(resultsState, result) {
+                                derivedStateOf {
+                                    val layout = resultsState.layoutInfo
+                                    val visible = layout.visibleItemsInfo
+                                    when {
+                                        result == null || visible.isEmpty() || layout.totalItemsCount != result.galleryInfoList.size -> null
+                                        result.galleryInfoList.getOrNull(visible.first().index)?.gid != visible.first().key -> null
+                                        result.prev != null && visible.first().index < 20 -> result.prev to true
+                                        result.next != null && visible.last().index >= result.galleryInfoList.size - 21 -> result.next to false
+                                        else -> null
+                                    }
+                                }
+                            }
+                            LaunchedEffect(pendingCursor, loading, error) {
+                                if (!loading && error == null) pendingCursor?.let { (cursor, previous) -> turnPage(cursor, previous) }
+                            }
+                            val refreshState = rememberPullToRefreshState()
                             // SearchBarScreen: list content scrolls beneath a floating search bar that slides away with it.
-                            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().clipToBounds().pullToRefresh(isRefreshing = refreshing, state = refreshState, enabled = !loading, onRefresh = { refresh() })) {
                                 val window = LocalWindowInfo.current.containerSize
                                 val density = LocalDensity.current
                                 val marginH = with(density) { galleryListMarginH(window.width.toDp(), window.height.toDp()) }
@@ -513,7 +555,6 @@ fun GalleryLibraryScreen(
                                     }
                                 }
                                 if (result != null && result.galleryInfoList.isNotEmpty()) {
-                                    val orderedGalleries = remember(result, order) { order.arrange(result.galleryInfoList) }
                                     LazyVerticalGrid(
                                         columns = GridCells.Adaptive((listDensity ?: GalleryListDensity.COMPACT).minimumColumnWidth.dp),
                                         modifier = Modifier.fillMaxSize().nestedScroll(barConnection),
@@ -522,25 +563,32 @@ fun GalleryLibraryScreen(
                                         horizontalArrangement = Arrangement.spacedBy(GalleryListInterval),
                                         verticalArrangement = Arrangement.spacedBy(GalleryListInterval),
                                     ) {
-                                        items(orderedGalleries, key = { it.gid }) { gallery ->
+                                        if ((merging && loading || failedMerge && error != null) && entrySearch.previous) {
+                                            item(span = { GridItemSpan(maxLineSpan) }) { GalleryBrowseLoadState(loading, error, ::retryPage) }
+                                        }
+                                        items(result.galleryInfoList, key = { it.gid }) { gallery ->
                                             GallerySearchCard(gallery, covers, downloaded = gallery.gid in downloadedGids) { selected = gallery }
+                                        }
+                                        if ((merging && loading || failedMerge && error != null) && !entrySearch.previous) {
+                                            item(span = { GridItemSpan(maxLineSpan) }) { GalleryBrowseLoadState(loading, error, ::retryPage) }
                                         }
                                     }
                                 }
                                 // GalleryList: a refresh covers the list with a centered indicator; failures and empty pages show its ErrorTip.
                                 when {
-                                    loading -> Surface(Modifier.fillMaxSize()) {
-                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                                    loading && !merging && !refreshing -> Surface(Modifier.fillMaxSize()) {
+                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularWavyProgressIndicator() }
                                     }
-                                    error != null && result == null -> Surface(Modifier.fillMaxSize()) {
+                                    error != null && !failedMerge -> Surface(Modifier.fillMaxSize()) {
                                         val retry = failedSearch
-                                        GalleryErrorTip(error.userMessage(), Modifier.widthIn(max = 228.dp).clip(ShapeDefaults.Small).clickable(enabled = retry != null, onClickLabel = galleryString(Res.string.gallery_retry), role = Role.Button) { retry?.let { load(it) } })
+                                        GalleryErrorTip(error.userMessage(), Modifier.widthIn(max = 228.dp).clip(ShapeDefaults.Small).clickable(enabled = retry != null, onClickLabel = galleryString(Res.string.gallery_retry), role = Role.Button) { retryPage() })
                                     }
                                     result == null -> Box(Modifier.fillMaxSize().padding(horizontal = marginH), contentAlignment = Alignment.Center) {
                                         Text(galleryString(Res.string.gallery_search_hint), Modifier.widthIn(max = 320.dp), style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
                                     }
                                     result.galleryInfoList.isEmpty() -> GalleryErrorTip(galleryString(Res.string.gallery_no_galleries), Modifier.widthIn(max = 228.dp))
                                 }
+                                PullToRefreshDefaults.LoadingIndicator(state = refreshState, isRefreshing = refreshing, modifier = Modifier.align(Alignment.TopCenter).padding(top = barSpace).offset { IntOffset(0, searchBarOffsetY) })
                                 val offset = Modifier.offset { IntOffset(0, searchBarOffsetY) }
                                 GallerySearchBar(
                                     query = query,
@@ -580,24 +628,6 @@ fun GalleryLibraryScreen(
                                         TextButton(onClick = { listAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
                                     }
                                 }
-                                // A failed page turn keeps the loaded page, like a failed Paging append.
-                                if (error != null && result != null) {
-                                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Text(error.userMessage(), Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
-                                        TextButton(onClick = { failedSearch?.let { load(it) } }, enabled = failedSearch != null && !loading) { Text(galleryString(Res.string.gallery_retry)) }
-                                    }
-                                }
-                                if (result != null) {
-                                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        TextButton(onClick = { turnPage(result.prev, previous = true) }, enabled = result.prev != null && !loading) { Text(galleryString(Res.string.gallery_previous)) }
-                                        TextButton(onClick = { loadedSearch?.let { load(it) } }, enabled = loadedSearch != null && !loading) { Text(galleryString(Res.string.gallery_reload_page)) }
-                                        TextButton(onClick = { orderOpen = true }, enabled = !loading) {
-                                            Icon(GalleryIcons.Sort, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
-                                            Text(galleryString(Res.string.gallery_sort_page), Modifier.padding(start = ButtonDefaults.IconSpacing))
-                                        }
-                                        TextButton(onClick = { turnPage(result.next) }, enabled = result.next != null && !loading) { Text(galleryString(Res.string.gallery_next)) }
-                                    }
-                                }
                             }
                         }
                     }
@@ -606,6 +636,18 @@ fun GalleryLibraryScreen(
         }
     }
     if (languageReady || languageFailed) SideEffect(onReady)
+}
+
+@Composable
+private fun GalleryBrowseLoadState(loading: Boolean, error: GalleryFailure?, onRetry: () -> Unit) {
+    if (loading) {
+        LinearWavyProgressIndicator()
+    } else if (error != null) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(error.userMessage())
+            Button(onClick = onRetry, shapes = ButtonDefaults.shapes()) { Text(galleryString(Res.string.gallery_retry)) }
+        }
+    }
 }
 
 @Composable

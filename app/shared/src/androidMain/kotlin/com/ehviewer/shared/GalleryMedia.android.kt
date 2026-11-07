@@ -5,7 +5,6 @@ import android.os.Looper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import coil3.SingletonImageLoader
@@ -18,7 +17,7 @@ import java.nio.ByteBuffer
 
 @Composable
 internal actual fun rememberGalleryMediaPainter(media: GalleryMedia, playing: Boolean, attempt: Int, failed: () -> Unit): Painter {
-    val poster = remember(media) { BitmapPainter(media.poster) }
+    val poster = remember(media) { media.posterPainter() }
     val bytes = media.animation ?: return poster
     if (!playing) return poster
     val context = LocalContext.current

@@ -15,6 +15,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
@@ -116,10 +117,15 @@ class GalleryPreviewIntegrationTest {
         val tip = Settings.appLinkVerifyTip
         val owned = File(context.cacheDir, "tag-ui-${UUID.randomUUID()}").apply { check(mkdirs()) }
         val tagRequests = Collections.synchronizedList(mutableListOf<io.ktor.http.Url>())
+        val pagingStage = AtomicReference("open tag")
         val roots = Collections.synchronizedList(mutableListOf<io.ktor.http.Url>())
-        fun listing(name: String, next: String? = null): String {
+        fun listing(name: String, next: String? = null, firstGid: Long = gid, count: Int = if (next == null) 1 else 60): String {
             val cursor = next?.let { """<a id="unext" href="/?next=$it">Next</a>""" }.orEmpty()
-            return """<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$name</span></a></div><img src="https://ehgt.org/0.png" style="height:100px;width:80px"><div class="cn">Non-H</div><div class="ir" style="background-position:0px -1px"></div></div></div>$cursor</body></html>"""
+            val entries = (0 until count).joinToString("") { index ->
+                val label = if (index == 0) name else "$name ${index + 1}"
+                """<div><div class="glname"><a href="https://e-hentai.org/g/${firstGid + index}/$token/"><span class="glink">$label</span></a></div><img src="https://ehgt.org/0.png" style="height:100px;width:80px"><div class="cn">Non-H</div><div class="ir" style="background-position:0px -1px"></div></div>"""
+            }
+            return """<!DOCTYPE html><html><body><div class="itg">$entries</div>$cursor</body></html>"""
         }
         val taggedDetail = detail(0).replace("<div id=\"taglist\"><table></table></div>", """<div id="taglist"><table><tr><td>parody:</td><td><div class="gt"><a>alice in wonderland</a></div></td></tr></table></div>""")
         check("parody:</td>" in taggedDetail)
@@ -133,24 +139,49 @@ class GalleryPreviewIntegrationTest {
                     tagRequests += request.url
                     when (tagRequests.size) {
                         1 -> respond("Owned unavailable tag search", HttpStatusCode.ServiceUnavailable)
-                        2 -> respond(listing("Tag search gallery", "91-92"))
-                        else -> {
-                            assertEquals("91-92", request.url.parameters["next"])
-                            respond(listing("Next tag page gallery"))
+                        2 -> {
+                            assertNull(request.url.parameters["next"])
+                            respond(listing("Tag search gallery", "91-92"))
                         }
+                        3 -> {
+                            assertEquals("Append during ${pagingStage.get()}: ${request.url}", "91-92", request.url.parameters["next"])
+                            respond("Owned unavailable append", HttpStatusCode.ServiceUnavailable)
+                        }
+                        4 -> {
+                            assertEquals("Retry during ${pagingStage.get()}: ${request.url}", "91-92", request.url.parameters["next"])
+                            respond(listing("Next tag page gallery", firstGid = gid + 60))
+                        }
+                        else -> error("Unexpected automatic tag-page request")
                     }
                 }
                 else -> {
                     assertEquals("e-hentai.org", request.url.host)
                     assertEquals("/", request.url.encodedPath)
                     roots += request.url
-                    respond(listing(if (request.url.parameters["f_search"] == "typed replacement") "Plain replacement gallery" else title))
+                    respond(if (request.url.parameters["f_search"] == "typed replacement") listing("Plain replacement gallery", count = 60) else listing(title))
                 }
             }
         }
         val client = HttpClient(engine) { followRedirects = false }
         val library = AndroidGalleryLibrary(false, client)
         fun visible(text: String) = assertTrue("Missing tag flow control: $text", device.wait(Until.hasObject(By.text(text)), 15_000))
+        val homeCaptures = requireNotNull(context.getExternalFilesDir("kmp-ui-homepage")).apply { mkdirs() }
+        fun scrollTo(text: String, direction: Direction) {
+            val deadline = SystemClock.uptimeMillis() + 15_000
+            val grid = checkNotNull(device.findObject(By.scrollable(true))).visibleBounds
+            val upper = grid.top + grid.height() / 4
+            val lower = grid.bottom - grid.height() / 8
+            while (SystemClock.uptimeMillis() < deadline) {
+                val target = device.findObject(By.text(text))?.visibleBounds
+                if (target != null && !target.isEmpty && target.top >= grid.top + 8 && target.bottom <= grid.bottom - 8) return
+                val down = direction == Direction.DOWN
+                device.swipe(grid.centerX(), if (down) lower else upper, grid.centerX(), if (down) upper else lower, 18)
+                SystemClock.sleep(25)
+            }
+            device.dumpWindowHierarchy(File(homeCaptures, "paging-failure.xml"))
+            device.takeScreenshot(File(homeCaptures, "paging-failure.png"))
+            error("The original scrolling list did not reach $text")
+        }
         fun query(value: String) {
             device.setSharedSearchText(value)
         }
@@ -174,6 +205,10 @@ class GalleryPreviewIntegrationTest {
                 query("owned tags")
                 device.submitSharedSearch()
                 visible(title)
+                for (label in listOf("Previous", "Reload page", "Sort this page", "Next")) {
+                    assertFalse("Unexpected homepage footer: $label", device.hasObject(By.text(label)))
+                }
+                assertTrue(device.takeScreenshot(File(homeCaptures, "homepage-without-footer.png")))
                 device.clickSharedControl(title)
                 visible("alice in wonderland")
                 assertTrue(device.hasObject(By.desc("parody:alice in wonderland")))
@@ -182,14 +217,63 @@ class GalleryPreviewIntegrationTest {
                 device.clickSharedControl("The site is temporarily unavailable.")
                 visible("Tag search gallery")
                 assertEquals(2, tagRequests.size)
-                device.clickSharedControl("Next")
-                visible("Next tag page gallery")
+                pagingStage.set("scroll to append")
+                device.dumpWindowHierarchy(File(homeCaptures, "tag-before-scroll.xml"))
+                scrollTo("Retry", Direction.DOWN)
+                visible("The site is temporarily unavailable.")
                 assertEquals(3, tagRequests.size)
+                assertTrue("The failed append must retain the real final card of the loaded page", device.hasObject(By.text("Tag search gallery 60")))
+                pagingStage.set("retry failed append")
+                device.waitForIdle(5_000)
+                val retryDeadline = SystemClock.uptimeMillis() + 15_000
+                // A first touch may stop a still-settling fling. A second real button
+                // activation is permitted only while no request has been observed.
+                repeat(2) {
+                    if (tagRequests.size == 3 && SystemClock.uptimeMillis() < retryDeadline) {
+                        val label = checkNotNull(device.findObject(By.text("Retry"))).visibleBounds
+                        // Activate the actually visible text; a clipped parent's center can lie
+                        // beneath the navigation inset even while its label is on screen.
+                        device.click(label.centerX(), label.centerY())
+                        val activationDeadline = minOf(retryDeadline, SystemClock.uptimeMillis() + 500)
+                        while (tagRequests.size == 3 && SystemClock.uptimeMillis() < activationDeadline) SystemClock.sleep(25)
+                    }
+                }
+                try {
+                    runBlocking { withTimeout((retryDeadline - SystemClock.uptimeMillis()).coerceAtLeast(1)) { while (tagRequests.size < 4) delay(25) } }
+                } catch (timeout: kotlinx.coroutines.TimeoutCancellationException) {
+                    device.dumpWindowHierarchy(File(homeCaptures, "retry-request-failure.xml"))
+                    device.takeScreenshot(File(homeCaptures, "retry-request-failure.png"))
+                    throw AssertionError("Inline Retry did not request the failed cursor", timeout)
+                }
+                scrollTo("Next tag page gallery", Direction.DOWN)
+                assertEquals(4, tagRequests.size)
+                assertTrue("The real appended page must keep the previous page's final card", device.hasObject(By.text("Tag search gallery 60")))
+                assertTrue(device.takeScreenshot(File(homeCaptures, "homepage-scrolled-append.png")))
+                // Reveal the original floating search bar with a short reverse scroll.
+                val grid = checkNotNull(device.findObject(By.scrollable(true))).visibleBounds
+                device.swipe(grid.centerX(), grid.top + grid.height() / 3, grid.centerX(), grid.top + grid.height() / 2, 20)
                 query("typed replacement")
                 device.submitSharedSearch()
                 visible("Plain replacement gallery")
-                assertEquals(3, tagRequests.size)
+                assertEquals(4, tagRequests.size)
                 assertEquals("typed replacement", roots.last().parameters["f_search"])
+                // Search replacement is already at the top. Refresh it with a real pull and
+                // independently prove the submitted query survives without a stale tag/cursor.
+                val beforeRefresh = roots.size
+                device.swipe(grid.centerX(), grid.top + grid.height() / 3, grid.centerX(), grid.bottom - grid.height() / 6, 30)
+                try {
+                    runBlocking { withTimeout(15_000) { while (roots.size == beforeRefresh) delay(25) } }
+                } catch (timeout: kotlinx.coroutines.TimeoutCancellationException) {
+                    device.dumpWindowHierarchy(File(homeCaptures, "pull-refresh-failure.xml"))
+                    device.takeScreenshot(File(homeCaptures, "pull-refresh-failure.png"))
+                    throw AssertionError("Pulling at the top did not refresh the submitted query", timeout)
+                }
+                visible("Plain replacement gallery")
+                assertEquals(beforeRefresh + 1, roots.size)
+                assertEquals("typed replacement", roots.last().parameters["f_search"])
+                assertNull(roots.last().parameters["next"])
+                assertNull(roots.last().parameters["prev"])
+                assertEquals(4, tagRequests.size)
             }
         } finally {
             client.close()
@@ -540,6 +624,17 @@ class GalleryPreviewIntegrationTest {
         val metadataAttempts = AtomicInteger()
         val blockFirstMetadata = AtomicBoolean(true)
         val rejectNextMetadata = AtomicBoolean(true)
+        val serveBorders = AtomicBoolean(false)
+        val borderRequests = AtomicInteger()
+        val borderPng = android.graphics.Bitmap.createBitmap(80, 96, android.graphics.Bitmap.Config.ARGB_8888).let { bitmap ->
+            try {
+                bitmap.eraseColor(android.graphics.Color.WHITE)
+                android.graphics.Canvas(bitmap).drawRect(4f, 8f, 74f, 88f, android.graphics.Paint().apply { color = android.graphics.Color.GREEN })
+                java.io.ByteArrayOutputStream().also { check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) }.toByteArray()
+            } finally {
+                bitmap.recycle()
+            }
+        }
         val engine = MockEngine { request ->
             when {
                 request.url.host == "ehgt.org" -> {
@@ -547,7 +642,13 @@ class GalleryPreviewIntegrationTest {
                         imageStarted.complete(Unit)
                         releaseImage.await()
                     }
-                    respond(png, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
+                    val bytes = if (request.url.encodedPath.startsWith("/crop-")) {
+                        borderRequests.incrementAndGet()
+                        borderPng
+                    } else {
+                        png
+                    }
+                    respond(bytes, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "image/png"))
                 }
                 request.url.encodedPath == "/" -> respond("""<!DOCTYPE html><html><body><div class="itg"><div><div class="glname"><a href="https://e-hentai.org/g/$gid/$token/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/0.png" style="height:100px;width:80px"><div class="cn">Non-H</div><div class="ir" style="background-position:0px -1px"></div></div></div></body></html>""")
                 request.url.encodedPath.startsWith("/g/") -> {
@@ -575,7 +676,8 @@ class GalleryPreviewIntegrationTest {
                     check(number in 1..3)
                     val previous = if (number > 1) """<a id="prev" href="https://e-hentai.org/s/${(number - 1).toString().repeat(10)}/$gid-${number - 1}">Previous</a>""" else ""
                     val next = if (number < 3) """<a id="next" href="https://e-hentai.org/s/${(number + 1).toString().repeat(10)}/$gid-${number + 1}">Next</a>""" else ""
-                    respond("""<!DOCTYPE html><html><body><img id="img" src="https://ehgt.org/${number - 1}.png">$previous$next</body></html>""")
+                    val image = if (serveBorders.get()) "crop-$number.png" else "${number - 1}.png"
+                    respond("""<!DOCTYPE html><html><body><img id="img" src="https://ehgt.org/$image">$previous$next</body></html>""")
                 }
                 else -> error("Unexpected owned reader-jump request")
             }
@@ -600,6 +702,7 @@ class GalleryPreviewIntegrationTest {
             it[showPageNumber] = true
             it[showReaderSeekbar] = true
             it[doubleTapToZoom] = true
+            it[cropBorder] = false
         }
         runBlocking { assertNull(EhDB.getGalleryInfo(gid)) }
         try {
@@ -878,6 +981,57 @@ class GalleryPreviewIntegrationTest {
                     device.swipe(canvas.left + canvas.width() * 3 / 4, canvas.centerY(), canvas.left + canvas.width() / 4, canvas.centerY(), 24)
                     assertTrue("A zoomed drag must not flip to another page", device.hasObject(By.desc("Gallery page 1")))
                     saved(0)
+                    stage = "actual border pixels and crop persistence in both layouts"
+                    serveBorders.set(true)
+                    device.waitForIdle(5_000)
+                    device.click(canvas.centerX(), canvas.centerY())
+                    click("Settings")
+                    click("Go to page")
+                    input("2")
+                    click("Open page")
+                    assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 2")), 15_000))
+                    saved(1)
+                    assertTrue("The owned border image must actually be requested", borderRequests.get() > 0)
+                    val borderCaptures = requireNotNull(context.getExternalFilesDir("kmp-ui-reader-crop")).apply { mkdirs() }
+                    fun borderColor(expected: Int, continuous: Boolean, name: String) {
+                        val target = File(borderCaptures, "$name.png")
+                        val deadline = SystemClock.uptimeMillis() + 10_000
+                        var actual: Int? = null
+                        do {
+                            val bounds = checkNotNull(device.findObject(By.desc("Gallery page 2"))).visibleBounds
+                            // Paged media fits the entire edge-to-edge drawing viewport. Its
+                            // accessibility visibleBounds excludes the overlaid toolbars in
+                            // landscape, which is not the image's actual fitting height.
+                            val viewport = if (continuous) bounds else checkNotNull(device.findObject(By.res("android:id/content"))).visibleBounds
+                            val factor = if (continuous) bounds.width() / 80f else minOf(viewport.width() / 80f, viewport.height() / 96f)
+                            val x = (if (continuous) bounds.left + factor * 2 else viewport.exactCenterX() - factor * 38).toInt()
+                            val y = if (continuous) bounds.centerY() else viewport.centerY()
+                            assertTrue("The crop pixel must remain inside the actual unobscured page", bounds.contains(x, y))
+                            assertTrue(device.takeScreenshot(target))
+                            val screenshot = checkNotNull(android.graphics.BitmapFactory.decodeFile(target.absolutePath))
+                            try {
+                                actual = screenshot.getPixel(x, y)
+                            } finally {
+                                screenshot.recycle()
+                            }
+                            if (actual != expected) SystemClock.sleep(25)
+                        } while (actual != expected && SystemClock.uptimeMillis() < deadline)
+                        assertEquals("Actual reader border pixels: $name", expected, actual)
+                    }
+                    borderColor(android.graphics.Color.WHITE, false, "paged-off")
+                    click("Crop borders")
+                    runBlocking { withTimeout(10_000) { while (!Settings.snapshot()[Settings.cropBorder]) delay(25) } }
+                    assertTrue(runBlocking { AndroidReadingState { null }.preferences().cropBorders })
+                    borderColor(android.graphics.Color.GREEN, false, "paged-on")
+                    saved(1)
+                    device.selectSharedReaderMode("Webtoon")
+                    assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 2")), 15_000))
+                    borderColor(android.graphics.Color.GREEN, true, "continuous-on")
+                    saved(1)
+                    click("Crop borders")
+                    runBlocking { withTimeout(10_000) { while (Settings.snapshot()[Settings.cropBorder]) delay(25) } }
+                    borderColor(android.graphics.Color.WHITE, true, "continuous-off")
+                    saved(1)
                 } catch (failure: Throwable) {
                     device.dumpWindowHierarchy(File(context.cacheDir, "reader-jump-$gid-failure.xml"))
                     device.takeScreenshot(File(context.cacheDir, "reader-jump-$gid-failure.png"))
@@ -907,6 +1061,7 @@ class GalleryPreviewIntegrationTest {
                 restore(showPageNumber)
                 restore(showReaderSeekbar)
                 restore(doubleTapToZoom)
+                restore(cropBorder)
             }
             Settings.appLinkVerifyTip = tip
             with(Settings) {

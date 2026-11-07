@@ -67,7 +67,7 @@ class ReaderStateRepositoryTest {
         val first = ReaderStateRepository(vault) { 123 }
         first.savePosition(5, 42, "0123456789")
         for (mode in ReaderMode.entries) {
-            val changed = ReaderPreferences(background = ReaderBackground.GRAY, showPageNumber = false).withMode(mode, webtoon = true)
+            val changed = ReaderPreferences(background = ReaderBackground.GRAY, showPageNumber = false, cropBorders = true).withMode(mode, webtoon = true)
             first.setPreferences(changed)
             val restored = ReaderStateRepository(vault)
             assertEquals(changed, restored.preferences())

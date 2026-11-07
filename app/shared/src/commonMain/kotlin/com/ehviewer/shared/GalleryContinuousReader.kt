@@ -66,7 +66,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit, chrome: GalleryReaderChromeState, onMode: (ReaderMode, String) -> Unit, preferences: ReaderPreferences = ReaderPreferences(), onSettings: () -> Unit = {}, settingsEnabled: Boolean = true, requestPageJump: Boolean = false, onPageJumpHandled: () -> Unit = {}) {
+internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit, chrome: GalleryReaderChromeState, onMode: (ReaderMode, String) -> Unit, onCrop: () -> Unit, preferences: ReaderPreferences = ReaderPreferences(), onSettings: () -> Unit = {}, settingsEnabled: Boolean = true, requestPageJump: Boolean = false, onPageJumpHandled: () -> Unit = {}) {
     val first = session.content.pageIndex(initial, detail.gid)
     val list = rememberLazyListState(first)
     val scope = rememberCoroutineScope()
@@ -75,7 +75,7 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
     val source = remember(session, detail.gid, initial) { GalleryPageSource(session, detail, initial) }
     val window = remember(source) { ReaderPageWindow(detail.pages, scope, load = source::load) }
     val pages by window.pages.collectAsState()
-    val ratios = remember(window) { mutableStateMapOf<Int, Float>() }
+    val ratios = remember(window, preferences.cropBorders) { mutableStateMapOf<Int, Float>() }
     var saveFailure by remember { mutableStateOf(false) }
     var saveAttempt by remember { mutableIntStateOf(0) }
     var jumpOrigin by remember(window) { mutableStateOf<Pair<Int, Int>?>(null) }
@@ -101,9 +101,9 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
         }
     }
     DisposableEffect(window) { onDispose { window.close() } }
-    LaunchedEffect(pages) {
+    LaunchedEffect(pages, preferences.cropBorders) {
         pages.forEach { (index, state) ->
-            if (state is ReaderPageState.Ready) ratios[index] = state.page.value.width.toFloat() / state.page.value.height
+            if (!preferences.cropBorders && state is ReaderPageState.Ready) ratios[index] = state.page.value.width.toFloat() / state.page.value.height
         }
         while (ratios.size > 1024) ratios.remove(ratios.keys.first { it !in pages })
     }
@@ -163,7 +163,8 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
         },
         actions = {
             GalleryReaderModeButton(preferences, current != null && settingsEnabled && pendingPosition == null) { selected -> current?.page?.url?.let { onMode(selected, it) } }
-            GalleryReaderAction(galleryString(Res.string.gallery_settings), GalleryIcons.Settings, settingsEnabled, onSettings)
+            GalleryReaderCropButton(preferences.cropBorders, current != null && settingsEnabled && pendingPosition == null, onCrop)
+            GalleryReaderAction(galleryString(Res.string.gallery_settings), GalleryIcons.SettingsOutlined, settingsEnabled, onSettings)
         },
     ) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -182,13 +183,16 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
                 items(detail.pages, key = { it }) { page ->
                     // Unloaded pages retain a page-shaped extent; tiny placeholders make touch flings skip dozens of pages.
                     val state = pages[page]
+                    val projection = rememberGalleryReaderMedia((state as? ReaderPageState.Ready)?.page?.value, preferences.cropBorders)
+                    val projected = projection.media
+                    LaunchedEffect(projected) { if (projected != null) ratios[page] = projected.width.toFloat() / projected.height }
                     val visible by remember(list, page) { derivedStateOf { list.layoutInfo.visibleItemsInfo.any { it.index == page } } }
-                    val ratio = ((state as? ReaderPageState.Ready)?.page?.value?.let { it.width.toFloat() / it.height } ?: ratios[page] ?: (1f / 1.4f)).coerceIn(0.1f, 10f)
+                    val ratio = (projected?.let { it.width.toFloat() / it.height } ?: ratios[page] ?: (1f / 1.4f)).coerceIn(0.1f, 10f)
                     // A short last page must retain the requested index instead of backfilling earlier pages.
                     Box(Modifier.fillMaxWidth().heightIn(min = if (page == detail.pages - 1) viewportHeight else 0.dp)) {
                         Box(Modifier.fillMaxWidth().aspectRatio(ratio).pointerInput(chrome) { detectTapGestures(onTap = { chrome.toggle() }) }) {
                             when (state) {
-                                is ReaderPageState.Ready -> GalleryMediaImage(state.page.value, galleryString(Res.string.gallery_gallery_page, page + 1), Modifier.fillMaxSize(), visible = visible)
+                                is ReaderPageState.Ready -> GalleryReaderMediaImage(projection, galleryString(Res.string.gallery_gallery_page, page + 1), Modifier.fillMaxSize(), visible = visible)
                                 is ReaderPageState.Failed -> Surface {
                                     GalleryError(state.failure) {
                                         source.retry(page)

@@ -9,7 +9,7 @@ import kotlinx.coroutines.sync.withLock
 
 internal data class GalleryCoverRequest(val gid: Long, val token: String, val key: String)
 
-/** One download/decode at a time and a 16 MiB LRU, owned by one result page/session. */
+/** One download/decode at a time and a 16 MiB LRU, owned by the committed browse route. */
 internal class GalleryCoverCache<T>(private val budget: Long = 16L * 1024 * 1024, private val load: suspend (GalleryCoverRequest) -> PreviewBitmap<T>) {
     private val mutex = Mutex()
     private val images = linkedMapOf<String, PreviewBitmap<T>>()

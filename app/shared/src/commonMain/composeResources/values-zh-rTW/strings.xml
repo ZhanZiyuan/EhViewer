@@ -1,8 +1,8 @@
 <resources>
     <string name="gallery_back">返回</string>
     <string name="gallery_settings">設定</string>
-    <string name="gallery_language">語言</string>
-    <string name="gallery_language_system">跟隨系統語言</string>
+    <string name="gallery_language">應用程式介面語言</string>
+    <string name="gallery_language_system">系統語言（預設）</string>
     <string name="gallery_language_loading">正在載入語言…</string>
     <string name="gallery_language_unavailable">無法讀取語言設定，原有偏好已保留。</string>
     <string name="gallery_language_save_failed">未能套用語言，請重新讀取已儲存的偏好後再試。</string>
@@ -31,9 +31,10 @@
     <string name="gallery_appearance_loading">正在讀取外觀…</string>
     <string name="gallery_appearance_retry">重試外觀設定</string>
     <string name="gallery_appearance_save_failed">無法儲存外觀，請在儲存空間恢復後重試。</string>
-    <string name="gallery_theme_system">跟隨系統主題</string>
-    <string name="gallery_theme_light">淺色主題</string>
-    <string name="gallery_theme_dark">深色主題</string>
+    <string name="gallery_theme_system">跟隨系統</string>
+    <string name="gallery_theme_light">總是關閉</string>
+    <string name="gallery_theme_dark">總是開啟</string>
+    <string name="gallery_settings_dark_theme">深色主題</string>
     <string name="gallery_reading">閱讀</string>
     <string name="gallery_reading_paged">分頁閱讀</string>
     <string name="gallery_reading_continuous">連續閱讀</string>
@@ -209,9 +210,9 @@
     <string name="gallery_cover_loading">正在載入封面</string>
     <string name="gallery_cover_retry">重試封面</string>
     <string name="gallery_cover_unavailable">暫無封面</string>
-    <string name="gallery_list_layout">圖庫欄寬</string>
-    <string name="gallery_list_comfortable">寬欄</string>
-    <string name="gallery_list_compact">緊湊欄</string>
+    <string name="gallery_list_layout">詳細大小</string>
+    <string name="gallery_list_comfortable">長</string>
+    <string name="gallery_list_compact">短</string>
     <string name="gallery_list_loading">正在讀取圖庫版面…</string>
     <string name="gallery_list_unavailable">無法讀取圖庫版面。</string>
     <string name="gallery_list_save_failed">無法儲存圖庫版面。</string>
@@ -325,4 +326,5 @@
     <string name="gallery_reader_mode_vertical">由上至下</string>
     <string name="gallery_reader_mode_webtoon">Webtoon 模式</string>
     <string name="gallery_reader_mode_continuous_vertical">垂直連貫</string>
+    <string name="gallery_reader_crop_borders">邊緣裁剪</string>
 </resources>

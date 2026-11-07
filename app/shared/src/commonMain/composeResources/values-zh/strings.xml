@@ -1,8 +1,8 @@
 <resources>
     <string name="gallery_back">返回</string>
     <string name="gallery_settings">设置</string>
-    <string name="gallery_language">语言</string>
-    <string name="gallery_language_system">跟随系统语言</string>
+    <string name="gallery_language">App 界面语言</string>
+    <string name="gallery_language_system">系统语言（默认）</string>
     <string name="gallery_language_loading">正在加载语言…</string>
     <string name="gallery_language_unavailable">无法读取语言设置，原有偏好已保留。</string>
     <string name="gallery_language_save_failed">未能应用语言，请重新读取已保存的偏好后再试。</string>
@@ -31,9 +31,10 @@
     <string name="gallery_appearance_loading">正在读取外观…</string>
     <string name="gallery_appearance_retry">重试外观设置</string>
     <string name="gallery_appearance_save_failed">无法保存外观，请在存储恢复后重试。</string>
-    <string name="gallery_theme_system">跟随系统主题</string>
-    <string name="gallery_theme_light">浅色主题</string>
-    <string name="gallery_theme_dark">深色主题</string>
+    <string name="gallery_theme_system">跟随系统</string>
+    <string name="gallery_theme_light">总是关闭</string>
+    <string name="gallery_theme_dark">总是开启</string>
+    <string name="gallery_settings_dark_theme">深色主题</string>
     <string name="gallery_reading">阅读</string>
     <string name="gallery_reading_paged">分页阅读</string>
     <string name="gallery_reading_continuous">连续阅读</string>
@@ -209,9 +210,9 @@
     <string name="gallery_cover_loading">正在加载封面</string>
     <string name="gallery_cover_retry">重试封面</string>
     <string name="gallery_cover_unavailable">暂无封面</string>
-    <string name="gallery_list_layout">图库列宽</string>
-    <string name="gallery_list_comfortable">宽列</string>
-    <string name="gallery_list_compact">紧凑列</string>
+    <string name="gallery_list_layout">详情宽度</string>
+    <string name="gallery_list_comfortable">长</string>
+    <string name="gallery_list_compact">短</string>
     <string name="gallery_list_loading">正在读取图库布局…</string>
     <string name="gallery_list_unavailable">无法读取图库布局。</string>
     <string name="gallery_list_save_failed">无法保存图库布局。</string>
@@ -325,4 +326,5 @@
     <string name="gallery_reader_mode_vertical">从上到下</string>
     <string name="gallery_reader_mode_webtoon">条漫</string>
     <string name="gallery_reader_mode_continuous_vertical">从上到下（连续）</string>
+    <string name="gallery_reader_crop_borders">裁剪边缘</string>
 </resources>

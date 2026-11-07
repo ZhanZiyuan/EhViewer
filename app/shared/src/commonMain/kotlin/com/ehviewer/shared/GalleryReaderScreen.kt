@@ -96,8 +96,13 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
     val mode = preferences.resolvedMode(webtoon)
     val rtl = mode == ReaderMode.RIGHT_TO_LEFT
     val vertical = mode == ReaderMode.VERTICAL
+    val mediaProjection = rememberGalleryReaderMedia(bitmap, preferences.cropBorders)
+    LaunchedEffect(mediaProjection.media) {
+        zoom = 1f
+        pan = Offset.Zero
+    }
     fun transform(factor: Float, centroid: Offset = Offset.Unspecified, delta: Offset = Offset.Zero) {
-        val image = bitmap ?: return
+        val image = mediaProjection.media ?: return
         val changed = readerZoom(ReaderZoom(zoom, pan), viewport, IntSize(image.width, image.height), factor, centroid, delta)
         zoom = changed.scale
         pan = changed.pan
@@ -169,7 +174,7 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
             val start = remember { currentUrl }
             Column(Modifier.fillMaxSize()) {
                 if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
-                GalleryContinuousReader(session, detail, start, readerState, onBack, chrome, onMode = { selected, position -> changeMode(selected, position) }, preferences = preferences, onSettings = { optionsOpen = true }, settingsEnabled = preferencesReady && !settingsSaving, requestPageJump = continuousJumpRequested, onPageJumpHandled = { continuousJumpRequested = false })
+                GalleryContinuousReader(session, detail, start, readerState, onBack, chrome, onMode = { selected, position -> changeMode(selected, position) }, onCrop = { changePreferences(preferences.copy(cropBorders = !preferences.cropBorders)) }, preferences = preferences, onSettings = { optionsOpen = true }, settingsEnabled = preferencesReady && !settingsSaving, requestPageJump = continuousJumpRequested, onPageJumpHandled = { continuousJumpRequested = false })
             }
             return@GalleryReaderTheme
         }
@@ -296,14 +301,11 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                 GalleryReaderAction(galleryString(if (rtl) Res.string.gallery_reading_rtl else Res.string.gallery_reading_ltr), GalleryIcons.SwapHoriz, preferencesReady && !settingsSaving && !vertical) {
                     changeMode(if (rtl) ReaderMode.LEFT_TO_RIGHT else ReaderMode.RIGHT_TO_LEFT)
                 }
-                GalleryReaderAction(galleryString(Res.string.gallery_reset_zoom), GalleryIcons.ZoomOutMap) {
-                    zoom = 1f
-                    pan = Offset.Zero
-                }
+                GalleryReaderCropButton(preferences.cropBorders, preferencesReady && !settingsSaving && bitmap != null) { changePreferences(preferences.copy(cropBorders = !preferences.cropBorders)) }
                 if (original || document?.originImageUrl != null) {
                     GalleryReaderAction(if (original) galleryString(Res.string.gallery_display_image) else galleryString(Res.string.gallery_original_image), GalleryIcons.Download, !loading && !seeking) { original = !original }
                 }
-                GalleryReaderAction(galleryString(Res.string.gallery_settings), GalleryIcons.Settings, !settingsSaving) { optionsOpen = true }
+                GalleryReaderAction(galleryString(Res.string.gallery_settings), GalleryIcons.SettingsOutlined, !settingsSaving) { optionsOpen = true }
             },
         ) {
             GalleryReaderPagedCanvas(index, detail.pages, rtl, bitmap != null && !loading && !seeking && zoom == 1f, vertical = vertical, onPageRequested = { selected ->
@@ -359,9 +361,9 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    bitmap?.let { image ->
-                        GalleryMediaImage(
-                            image,
+                    mediaProjection.media?.let {
+                        GalleryReaderMediaImage(
+                            mediaProjection,
                             galleryString(Res.string.gallery_gallery_page, index + 1),
                             Modifier.fillMaxSize().graphicsLayer {
                                 scaleX = zoom

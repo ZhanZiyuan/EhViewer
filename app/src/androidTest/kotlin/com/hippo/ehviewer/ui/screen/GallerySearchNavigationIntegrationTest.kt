@@ -10,6 +10,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
@@ -52,7 +53,7 @@ import org.junit.runner.RunWith
 /** Actual CMP actions, Ktor requests, Rust list/CBOR parsing and image decoding on each form factor. */
 @RunWith(AndroidJUnit4::class)
 class GallerySearchNavigationIntegrationTest {
-    @Test fun orderingAndCursorRecoveryRetainCommittedInputsAndCancelledSearchCannotReplaceNewResults() {
+    @Test fun scrollingAndCursorRecoveryRetainCommittedInputsAndCancelledSearchCannotReplaceNewResults() {
         System.loadLibrary("ehviewer")
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -66,14 +67,15 @@ class GallerySearchNavigationIntegrationTest {
         val gid = 7_000_000_000_000L + (UUID.randomUUID().mostSignificantBits and 0xff_ffff_ffffL)
         val requests = Collections.synchronizedList(mutableListOf<Url>())
         val nextRequests = AtomicInteger()
+        val firstPageRequests = AtomicInteger()
         val rejectPrevious = AtomicBoolean(true)
         val blockedStarted = CompletableDeferred<Unit>()
         val releaseBlocked = CompletableDeferred<Unit>()
         val blockedFinished = CompletableDeferred<Unit>()
         val png = checkNotNull("iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGP4z8AAQv8BD/kD/YURmXYAAAAASUVORK5CYII=".decodeBase64()).toByteArray()
-        fun listing(titles: List<String>, previous: String? = null, next: String? = null): String {
+        fun listing(titles: List<String>, previous: String? = null, next: String? = null, firstGid: Long = gid): String {
             val cards = titles.mapIndexed { index, title ->
-                """<div><div class="glname"><a href="https://e-hentai.org/g/${gid + index}/0123456789/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/owned-$gid-$index.png" style="height:100px;width:80px"><div class="cn">Non-H</div><div class="ir" style="background-position:0px -1px"></div></div>"""
+                """<div><div class="glname"><a href="https://e-hentai.org/g/${firstGid + index}/0123456789/"><span class="glink">$title</span></a></div><img src="https://ehgt.org/owned-$firstGid-$index.png" style="height:100px;width:80px"><div class="cn">Non-H</div><div class="ir" style="background-position:0px -1px"></div></div>"""
             }.joinToString("")
             val prevLink = previous?.let { """<a id="uprev" href="/?prev=$it">Previous</a>""" }.orEmpty()
             val nextLink = next?.let { """<a id="unext" href="/?next=$it">Next</a>""" }.orEmpty()
@@ -103,8 +105,8 @@ class GallerySearchNavigationIntegrationTest {
                         assertEquals("200-300", request.url.parameters["next"])
                         when (nextRequests.incrementAndGet()) {
                             1 -> respond("Owned unavailable page", HttpStatusCode.ServiceUnavailable)
-                            2 -> respond(listing(listOf("Second page gallery"), previous = "100-150"))
-                            else -> respond(listing(listOf("Reloaded second page"), previous = "100-150"))
+                            2 -> respond(listing(listOf("Second page gallery"), firstGid = gid + 40))
+                            else -> error("Unexpected repeated append")
                         }
                     }
                     request.url.parameters["prev"] != null -> {
@@ -112,10 +114,11 @@ class GallerySearchNavigationIntegrationTest {
                         if (rejectPrevious.getAndSet(false)) {
                             respond("Owned unavailable previous page", HttpStatusCode.ServiceUnavailable)
                         } else {
-                            respond(listing(listOf("Previous page gallery"), next = "200-300"))
+                            respond(listing(listOf("Previous page gallery"), firstGid = gid - 1))
                         }
                     }
-                    else -> respond(listing(listOf("Z owned gallery", "A owned gallery", "B owned gallery") + ('C'..'R').map { "$it owned filler" }, next = "200-300"))
+                    firstPageRequests.incrementAndGet() == 1 -> respond(listing(listOf("Z owned gallery", "A owned gallery", "B owned gallery") + ('C'..'R').map { "$it owned filler" } + (20..40).map { "Owned filler $it" }, next = "200-300"))
+                    else -> respond(listing(listOf("Reloaded committed page"), previous = "100-150", firstGid = gid + 100))
                 }
             }
         }
@@ -142,6 +145,59 @@ class GallerySearchNavigationIntegrationTest {
         fun query(text: String) {
             device.setSharedSearchText(text)
             visible(text)
+        }
+        fun scrollTo(text: String, direction: Direction) {
+            val deadline = SystemClock.uptimeMillis() + 15_000
+            while (SystemClock.uptimeMillis() < deadline) {
+                // A fitting refreshed page legitimately has no scrollable accessibility node.
+                val scroll = device.findObject(By.scrollable(true))
+                val grid = scroll?.visibleBounds ?: device.findObject(By.res("android:id/content"))?.visibleBounds
+                val target = device.findObject(By.text(text))?.visibleBounds
+                if (target != null && !target.isEmpty && grid != null && target.top >= grid.top + 8 && target.bottom <= grid.bottom - 8) return
+                if (scroll != null && grid != null) {
+                    val upper = grid.top + grid.height() / 4
+                    val lower = grid.bottom - grid.height() / 8
+                    device.swipe(grid.centerX(), if (direction == Direction.DOWN) lower else upper, grid.centerX(), if (direction == Direction.DOWN) upper else lower, 18)
+                }
+                SystemClock.sleep(25)
+            }
+            error("The scrolling list did not reach $text")
+        }
+        fun revealSearch() {
+            if (device.findObject(By.clazz("android.widget.EditText"))?.visibleBounds?.isEmpty == false) return
+            val grid = (device.findObject(By.scrollable(true)) ?: checkNotNull(device.findObject(By.res("android:id/content")))).visibleBounds
+            device.swipe(grid.centerX(), grid.top + grid.height() / 3, grid.centerX(), grid.top + grid.height() / 2, 20)
+        }
+        fun returnToTopAndRefresh() {
+            val deadline = SystemClock.uptimeMillis() + 15_000
+            while (firstPageRequests.get() == 1 && SystemClock.uptimeMillis() < deadline) {
+                device.findObject(By.scrollable(true))?.visibleBounds?.let { grid ->
+                    // The final downward swipe may reach the top and perform the real pull
+                    // in one gesture. Observe that request before sending another gesture.
+                    device.swipe(grid.centerX(), grid.top + grid.height() / 4, grid.centerX(), grid.bottom - grid.height() / 8, 18)
+                }
+                SystemClock.sleep(25)
+            }
+            assertEquals("One real pull must reload the committed first page exactly once", 2, firstPageRequests.get())
+        }
+        fun retryCursor() {
+            device.waitForIdle(5_000)
+            val before = requests.size
+            val deadline = SystemClock.uptimeMillis() + 15_000
+            repeat(2) {
+                if (requests.size == before && SystemClock.uptimeMillis() < deadline) {
+                    val bounds = checkNotNull(device.findObject(By.text("Retry"))).visibleBounds
+                    check(!bounds.isEmpty)
+                    // A clipped parent's center can be outside the viewport. Use its
+                    // actually visible label, and allow a second touch only if the
+                    // first stopped a fling without dispatching any HTTP request.
+                    device.click(bounds.centerX(), bounds.centerY())
+                    val activation = minOf(deadline, SystemClock.uptimeMillis() + 500)
+                    while (requests.size == before && SystemClock.uptimeMillis() < activation) SystemClock.sleep(25)
+                }
+            }
+            runBlocking { withTimeout((deadline - SystemClock.uptimeMillis()).coerceAtLeast(1)) { while (requests.size == before) delay(25) } }
+            assertEquals("Retry must make exactly one real request", before + 1, requests.size)
         }
         downloadLocation = owned.toOkioPath()
         Settings.appLinkVerifyTip = true
@@ -177,35 +233,34 @@ class GallerySearchNavigationIntegrationTest {
                     click("Apply and search")
                     visible("Z owned gallery")
                     visible("A owned gallery")
-                    click("Sort this page")
-                    click("Title")
-                    assertTrue(device.wait(Until.gone(By.text("Title")), 5_000))
+                    listOf("Previous", "Reload page", "Sort this page", "Next").forEach {
+                        assertFalse("The original homepage has no fixed footer: $it", device.hasObject(By.text(it)))
+                    }
                     fun cardOrder() = try {
                         device.findObjects(By.text(Pattern.compile("[ABZ] owned gallery|[C-R] owned filler"))).filter { !it.visibleBounds.isEmpty }.sortedWith(compareBy({ it.visibleBounds.top }, { it.visibleBounds.left })).map { it.text }.take(2)
                     } catch (_: StaleObjectException) {
                         emptyList()
                     }
-                    runBlocking { withTimeout(5_000) { while (cardOrder() != listOf("A owned gallery", "B owned gallery")) delay(25) } }
-                    assertEquals(listOf("A owned gallery", "B owned gallery"), cardOrder())
-                    click("Sort this page")
-                    click("Service order")
                     runBlocking { withTimeout(5_000) { while (cardOrder() != listOf("Z owned gallery", "A owned gallery")) delay(25) } }
-                    click("Sort this page")
-                    click("Title")
-                    runBlocking { withTimeout(5_000) { while (cardOrder() != listOf("A owned gallery", "B owned gallery")) delay(25) } }
-                    assertEquals(2, requests.size) // Homepage + search; sorting never repeats HTTP.
-                    click("Next")
+                    assertEquals(listOf("Z owned gallery", "A owned gallery"), cardOrder())
+                    assertEquals(2, requests.size) // Preserve the actual service order without extra HTTP.
+                    scrollTo("Retry", Direction.DOWN)
                     visible("Retry")
-                    visible("A owned gallery") // The preceding page remains usable on failure.
+                    visible("Owned filler 40") // The preceding page remains usable on failure.
+                    revealSearch()
                     query("unsubmitted draft")
-                    click("Retry")
+                    scrollTo("Retry", Direction.DOWN)
+                    retryCursor()
+                    scrollTo("Second page gallery", Direction.DOWN)
                     visible("Second page gallery")
-                    click("Reload page")
-                    visible("Reloaded second page")
-                    click("Previous")
+                    visible("Owned filler 40")
+                    returnToTopAndRefresh()
+                    visible("Reloaded committed page")
                     visible("Retry")
+                    revealSearch()
                     query("another unsubmitted draft")
-                    click("Retry")
+                    scrollTo("Retry", Direction.UP)
+                    retryCursor()
                     visible("Previous page gallery")
                     query("cancelled query")
                     // A real search submission must leave editing mode on phone and tablet.
@@ -226,7 +281,7 @@ class GallerySearchNavigationIntegrationTest {
                     val actual = requests.toList().drop(1)
                     assertEquals(8, actual.size)
                     assertEquals(List(6) { "committed query" } + listOf("cancelled query", "replacement query"), actual.map { it.parameters["f_search"] })
-                    assertEquals(listOf(null, "200-300", "200-300", "200-300", null, null, null, null), actual.map { it.parameters["next"] })
+                    assertEquals(listOf(null, "200-300", "200-300", null, null, null, null, null), actual.map { it.parameters["next"] })
                     assertEquals(listOf(null, null, null, null, "100-150", "100-150", null, null), actual.map { it.parameters["prev"] })
                     actual.forEach {
                         assertEquals("1", it.parameters["advsearch"])

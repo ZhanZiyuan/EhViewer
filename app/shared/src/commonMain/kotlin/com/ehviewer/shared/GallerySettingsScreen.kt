@@ -66,11 +66,14 @@ import ehviewer.app.shared.generated.resources.gallery_reading_preferences_reloa
 import ehviewer.app.shared.generated.resources.gallery_reading_preferences_save_failed
 import ehviewer.app.shared.generated.resources.gallery_reading_preferences_unavailable
 import ehviewer.app.shared.generated.resources.gallery_settings
+import ehviewer.app.shared.generated.resources.gallery_settings_dark_theme
 import ehviewer.app.shared.generated.resources.gallery_theme_dark
 import ehviewer.app.shared.generated.resources.gallery_theme_light
 import ehviewer.app.shared.generated.resources.gallery_theme_system
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import me.zhanghai.compose.preference.ProvidePreferenceTheme
+import me.zhanghai.compose.preference.preferenceTheme
 import org.jetbrains.compose.resources.StringResource
 
 /** The same settings controls persist through the actual platform adapters used by the reader. */
@@ -144,85 +147,95 @@ internal fun GallerySettingsScreen(
         }
     }
     BackHandler(onBack = ::back)
-    Column(Modifier.fillMaxSize()) {
-        GallerySettingsHeader(title = page?.let { galleryString(it.title) } ?: galleryString(Res.string.gallery_settings), onBack = ::back)
-        if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if (page == null) {
-            GallerySettingsOverview { section = it.name }
-            return@Column
-        }
-        Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (page == GallerySettingsPage.ADVANCED) {
-                Text(galleryString(Res.string.gallery_language), style = MaterialTheme.typography.titleMedium)
-                if (!languageReady || languageSaveFailed) {
-                    Text(
-                        galleryString(
-                            when {
-                                languageSaveFailed -> Res.string.gallery_language_save_failed
-                                languageFailed -> Res.string.gallery_language_unavailable
-                                else -> Res.string.gallery_language_loading
-                            },
-                        ),
-                    )
-                    if (languageFailed || languageSaveFailed) {
-                        TextButton(onClick = {
-                            languageSaveFailed = false
-                            onRetryLanguage()
-                        }, enabled = !busy) { Text(galleryString(Res.string.gallery_language_reload)) }
+    // Match v1.15.10 setMD3Content on every host, including standalone shared destinations.
+    ProvidePreferenceTheme(preferenceTheme(iconColor = MaterialTheme.colorScheme.primary, titleTextStyle = MaterialTheme.typography.titleMedium)) {
+        Column(Modifier.fillMaxSize()) {
+            GallerySettingsHeader(title = page?.let { galleryString(it.title) } ?: galleryString(Res.string.gallery_settings), onBack = ::back)
+            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (page == null) {
+                GallerySettingsOverview { section = it.name }
+                return@Column
+            }
+            val originalRows = page == GallerySettingsPage.EH || page == GallerySettingsPage.ADVANCED
+            Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = if (originalRows) 0.dp else 16.dp, vertical = if (originalRows) 0.dp else 12.dp), verticalArrangement = if (originalRows) Arrangement.Top else Arrangement.spacedBy(8.dp)) {
+                if (page == GallerySettingsPage.ADVANCED) {
+                    if (!languageReady || languageSaveFailed) {
+                        Text(
+                            galleryString(
+                                when {
+                                    languageSaveFailed -> Res.string.gallery_language_save_failed
+                                    languageFailed -> Res.string.gallery_language_unavailable
+                                    else -> Res.string.gallery_language_loading
+                                },
+                            ),
+                        )
+                        if (languageFailed || languageSaveFailed) {
+                            TextButton(onClick = {
+                                languageSaveFailed = false
+                                onRetryLanguage()
+                            }, enabled = !busy) { Text(galleryString(Res.string.gallery_language_reload)) }
+                        }
                     }
-                }
-                val languages = listOf(null to galleryString(Res.string.gallery_language_system), "en" to "English", "zh-CN" to "简体中文", "zh-TW" to "繁體中文", "ja" to "日本語")
-                for ((tag, label) in languages) {
-                    SettingsChoice(label, languageReady && tag == languageTag, !busy && languageReady && !languageSaveFailed) {
+                    val languages = listOf(null to galleryString(Res.string.gallery_language_system), "en" to "English", "zh-CN" to "简体中文", "zh-TW" to "繁體中文", "ja" to "日本語")
+                    val currentLanguage = languages.firstOrNull { it.first == languageTag }?.second
+                        ?: galleryString(Res.string.gallery_language_current, languageTag.orEmpty())
+                    GallerySettingsMenu(
+                        galleryString(Res.string.gallery_language),
+                        currentLanguage,
+                        languageTag,
+                        languages,
+                        enabled = !busy && languageReady && !languageSaveFailed,
+                    ) { tag ->
                         perform {
                             language.setTag(tag)
                             onLanguageChanged(tag)
                         }
                     }
                 }
-                if (languageReady && languages.none { it.first == languageTag }) Text(galleryString(Res.string.gallery_language_current, languageTag.orEmpty()))
-                Text(galleryString(Res.string.gallery_appearance), style = MaterialTheme.typography.titleMedium)
-                if (mode == null) {
-                    Text(if (appearanceFailed) galleryString(Res.string.gallery_appearance_unavailable) else galleryString(Res.string.gallery_appearance_loading))
-                    if (appearanceFailed) TextButton(onClick = onRetryAppearance) { Text(galleryString(Res.string.gallery_appearance_retry)) }
-                }
-                for (value in GalleryThemeMode.entries) {
-                    SettingsChoice(
-                        when (value) {
-                            GalleryThemeMode.SYSTEM -> galleryString(Res.string.gallery_theme_system)
-                            GalleryThemeMode.LIGHT -> galleryString(Res.string.gallery_theme_light)
-                            GalleryThemeMode.DARK -> galleryString(Res.string.gallery_theme_dark)
-                        },
-                        selected = mode == value,
+                if (page == GallerySettingsPage.EH) {
+                    val themes = listOf(
+                        GalleryThemeMode.SYSTEM to galleryString(Res.string.gallery_theme_system),
+                        GalleryThemeMode.LIGHT to galleryString(Res.string.gallery_theme_light),
+                        GalleryThemeMode.DARK to galleryString(Res.string.gallery_theme_dark),
+                    )
+                    if (mode == null) {
+                        Text(if (appearanceFailed) galleryString(Res.string.gallery_appearance_unavailable) else galleryString(Res.string.gallery_appearance_loading))
+                        if (appearanceFailed) TextButton(onClick = onRetryAppearance) { Text(galleryString(Res.string.gallery_appearance_retry)) }
+                    }
+                    GallerySettingsMenu(
+                        galleryString(Res.string.gallery_settings_dark_theme),
+                        themes.firstOrNull { it.first == mode }?.second.orEmpty(),
+                        mode,
+                        themes,
                         enabled = !busy && mode != null,
-                    ) {
+                    ) { value ->
                         perform {
                             appearance.setMode(value)
                             onModeChanged(value)
                         }
                     }
-                }
-            }
-            if (page == GallerySettingsPage.EH) {
-                listPreferences?.let { GalleryListSettings(it, listDensity, showComments, listFailed, onListChanged, onCommentsChanged, onRetryList) }
-                Text(galleryString(Res.string.gallery_reading), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
-                val current = preferences
-                if (current != null) {
-                    fun update(changed: ReaderPreferences) = perform {
-                        readerState.setPreferences(changed)
-                        preferences = changed
+                    listPreferences?.let { GalleryListSettings(it, listDensity, showComments, listFailed, onListChanged, onCommentsChanged, onRetryList) }
+                    Column(Modifier.padding(16.dp)) {
+                        Text(galleryString(Res.string.gallery_reading), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp))
+                        val current = preferences
+                        if (current != null) {
+                            fun update(changed: ReaderPreferences) = perform {
+                                readerState.setPreferences(changed)
+                                preferences = changed
+                            }
+                            GalleryReaderModePreference(current, !busy) { update(current.withMode(it)) }
+                            GalleryReaderGeneralSettings(current, !busy, ::update)
+                        }
                     }
-                    GalleryReaderModePreference(current, !busy) { update(current.withMode(it)) }
-                    GalleryReaderGeneralSettings(current, !busy, ::update)
                 }
-            }
-            if (page == GallerySettingsPage.ADVANCED) networkPreferences?.let { GalleryNetworkSettings(it) }
-            if (page == GallerySettingsPage.DOWNLOAD) GalleryStorageSettingsSection(storageSettings, onPlatformStorageSettings)
-            if (page == GallerySettingsPage.PRIVACY) GalleryPrivacyDestinations(onAccount, onHistory)
-            if (page == GallerySettingsPage.ABOUT) GalleryAboutLinks()
-            failure?.let { error ->
-                Text(galleryString(error), color = MaterialTheme.colorScheme.error)
-                TextButton(onClick = { attempt++ }) { Text(galleryString(Res.string.gallery_reading_preferences_reload)) }
+                if (page == GallerySettingsPage.ADVANCED) networkPreferences?.let { Column(Modifier.padding(16.dp)) { GalleryNetworkSettings(it) } }
+                if (page == GallerySettingsPage.DOWNLOAD) GalleryStorageSettingsSection(storageSettings, onPlatformStorageSettings)
+                if (page == GallerySettingsPage.PRIVACY) GalleryPrivacyDestinations(onAccount, onHistory)
+                if (page == GallerySettingsPage.ABOUT) GalleryAboutLinks()
+                failure?.let { error ->
+                    Text(galleryString(error), color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = { attempt++ }) { Text(galleryString(Res.string.gallery_reading_preferences_reload)) }
+                }
             }
         }
     }

@@ -66,15 +66,17 @@ class GalleryLanguageIntegrationTest {
                 var settingsLabel = "Settings"
                 var advancedLabel = "Advanced"
                 var navigationLabel = "Open navigation"
+                var languageLabel = "App language"
                 for (row in listOf(
-                    listOf("ja", "日本語", "言語", "ギャラリーを検索", "設定", "ナビゲーションを開く", "その他の設定"),
-                    listOf("zh-CN", "简体中文", "语言", "搜索图库", "设置", "打开导航", "高级"),
-                    listOf("zh-TW", "繁體中文", "語言", "搜尋圖庫", "設定", "開啟導覽", "進階"),
-                    listOf("en", "English", "Language", "Search galleries", "Settings", "Open navigation", "Advanced"),
+                    listOf("ja", "日本語", "アプリの言語", "ギャラリーを検索", "設定", "ナビゲーションを開く", "その他の設定"),
+                    listOf("zh-CN", "简体中文", "App 界面语言", "搜索图库", "设置", "打开导航", "高级"),
+                    listOf("zh-TW", "繁體中文", "應用程式介面語言", "搜尋圖庫", "設定", "開啟導覽", "進階"),
+                    listOf("en", "English", "App language", "Search galleries", "Settings", "Open navigation", "Advanced"),
                 )) {
                     val (tag, choice, heading, search, settings) = row
                     device.openSharedDestination(settingsLabel, navigationLabel)
                     click(advancedLabel)
+                    click(languageLabel)
                     visible(choice)
                     click(choice)
                     visible(heading)
@@ -93,6 +95,7 @@ class GalleryLanguageIntegrationTest {
                     settingsLabel = settings
                     navigationLabel = row[5]
                     advancedLabel = row[6]
+                    languageLabel = heading
                 }
                 device.openSharedDestination("Settings")
                 click("EH")
@@ -153,19 +156,38 @@ class GalleryLanguageIntegrationTest {
                         while (network.requestTimeoutSeconds() != expected) delay(25)
                     }
                 }
-                fun savedDensity(expected: Int, label: String) = runBlocking {
-                    withTimeout(5_000) {
-                        while (Settings.snapshot()[Settings.detailSize] != expected || device.findObject(By.text(label))?.parent?.let { it.isChecked && it.isEnabled } != true) delay(25)
+                fun savedDensity(expected: Int, label: String) {
+                    val deadline = android.os.SystemClock.uptimeMillis() + 5_000
+                    // Inspect the actual selected popup item; its summary behind the popup has
+                    // the same text. Keep the existing real preference and enabled assertions.
+                    var opened = false
+                    while (!opened && android.os.SystemClock.uptimeMillis() < deadline) {
+                        try {
+                            var row = device.findObject(By.text("Detail width"))
+                            while (row != null && !row.isClickable) row = row.parent
+                            if (row?.isEnabled == true) {
+                                row.click()
+                                opened = true
+                            }
+                        } catch (_: StaleObjectException) { /* Reacquire the actual preference row. */ }
+                        if (!opened) android.os.SystemClock.sleep(25)
                     }
+                    assertTrue("The original width menu must be enabled", opened)
+                    runBlocking {
+                        withTimeout((deadline - android.os.SystemClock.uptimeMillis()).coerceAtLeast(1)) {
+                            while (Settings.snapshot()[Settings.detailSize] != expected || device.findObjects(By.text(label)).none { it.parent?.let { item -> item.isChecked && item.isEnabled } == true }) delay(25)
+                        }
+                    }
+                    device.pressBack()
                 }
-                scrollTo("Comfortable columns", Direction.DOWN)
-                savedDensity(0, "Comfortable columns")
-                scrollTo("Compact columns", Direction.DOWN)
-                click("Compact columns")
-                savedDensity(1, "Compact columns")
+                scrollTo("Detail width", Direction.DOWN)
+                savedDensity(0, "Long")
+                click("Detail width")
+                click("Short")
+                savedDensity(1, "Short")
                 scenario.recreate()
-                scrollTo("Compact columns", Direction.DOWN)
-                savedDensity(1, "Compact columns")
+                scrollTo("Detail width", Direction.DOWN)
+                savedDensity(1, "Short")
                 // The actual original preference rejects unknown saved values without replacing them.
                 Settings.edit(blocking = true) { it[detailSize] = 7 }
                 scenario.recreate()
@@ -173,7 +195,7 @@ class GalleryLanguageIntegrationTest {
                 assertEquals(7, runBlocking { Settings.snapshot()[Settings.detailSize] })
                 Settings.edit(blocking = true) { it[detailSize] = 0 }
                 click("Retry")
-                savedDensity(0, "Comfortable columns")
+                savedDensity(0, "Long")
                 device.pressBack()
                 click("Advanced")
                 scrollTo("120 seconds", Direction.DOWN)
@@ -199,7 +221,8 @@ class GalleryLanguageIntegrationTest {
                 labelled("Search galleries")
                 device.openSharedDestination("Settings")
                 click("Advanced")
-                click("System language")
+                click("App language")
+                click("System Language (Default)")
                 instrumentation.waitForIdleSync()
                 assertTrue(AppCompatDelegate.getApplicationLocales().isEmpty)
             }

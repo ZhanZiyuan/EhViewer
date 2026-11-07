@@ -42,6 +42,7 @@ data class ReaderPreferences(
     // Missing in older snapshots. Retain their actual layout/direction until the
     // user explicitly chooses a mode rather than reinterpret existing preferences.
     val mode: ReaderMode? = null,
+    val cropBorders: Boolean = false,
 ) {
     val selectedMode: ReaderMode
         get() = mode ?: when {

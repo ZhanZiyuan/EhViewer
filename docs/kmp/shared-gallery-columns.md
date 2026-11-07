@@ -1,5 +1,7 @@
 # Shared gallery column preference
 
+The current original-layout restoration presents these existing values as v1.15.10's single **Detail width** menu, **Long** (480dp) / **Short** (320dp), with the original localized labels. It removes the invented permanent Comfortable/Compact radio group without changing either platform's saved values or reflow behavior. Earlier screenshots and validation below retain their historical scope.
+
 The common CMP search cards now support comfortable480dp and compact320dp minimum columns. The cards, image cache, metadata, search state, detail navigation and1040dp content bound remain shared. Compact phones still use one column; wider windows choose their column count from the same minimum width. Changing a preference reflows the current results without another gallery search or a new page-owned image cache.
 
 Android reads and writes the original `Settings.detailSize` key directly:0 retains comfortable and1 retains compact. There is no duplicate preference or destructive migration. Original list-mode/thumbnail-size controls and the original gallery screen remain intact. Desktop/iOS use a separate nonsecret `gallery-list` DataStore record, retaining the previous common320dp default when no choice exists. Corrupt/future/unknown records report a recoverable error and are preserved. Loading or failed settings disable writes; a successful atomic write updates the common selection, and back/recreation reads the committed value afresh. No OS credential vault is needed for this preference.

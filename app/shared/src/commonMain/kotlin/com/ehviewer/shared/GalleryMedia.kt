@@ -16,8 +16,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
@@ -30,13 +34,32 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /** Retain compressed animation data, never every decoded frame. Static previews keep their existing decoder. */
-internal class GalleryMedia(val poster: ImageBitmap, val animation: ByteArray?, val bytes: Long) {
-    val width get() = poster.width
-    val height get() = poster.height
+internal class GalleryMedia(val poster: ImageBitmap, val animation: ByteArray?, val bytes: Long, val bounds: IntRect = IntRect(0, 0, poster.width, poster.height)) {
+    init {
+        require(bounds.left >= 0 && bounds.top >= 0 && bounds.right <= poster.width && bounds.bottom <= poster.height && bounds.width > 0 && bounds.height > 0)
+        require(animation == null || bounds == IntRect(0, 0, poster.width, poster.height))
+    }
+    val width get() = bounds.width
+    val height get() = bounds.height
+    private val borderMutex = Mutex()
+    private var cropped: GalleryMedia? = null
+
+    suspend fun withoutBorders(): GalleryMedia {
+        if (animation != null) return this
+        return borderMutex.withLock {
+            cropped ?: poster.readerBorderBounds().let { region ->
+                (if (region == bounds) this else GalleryMedia(poster, null, bytes, region)).also { cropped = it }
+            }
+        }
+    }
 }
+
+internal fun GalleryMedia.posterPainter() = BitmapPainter(poster, IntOffset(bounds.left, bounds.top), IntSize(bounds.width, bounds.height))
 
 internal suspend fun decodeGalleryMedia(bytes: ByteArray): GalleryMedia = withContext(Dispatchers.Default) {
     try {

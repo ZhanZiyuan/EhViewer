@@ -11,6 +11,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.unit.Density
 import com.ehviewer.core.domain.AppLanguageStore
+import com.ehviewer.core.domain.GalleryListDensity
+import com.ehviewer.core.domain.GalleryListPreferences
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.shared.settings.GalleryAppearanceStore
@@ -53,6 +55,12 @@ class GallerySettingsNavigationTest {
                         override suspend fun tag(): String? = null
                         override suspend fun setTag(tag: String?) = error("Navigation must not change language")
                     }) { error("Navigation must not change locale") }
+                    val listPreferences = object : GalleryListPreferences {
+                        override suspend fun density() = GalleryListDensity.COMPACT
+                        override suspend fun setDensity(density: GalleryListDensity) = error("Selecting the saved width must not write preferences")
+                        override suspend fun showComments() = true
+                        override suspend fun setShowComments(show: Boolean) = error("Navigation must not change comment visibility")
+                    }
                     val scene = ImageComposeScene(width, 1100, Density(1f, font)) {
                         CompositionLocalProvider(
                             LocalUriHandler provides object : UriHandler {
@@ -63,7 +71,7 @@ class GallerySettingsNavigationTest {
                         ) {
                             MaterialTheme {
                                 backLabel = galleryString(Res.string.gallery_back)
-                                GallerySettingsScreen(null, appearance, reader, GalleryThemeMode.LIGHT, false, language, null, true, false, {}, {}, {}, {}, { leaves++ }, onAccount = { accounts++ }, onHistory = { histories++ })
+                                GallerySettingsScreen(null, appearance, reader, GalleryThemeMode.LIGHT, false, language, null, true, false, {}, {}, {}, {}, { leaves++ }, listPreferences = listPreferences, listDensity = GalleryListDensity.COMPACT, showComments = true, onAccount = { accounts++ }, onHistory = { histories++ })
                             }
                         }
                     }
@@ -82,6 +90,18 @@ class GallerySettingsNavigationTest {
                         render()
                     }
                     fun back() = click(all().first { backLabel in it.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() })
+                    fun choose(label: String) {
+                        // The persisted summary has the same text behind the popup. Activate
+                        // the real selected/menu-item node rather than that obscured summary.
+                        val item = all().last { node ->
+                            node.config.getOrNull(SemanticsProperties.Selected) != null && nodes(node).any {
+                                it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { text -> text.text == label }
+                            }
+                        }
+                        click(item)
+                        // Finish Material's actual popup exit animation before checking removal.
+                        repeat(3) { render() }
+                    }
                     try {
                         render()
                         val labels = listOf("EH", "Download", "Privacy", "Advanced", "About")
@@ -92,13 +112,33 @@ class GallerySettingsNavigationTest {
                             click(text(label))
                             assertTrue(all().none { it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { text -> text.text == if (label == "About") "Advanced" else "About" } }, "Root categories must leave the content tree")
                             when (label) {
-                                "EH" -> text("Reading")
+                                "EH" -> {
+                                    text("Reading")
+                                    click(text("Dark theme"))
+                                    listOf("Follow system", "Always off", "Always on").forEach { text(it) }
+                                    // Selecting the persisted choice closes the actual menu without a write.
+                                    choose("Always off")
+                                    assertTrue(all().none { it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { value -> value.text == "Always on" } })
+                                    click(text("Detail width"))
+                                    text("Long")
+                                    text("Short")
+                                    choose("Short")
+                                    assertTrue(all().none { it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { value -> value.text in listOf("Long", "Comfortable columns", "Compact columns") } })
+                                    text("Show gallery comments")
+                                }
                                 "Download" -> text("Download storage is unavailable.")
                                 "Privacy" -> {
                                     click(text("Account"))
                                     click(text("History"))
                                 }
-                                "Advanced" -> text("Language")
+                                "Advanced" -> {
+                                    assertTrue(all().none { it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { value -> value.text == "Dark theme" } })
+                                    click(text("App language"))
+                                    text("English")
+                                    text("日本語")
+                                    choose("System Language (Default)")
+                                    assertTrue(all().none { it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { value -> value.text == "日本語" } })
+                                }
                                 "About" -> {
                                     click(text("Source code"))
                                     click(text("License"))

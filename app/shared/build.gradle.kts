@@ -29,6 +29,7 @@ kotlin {
         implementation(libs.compose.multiplatform.runtime)
         implementation(libs.compose.multiplatform.resources)
         implementation(libs.compose.material3)
+        implementation(libs.compose.preference)
         implementation(libs.compose.ui.backhandler)
         implementation(libs.androidx.lifecycle.compose)
         implementation(libs.coil.shared.core)

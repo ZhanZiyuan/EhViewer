@@ -1,8 +1,8 @@
 <resources>
     <string name="gallery_back">戻る</string>
     <string name="gallery_settings">設定</string>
-    <string name="gallery_language">言語</string>
-    <string name="gallery_language_system">システムの言語</string>
+    <string name="gallery_language">アプリの言語</string>
+    <string name="gallery_language_system">システム言語 (デフォルト)</string>
     <string name="gallery_language_loading">言語を読み込み中…</string>
     <string name="gallery_language_unavailable">言語設定を読み込めません。既存の設定は保持されています。</string>
     <string name="gallery_language_save_failed">言語を適用できませんでした。保存済みの設定を再読み込みしてからお試しください。</string>
@@ -31,9 +31,10 @@
     <string name="gallery_appearance_loading">外観を読み込み中…</string>
     <string name="gallery_appearance_retry">外観を再読み込み</string>
     <string name="gallery_appearance_save_failed">外観を保存できません。ストレージを確認して再試行してください。</string>
-    <string name="gallery_theme_system">システムのテーマ</string>
-    <string name="gallery_theme_light">ライトテーマ</string>
-    <string name="gallery_theme_dark">ダークテーマ</string>
+    <string name="gallery_theme_system">システムに従う</string>
+    <string name="gallery_theme_light">常に OFF にする</string>
+    <string name="gallery_theme_dark">常に ON にする</string>
+    <string name="gallery_settings_dark_theme">ダークテーマ</string>
     <string name="gallery_reading">閲覧</string>
     <string name="gallery_reading_paged">ページ表示</string>
     <string name="gallery_reading_continuous">連続表示</string>
@@ -209,9 +210,9 @@
     <string name="gallery_cover_loading">表紙を読み込み中</string>
     <string name="gallery_cover_retry">表紙を再試行</string>
     <string name="gallery_cover_unavailable">表紙なし</string>
-    <string name="gallery_list_layout">ギャラリーの列幅</string>
-    <string name="gallery_list_comfortable">ゆったりした列</string>
-    <string name="gallery_list_compact">コンパクトな列</string>
+    <string name="gallery_list_layout">詳細情報の幅</string>
+    <string name="gallery_list_comfortable">長い</string>
+    <string name="gallery_list_compact">短い</string>
     <string name="gallery_list_loading">ギャラリーの表示設定を読み込み中…</string>
     <string name="gallery_list_unavailable">ギャラリーの表示設定を読み込めません。</string>
     <string name="gallery_list_save_failed">ギャラリーの表示設定を保存できません。</string>
@@ -325,4 +326,5 @@
     <string name="gallery_reader_mode_vertical">垂直</string>
     <string name="gallery_reader_mode_webtoon">ウェブトゥーン</string>
     <string name="gallery_reader_mode_continuous_vertical">連続した垂直</string>
+    <string name="gallery_reader_crop_borders">境界線をクロップ</string>
 </resources>

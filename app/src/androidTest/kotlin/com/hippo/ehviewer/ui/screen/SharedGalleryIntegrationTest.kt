@@ -121,6 +121,14 @@ class SharedGalleryIntegrationTest {
                 searchIsVisible()
                 assertFalse("Cancelling filters changed the applied search", device.hasObject(By.desc("Filters applied")))
                 device.openSharedDestination("Settings")
+                fun capturePage(name: String) {
+                    val output = requireNotNull(context.getExternalFilesDir("kmp-ui-settings")).apply { mkdirs() }
+                    instrumentation.waitForIdleSync()
+                    instrumentation.uiAutomation.executeShellCommand("screencap -p").use { descriptor ->
+                        FileInputStream(descriptor.fileDescriptor).use { input -> File(output, "$name.png").outputStream().use(input::copyTo) }
+                    }
+                    device.dumpWindowHierarchy(File(output, "$name.xml"))
+                }
                 fun captureSettingsRoot(theme: String) {
                     listOf("EH", "Download", "Privacy", "Advanced", "About").forEach {
                         assertTrue("Missing original settings category: $it", device.wait(Until.hasObject(By.text(it)), 5_000))
@@ -134,10 +142,14 @@ class SharedGalleryIntegrationTest {
                     println("Actual shared settings root screenshot=$file")
                 }
                 captureSettingsRoot("light")
-                requireNotNull(device.wait(Until.findObject(By.text("Advanced")), 5_000)).click()
-                assertTrue("Common appearance settings did not open", device.wait(Until.hasObject(By.text("Appearance")), 5_000))
+                requireNotNull(device.wait(Until.findObject(By.text("EH")), 5_000)).click()
+                assertTrue("The original EH appearance preference did not open", device.wait(Until.hasObject(By.text("Dark theme")), 5_000))
                 assertEquals(GalleryThemeMode.LIGHT, runBlocking { AndroidGalleryAppearanceStore().mode() })
+                capturePage("eh-light")
                 requireNotNull(device.wait(Until.findObject(By.text("Dark theme")), 5_000)).click()
+                assertTrue(device.wait(Until.hasObject(By.text("Always on")), 5_000))
+                capturePage("theme-menu-light")
+                device.clickSharedControl("Always on")
                 runBlocking {
                     withTimeout(10_000) {
                         // The existing observer applies the system theme after the preference write.
@@ -150,6 +162,7 @@ class SharedGalleryIntegrationTest {
                     assertEquals(AppCompatDelegate.MODE_NIGHT_YES, Settings.snapshot()[Settings.theme])
                 }
                 instrumentation.waitForIdleSync()
+                capturePage("eh-dark")
                 assertTrue("Restored settings did not render before Back", device.wait(Until.hasObject(By.desc("Back").enabled(true)), 5_000))
                 device.pressBack()
                 captureSettingsRoot("dark")
@@ -222,10 +235,11 @@ class SharedGalleryIntegrationTest {
                 assertEquals("Shared selection did not preserve original mode code", mode.prefValue, Settings.snapshot()[Settings.readingMode])
                 assertEquals(shared, AndroidReadingState { null }.preferences().selectedMode)
                 for ((background, originalValue) in listOf(ReaderBackground.BLACK to 1, ReaderBackground.GRAY to 2, ReaderBackground.WHITE to 0, ReaderBackground.AUTOMATIC to 3)) {
-                    val changed = reader.preferences().copy(background = background, showPageNumber = false, showSeekBar = false, doubleTapToZoom = false)
+                    val changed = reader.preferences().copy(background = background, showPageNumber = false, showSeekBar = false, doubleTapToZoom = false, cropBorders = true)
                     reader.setPreferences(changed)
                     assertEquals("General options replaced the original $mode", mode.prefValue, Settings.snapshot()[Settings.readingMode])
                     assertEquals(originalValue, Settings.snapshot()[Settings.readerTheme])
+                    assertTrue(Settings.snapshot()[Settings.cropBorder])
                     assertEquals(changed, AndroidReadingState { null }.preferences())
                     assertEquals(5, EhDB.getReadProgress(fixture.gid))
                 }
@@ -246,6 +260,7 @@ class SharedGalleryIntegrationTest {
                 restore(Settings.showPageNumber)
                 restore(Settings.showReaderSeekbar)
                 restore(Settings.doubleTapToZoom)
+                restore(Settings.cropBorder)
             }
             EhDB.deleteHistoryInfo(fixture.asEntity())
         }
