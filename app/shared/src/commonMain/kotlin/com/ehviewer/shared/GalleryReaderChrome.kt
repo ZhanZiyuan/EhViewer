@@ -31,6 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -284,6 +285,12 @@ internal fun GalleryReaderChrome(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 internal fun GalleryReaderAction(label: String, icon: ImageVector, enabled: Boolean = true, onClick: () -> Unit) {
-    IconButton(onClick, modifier = Modifier.size(64.dp, 56.dp), enabled = enabled) { Icon(icon, label) }
+    IconButton(
+        onClick,
+        modifier = Modifier.size(IconButtonDefaults.mediumContainerSize(IconButtonDefaults.IconButtonWidthOption.Wide)),
+        enabled = enabled,
+        shapes = IconButtonDefaults.shapes(IconButtonDefaults.mediumRoundShape, IconButtonDefaults.mediumPressedShape),
+    ) { Icon(icon, label, modifier = Modifier.size(IconButtonDefaults.mediumIconSize)) }
 }

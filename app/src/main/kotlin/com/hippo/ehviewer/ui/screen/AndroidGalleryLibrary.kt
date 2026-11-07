@@ -1,6 +1,7 @@
 package com.hippo.ehviewer.ui.screen
 
 import com.ehviewer.core.domain.reader.ReaderBackground
+import com.ehviewer.core.domain.reader.ReaderMode
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
@@ -80,6 +81,7 @@ internal class AndroidReadingState(private val current: () -> GalleryDetail?) : 
             showPageNumber = snapshot[Settings.showPageNumber],
             showSeekBar = snapshot[Settings.showReaderSeekbar],
             doubleTapToZoom = snapshot[Settings.doubleTapToZoom],
+            mode = ReaderMode.valueOf(mode.name),
         )
     }
 
@@ -101,7 +103,15 @@ internal class AndroidReadingState(private val current: () -> GalleryDetail?) : 
             val oldLayout = if (oldContinuous) ReadingLayout.CONTINUOUS else ReadingLayout.PAGED
             val oldDirection = if (if (oldContinuous) snapshot[Settings.continuousReadingRtl] else old in setOf(ReadingModeType.DEFAULT, ReadingModeType.RIGHT_TO_LEFT)) ReadingDirection.RIGHT_TO_LEFT else ReadingDirection.LEFT_TO_RIGHT
             // General settings must not replace the original default/vertical/webtoon mode.
-            if (preferences.layout != oldLayout || preferences.direction != oldDirection) {
+            val requestedMode = preferences.mode
+            if (requestedMode != null) {
+                // Explicit choices retain all six original codes, including vertical
+                // and default. General-only changes must also preserve unknown codes.
+                if (requestedMode.name != old.name) {
+                    snapshot[Settings.readingMode] = ReadingModeType.valueOf(requestedMode.name).prefValue
+                    snapshot[Settings.continuousReadingRtl] = preferences.direction == ReadingDirection.RIGHT_TO_LEFT
+                }
+            } else if (preferences.layout != oldLayout || preferences.direction != oldDirection) {
                 val mode = when {
                     preferences.layout == ReadingLayout.CONTINUOUS -> old.takeIf { ReadingModeType.isWebtoon(it) } ?: ReadingModeType.WEBTOON
                     preferences.direction == ReadingDirection.RIGHT_TO_LEFT -> ReadingModeType.RIGHT_TO_LEFT

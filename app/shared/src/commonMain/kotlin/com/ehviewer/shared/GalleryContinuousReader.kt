@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.ehviewer.core.domain.reader.ReaderMode
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
@@ -56,7 +58,6 @@ import com.ehviewer.shared.reader.ReaderPageWindow
 import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_gallery_page
 import ehviewer.app.shared.generated.resources.gallery_page_number
-import ehviewer.app.shared.generated.resources.gallery_reading_paged
 import ehviewer.app.shared.generated.resources.gallery_reading_progress_save_failed
 import ehviewer.app.shared.generated.resources.gallery_retry
 import ehviewer.app.shared.generated.resources.gallery_settings
@@ -65,7 +66,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit, chrome: GalleryReaderChromeState, onPaged: (String) -> Unit, preferences: ReaderPreferences = ReaderPreferences(), onSettings: () -> Unit = {}, settingsEnabled: Boolean = true, requestPageJump: Boolean = false, onPageJumpHandled: () -> Unit = {}) {
+internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDetail, initial: String, readerState: ReaderStateStore, onBack: () -> Unit, chrome: GalleryReaderChromeState, onMode: (ReaderMode, String) -> Unit, preferences: ReaderPreferences = ReaderPreferences(), onSettings: () -> Unit = {}, settingsEnabled: Boolean = true, requestPageJump: Boolean = false, onPageJumpHandled: () -> Unit = {}) {
     val first = session.content.pageIndex(initial, detail.gid)
     val list = rememberLazyListState(first)
     val scope = rememberCoroutineScope()
@@ -161,7 +162,7 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
             }
         },
         actions = {
-            GalleryReaderAction(galleryString(Res.string.gallery_reading_paged), GalleryIcons.LibraryBooks, current != null && settingsEnabled) { current?.page?.url?.let(onPaged) }
+            GalleryReaderModeButton(preferences, current != null && settingsEnabled && pendingPosition == null) { selected -> current?.page?.url?.let { onMode(selected, it) } }
             GalleryReaderAction(galleryString(Res.string.gallery_settings), GalleryIcons.Settings, settingsEnabled, onSettings)
         },
     ) {
@@ -177,7 +178,7 @@ internal fun GalleryContinuousReader(session: GalleryLibrary, detail: GalleryDet
                     if (index == position.first) pendingPosition = null
                 }
             }
-            LazyColumn(Modifier.fillMaxSize(), state = list, flingBehavior = readerFling) {
+            LazyColumn(Modifier.fillMaxSize(), state = list, flingBehavior = readerFling, verticalArrangement = Arrangement.spacedBy(if (preferences.resolvedMode(detail.hasReaderWebtoonTag()) == ReaderMode.CONTINUOUS_VERTICAL) 15.dp else 0.dp)) {
                 items(detail.pages, key = { it }) { page ->
                     // Unloaded pages retain a page-shaped extent; tiny placeholders make touch flings skip dozens of pages.
                     val state = pages[page]

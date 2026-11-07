@@ -43,8 +43,6 @@ import com.ehviewer.core.domain.download.GalleryStorageSettings
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
-import com.ehviewer.core.domain.reader.ReadingDirection
-import com.ehviewer.core.domain.reader.ReadingLayout
 import com.ehviewer.shared.settings.GalleryAppearanceException
 import com.ehviewer.shared.settings.GalleryAppearanceStore
 import com.ehviewer.shared.settings.GalleryLanguageSettings
@@ -64,13 +62,9 @@ import ehviewer.app.shared.generated.resources.gallery_language_save_failed
 import ehviewer.app.shared.generated.resources.gallery_language_system
 import ehviewer.app.shared.generated.resources.gallery_language_unavailable
 import ehviewer.app.shared.generated.resources.gallery_reading
-import ehviewer.app.shared.generated.resources.gallery_reading_continuous
-import ehviewer.app.shared.generated.resources.gallery_reading_ltr
-import ehviewer.app.shared.generated.resources.gallery_reading_paged
 import ehviewer.app.shared.generated.resources.gallery_reading_preferences_reload
 import ehviewer.app.shared.generated.resources.gallery_reading_preferences_save_failed
 import ehviewer.app.shared.generated.resources.gallery_reading_preferences_unavailable
-import ehviewer.app.shared.generated.resources.gallery_reading_rtl
 import ehviewer.app.shared.generated.resources.gallery_settings
 import ehviewer.app.shared.generated.resources.gallery_theme_dark
 import ehviewer.app.shared.generated.resources.gallery_theme_light
@@ -218,10 +212,7 @@ internal fun GallerySettingsScreen(
                         readerState.setPreferences(changed)
                         preferences = changed
                     }
-                    SettingsChoice(galleryString(Res.string.gallery_reading_paged), current.layout == ReadingLayout.PAGED, !busy) { update(current.copy(layout = ReadingLayout.PAGED)) }
-                    SettingsChoice(galleryString(Res.string.gallery_reading_continuous), current.layout == ReadingLayout.CONTINUOUS, !busy) { update(current.copy(layout = ReadingLayout.CONTINUOUS)) }
-                    SettingsChoice(galleryString(Res.string.gallery_reading_ltr), current.direction == ReadingDirection.LEFT_TO_RIGHT, !busy) { update(current.copy(direction = ReadingDirection.LEFT_TO_RIGHT)) }
-                    SettingsChoice(galleryString(Res.string.gallery_reading_rtl), current.direction == ReadingDirection.RIGHT_TO_LEFT, !busy) { update(current.copy(direction = ReadingDirection.RIGHT_TO_LEFT)) }
+                    GalleryReaderModePreference(current, !busy) { update(current.withMode(it)) }
                     GalleryReaderGeneralSettings(current, !busy, ::update)
                 }
             }

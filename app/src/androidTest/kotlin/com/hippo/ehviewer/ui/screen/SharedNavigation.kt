@@ -80,7 +80,40 @@ internal fun UiDevice.setSharedSearchText(value: String) {
     throw AssertionError("Shared search field was unavailable within its original 5s deadline", stale)
 }
 
-private val readerControls = setOf("Back", "Go to page", "Previous page", "Next page", "Continuous reading", "Paged reading", "Left to right", "Right to left", "Reset zoom", "Load original image", "Use display image", "Hide reader controls", "Seek page")
+private val readerControls = setOf("Back", "Go to page", "Previous page", "Next page", "Reading mode", "Left to right", "Right to left", "Reset zoom", "Load original image", "Use display image", "Hide reader controls", "Seek page")
+
+/** Choose the actual original six-mode menu, then inspect its committed selection. */
+internal fun UiDevice.selectSharedReaderMode(label: String) {
+    clickSharedControl("Reading mode")
+    clickSharedControl(label)
+}
+
+internal fun UiDevice.hasSharedReaderMode(label: String): Boolean {
+    clickSharedControl("Reading mode")
+    return try {
+        val deadline = SystemClock.uptimeMillis() + 15_000
+        var selected = false
+        while (SystemClock.uptimeMillis() < deadline && !selected) {
+            try {
+                var item = findObject(By.text(label))
+                // Android Compose exports Selected as checked for non-Tab roles;
+                // Desktop retains Selected. Inspect the actual committed UI state.
+                while (item != null && !item.isSelected && !item.isChecked) item = item.parent
+                selected = item != null
+            } catch (_: StaleObjectException) { /* Reacquire within the original deadline. */ }
+            if (!selected) SystemClock.sleep(25)
+        }
+        if (!selected) {
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val output = requireNotNull(context.getExternalFilesDir("kmp-ui-reader-mode-selection-failure")).apply { mkdirs() }
+            dumpWindowHierarchy(java.io.File(output, "actual-menu.xml"))
+            takeScreenshot(java.io.File(output, "actual-menu.png"))
+        }
+        selected
+    } finally {
+        pressBack()
+    }
+}
 
 /** Reveal the actual overlay before addressing a reader control by its text or accessibility name. */
 internal fun UiDevice.sharedControl(label: String): UiObject2? {

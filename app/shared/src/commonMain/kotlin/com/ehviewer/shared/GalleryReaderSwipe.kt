@@ -2,6 +2,7 @@ package com.ehviewer.shared
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -15,7 +16,7 @@ import kotlinx.coroutines.flow.collectLatest
 
 /** Original PagerViewer uses this pager and its default snap/fling behavior. */
 @Composable
-internal fun GalleryReaderPagedCanvas(index: Int, pages: Int, rtl: Boolean, enabled: Boolean, onPageRequested: (Int) -> Boolean, content: @Composable (Int) -> Unit) {
+internal fun GalleryReaderPagedCanvas(index: Int, pages: Int, rtl: Boolean, enabled: Boolean, onPageRequested: (Int) -> Boolean, vertical: Boolean = false, content: @Composable (Int) -> Unit) {
     val current by rememberUpdatedState(index)
     val request by rememberUpdatedState(onPageRequested)
     val canRequest by rememberUpdatedState(enabled)
@@ -31,13 +32,24 @@ internal fun GalleryReaderPagedCanvas(index: Int, pages: Int, rtl: Boolean, enab
             }
         }
     }
-    HorizontalPager(
-        state = pager,
-        modifier = Modifier.fillMaxSize(),
-        beyondViewportPageCount = 1,
-        reverseLayout = rtl xor (LocalLayoutDirection.current == LayoutDirection.Rtl),
-        userScrollEnabled = enabled,
-        key = { it },
-        pageContent = { content(it) },
-    )
+    if (vertical) {
+        VerticalPager(
+            state = pager,
+            modifier = Modifier.fillMaxSize(),
+            beyondViewportPageCount = 1,
+            userScrollEnabled = enabled,
+            key = { it },
+            pageContent = { content(it) },
+        )
+    } else {
+        HorizontalPager(
+            state = pager,
+            modifier = Modifier.fillMaxSize(),
+            beyondViewportPageCount = 1,
+            reverseLayout = rtl xor (LocalLayoutDirection.current == LayoutDirection.Rtl),
+            userScrollEnabled = enabled,
+            key = { it },
+            pageContent = { content(it) },
+        )
+    }
 }

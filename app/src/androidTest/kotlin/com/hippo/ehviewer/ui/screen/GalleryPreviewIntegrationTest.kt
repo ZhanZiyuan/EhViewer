@@ -705,9 +705,36 @@ class GalleryPreviewIntegrationTest {
                     assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 3")), 15_000))
                     saved(2)
                     assertEquals(3, metadataAttempts.get())
+                    stage = "original six-mode menu retains the decoded page"
+                    for (mode in listOf("Default", "Right to left", "Left to right", "Continuous vertical", "Webtoon", "Vertical")) {
+                        device.selectSharedReaderMode(mode)
+                        assertTrue("Actual mode menu did not retain $mode", device.hasSharedReaderMode(mode))
+                        position(3)
+                        assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 3")), 15_000))
+                        saved(2)
+                        if (mode == "Default") {
+                            device.waitForIdle(5_000)
+                            assertTrue("Original default mode icon screenshot must be retained", device.takeScreenshot(File(readerCaptures, "reader-mode-default-controls.png")))
+                            device.dumpWindowHierarchy(File(readerCaptures, "reader-mode-default-controls.xml"))
+                        }
+                    }
+                    assertEquals(ReadingModeType.VERTICAL.prefValue, runBlocking { Settings.snapshot()[Settings.readingMode] })
+                    stage = "vertical swipes decode the previous and next pages"
+                    val verticalCanvas = checkNotNull(device.findObject(By.desc("Gallery page 3"))).visibleBounds
+                    device.swipe(verticalCanvas.centerX(), verticalCanvas.top + verticalCanvas.height() / 5, verticalCanvas.centerX(), verticalCanvas.top + verticalCanvas.height() * 4 / 5, 24)
+                    assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 2")), 15_000))
+                    position(2)
+                    saved(1)
+                    device.swipe(verticalCanvas.centerX(), verticalCanvas.top + verticalCanvas.height() * 4 / 5, verticalCanvas.centerX(), verticalCanvas.top + verticalCanvas.height() / 5, 24)
+                    assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 3")), 15_000))
+                    position(3)
+                    saved(2)
+                    click("Reading mode")
+                    assertTrue("Actual six-mode menu screenshot must be retained", device.takeScreenshot(File(readerCaptures, "reader-mode-menu-vertical.png")))
+                    device.pressBack()
                     stage = "continuous jump and cancellation"
-                    click("Continuous reading")
-                    visible("Paged reading")
+                    device.selectSharedReaderMode("Webtoon")
+                    assertTrue(device.hasSharedReaderMode("Webtoon"))
                     click("Go to page")
                     input("2")
                     click("Open page")
@@ -728,8 +755,8 @@ class GalleryPreviewIntegrationTest {
                     position(3)
                     saved(2)
                     stage = "paged slider resolves and decodes the real first page"
-                    click("Paged reading")
-                    visible("Continuous reading")
+                    device.selectSharedReaderMode("Left to right")
+                    assertTrue(device.hasSharedReaderMode("Left to right"))
                     assertTrue(device.wait(Until.hasObject(By.desc("Gallery page 3")), 15_000))
                     saved(2)
                     val pagedSeek = checkNotNull(device.wait(Until.findObject(By.desc("Seek page").enabled(true)), 15_000)).visibleBounds
@@ -1091,11 +1118,17 @@ class GalleryPreviewIntegrationTest {
                 click("Use display image")
                 waitForImagePixels(original = false)
                 displayBytes.set(animatedWebp)
-                click("Continuous reading")
+                device.selectSharedReaderMode("Webtoon")
                 assertTrue("Continuous reader moved away from the selected last page", device.hasSharedReaderPosition(3, 3, 10_000))
+                // Original mode changes retain the overlay. This short 2:1 image
+                // starts behind the top bar, so dismiss it through a real canvas
+                // tap before sampling the same center pixels and four transitions.
+                val animatedCanvas = checkNotNull(device.wait(Until.findObject(By.desc("Gallery page 3")), 15_000)).visibleBounds
+                device.click(animatedCanvas.centerX(), animatedCanvas.bottom - (16 * context.resources.displayMetrics.density).toInt())
+                assertTrue("Actual reader overlay must hide before frame sampling", device.wait(Until.gone(By.desc("Settings")), 5_000))
                 waitForAnimatedPixels("WebP continuous")
                 displayBytes.set(png)
-                click("Paged reading")
+                device.selectSharedReaderMode("Left to right")
                 waitForImagePixels(original = false)
                 runBlocking {
                     withTimeout(10_000) { while (EhDB.getReadingPosition(gid)?.page != 2) delay(25) }

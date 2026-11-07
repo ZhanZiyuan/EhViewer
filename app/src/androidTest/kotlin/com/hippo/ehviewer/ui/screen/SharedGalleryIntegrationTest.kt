@@ -12,6 +12,7 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import com.ehviewer.core.data.model.asEntity
 import com.ehviewer.core.domain.reader.ReaderBackground
+import com.ehviewer.core.domain.reader.ReaderMode
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReadingDirection
@@ -205,18 +206,21 @@ class SharedGalleryIntegrationTest {
             reader.setPreferences(ReaderPreferences(ReadingLayout.PAGED, ReadingDirection.LEFT_TO_RIGHT))
             val continuous = ReaderPreferences(ReadingLayout.CONTINUOUS, ReadingDirection.LEFT_TO_RIGHT)
             reader.setPreferences(continuous)
-            assertEquals(continuous, AndroidReadingState { null }.preferences())
+            assertEquals(continuous.copy(mode = ReaderMode.WEBTOON), AndroidReadingState { null }.preferences())
             assertEquals(ReadingModeType.WEBTOON.prefValue, Settings.snapshot()[Settings.readingMode])
             Settings.withMutableSnapshot { it[Settings.readingMode] = ReadingModeType.CONTINUOUS_VERTICAL.prefValue }
             reader.setPreferences(continuous)
             assertEquals(ReadingModeType.CONTINUOUS_VERTICAL.prefValue, Settings.snapshot()[Settings.readingMode])
             val paged = ReaderPreferences(ReadingLayout.PAGED, ReadingDirection.RIGHT_TO_LEFT)
             reader.setPreferences(paged)
-            assertEquals(paged, AndroidReadingState { null }.preferences())
+            assertEquals(paged.copy(mode = ReaderMode.RIGHT_TO_LEFT), AndroidReadingState { null }.preferences())
             assertEquals(ReadingModeType.RIGHT_TO_LEFT.prefValue, Settings.snapshot()[Settings.readingMode])
             // Changing general options must preserve original modes outside the two common layouts.
             for (mode in ReadingModeType.entries) {
-                Settings.withMutableSnapshot { it[Settings.readingMode] = mode.prefValue }
+                val shared = ReaderMode.valueOf(mode.name)
+                reader.setPreferences(reader.preferences().withMode(shared))
+                assertEquals("Shared selection did not preserve original mode code", mode.prefValue, Settings.snapshot()[Settings.readingMode])
+                assertEquals(shared, AndroidReadingState { null }.preferences().selectedMode)
                 for ((background, originalValue) in listOf(ReaderBackground.BLACK to 1, ReaderBackground.GRAY to 2, ReaderBackground.WHITE to 0, ReaderBackground.AUTOMATIC to 3)) {
                     val changed = reader.preferences().copy(background = background, showPageNumber = false, showSeekBar = false, doubleTapToZoom = false)
                     reader.setPreferences(changed)
@@ -226,6 +230,11 @@ class SharedGalleryIntegrationTest {
                     assertEquals(5, EhDB.getReadProgress(fixture.gid))
                 }
             }
+            // A future native value must survive unrelated common preference edits.
+            Settings.withMutableSnapshot { it[Settings.readingMode] = 999 }
+            reader.setPreferences(reader.preferences().copy(showPageNumber = true))
+            assertEquals(999, Settings.snapshot()[Settings.readingMode])
+            assertEquals(5, EhDB.getReadProgress(fixture.gid))
         } finally {
             Settings.withMutableSnapshot { snapshot ->
                 fun <T> restore(pref: PrefDelegate<T>) {

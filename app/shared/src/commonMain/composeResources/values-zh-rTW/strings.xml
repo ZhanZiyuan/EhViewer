@@ -316,4 +316,13 @@
     <string name="gallery_reader_gray_background">灰色</string>
     <string name="gallery_reader_white_background">白色</string>
     <string name="gallery_reader_automatic_background">自動</string>
+
+    <!-- Original v1.15.10 reader mode labels. -->
+    <string name="gallery_reader_mode">閱讀模式</string>
+    <string name="gallery_reader_mode_default">預設</string>
+    <string name="gallery_reader_mode_ltr">由左至右</string>
+    <string name="gallery_reader_mode_rtl">由右至左</string>
+    <string name="gallery_reader_mode_vertical">由上至下</string>
+    <string name="gallery_reader_mode_webtoon">Webtoon 模式</string>
+    <string name="gallery_reader_mode_continuous_vertical">垂直連貫</string>
 </resources>

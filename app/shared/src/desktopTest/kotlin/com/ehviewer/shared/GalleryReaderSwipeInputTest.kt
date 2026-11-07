@@ -38,6 +38,7 @@ class GalleryReaderSwipeInputTest {
         var page by mutableIntStateOf(1)
         var enabled by mutableStateOf(true)
         var rtl by mutableStateOf(false)
+        var vertical by mutableStateOf(false)
         var uiRtl by mutableStateOf(false)
         var zoom by mutableStateOf(ReaderZoom())
         var accept by mutableStateOf(true)
@@ -52,7 +53,7 @@ class GalleryReaderSwipeInputTest {
                     requests += target
                     if (accept) page = target
                     accept
-                }) { slot ->
+                }, vertical = vertical) { slot ->
                     if (slot != page) {
                         Box(Modifier.fillMaxSize())
                         return@GalleryReaderPagedCanvas
@@ -152,6 +153,34 @@ class GalleryReaderSwipeInputTest {
             reader.render()
             reader.drag(Offset(320f, 200f), Offset(80f, 200f))
             assertEquals(2, reader.page, "Returning to fit must restore page swiping")
+        }
+    }
+
+    @Test fun verticalPagingIgnoresInterfaceDirectionAndRetainsTheActualPageOnAxisChanges() {
+        for (uiRtl in listOf(false, true)) {
+            ReaderInput().use { reader ->
+                reader.uiRtl = uiRtl
+                reader.vertical = true
+                reader.rtl = true // VerticalPager must not inherit horizontal reverse layout.
+                reader.render()
+                reader.drag(Offset(200f, 320f), Offset(200f, 80f))
+                assertEquals(2, reader.page)
+                reader.drag(Offset(200f, 320f), Offset(200f, 80f))
+                assertEquals(2, reader.page, "The last vertical page must not invent another target")
+                reader.drag(Offset(200f, 80f), Offset(200f, 320f))
+                assertEquals(1, reader.page)
+                reader.drag(Offset(200f, 200f), Offset(200f, 175f))
+                assertEquals(1, reader.page, "A short vertical drag must cancel")
+                reader.accept = false
+                reader.drag(Offset(200f, 320f), Offset(200f, 80f))
+                assertEquals(1, reader.page, "Missing links cannot advance the vertical reader")
+                reader.vertical = false
+                reader.accept = true
+                reader.render()
+                assertEquals(1, reader.page, "Changing axes must retain the actual decoded page")
+                reader.drag(Offset(320f, 200f), Offset(80f, 200f))
+                assertEquals(0, reader.page, "Switching to horizontal restores the selected RTL behavior")
+            }
         }
     }
 

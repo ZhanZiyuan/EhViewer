@@ -319,4 +319,13 @@
     <string name="gallery_reader_gray_background">Gray</string>
     <string name="gallery_reader_white_background">White</string>
     <string name="gallery_reader_automatic_background">Auto</string>
+
+    <!-- Original v1.15.10 reader mode labels. -->
+    <string name="gallery_reader_mode">Reading mode</string>
+    <string name="gallery_reader_mode_default">Default</string>
+    <string name="gallery_reader_mode_ltr">Left to right</string>
+    <string name="gallery_reader_mode_rtl">Right to left</string>
+    <string name="gallery_reader_mode_vertical">Vertical</string>
+    <string name="gallery_reader_mode_webtoon">Webtoon</string>
+    <string name="gallery_reader_mode_continuous_vertical">Continuous vertical</string>
 </resources>

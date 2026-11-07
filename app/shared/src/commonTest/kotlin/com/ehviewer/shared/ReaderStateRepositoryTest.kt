@@ -1,6 +1,7 @@
 package com.ehviewer.shared
 
 import com.ehviewer.core.domain.reader.ReaderBackground
+import com.ehviewer.core.domain.reader.ReaderMode
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReadingDirection
@@ -36,6 +37,30 @@ private class ReaderTestVault : SessionVault {
 }
 
 class ReaderStateRepositoryTest {
+    @Test fun originalModesSurviveRecreationWithoutReplacingActualProgress() = runTest {
+        val vault = ReaderTestVault()
+        val first = ReaderStateRepository(vault) { 123 }
+        first.savePosition(5, 42, "0123456789")
+        for (mode in ReaderMode.entries) {
+            val changed = ReaderPreferences(background = ReaderBackground.GRAY, showPageNumber = false).withMode(mode, webtoon = true)
+            first.setPreferences(changed)
+            val restored = ReaderStateRepository(vault)
+            assertEquals(changed, restored.preferences())
+            assertEquals(42, restored.position(5)?.index)
+            assertEquals("0123456789", restored.position(5)?.pageToken)
+        }
+    }
+
+    @Test fun unknownFutureModeCannotOverwriteTheExistingSnapshot() = runTest {
+        val before = """{"schema":1,"preferences":{"layout":"PAGED","direction":"RIGHT_TO_LEFT","mode":"FUTURE_MODE"},"positions":[{"gid":5,"index":42,"pageToken":"0123456789","updatedAt":123}]}""".encodeToByteArray()
+        val vault = ReaderTestVault().apply { bytes = before.copyOf() }
+        val repository = ReaderStateRepository(vault)
+        assertFailsWith<ReaderStateException> { repository.preferences() }
+        assertFailsWith<ReaderStateException> { repository.setPreferences(ReaderPreferences().withMode(ReaderMode.VERTICAL)) }
+        assertContentEquals(before, vault.bytes)
+        assertEquals(0, vault.writes)
+    }
+
     @Test fun legacySchemaOneLoadsNewGeneralDefaultsWithoutRewritingProgress() = runTest {
         val before = """{"schema":1,"preferences":{"layout":"PAGED","direction":"RIGHT_TO_LEFT"},"positions":[{"gid":5,"index":42,"pageToken":"0123456789","updatedAt":123}]}""".encodeToByteArray()
         val vault = ReaderTestVault().apply { bytes = before.copyOf() }

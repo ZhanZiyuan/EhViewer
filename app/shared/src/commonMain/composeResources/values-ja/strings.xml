@@ -316,4 +316,13 @@
     <string name="gallery_reader_gray_background">グレー</string>
     <string name="gallery_reader_white_background">ホワイト</string>
     <string name="gallery_reader_automatic_background">自動</string>
+
+    <!-- Original v1.15.10 reader mode labels. -->
+    <string name="gallery_reader_mode">読書モード</string>
+    <string name="gallery_reader_mode_default">デフォルト</string>
+    <string name="gallery_reader_mode_ltr">左から右</string>
+    <string name="gallery_reader_mode_rtl">右から左</string>
+    <string name="gallery_reader_mode_vertical">垂直</string>
+    <string name="gallery_reader_mode_webtoon">ウェブトゥーン</string>
+    <string name="gallery_reader_mode_continuous_vertical">連続した垂直</string>
 </resources>

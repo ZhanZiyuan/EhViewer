@@ -34,11 +34,10 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
+import com.ehviewer.core.domain.reader.ReaderMode
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
-import com.ehviewer.core.domain.reader.ReadingDirection
-import com.ehviewer.core.domain.reader.ReadingLayout
 import com.ehviewer.core.domain.reader.ReadingPosition
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.network.GalleryLibrary
@@ -51,7 +50,6 @@ import ehviewer.app.shared.generated.resources.gallery_back
 import ehviewer.app.shared.generated.resources.gallery_display_image
 import ehviewer.app.shared.generated.resources.gallery_gallery_page
 import ehviewer.app.shared.generated.resources.gallery_original_image
-import ehviewer.app.shared.generated.resources.gallery_reading_continuous
 import ehviewer.app.shared.generated.resources.gallery_reading_ltr
 import ehviewer.app.shared.generated.resources.gallery_reading_preferences_unavailable
 import ehviewer.app.shared.generated.resources.gallery_reading_progress_save_failed
@@ -94,7 +92,10 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
     val focus = remember { FocusRequester() }
     val currentUrl = url
     val index = session.content.pageIndex(currentUrl, detail.gid)
-    val rtl = preferences.direction == ReadingDirection.RIGHT_TO_LEFT
+    val webtoon = remember(detail) { detail.hasReaderWebtoonTag() }
+    val mode = preferences.resolvedMode(webtoon)
+    val rtl = mode == ReaderMode.RIGHT_TO_LEFT
+    val vertical = mode == ReaderMode.VERTICAL
     fun transform(factor: Float, centroid: Offset = Offset.Unspecified, delta: Offset = Offset.Zero) {
         val image = bitmap ?: return
         val changed = readerZoom(ReaderZoom(zoom, pan), viewport, IntSize(image.width, image.height), factor, centroid, delta)
@@ -146,27 +147,29 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
             }
         }
     }
+    fun changeMode(selected: ReaderMode, position: String = currentUrl) {
+        changePreferences(preferences.withMode(selected, webtoon)) {
+            // Continuous reading owns its own visible position. Transfer its actual
+            // decoded URL before replacing that layout, rather than reopen the old page.
+            url = position
+            zoom = 1f
+            pan = Offset.Zero
+        }
+    }
     GalleryReaderTheme(preferences.background) {
         if (optionsOpen) {
             GalleryReaderOptionsSheet(preferences, settingsSaving || !preferencesReady && !preferencesFailure, preferencesFailure, onChange = { changePreferences(it) }, retry = {
                 pendingPreferences?.let { changePreferences(it) } ?: run { preferencesAttempt++ }
             }, onJump = {
                 optionsOpen = false
-                if (preferences.layout == ReadingLayout.CONTINUOUS) continuousJumpRequested = true else jumpOpen = true
+                if (mode.continuous) continuousJumpRequested = true else jumpOpen = true
             }, onDismiss = { optionsOpen = false }, available = preferencesReady)
         }
-        if (preferences.layout == ReadingLayout.CONTINUOUS) {
-            val start = remember(preferences.layout) { currentUrl }
+        if (mode.continuous) {
+            val start = remember { currentUrl }
             Column(Modifier.fillMaxSize()) {
                 if (preferencesFailure) ReaderStateError(galleryString(Res.string.gallery_reading_preferences_unavailable)) { preferencesAttempt++ }
-                GalleryContinuousReader(session, detail, start, readerState, onBack, chrome, onPaged = { position ->
-                    if (!settingsSaving) {
-                        changePreferences(preferences.copy(layout = ReadingLayout.PAGED)) {
-                            url = position
-                            chrome.visible = false
-                        }
-                    }
-                }, preferences = preferences, onSettings = { optionsOpen = true }, settingsEnabled = !settingsSaving, requestPageJump = continuousJumpRequested, onPageJumpHandled = { continuousJumpRequested = false })
+                GalleryContinuousReader(session, detail, start, readerState, onBack, chrome, onMode = { selected, position -> changeMode(selected, position) }, preferences = preferences, onSettings = { optionsOpen = true }, settingsEnabled = preferencesReady && !settingsSaving, requestPageJump = continuousJumpRequested, onPageJumpHandled = { continuousJumpRequested = false })
             }
             return@GalleryReaderTheme
         }
@@ -261,6 +264,8 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                     Key.Spacebar -> chrome.toggle()
                     Key.DirectionLeft -> (if (rtl) next else previous)?.let(::navigate) ?: return@readerKey false
                     Key.DirectionRight -> (if (rtl) previous else next)?.let(::navigate) ?: return@readerKey false
+                    Key.DirectionUp -> if (vertical) previous?.let(::navigate) ?: return@readerKey false else return@readerKey false
+                    Key.DirectionDown -> if (vertical) next?.let(::navigate) ?: return@readerKey false else return@readerKey false
                     Key.PageUp -> previous?.let(::navigate) ?: return@readerKey false
                     Key.PageDown -> next?.let(::navigate) ?: return@readerKey false
                     else -> return@readerKey false
@@ -285,9 +290,11 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                 }
             },
             actions = {
-                GalleryReaderAction(galleryString(Res.string.gallery_reading_continuous), GalleryIcons.LibraryBooks, preferencesReady && !settingsSaving && !seeking) { changePreferences(preferences.copy(layout = ReadingLayout.CONTINUOUS)) { chrome.visible = false } }
-                GalleryReaderAction(if (rtl) galleryString(Res.string.gallery_reading_rtl) else galleryString(Res.string.gallery_reading_ltr), GalleryIcons.SwapHoriz, preferencesReady && !settingsSaving) {
-                    changePreferences(preferences.copy(direction = if (rtl) ReadingDirection.LEFT_TO_RIGHT else ReadingDirection.RIGHT_TO_LEFT))
+                GalleryReaderModeButton(preferences, preferencesReady && !settingsSaving && !seeking && !loading && bitmap != null, onSelect = { changeMode(it) })
+                // Retain the existing horizontal-direction shortcut during the
+                // staged toolbar migration; it is inapplicable to vertical paging.
+                GalleryReaderAction(galleryString(if (rtl) Res.string.gallery_reading_rtl else Res.string.gallery_reading_ltr), GalleryIcons.SwapHoriz, preferencesReady && !settingsSaving && !vertical) {
+                    changeMode(if (rtl) ReaderMode.LEFT_TO_RIGHT else ReaderMode.RIGHT_TO_LEFT)
                 }
                 GalleryReaderAction(galleryString(Res.string.gallery_reset_zoom), GalleryIcons.ZoomOutMap) {
                     zoom = 1f
@@ -299,7 +306,7 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                 GalleryReaderAction(galleryString(Res.string.gallery_settings), GalleryIcons.Settings, !settingsSaving) { optionsOpen = true }
             },
         ) {
-            GalleryReaderPagedCanvas(index, detail.pages, rtl, bitmap != null && !loading && !seeking && zoom == 1f, onPageRequested = { selected ->
+            GalleryReaderPagedCanvas(index, detail.pages, rtl, bitmap != null && !loading && !seeking && zoom == 1f, vertical = vertical, onPageRequested = { selected ->
                 val target = when (selected) {
                     index - 1 -> previous
                     index + 1 -> next
@@ -317,13 +324,15 @@ internal fun GalleryReaderScreen(session: GalleryLibrary, detail: GalleryDetail,
                 Box(
                     Modifier.fillMaxSize().clipToBounds().onSizeChanged { viewport = it }
                         .galleryReaderWheelZoom(bitmap != null && !loading && !seeking) { factor, position -> transform(factor, position) }
-                        .pointerInput(url, previous, next, rtl, preferences.doubleTapToZoom) {
+                        .pointerInput(url, previous, next, rtl, vertical, preferences.doubleTapToZoom) {
                             detectTapGestures(
                                 onTap = { point ->
                                     val target = if (zoom == 1f && !seeking) {
+                                        val coordinate = if (vertical) point.y else point.x
+                                        val extent = if (vertical) size.height else size.width
                                         when {
-                                            point.x < size.width / 3f -> if (rtl) next else previous
-                                            point.x > size.width * 2f / 3f -> if (rtl) previous else next
+                                            coordinate < extent / 3f -> if (rtl) next else previous
+                                            coordinate > extent * 2f / 3f -> if (rtl) previous else next
                                             else -> null
                                         }
                                     } else {
