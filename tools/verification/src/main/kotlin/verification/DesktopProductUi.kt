@@ -205,16 +205,20 @@ fun desktopProductUi(image: Path, runtimeReport: Path, output: Path): Map<String
         }
         fun colorPoint(image: BufferedImage, color: Int): Point? {
             var count = 0
-            var first: Point? = null
+            var sumX = 0L
+            var sumY = 0L
             for (y in 0 until image.height step 4) {
                 for (x in 0 until image.width step 4) {
                     if (image.getRGB(x, y) == color) {
-                        if (first == null) first = Point(x + screen.x, y + screen.y)
+                        sumX += x
+                        sumY += y
                         count++
                     }
                 }
             }
-            return first.takeIf { count >= 400 }
+            // Activate inside the measured comic, not its first colored edge:
+            // a genuine RTL reader correctly interprets a left-edge tap as Next.
+            return if (count >= 400) Point((sumX / count).toInt() + screen.x, (sumY / count).toInt() + screen.y) else null
         }
         fun awaitPage(index: Int, name: String): Point {
             val deadline = System.nanoTime() + Duration.ofMinutes(2).toNanos()
@@ -242,12 +246,14 @@ fun desktopProductUi(image: Path, runtimeReport: Path, output: Path): Map<String
             robot.keyRelease(code)
         }
         val first = awaitPage(0, "reader-page1.png")
-        robot.mouseMove(first.x + 8, first.y + 8)
+        robot.mouseMove(first.x, first.y)
         robot.mousePress(InputEvent.BUTTON1_DOWN_MASK)
         robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK)
-        key(KeyEvent.VK_RIGHT)
-        awaitPage(1, "reader-page2.png")
+        // The original Default mode resolves an ordinary new local comic to RTL.
+        // Exercise the actual factory without writing a test-only LTR preference.
         key(KeyEvent.VK_LEFT)
+        awaitPage(1, "reader-page2.png")
+        key(KeyEvent.VK_RIGHT)
         awaitPage(0, "reader-return-page1.png")
         key(KeyEvent.VK_ESCAPE)
         // This capture is kept for visual review; absence of a page is not called semantic acceptance.

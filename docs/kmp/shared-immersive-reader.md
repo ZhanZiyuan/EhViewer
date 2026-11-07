@@ -1,5 +1,17 @@
 # Shared immersive reader
 
+## Original defaults and keyboard focus
+
+New or cleared Desktop/iOS reader stores now start in the original Default mode: ordinary galleries resolve to right-to-left and tagged webtoons to Webtoon. Existing serialized modes, legacy layout/direction and reading positions retain their meaning and bytes. The reference is this repository's v1.15.10 `Settings.kt` default and `ReaderScreen.kt` resolution, not Animeko artwork or implementation.
+
+The shared canvas regains keyboard focus when its controls are hidden. Visible sliders and buttons keep their own input handling. An actual Compose scene retains the original failure: after selecting Vertical and tapping the canvas to close controls, the next Down was lost. The same pointer/menu/key sequence now passes. A separate failing default-store test and its fix cover new/cleared stores, both Default resolutions, and unchanged legacy snapshots.
+
+Source-bound evidence under `build/kmp-work-logs/ui-reader-fresh-default-*20261107` passes complete Desktop 151, Android host 76, actual shared Native 88, app unit 22, verifier 287, Android lint/build, both Apple links, Simulator packaging and Mac DMG. The same final APK pair passes complete phone 53/tablet 53 with zero skips. New iPhone/iPad profiles contain only public downloads before launch: the actual menu selects Default before any settings mutation, and physical RTL gestures decode page 2; iPad rotation preserves page 1. Two raw SDK screenshots per Apple device remain retained. Normal macOS selects Default, closes its menu/controls and decodes 1→2→1 with Left/Right while controls stay hidden. All 61 public page files remain unchanged in each profile. Mac native CUA frames are retained in the conversation, not exported local PNGs.
+
+The normal desktop check activates the measured comic interior and uses the original RTL key order. Clicking the first colored left edge could otherwise turn a page before keyboard validation. Its actual decoded-frame requirements, raw captures and deadlines remain unchanged. Required hosted acceptance still follows the source-bound plan; parent repair `e51cef84c` and the retained failed mode run42315911678 remain inspectable in Actions Summary.
+
+The strict, predeclared original Default-icon comparison remains FAIL at 293/6,241 pixels, maximum channel delta 3, matching the preceding mode slice. There is no alignment, scaling or tolerance change. Whole-page visual/P0 acceptance and the original orientation/crop actions and complete settings remain M5 work.
+
 This M5 UI slice gives online, downloaded and archive reading the same full-window canvas and overlay controls. It retains the existing bounded image/page window, actual Rust decoding, cancellation and decoded-only progress persistence.
 
 The reference is EhViewer `v1.15.10`, commit `423b8af13632896b55780783b54b5f720ec4c9dd`: `app/src/main/kotlin/com/hippo/ehviewer/ui/reader/ReaderScreen.kt` and `eu/kanade/tachiyomi/ui/reader/{ReaderAppBars,ChapterNavigator,PageIndicatorText}.kt`. The new common `GalleryReaderChrome.kt` follows the original default black canvas, initially hidden controls, small page indicator, two-line Material top bar and 200ms sliding bars. It removes the library's 1040dp cap/keyline while reading, without changing the composition slot or losing the surrounding page state.

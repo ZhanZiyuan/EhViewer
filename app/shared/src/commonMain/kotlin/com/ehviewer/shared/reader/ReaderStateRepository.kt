@@ -1,5 +1,6 @@
 package com.ehviewer.shared.reader
 
+import com.ehviewer.core.domain.reader.ReaderMode
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReaderStateStore
@@ -26,7 +27,9 @@ class ReaderStateRepository(private val vault: SessionVault, private val now: ()
         return storage {
             val bytes = vault.read()
             val snapshot = if (bytes == null || bytes.isEmpty()) {
-                ReaderSnapshot(1, ReaderPreferences(), emptyList())
+                // Match the original Android default only for a genuinely new or
+                // cleared store. Missing mode in a legacy snapshot retains its layout.
+                ReaderSnapshot(1, ReaderPreferences().withMode(ReaderMode.DEFAULT), emptyList())
             } else {
                 check(bytes.size <= MAX_BYTES)
                 json.decodeFromString<ReaderSnapshot>(bytes.decodeToString(throwOnInvalidSequence = true))

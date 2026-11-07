@@ -37,6 +37,31 @@ private class ReaderTestVault : SessionVault {
 }
 
 class ReaderStateRepositoryTest {
+    @Test fun newProfilesUseTheOriginalDefaultWithoutReinterpretingLegacySnapshots() = runTest {
+        for (empty in listOf(null, ByteArray(0))) {
+            val vault = ReaderTestVault().apply { bytes = empty?.copyOf() }
+            val store = ReaderStateRepository(vault)
+            val preferences = store.preferences()
+            assertEquals(ReaderMode.DEFAULT, preferences.selectedMode)
+            assertEquals(ReaderMode.RIGHT_TO_LEFT, preferences.resolvedMode())
+            assertEquals(ReaderMode.WEBTOON, preferences.resolvedMode(webtoon = true))
+            assertNull(store.position(1))
+            assertContentEquals(empty, vault.bytes)
+            assertEquals(0, vault.writes)
+        }
+        for ((layout, direction, mode) in listOf(
+            Triple(ReadingLayout.PAGED, ReadingDirection.LEFT_TO_RIGHT, ReaderMode.LEFT_TO_RIGHT),
+            Triple(ReadingLayout.PAGED, ReadingDirection.RIGHT_TO_LEFT, ReaderMode.RIGHT_TO_LEFT),
+            Triple(ReadingLayout.CONTINUOUS, ReadingDirection.RIGHT_TO_LEFT, ReaderMode.WEBTOON),
+        )) {
+            val before = """{"schema":1,"preferences":{"layout":"$layout","direction":"$direction"},"positions":[]}""".encodeToByteArray()
+            val vault = ReaderTestVault().apply { bytes = before.copyOf() }
+            assertEquals(mode, ReaderStateRepository(vault).preferences().selectedMode)
+            assertContentEquals(before, vault.bytes)
+            assertEquals(0, vault.writes)
+        }
+    }
+
     @Test fun originalModesSurviveRecreationWithoutReplacingActualProgress() = runTest {
         val vault = ReaderTestVault()
         val first = ReaderStateRepository(vault) { 123 }
@@ -94,7 +119,7 @@ class ReaderStateRepositoryTest {
         vault.failWrite = true
         assertFailsWith<ReaderStateException> { repository.setPreferences(changed) }
         assertContentEquals(before, vault.bytes)
-        assertEquals(ReaderPreferences(), repository.preferences())
+        assertEquals(ReaderPreferences().withMode(ReaderMode.DEFAULT), repository.preferences())
         vault.failWrite = false
         repository.setPreferences(changed)
         val restored = ReaderStateRepository(vault)
@@ -105,7 +130,7 @@ class ReaderStateRepositoryTest {
     @Test fun aNewStoreHasRealDefaultsWithoutWritingAnInventedHistory() = runTest {
         val vault = ReaderTestVault()
         val repository = ReaderStateRepository(vault)
-        assertEquals(ReaderPreferences(), repository.preferences())
+        assertEquals(ReaderPreferences().withMode(ReaderMode.DEFAULT), repository.preferences())
         assertNull(repository.position(1))
         assertNull(vault.bytes)
         assertEquals(0, vault.writes)
@@ -203,7 +228,7 @@ class ReaderStateRepositoryTest {
         vault.clear()
         val cleared = ReaderStateRepository(vault)
         assertNull(cleared.position(1))
-        assertEquals(ReaderPreferences(), cleared.preferences())
+        assertEquals(ReaderPreferences().withMode(ReaderMode.DEFAULT), cleared.preferences())
         assertEquals(1, vault.writes)
     }
 }
