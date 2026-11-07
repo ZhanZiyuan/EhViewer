@@ -24,6 +24,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil3.Image as CoilImage
+import com.ehviewer.core.domain.GalleryListPresentation
+import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.model.GalleryInfo
 
@@ -33,6 +35,8 @@ internal fun GalleryThumbnailCard(
     gallery: BaseGalleryInfo,
     covers: GalleryCoverCache<CoilImage>,
     modifier: Modifier = Modifier,
+    presentation: GalleryListPresentation = GalleryListPresentation(),
+    readerState: ReaderStateStore? = null,
     onOpen: () -> Unit,
 ) {
     val request = gallery.thumbKey?.takeIf { it.isNotBlank() }?.let { GalleryCoverRequest(gallery.gid, gallery.token, it) }
@@ -62,8 +66,8 @@ internal fun GalleryThumbnailCard(
                 contentColor = galleryCategoryTextColor(category),
             ) {
                 val language = gallery.simpleLanguage
-                if (gallery.pages > 0) {
-                    Text("${gallery.pages}")
+                galleryCardPageCount(gallery, presentation, readerState)?.let { count ->
+                    Text(count)
                     if (language != null) Spacer(Modifier.width(4.dp))
                 }
                 if (language != null) Text(language)

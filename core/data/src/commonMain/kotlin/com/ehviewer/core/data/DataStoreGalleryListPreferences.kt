@@ -31,6 +31,8 @@ class DataStoreGalleryListPreferences(private val store: DataStore<Preferences>)
     private val mode = stringPreferencesKey("list_mode")
     private val detailThumbnailSize = intPreferencesKey("list_tile_size")
     private val thumbnailColumns = intPreferencesKey("thumb_columns")
+    private val showPages = booleanPreferencesKey("show_gallery_pages")
+    private val showReadingProgress = booleanPreferencesKey("show_reading_progress")
     private val density = stringPreferencesKey("density")
     private val comments = booleanPreferencesKey("show_comments")
     private val launchPage = intPreferencesKey("launch_page_2")
@@ -80,6 +82,8 @@ class DataStoreGalleryListPreferences(private val store: DataStore<Preferences>)
             mode = preferences[mode]?.let(GalleryListMode::valueOf) ?: GalleryListMode.DETAIL,
             detailThumbnailSize = preferences[detailThumbnailSize] ?: 40,
             thumbnailColumns = preferences[thumbnailColumns] ?: 3,
+            showPages = preferences[showPages] ?: true,
+            showReadingProgress = preferences[showReadingProgress] ?: false,
         )
     }
 
@@ -100,6 +104,8 @@ class DataStoreGalleryListPreferences(private val store: DataStore<Preferences>)
     override suspend fun setMode(mode: GalleryListMode) = setPresentation(this.mode, mode.name) { it.copy(mode = mode) }
     override suspend fun setDetailThumbnailSize(size: Int) = setPresentation(detailThumbnailSize, size) { it.copy(detailThumbnailSize = size) }
     override suspend fun setThumbnailColumns(columns: Int) = setPresentation(thumbnailColumns, columns) { it.copy(thumbnailColumns = columns) }
+    override suspend fun setShowPages(enabled: Boolean) = setPresentation(showPages, enabled) { it.copy(showPages = enabled) }
+    override suspend fun setShowReadingProgress(enabled: Boolean) = setPresentation(showReadingProgress, enabled) { it.copy(showReadingProgress = enabled) }
 
     private suspend fun <T> storedLaunch(block: suspend () -> T): T = try {
         block()

@@ -16,10 +16,8 @@
 
 package com.ehviewer.shared
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -32,10 +30,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import com.ehviewer.core.ui.component.RollingNumber
 import kotlin.math.roundToInt
 import me.zhanghai.compose.preference.LocalPreferenceTheme
 import me.zhanghai.compose.preference.Preference
@@ -53,8 +49,6 @@ internal fun GalleryIntSliderPreference(title: String, value: Int, range: IntRan
         if (enabled && value != choice) onChoose(choice)
     }
     val style = MaterialTheme.typography.bodyLarge
-    val numberMeasure = rememberTextMeasurer()
-    val numberWidth = with(LocalDensity.current) { numberMeasure.measure("00000", style).size.width.toDp() }
     val colors = SliderDefaults.colors()
     Preference(
         title = { Text(title) },
@@ -76,9 +70,13 @@ internal fun GalleryIntSliderPreference(title: String, value: Int, range: IntRan
                         )
                     },
                 )
-                Box(Modifier.padding(start = LocalPreferenceTheme.current.horizontalSpacing).width(numberWidth)) {
-                    Text(slider.value.roundToInt().toString(), modifier = Modifier.align(Alignment.CenterEnd), style = style, textAlign = TextAlign.End, color = MaterialTheme.colorScheme.onSurface)
-                }
+                RollingNumber(
+                    slider.value.roundToInt(),
+                    modifier = Modifier.padding(start = LocalPreferenceTheme.current.horizontalSpacing),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = style,
+                    length = 5,
+                )
             }
         },
     )

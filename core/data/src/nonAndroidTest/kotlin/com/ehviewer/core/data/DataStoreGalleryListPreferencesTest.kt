@@ -86,12 +86,14 @@ class DataStoreGalleryListPreferencesTest {
                 first.layout.setMode(GalleryListMode.THUMBNAIL)
                 first.layout.setDetailThumbnailSize(60)
                 first.layout.setThumbnailColumns(8)
+                first.layout.setShowPages(false)
+                first.layout.setShowReadingProgress(true)
             } finally {
                 first.close()
             }
             val second = OwnedStore(path)
             try {
-                assertEquals(GalleryListPresentation(GalleryListMode.THUMBNAIL, 60, 8), second.layout.presentation())
+                assertEquals(GalleryListPresentation(GalleryListMode.THUMBNAIL, 60, 8, showPages = false, showReadingProgress = true), second.layout.presentation())
                 assertEquals(GalleryListDensity.COMFORTABLE, second.layout.density())
                 assertEquals(false, second.layout.showComments())
                 second.data.edit { it[intPreferencesKey("thumb_columns")] = 11 }

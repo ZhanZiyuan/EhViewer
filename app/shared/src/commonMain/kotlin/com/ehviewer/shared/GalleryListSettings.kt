@@ -31,6 +31,10 @@ import ehviewer.app.shared.generated.resources.gallery_settings_detail_thumbnail
 import ehviewer.app.shared.generated.resources.gallery_settings_list_mode
 import ehviewer.app.shared.generated.resources.gallery_settings_list_mode_detail
 import ehviewer.app.shared.generated.resources.gallery_settings_list_mode_thumb
+import ehviewer.app.shared.generated.resources.gallery_settings_show_gallery_pages
+import ehviewer.app.shared.generated.resources.gallery_settings_show_gallery_pages_summary
+import ehviewer.app.shared.generated.resources.gallery_settings_show_reading_progress
+import ehviewer.app.shared.generated.resources.gallery_settings_show_reading_progress_summary
 import ehviewer.app.shared.generated.resources.gallery_settings_thumbnail_columns
 import ehviewer.app.shared.generated.resources.gallery_show_comments
 import ehviewer.app.shared.generated.resources.gallery_show_comments_summary
@@ -138,6 +142,32 @@ internal fun GalleryListSettings(
                     onPresentationChanged(presentation.copy(thumbnailColumns = columns))
                 }
             }
+        }
+        if (presentationPreferences != null && presentation != null) {
+            SwitchPreference(
+                value = presentation.showPages,
+                onValueChange = { value ->
+                    save {
+                        presentationPreferences.setShowPages(value)
+                        onPresentationChanged(presentation.copy(showPages = value))
+                    }
+                },
+                title = { Text(galleryString(Res.string.gallery_settings_show_gallery_pages)) },
+                summary = { Text(galleryString(Res.string.gallery_settings_show_gallery_pages_summary)) },
+                enabled = enabled,
+            )
+            SwitchPreference(
+                value = presentation.showReadingProgress,
+                onValueChange = { value ->
+                    save {
+                        presentationPreferences.setShowReadingProgress(value)
+                        onPresentationChanged(presentation.copy(showReadingProgress = value))
+                    }
+                },
+                title = { Text(galleryString(Res.string.gallery_settings_show_reading_progress)) },
+                summary = { Text(galleryString(Res.string.gallery_settings_show_reading_progress_summary)) },
+                enabled = enabled,
+            )
         }
         SwitchPreference(
             value = comments == true,

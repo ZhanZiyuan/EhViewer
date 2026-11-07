@@ -44,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import coil3.Image as CoilImage
 import coil3.compose.LocalPlatformContext
 import coil3.compose.asPainter
+import com.ehviewer.core.domain.GalleryListPresentation
+import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.model.GalleryInfo
 import com.ehviewer.core.network.gallery.GalleryRequestException
@@ -59,7 +61,7 @@ import kotlinx.coroutines.CancellationException
  * title, then uploader/favorite, rating/language/pages and category/posted rows in labelLarge.
  */
 @Composable
-internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCache<CoilImage>, modifier: Modifier = Modifier, downloaded: Boolean = false, thumbnailSize: Int = 40, onOpen: () -> Unit) {
+internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCache<CoilImage>, modifier: Modifier = Modifier, downloaded: Boolean = false, thumbnailSize: Int = 40, presentation: GalleryListPresentation = GalleryListPresentation(), readerState: ReaderStateStore? = null, onOpen: () -> Unit) {
     val cover = gallery.thumbKey?.takeIf { it.isNotBlank() }?.let { GalleryCoverRequest(gallery.gid, gallery.token, it) }
     val height = galleryListCardHeight(LocalDensity.current, thumbnailSize)
     OutlinedCard(onClick = onOpen, modifier = modifier.fillMaxWidth().height(height), border = galleryCrystalBorder()) {
@@ -82,7 +84,7 @@ internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCach
                         Spacer(Modifier.weight(1f))
                         if (downloaded) Icon(GalleryIcons.Download, contentDescription = galleryString(Res.string.gallery_downloaded), modifier = Modifier.size(16.dp))
                         gallery.simpleLanguage?.let { Text(it) }
-                        if (gallery.pages != 0) Text("${gallery.pages}P")
+                        galleryCardPageCount(gallery, presentation, readerState)?.let { Text("${it}P") }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         val categoryColor = galleryCategoryColor(gallery.category)

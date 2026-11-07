@@ -537,6 +537,7 @@ fun GalleryLibraryScreen(
                     val immersive = galleryIsImmersive()
                     Box(Modifier.fillMaxSize().then(if (immersive) Modifier else Modifier.windowInsetsPadding(WindowInsets.safeDrawing)), contentAlignment = Alignment.TopCenter) {
                         // Search, History and Downloads use Android's floating search bar.
+                        val listPresentation = presentation ?: GalleryListPresentation()
                         val localFavorites = favoritesOpen && favoriteControls != null
                         val searchBarPage = !settingsOpen && !localFavorites && !(account && accountContent != null) && !(archivesOpen && archiveContent != null) && (if (downloadsOpen) cached == null else selected == null)
                         Column(galleryPageModifier(searchBarPage, immersive, edgeToEdge = settingsOpen || localFavorites || selected != null)) {
@@ -675,11 +676,11 @@ fun GalleryLibraryScreen(
                                 return@Column
                             }
                             if (localFavorites && favoriteControls != null) {
-                                GalleryLocalFavoritesScreen(favoriteControls.local, favoriteCovers, downloadedGids, openNavigation, onOpen = { selected = it }, onBack = { favoritesOpen = false })
+                                GalleryLocalFavoritesScreen(favoriteControls.local, favoriteCovers, downloadedGids, listPresentation, readerState, openNavigation, onOpen = { selected = it }, onBack = { favoritesOpen = false })
                                 return@Column
                             }
                             if (historyOpen) {
-                                GalleryHistoryScreen(history, historyCovers, downloadedGids, leading = {
+                                GalleryHistoryScreen(history, historyCovers, downloadedGids, listPresentation, readerState, leading = {
                                     if (openNavigation != null) GalleryNavigationButton(openNavigation) else Icon(GalleryIcons.Search, contentDescription = null)
                                 }, onOpen = { selected = it }, onBack = { historyOpen = false })
                                 return@Column
@@ -742,7 +743,7 @@ fun GalleryLibraryScreen(
                                                 item(span = StaggeredGridItemSpan.FullLine) { GalleryBrowseLoadState(loading, error, ::retryPage) }
                                             }
                                             items(result.galleryInfoList, key = { it.gid }) { gallery ->
-                                                GalleryThumbnailCard(gallery, covers) { selected = gallery }
+                                                GalleryThumbnailCard(gallery, covers, presentation = listPresentation, readerState = readerState) { selected = gallery }
                                             }
                                             if ((merging && loading || failedMerge && error != null) && !entrySearch.previous) {
                                                 item(span = StaggeredGridItemSpan.FullLine) { GalleryBrowseLoadState(loading, error, ::retryPage) }
@@ -761,7 +762,7 @@ fun GalleryLibraryScreen(
                                                 item(span = { GridItemSpan(maxLineSpan) }) { GalleryBrowseLoadState(loading, error, ::retryPage) }
                                             }
                                             items(result.galleryInfoList, key = { it.gid }) { gallery ->
-                                                GallerySearchCard(gallery, covers, downloaded = gallery.gid in downloadedGids, thumbnailSize = presentation?.detailThumbnailSize ?: 40) { selected = gallery }
+                                                GallerySearchCard(gallery, covers, downloaded = gallery.gid in downloadedGids, thumbnailSize = listPresentation.detailThumbnailSize, presentation = listPresentation, readerState = readerState) { selected = gallery }
                                             }
                                             if ((merging && loading || failedMerge && error != null) && !entrySearch.previous) {
                                                 item(span = { GridItemSpan(maxLineSpan) }) { GalleryBrowseLoadState(loading, error, ::retryPage) }

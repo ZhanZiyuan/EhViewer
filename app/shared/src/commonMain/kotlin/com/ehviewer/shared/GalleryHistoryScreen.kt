@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import coil3.Image as CoilImage
 import com.ehviewer.core.domain.GalleryHistoryException
 import com.ehviewer.core.domain.GalleryHistoryStore
+import com.ehviewer.core.domain.GalleryListPresentation
+import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.BaseGalleryInfo
 import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_cancel
@@ -76,7 +78,7 @@ import kotlinx.coroutines.launch
  * The search filters the loaded entries by title as the user types.
  */
 @Composable
-internal fun GalleryHistoryScreen(store: GalleryHistoryStore, covers: GalleryCoverCache<CoilImage>, downloadedGids: Set<Long>, leading: @Composable () -> Unit, onOpen: (BaseGalleryInfo) -> Unit, onBack: () -> Unit) {
+internal fun GalleryHistoryScreen(store: GalleryHistoryStore, covers: GalleryCoverCache<CoilImage>, downloadedGids: Set<Long>, presentation: GalleryListPresentation, readerState: ReaderStateStore, leading: @Composable () -> Unit, onOpen: (BaseGalleryInfo) -> Unit, onBack: () -> Unit) {
     var entries by remember(store) { mutableStateOf<List<BaseGalleryInfo>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
@@ -156,6 +158,9 @@ internal fun GalleryHistoryScreen(store: GalleryHistoryStore, covers: GalleryCov
                             customActions = listOf(CustomAccessibilityAction(removeLabel) { forget(gallery).let { true } })
                         },
                         downloaded = gallery.gid in downloadedGids,
+                        thumbnailSize = presentation.detailThumbnailSize,
+                        presentation = presentation,
+                        readerState = readerState,
                     ) { onOpen(gallery) }
                 }
             }

@@ -33,6 +33,7 @@ import com.ehviewer.core.domain.GalleryListPresentationPreferences
 import com.ehviewer.core.domain.GalleryToplistPeriod
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateStore
+import com.ehviewer.core.domain.reader.ReadingPosition
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.model.GalleryDetail
 import com.ehviewer.core.model.GalleryInfo
@@ -74,7 +75,7 @@ import kotlinx.coroutines.test.setMain
 /** Actual shared screen, pointer actions, saved composition state and Ktor requests. */
 @OptIn(androidx.compose.ui.InternalComposeUiApi::class, ExperimentalCoroutinesApi::class)
 class GalleryHomepageTest {
-    private class Library(val withCovers: Boolean = false, val galleryCount: Int = 1) : GalleryLibrary, AutoCloseable {
+    private class Library(val withCovers: Boolean = false, val galleryCount: Int = 1, val pageCount: Int = 0) : GalleryLibrary, AutoCloseable {
         val requests = Collections.synchronizedList(mutableListOf<Url>())
         val coverRequests = Collections.synchronizedList(mutableListOf<Url>())
 
@@ -113,7 +114,7 @@ class GalleryHomepageTest {
                 null,
                 null,
                 List(galleryCount) { index ->
-                    BaseGalleryInfo(index + 1L, "0123456789", if (index == 0) title else "$title ${index + 1}", thumbKey = "owned-cover.png".takeIf { withCovers }, category = 512)
+                    BaseGalleryInfo(index + 1L, "0123456789", if (index == 0) title else "$title ${index + 1}", thumbKey = "owned-cover.png".takeIf { withCovers }, category = 512, pages = pageCount)
                 },
             )
         })
@@ -141,9 +142,15 @@ class GalleryHomepageTest {
         override suspend fun setThumbnailColumns(columns: Int) {
             value = value.copy(thumbnailColumns = columns)
         }
+        override suspend fun setShowPages(enabled: Boolean) {
+            value = value.copy(showPages = enabled)
+        }
+        override suspend fun setShowReadingProgress(enabled: Boolean) {
+            value = value.copy(showReadingProgress = enabled)
+        }
     }
 
-    private class View(library: Library, browse: Boolean = true, local: Boolean = false, saved: Map<String, List<Any?>>? = null, appearance: GalleryAppearanceStore = browsingAppearance, listPreferences: ListingPreferences? = null, width: Int = 1000, launchPreferences: GalleryLaunchPreferences? = null) : AutoCloseable {
+    private class View(library: Library, browse: Boolean = true, local: Boolean = false, saved: Map<String, List<Any?>>? = null, appearance: GalleryAppearanceStore = browsingAppearance, listPreferences: ListingPreferences? = null, width: Int = 1000, launchPreferences: GalleryLaunchPreferences? = null, height: Int = 900, readingPositions: Map<Long, ReadingPosition> = emptyMap()) : AutoCloseable {
         var identityPauses = 0
             private set
         private val scheduler = TestCoroutineScheduler()
@@ -163,7 +170,7 @@ class GalleryHomepageTest {
         }) {}
         private val reader = object : ReaderStateStore {
             override suspend fun preferences() = ReaderPreferences()
-            override suspend fun position(gid: Long) = null
+            override suspend fun position(gid: Long) = readingPositions[gid]
             override suspend fun setPreferences(preferences: ReaderPreferences) = error("Browsing must not change reading preferences")
             override suspend fun savePosition(gid: Long, index: Int, pageToken: String?) = error("Browsing must not save progress")
         }
@@ -192,7 +199,7 @@ class GalleryHomepageTest {
         init {
             Dispatchers.setMain(dispatcher)
         }
-        val scene = ImageComposeScene(width, 900, Density(1f), coroutineContext = dispatcher) {
+        val scene = ImageComposeScene(width, height, Density(1f), coroutineContext = dispatcher) {
             CompositionLocalProvider(LocalSaveableStateRegistry provides registry) {
                 GalleryLibraryScreen(library, reader, appearance, history, downloads, language, archiveContent = { Text("Owned local library") }, accountContent = { changed, back ->
                     Column {
@@ -508,6 +515,47 @@ class GalleryHomepageTest {
                 val (surface, categoryPixels) = reopened.appearancePixels()
                 assertEquals(black, surface)
                 assertTrue(categoryPixels > 30)
+            }
+        }
+    }
+
+    @Test fun originalPageCountAndReadingProgressSwitchesChangeActualGalleryCards() = english {
+        Library(pageCount = 18).use { library ->
+            val preferences = ListingPreferences()
+            val saved = mapOf(1L to ReadingPosition(1L, 6, null, 1L))
+            View(library, listPreferences = preferences, width = 1000, height = 1160, readingPositions = saved).use { view ->
+                fun openEh() {
+                    view.click("Settings")
+                    view.await("EH")
+                    view.click("EH")
+                    view.await("Show gallery pages")
+                }
+                fun leaveEh() {
+                    view.click("Back")
+                    view.await("EH")
+                    view.click("Back")
+                    view.await("gallery search bar") {
+                        view.all().any { "Search galleries" in it.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() }
+                    }
+                }
+                view.await("18P")
+                assertNull(view.text("7/18P"))
+                openEh()
+                view.click("Show reading progress")
+                leaveEh()
+                view.await("7/18P")
+                openEh()
+                view.click("List mode")
+                view.await("Thumb")
+                view.click("Thumb")
+                leaveEh()
+                view.await("7/18")
+                openEh()
+                view.click("Show gallery pages")
+                leaveEh()
+                assertNull(view.text("7/18"))
+                assertNull(view.text("18"))
+                assertEquals(1, library.requests.size)
             }
         }
     }

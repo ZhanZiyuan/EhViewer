@@ -71,6 +71,8 @@ class SharedGalleryIntegrationTest {
             it[listMode] = 0
             it[listThumbSize] = 40
             it[thumbColumns] = 3
+            it[showGalleryPages] = true
+            it[showReadingProgress] = false
         }
         try {
             // A preference-only setup does not reset Android's retained application night mode.
@@ -242,6 +244,8 @@ class SharedGalleryIntegrationTest {
                 restore(listMode)
                 restore(listThumbSize)
                 restore(thumbColumns)
+                restore(showGalleryPages)
+                restore(showReadingProgress)
             }
             runBlocking { withContext(Dispatchers.Main) { updateWhenThemeChanges(saved[Settings.theme]) } }
             Settings.appLinkVerifyTip = linkTip

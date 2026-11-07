@@ -1,4 +1,8 @@
 <resources>
+    <string name="gallery_settings_show_gallery_pages">显示画廊页数</string>
+    <string name="gallery_settings_show_gallery_pages_summary">在画廊列表中显示页数</string>
+    <string name="gallery_settings_show_reading_progress">显示阅读进度</string>
+    <string name="gallery_settings_show_reading_progress_summary">在画廊列表中显示阅读进度</string>
     <string name="gallery_error_no_watched_tags">请至 设置-&gt;EH-&gt;我的标签 订阅标签</string>
     <string name="gallery_settings_launch_page">启动页</string>
     <string name="gallery_feed_homepage">主页</string>

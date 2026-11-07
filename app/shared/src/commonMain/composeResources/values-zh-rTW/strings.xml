@@ -1,4 +1,6 @@
 <resources>
+    <string name="gallery_settings_show_gallery_pages">顯示圖庫頁數</string>
+    <string name="gallery_settings_show_gallery_pages_summary">在圖庫列表中顯示頁數</string>
     <string name="gallery_error_no_watched_tags">請至 設定-&gt;EH-&gt;我的標籤 訂閱標籤</string>
     <string name="gallery_settings_launch_page">啟動頁</string>
     <string name="gallery_feed_homepage">首頁</string>

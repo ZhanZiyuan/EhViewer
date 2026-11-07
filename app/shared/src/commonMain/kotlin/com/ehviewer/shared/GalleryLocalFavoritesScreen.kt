@@ -31,8 +31,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import coil3.Image as CoilImage
+import com.ehviewer.core.domain.GalleryListPresentation
 import com.ehviewer.core.domain.GalleryLocalFavorites
 import com.ehviewer.core.domain.GalleryLocalFavoritesException
+import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.BaseGalleryInfo
 import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_local_favorites
@@ -48,6 +50,8 @@ internal fun GalleryLocalFavoritesScreen(
     store: GalleryLocalFavorites,
     covers: GalleryCoverCache<CoilImage>,
     downloadedGids: Set<Long>,
+    presentation: GalleryListPresentation,
+    readerState: ReaderStateStore,
     openNavigation: (() -> Unit)?,
     onOpen: (BaseGalleryInfo) -> Unit,
     onBack: () -> Unit,
@@ -107,7 +111,7 @@ internal fun GalleryLocalFavoritesScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 items(rows, key = { it.gid }) { gallery ->
-                    GallerySearchCard(gallery, covers, downloaded = gallery.gid in downloadedGids) { onOpen(gallery) }
+                    GallerySearchCard(gallery, covers, downloaded = gallery.gid in downloadedGids, thumbnailSize = presentation.detailThumbnailSize, presentation = presentation, readerState = readerState) { onOpen(gallery) }
                 }
                 if (failed) {
                     item("local-favorites-retry") {

@@ -57,6 +57,8 @@ internal class AndroidGalleryListPreferences : GalleryListPreferences, GalleryLi
             mode = decodeMode(snapshot[Settings.listMode]),
             detailThumbnailSize = snapshot[Settings.listThumbSize],
             thumbnailColumns = snapshot[Settings.thumbColumns],
+            showPages = snapshot[Settings.showGalleryPages],
+            showReadingProgress = snapshot[Settings.showReadingProgress],
         )
     }
 
@@ -75,6 +77,14 @@ internal class AndroidGalleryListPreferences : GalleryListPreferences, GalleryLi
     override suspend fun setThumbnailColumns(columns: Int) = stored {
         require(columns in 1..10)
         Settings.withMutableSnapshot { it[Settings.thumbColumns] = columns }
+    }
+
+    override suspend fun setShowPages(enabled: Boolean) = stored {
+        Settings.withMutableSnapshot { it[Settings.showGalleryPages] = enabled }
+    }
+
+    override suspend fun setShowReadingProgress(enabled: Boolean) = stored {
+        Settings.withMutableSnapshot { it[Settings.showReadingProgress] = enabled }
     }
 
     private suspend fun <T> storedLaunch(block: suspend () -> T): T = try {
