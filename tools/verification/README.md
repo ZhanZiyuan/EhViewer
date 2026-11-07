@@ -1,19 +1,52 @@
-# Android verification tools
+# Platform verification tools
+
+M3 common Native: `ios-common --output NEW_DIRECTORY` forces the two real common KLIB compiles and eight tests on a new owned iOS Simulator, checks complete compiler/metadata/API/XML and identical executed ARM64 bytes, then requires cleanup. `ios-common-artifact --input DIRECTORY` independently validates retained bytes without claiming Native execution here. Original `ios-domain` now uses the same owned execution machinery with unchanged domain-specific dependency/API/eight-test checks. Stage schema6 requires both distinct Native artifacts alongside the five common JVM consumers:23 original inputs/24 artifacts per event. See [ADR0028](../../docs/kmp/adr/0028-common-native-filesystem.md). Native product integration, device/minimum-OS and full P0 remain unverified. The older slice descriptions below are historical.
+
+M3 common JVM: `common-jvm-probe --jar PATH` loads actual packaged filesystem APIs and performs eight real disk/Unicode/error/closure/cancellation scenarios in an owned temporary directory. This local probe does not establish clean-source provenance. `common-jvm --input SHARED_ARTIFACT_DIRECTORY --output FRESH_RECEIPT_FILE` additionally requires clean same-source shared schema4, complete compiler/JAR bytes and actual eight-test XML before execution. Five existing native JVM consumers retain those receipts; stage schema5 requires them and reexecutes the actual common JAR. Android document-provider source stays unchanged and Native common is not enabled. See [ADR0027](../../docs/kmp/adr/0027-common-jvm-filesystem.md) and [actual common JVM acceptance](../../docs/kmp/common-jvm-filesystem.md).
+
+M3 gallery models: shared schema3 and staged schema4 compare the complete actual JVM class inventory, require all15 model types and reparse both real eight-test Android/JVM XML sets. Native schema2 requires all nine model metadata fragments, public model/serializer APIs, the exact existing serialization dependency set and all eight actual Native tests. The five model tests preserve pre-move Android CBOR bytes. See [ADR0026](../../docs/kmp/adr/0026-portable-gallery-models.md); direct product integration and full P0 remain incomplete.
+
+M3 Native domain: `verification ios-domain --output NEW_DIRECTORY` runs on macOS ARM64 after the pinned Native toolchain is available. It owns a new Simulator, forces both production KLIB compiles and all common Native tests, stages the just-linked identical executable outside protected source directories, checks fresh compiler/XML/API/Mach-O bytes, and cleans up. `verification ios-domain-artifact --input RETAINED_DIRECTORY` independently checks those actual uploaded bytes and test receipts on any host; it reports Native execution here as NOT_EXECUTED. CI requires this separate artifact in the current-source package gate. See [ADR0025](../../docs/kmp/adr/0025-ios-domain-native.md). Device execution, direct product integration, minimum systems and full P0 remain unverified.
+
+M3 first slice: `verification shared-core --output NEW_DIRECTORY` checks five actual Android AARs and the portable domain JVM JAR against their compiler outputs and real test XML. It loads that exact JAR, exercises seven production title cases and verifies the four existing ArchiveCatalog methods. Stage aggregation repeats the actual JAR probe; iOS domain and direct desktop product integration remain NOT_INTEGRATED. See [domain migration](../../docs/kmp/domain-core-migration.md).
+
+`verification staged-package-dry-run --repository ZhanZiyuan/EhViewer --run-id ID --android-run-id ID --sdk SDK --output NEW_DIRECTORY` fetches authenticated real CI artifacts and validates six current-stage candidate packages plus source-bound original native receipts. `staged-package-check --input DIRECTORY --sdk SDK --output NEW_DIRECTORY` uses previously authenticated context/archives offline. Both retain actual source/version/size/SHA, five unintegrated final targets and false P0/all-eleven/publish acceptance; neither emits AppImage/IPA stand-ins or executes other native OSes. See [staged package dry run](../../docs/kmp/staged-package-dry-run.md).
+
+`verification artifact-archive --catalog FILE --archive FILE --artifact-id ID --run-id ID --head-sha SHA --output NEW_DIRECTORY` verifies an actual GitHub artifact archive against its complete official catalog before safe byte extraction. It binds run/head identity, official ZIP size/SHA, canonical paths, CRC and every extracted file's read-back SHA; existing user data is never overwritten. This component reports transport inspection only, with package validation/native execution NOT_EXECUTED and executable permissions not preserved. It does not complete staged package aggregation. See [artifact archive intake](../../docs/kmp/artifact-archive-intake.md).
+
+`verification ios-log-evidence --input FILE --first-pid PID --second-pid PID` only validates a retained unified-log trace for both actual process lifecycles and Rust ownership results. It does not launch an app, create startup.json or substitute for the mandatory real `ios-startup` job. The owned time-window collection and unchanged deadlines are documented in ADR0016.
+
+`verification source-policy` audits cumulative source changes and untracked files against the fixed M0 baseline, rejects forbidden implementation/link/reference boundaries and checks retained third-party origin bytes. It needs full target Git history, never a local Animeko checkout. Its explicit scope and limitations are documented in [source-policy.md](../../docs/kmp/source-policy.md); full license/copy/SBOM review is not claimed.
+
+`verification migration-phase` validates the reviewed M3 job/dependency list, frozen metadata and module-specific targets. Only domain gains Android/JVM support; common/data/i18n/ui retain their Android boundary. Its source-bound JSON lists all eleven product targets, six staged candidates and five outstanding final packages; declarations cannot mark M3, product P0 or final delivery accepted. See [migration-phase.md](../../docs/kmp/migration-phase.md).
 
 This independent Kotlin/JVM build contains build and regression tools, not another
 application platform. Run it with the repository Gradle Wrapper and JDK 25; its
 bytecode target is Java 17. It uses Gradle's bundled Kotlin DSL and Groovy JSON
 library. No Python installation or additional shell helper is required.
 
+The M1 `ios-startup --app PATH --output NEW_DIRECTORY` command checks a real
+Kotlin-only Simulator app and its cold-start/background/foreground lifecycle in
+an owned temporary device. See [KMP build and run](../../docs/kmp/build-and-run.md)
+for prerequisites, scope and evidence. It never substitutes for signed-device tests.
+
 ```sh
 ./gradlew -p tools/verification check installDist
 tools/verification/build/install/verification/bin/verification architecture
+tools/verification/build/install/verification/bin/verification release-contract
+tools/verification/build/install/verification/bin/verification migration-phase
+tools/verification/build/install/verification/bin/verification shared-core --output reports/shared-core
+tools/verification/build/install/verification/bin/verification windows-stage-zip --runtime-report reports/desktop-windows-arm64/windows-arm64-runtime.json --image reports/desktop-windows-arm64/image/EhViewer --output reports/windows-arm64-package
+tools/verification/build/install/verification/bin/verification stage-zip-extract --package-report reports/windows-arm64-package/windows-arm64-package.json --output reports/windows-zip-byte-extraction
+tools/verification/build/install/verification/bin/verification windows-zip-launch --package-report reports/windows-arm64-package/windows-arm64-package.json --runtime-report reports/desktop-windows-arm64/windows-arm64-runtime.json --output reports/windows-arm64-zip-launch
 tools/verification/build/install/verification/bin/verification native-sources
 tools/verification/build/install/verification/bin/verification bytecode
 tools/verification/build/install/verification/bin/verification apks app/build/outputs/apk/release --sdk "$ANDROID_HOME"
 tools/verification/build/install/verification/bin/verification diagnostics --sdk "$ANDROID_HOME"
 tools/verification/build/install/verification/bin/verification release-input-tests --sdk "$ANDROID_HOME"
 ```
+
+`release-contract` emits the source-bound eleven-target delivery plan without production keys or publication. It explicitly reports `CONTRACT_ONLY` and `artifacts_verified=false`; it is not a successful eleven-package dry-run. An optional `--tag` must match the authoritative source version. Exact runners, names, signing boundaries and unimplemented package checks are documented in [the delivery contract](../../docs/kmp/release-artifacts.md).
 
 Build Debug, androidTest, Release and benchmark outputs before the artifact
 checks. `apks` also accepts `--debug --application-id moe.tarsin.ehviewer.debug`
@@ -48,8 +81,9 @@ symbols, so independently linked binaries retain their matching diagnostics.
 `combine-release` rejects missing/extra parts, mixed commits/versions, dirty sources
 and checksum/signature mismatches before staging exactly four APKs. All four encrypted
 diagnostic bundles are retained for 90 days before publication.
-Manual runs default to a dry run; checking `publish` requires
-main and successful CI for the same commit. A version already published is
+Manual Release runs are main-only and default to a dry run; checking `publish` requires
+main and successful CI for the same commit. Feature branches use the secret-free
+CI snapshot path, not the production Release workflow. A version already published is
 skipped, tags pointing elsewhere are rejected, and only the separate publication
 job receives write permission. GitHub provides source archives itself.
 Publication explicitly creates a missing tag at the verified source commit,
@@ -61,8 +95,8 @@ Production signing reads `EHVIEWER_KEYSTORE`, `EHVIEWER_STORE_PASSWORD`,
 original keystore at `.private-signing/androidkey.jks` and the three properties
 `storePassword`, `keyAlias`, `keyPassword` in `.private-signing/signing.properties`
 (directory 0700, files 0600). These files must be backed up separately. Never
-replace the production key. Trusted push and main manual CI builds restore the original signing key;
-pull requests and other manual CI builds use the debug signing key;
+replace the production key. Main push and main manual CI builds restore the original signing key;
+feature push, pull requests and other manual CI builds use the debug signing key;
 `apks --test-signing` accepts this only for SNAPSHOT versions. `-Prelease` fails
 without the original external signing material, and final APK verification
 requires the historical certificate digest.

@@ -71,6 +71,7 @@ fun verifyApks(directory: Path, tools: AndroidTools, applicationId: String = "mo
     require(code == null || inputs.first().code == code) { "Unexpected versionCode" }
     require(directory.listDirectoryEntries("*.apk").map { it.name }.toSet() == inputs.map { it.file }.toSet()) { "Unexpected/stale APK" }
     val signingCertificates = mutableSetOf<List<String>>()
+    val resourceSpec = galleryResourceAssetSpec()
     return inputs.map { input ->
         val apk = directory.resolve(input.file)
         require(!apk.isSymbolicLink() && apk.toRealPath().parent == directory.toRealPath()) { "APK escapes output directory" }
@@ -92,8 +93,10 @@ fun verifyApks(directory: Path, tools: AndroidTools, applicationId: String = "mo
         command(tools.buildTools.resolve("zipalign"), "-c", "-P", "16", "-v", "4", apk)
         val libraries = mutableMapOf<String, List<Long>>()
         val actualAbis = mutableSetOf<String>()
+        var sharedResources = emptyMap<String, String>()
         temporary { temp ->
             ZipFile(apk.toFile()).use { zip ->
+                sharedResources = checkedGalleryResourceAssets(zip, resourceSpec)
                 val entries = zip.entries().asSequence().filter { it.name.startsWith("lib/") && it.name.endsWith(".so") }.toList()
                 require(entries.map { it.name }.toSet().size == entries.size) { "Duplicate native ZIP entry" }
                 entries.forEach { entry ->
@@ -123,6 +126,7 @@ fun verifyApks(directory: Path, tools: AndroidTools, applicationId: String = "mo
             "versionName" to input.version,
             "certificate" to certificates,
             "native" to libraries,
+            "shared_resource_assets" to sharedResources,
         )
     }
 }

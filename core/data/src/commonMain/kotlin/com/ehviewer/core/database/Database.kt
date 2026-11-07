@@ -1,6 +1,7 @@
 package com.ehviewer.core.database
 
 import androidx.room.AutoMigration
+import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
@@ -59,6 +60,7 @@ import com.ehviewer.core.database.model.Search
     ],
 )
 @TypeConverters(FilterModeConverter::class)
+@ConstructedBy(EhDatabaseConstructor::class)
 abstract class EhDatabase : RoomDatabase() {
     abstract fun galleryDao(): GalleryDao
     abstract fun downloadArtistDao(): DownloadArtistDao
@@ -79,6 +81,7 @@ abstract class EhDatabase : RoomDatabase() {
         AutoMigration(from = 1, to = 2),
     ],
 )
+@ConstructedBy(SearchDatabaseConstructor::class)
 abstract class SearchDatabase : RoomDatabase() {
     abstract fun searchDao(): SearchDao
 }

@@ -1,5 +1,10 @@
 //! Minimal libarchive 3.x ABI. Audited against the pinned 3.8.7 headers.
 use std::ffi::{c_char, c_int, c_void};
+// archive_entry.h uses unsigned short on Windows and mode_t on Unix (libarchive 3.x).
+#[cfg(windows)]
+pub type Mode = u16;
+#[cfg(unix)]
+pub type Mode = libc::mode_t;
 #[repr(C)]
 pub struct Archive {
     _private: [u8; 0],
@@ -37,7 +42,7 @@ unsafe extern "C" {
     ) -> c_int;
     pub fn archive_entry_pathname(e: *mut Entry) -> *const c_char;
     pub fn archive_entry_size(e: *mut Entry) -> i64;
-    pub fn archive_entry_filetype(e: *mut Entry) -> libc::mode_t;
+    pub fn archive_entry_filetype(e: *mut Entry) -> Mode;
     pub fn archive_entry_is_encrypted(e: *mut Entry) -> c_int;
     pub fn archive_error_string(a: *mut Archive) -> *const c_char;
     pub fn archive_write_new() -> *mut Archive;
@@ -45,7 +50,18 @@ unsafe extern "C" {
     pub fn archive_write_close(a: *mut Archive) -> c_int;
     pub fn archive_write_set_format_zip(a: *mut Archive) -> c_int;
     pub fn archive_write_zip_set_compression_store(a: *mut Archive) -> c_int;
+    #[cfg(unix)]
     pub fn archive_write_open_fd(a: *mut Archive, fd: c_int) -> c_int;
+    pub fn archive_write_open2(
+        a: *mut Archive,
+        data: *mut c_void,
+        open: Option<unsafe extern "C" fn(*mut Archive, *mut c_void) -> c_int>,
+        write: Option<
+            unsafe extern "C" fn(*mut Archive, *mut c_void, *const c_void, usize) -> isize,
+        >,
+        close: Option<unsafe extern "C" fn(*mut Archive, *mut c_void) -> c_int>,
+        free: Option<unsafe extern "C" fn(*mut Archive, *mut c_void) -> c_int>,
+    ) -> c_int;
     pub fn archive_write_header(a: *mut Archive, e: *mut Entry) -> c_int;
     pub fn archive_write_data(a: *mut Archive, p: *const c_void, len: usize) -> isize;
     pub fn archive_write_finish_entry(a: *mut Archive) -> c_int;
@@ -53,6 +69,6 @@ unsafe extern "C" {
     pub fn archive_entry_free(e: *mut Entry);
     pub fn archive_entry_set_pathname(e: *mut Entry, name: *const c_char);
     pub fn archive_entry_set_size(e: *mut Entry, len: i64);
-    pub fn archive_entry_set_filetype(e: *mut Entry, kind: libc::mode_t);
-    pub fn archive_entry_set_perm(e: *mut Entry, perm: libc::mode_t);
+    pub fn archive_entry_set_filetype(e: *mut Entry, kind: u32);
+    pub fn archive_entry_set_perm(e: *mut Entry, perm: Mode);
 }

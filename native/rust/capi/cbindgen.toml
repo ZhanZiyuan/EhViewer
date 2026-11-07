@@ -1,0 +1,5 @@
+language = "C"
+include_guard = "EHVIEWER_CAPI_H"
+autogen_warning = "/* Generated from Rust declarations by cbindgen; do not edit. */"
+usize_is_size_t = true
+documentation = true

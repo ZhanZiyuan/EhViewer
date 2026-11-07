@@ -15,6 +15,7 @@
   -->
 
 <resources>
+    <string name="browse_galleries">瀏覽圖庫</string>
 
     <!-- Theme -->
 

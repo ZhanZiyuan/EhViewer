@@ -11,6 +11,7 @@ import android.os.SystemClock
 import androidx.core.graphics.createBitmap
 import com.ehviewer.core.util.logcat
 import java.nio.ByteBuffer
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,10 +24,12 @@ import kotlinx.coroutines.runBlocking
 
 // Hold a reference to the buffer as it's used by the decoder
 @Suppress("CanBeParameter")
-class AnimatedWebPDrawable(private val source: ByteBuffer) : Drawable(), Animatable {
+class AnimatedWebPDrawable(private val source: ByteBuffer, private val onFailure: ((Throwable) -> Unit)? = null) : Drawable(), Animatable, AutoCloseable {
     private val decodeScope = CoroutineScope(Dispatchers.IO.limitedParallelism(1))
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val decoder = nativeCreateDecoder(source)
+    private val disposed = AtomicBoolean(false)
+    private val decodeFailed = AtomicBoolean(false)
     private val width: Int
     private val height: Int
     private val loopCount: Int
@@ -63,25 +66,37 @@ class AnimatedWebPDrawable(private val source: ByteBuffer) : Drawable(), Animata
     }
 
     private fun decodeNextFrame(reset: Boolean) = decodeScope.launch {
-        val timestamp = nativeDecodeNextFrame(decoder, reset, nextFrame.bitmap)
-        ensureActive()
-        check(timestamp != 0) {
+        try {
+            val timestamp = nativeDecodeNextFrame(decoder, reset, nextFrame.bitmap)
+            ensureActive()
+            check(timestamp != 0) { "Failed to decode next frame" }
+            if (timestamp <= currentFrame.timestamp) {
+                if (reset) loopsCompleted = 0 else loopsCompleted++
+                currentFrame.timestamp = 0
+            }
+            nextFrame.timestamp = timestamp
+            nextFrame.bitmap.prepareToDraw()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            decodeFailed.set(true)
             decodeJob = null
-            "Failed to decode next frame"
+            unscheduleSelf(runnable)
+            try {
+                onFailure?.invoke(failure) ?: logcat(failure)
+            } catch (callback: Exception) {
+                logcat(callback)
+            }
         }
-        if (timestamp <= currentFrame.timestamp) {
-            if (reset) loopsCompleted = 0 else loopsCompleted++
-            currentFrame.timestamp = 0
-        }
-        nextFrame.timestamp = timestamp
-        nextFrame.bitmap.prepareToDraw()
     }.apply {
         invokeOnCompletion { cause ->
             when (cause) {
-                null -> if (reset) {
-                    runnable.run()
-                } else {
-                    scheduleSelf(runnable, timeToShowNextFrame)
+                null -> if (!decodeFailed.get()) {
+                    if (reset) {
+                        runnable.run()
+                    } else {
+                        scheduleSelf(runnable, timeToShowNextFrame)
+                    }
                 }
                 !is CancellationException -> logcat(cause)
             }
@@ -89,7 +104,8 @@ class AnimatedWebPDrawable(private val source: ByteBuffer) : Drawable(), Animata
     }
 
     override fun draw(canvas: Canvas) {
-        if (decodeJob?.isCompleted == true && isVisible) {
+        if (disposed.get()) return
+        if (!decodeFailed.get() && decodeJob?.isCompleted == true && isVisible) {
             decodeJob = if (loopCount == 0 || loopsCompleted < loopCount) {
                 currentFrame = nextFrame.also { nextFrame = currentFrame }
                 decodeNextFrame(false)
@@ -121,9 +137,10 @@ class AnimatedWebPDrawable(private val source: ByteBuffer) : Drawable(), Animata
 
     override fun getColorFilter(): ColorFilter? = paint.colorFilter
 
-    override fun isRunning() = decodeJob != null
+    override fun isRunning() = !disposed.get() && !decodeFailed.get() && decodeJob != null
 
     override fun start() {
+        if (disposed.get() || decodeFailed.get()) return
         if (decodeJob == null) {
             decodeJob = decodeNextFrame(true)
         }
@@ -136,11 +153,15 @@ class AnimatedWebPDrawable(private val source: ByteBuffer) : Drawable(), Animata
     }
 
     fun dispose() {
+        if (!disposed.compareAndSet(false, true)) return
+        stop()
         runBlocking {
             decodeScope.coroutineContext.job.cancelAndJoin()
         }
         nativeDestroyDecoder(decoder)
     }
+
+    override fun close() = dispose()
 }
 
 private class Frame(val bitmap: Bitmap, var timestamp: Int)

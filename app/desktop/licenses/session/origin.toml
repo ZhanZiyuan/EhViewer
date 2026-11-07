@@ -1,0 +1,29 @@
+# Unmodified notices from the independently selected, locked crates.io packages.
+# The dual-licensed crates below are redistributed under their MIT option.
+[[component]]
+name = "keyring"
+version = "4.2.0"
+license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+repository = "https://github.com/open-source-cooperative/keyring-rs"
+
+[[component]]
+name = "security-framework"
+version = "3.7.0"
+license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+repository = "https://github.com/kornelski/rust-security-framework"
+
+[[component]]
+name = "zeroize"
+version = "1.9.0"
+license = "MIT OR Apache-2.0"
+selected_license = "MIT"
+repository = "https://github.com/RustCrypto/utils"
+
+[[component]]
+name = "ring"
+version = "0.17.14"
+license = "Apache-2.0 AND ISC"
+repository = "https://github.com/briansmith/ring"
+notices = ["LICENSE", "LICENSE-other-bits", "LICENSE-BoringSSL", "once_cell/LICENSE-MIT", "fiat/LICENSE"]

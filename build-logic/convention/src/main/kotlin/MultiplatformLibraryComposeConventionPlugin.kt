@@ -1,3 +1,4 @@
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import com.ehviewer.configureKotlinCompose
 import com.ehviewer.libs
 import org.gradle.api.Plugin
@@ -13,6 +14,14 @@ class MultiplatformLibraryComposeConventionPlugin : Plugin<Project> {
         apply(plugin = libs.plugins.compose.compiler.get().pluginId)
         apply(plugin = libs.plugins.compose.multiplatform.get().pluginId)
         apply(plugin = libs.plugins.composeCompilerReportGenerator.get().pluginId)
+
+        plugins.withId(libs.plugins.android.kotlin.multiplatform.library.get().pluginId) {
+            configure<KotlinMultiplatformExtension> {
+                configure<KotlinMultiplatformAndroidLibraryTarget> {
+                    androidResources.enable = true
+                }
+            }
+        }
 
         configure<KotlinMultiplatformExtension> {
             compilerOptions {

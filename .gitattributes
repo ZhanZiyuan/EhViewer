@@ -9,3 +9,11 @@
 docs/** linguist-documentation=true
 **/build/** linguist-generated=true
 **/target/** linguist-generated=true
+
+# Retain the exact audited upstream license bytes on every checkout platform.
+app/desktop/licenses/** -text
+# These two original MIT texts use CRLF; preserve and recognize their upstream line endings.
+app/desktop/licenses/session/async-recursion-1.2.0/LICENSE-MIT whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+app/desktop/licenses/session/windows-native-keyring-store-1.1.0/LICENSE-MIT whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# The official SDK license has a trailing space on line 13; keep the audited text.
+app/desktop/licenses/browser/webview2-sdk-1.0.3800.47/LICENSE.txt whitespace=-blank-at-eol

@@ -18,15 +18,18 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 @OptIn(ExperimentalKotlinGradlePluginApi::class)
 class MultiplatformLibraryConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) = with(target) {
+        val androidEnabled = !providers.gradleProperty("ehviewer.desktopOnly").map(String::toBoolean).getOrElse(false)
         apply(plugin = libs.plugins.kotlin.multiplatform.get().pluginId)
-        apply(plugin = libs.plugins.android.kotlin.multiplatform.library.get().pluginId)
-        apply(plugin = libs.plugins.android.lint.get().pluginId)
+        if (androidEnabled) {
+            apply(plugin = libs.plugins.android.kotlin.multiplatform.library.get().pluginId)
+            apply(plugin = libs.plugins.android.lint.get().pluginId)
+        }
 
         configure<KotlinMultiplatformExtension> {
             val javaVersion = libs.versions.java.get().toInt()
             jvmToolchain(javaVersion)
             compilerOptions {
-                configureKotlin(includeKotlinX = path != ":core:i18n")
+                configureKotlin(includeKotlinX = path !in setOf(":core:i18n", ":core:domain"))
             }
 
             applyHierarchyTemplate {
@@ -35,29 +38,38 @@ class MultiplatformLibraryConventionPlugin : Plugin<Project> {
                         withCompilations { it.target is KotlinMultiplatformAndroidLibraryTarget }
                         withJvm()
                     }
+                    if (path in setOf(":core:domain", ":core:common", ":core:data", ":core:network", ":app:shared")) {
+                        group("ios") {
+                            withIos()
+                        }
+                    }
                 }
             }
 
-            configure<KotlinMultiplatformAndroidLibraryTarget> {
-                namespace = "com.ehviewer${path.replace(':', '.')}"
+            if (androidEnabled) {
+                configure<KotlinMultiplatformAndroidLibraryTarget> {
+                    namespace = "com.ehviewer${path.replace(':', '.')}"
 
-                // https://youtrack.jetbrains.com/issue/KT-83319
-                withHostTestBuilder {
-                }
+                    // https://youtrack.jetbrains.com/issue/KT-83319
+                    withHostTestBuilder {
+                    }
 
-                enableCoreLibraryDesugaring = true
+                    enableCoreLibraryDesugaring = true
 
-                compilerOptions {
-                    jvmTarget = JvmTarget.fromTarget(libs.versions.android.jvm.get())
-                    jvmDefault = JvmDefaultMode.NO_COMPATIBILITY
+                    compilerOptions {
+                        jvmTarget = JvmTarget.fromTarget(libs.versions.android.jvm.get())
+                        jvmDefault = JvmDefaultMode.NO_COMPATIBILITY
+                    }
                 }
             }
         }
-        configure<Lint>(Lint::configureLint)
+        if (androidEnabled) configure<Lint>(Lint::configureLint)
         configureSpotless()
 
-        dependencies {
-            "coreLibraryDesugaring"(libs.desugar)
+        if (androidEnabled) {
+            dependencies {
+                "coreLibraryDesugaring"(libs.desugar)
+            }
         }
     }
 }
