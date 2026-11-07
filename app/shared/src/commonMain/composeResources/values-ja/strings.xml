@@ -1,5 +1,5 @@
 <resources>
-    <string name="gallery_error_no_watched_tags">リストは空です。\n設定 -&gt; EH -&gt; マイタグでタグを購読できます。</string>
+    <string name="gallery_error_no_watched_tags">リストは空です。&#10;設定 -&gt; EH -&gt; マイタグでタグを購読できます。</string>
     <string name="gallery_settings_launch_page">起動ページ</string>
     <string name="gallery_feed_homepage">ホーム</string>
     <string name="gallery_feed_subscription">購読</string>
