@@ -41,17 +41,22 @@ fun verifyDomainTests(tests: Map<String, Any?>, native: Boolean = false, jvm: Bo
     require(!native || !jvm)
     val prefix = if (native) "iosSimulatorArm64Test." else ""
     val suites = if (jvm) {
-        mapOf("GalleryDomainTitlesTest[desktop]" to 3, "GalleryModelWireTest[desktop]" to 5)
+        mapOf("GalleryDomainTitlesTest[desktop]" to 3, "GalleryModelWireTest[desktop]" to 5, "ReaderModeTest[desktop]" to 3)
     } else {
         mapOf(
             "${prefix}com.ehviewer.core.domain.GalleryDomainTitlesTest" to 3,
             "${prefix}com.ehviewer.core.model.GalleryModelWireTest" to 5,
+            "${prefix}com.ehviewer.core.domain.reader.ReaderModeTest" to 3,
         )
     }
+    val actual = tests["suites"].obj()
     require(
-        tests["status"] == "PASS" && tests["executed"] == true && tests["source_files"] == 2 && tests["tests"] == 8 &&
-            tests["suites"].obj() == suites,
-    ) { "Every original title and model wire test must execute" }
+        tests["status"] == "PASS" && tests["executed"] == true &&
+            (tests["source_files"] as? Int)?.let { it >= suites.size } == true &&
+            actual.values.all { it is Int && it > 0 } &&
+            suites.all { (name, minimum) -> (actual[name] as? Int)?.let { it >= minimum } == true } &&
+            (tests["tests"] as? Int)?.toLong() == actual.values.sumOf { (it as Int).toLong() },
+    ) { "Every original title/model and reading-mode regression must execute with consistent actual receipts" }
 }
 
 fun domainKotlinVersion(): String = Regex("(?m)^kotlin = \"([^\"]+)\"$")
@@ -250,7 +255,7 @@ fun iosNativeLibrary(output: Path, spec: NativeLibrarySpec): Map<String, Any?> {
             val machine = executed.inputStream().use { verifyDomainSimulatorMachO(it.readNBytes(1024 * 1024)) }
             Files.copy(executed, output.resolve("test.kexe"))
             val xml = filesBelow(domain.resolve("test-results/iosSimulatorArm64Test"), ".xml")
-            require(xml.size == 2 && xml.all { Files.getLastModifiedTime(it).toInstant() >= started.minusSeconds(1) }) { "Missing/stale actual Native JUnit XML" }
+            require(xml.isNotEmpty() && xml.all { Files.getLastModifiedTime(it).toInstant() >= started.minusSeconds(1) }) { "Missing/stale actual Native JUnit XML" }
             val sourceFiles = spec.testSourceSets.sumOf { filesBelow(root.resolve("core/${spec.module}/src/$it"), ".kt").size }
             val tests = sharedHostTestEvidence(xml.map(Path::readBytes), sourceFiles)
             spec.verifyTests(tests)
@@ -340,8 +345,9 @@ fun checkedNativeLibraryArtifact(directory: Path, spec: NativeLibrarySpec): Map<
     val machine = executable.inputStream().use { verifyDomainSimulatorMachO(it.readNBytes(1024 * 1024)) }
     require(machine == proof["test_machine"])
     val xml = filesBelow(directory, ".xml")
-    require(xml.size == 2)
-    val tests = sharedHostTestEvidence(xml.map(Path::readBytes), 2)
+    require(xml.isNotEmpty()) { "Missing actual Native JUnit XML" }
+    val sourceFiles = spec.testSourceSets.sumOf { filesBelow(root.resolve("core/${spec.module}/src/$it"), ".kt").size }
+    val tests = sharedHostTestEvidence(xml.map(Path::readBytes), sourceFiles)
     spec.verifyTests(tests)
     require(tests == proof["host_tests"]) { "Actual Native test XML differs from its receipt" }
     return mapOf(

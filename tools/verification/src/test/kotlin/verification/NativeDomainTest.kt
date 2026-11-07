@@ -94,4 +94,52 @@ class NativeDomainTest {
         val wrongSuite = titlesOnly + mapOf("source_files" to 2, "tests" to 8)
         assertThrows(IllegalArgumentException::class.java) { verifyDomainTests(wrongSuite, native = true) }
     }
+
+    @Test fun expandedDomainReceiptsRetainAllRequiredRegressionsOnEveryHost() {
+        for ((native, jvm) in listOf(false to false, false to true, true to false)) {
+            val suites = domainSuites(native, jvm)
+            val valid = mapOf("status" to "PASS", "executed" to true, "source_files" to 3, "tests" to 11, "suites" to suites)
+            verifyDomainTests(valid, native, jvm)
+            // Additional real cases/suites must not require another count-only gate edit.
+            verifyDomainTests(valid + mapOf("source_files" to 4, "tests" to 12, "suites" to suites + ("AdditionalRegression" to 1)), native, jvm)
+            val title = suites.keys.first()
+            verifyDomainTests(valid + mapOf("tests" to 12, "suites" to suites + (title to 4)), native, jvm)
+        }
+    }
+
+    @Test fun missingRegressionsWrongHostOrInconsistentTotalsStillFail() {
+        for ((native, jvm) in listOf(false to false, false to true, true to false)) {
+            val suites = domainSuites(native, jvm)
+            val valid = mapOf("status" to "PASS", "executed" to true, "source_files" to 3, "tests" to 11, "suites" to suites)
+            val wrongHost = if (jvm) domainSuites(false, false) else domainSuites(false, true)
+            for (missing in suites.keys) {
+                val substitute = suites.filterKeys { it != missing } + ("UnrelatedCases" to suites.getValue(missing))
+                assertThrows(IllegalArgumentException::class.java) { verifyDomainTests(valid + ("suites" to substitute), native, jvm) }
+            }
+            for (changed in listOf(
+                valid + ("executed" to false),
+                valid + ("status" to "FAIL"),
+                valid + ("source_files" to 2),
+                valid + ("tests" to 12),
+                valid + ("suites" to (suites + ("EmptySuite" to 0))),
+                valid + ("suites" to (suites + ("NegativeSuite" to -1))),
+                valid + ("suites" to wrongHost),
+            )) {
+                assertThrows(IllegalArgumentException::class.java) { verifyDomainTests(changed, native, jvm) }
+            }
+        }
+    }
+
+    private fun domainSuites(native: Boolean, jvm: Boolean): Map<String, Int> {
+        val prefix = if (native) "iosSimulatorArm64Test." else ""
+        return if (jvm) {
+            mapOf("GalleryDomainTitlesTest[desktop]" to 3, "GalleryModelWireTest[desktop]" to 5, "ReaderModeTest[desktop]" to 3)
+        } else {
+            mapOf(
+                "${prefix}com.ehviewer.core.domain.GalleryDomainTitlesTest" to 3,
+                "${prefix}com.ehviewer.core.model.GalleryModelWireTest" to 5,
+                "${prefix}com.ehviewer.core.domain.reader.ReaderModeTest" to 3,
+            )
+        }
+    }
 }
