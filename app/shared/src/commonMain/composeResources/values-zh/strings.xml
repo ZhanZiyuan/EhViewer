@@ -329,4 +329,11 @@
     <string name="gallery_reader_crop_borders">裁剪边缘</string>
     <string name="gallery_settings_black_dark_theme">纯黑深色主题</string>
     <string name="gallery_settings_harmonize_category_color">类别颜色适配动态配色</string>
+    <string name="gallery_default_favorite">默认收藏夹</string>
+    <string name="gallery_default_favorite_warning">启用此项将无法添加收藏备注</string>
+    <string name="gallery_default_favorite_disabled">关闭</string>
+    <string name="gallery_local_favorites">本地收藏</string>
+    <string name="gallery_default_favorite_unavailable">默认收藏夹设置暂不可用。</string>
+    <string name="gallery_favorites_destination">收藏夹</string>
+    <string name="gallery_local_favorites_unavailable">本地收藏暂不可用。</string>
 </resources>

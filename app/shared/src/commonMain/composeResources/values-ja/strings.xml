@@ -329,4 +329,11 @@
     <string name="gallery_reader_crop_borders">境界線をクロップ</string>
     <string name="gallery_settings_black_dark_theme">ブラックダークテーマ</string>
     <string name="gallery_settings_harmonize_category_color">カテゴリーの色をダイナミックカラーで調和する</string>
+    <string name="gallery_default_favorite">デフォルトのお気に入りリスト</string>
+    <string name="gallery_default_favorite_warning">これを有効化するとお気に入りのメモを追加することができなくなります</string>
+    <string name="gallery_default_favorite_disabled">無効</string>
+    <string name="gallery_local_favorites">ローカルのお気に入り</string>
+    <string name="gallery_default_favorite_unavailable">デフォルトのお気に入りリストを利用できません。</string>
+    <string name="gallery_favorites_destination">お気に入り</string>
+    <string name="gallery_local_favorites_unavailable">ローカルのお気に入りを利用できません。</string>
 </resources>

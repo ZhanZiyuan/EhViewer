@@ -39,6 +39,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.Image as CoilImage
+import com.ehviewer.core.domain.GalleryFavoritePreferencesException
+import com.ehviewer.core.domain.GalleryLocalFavoritesException
 import com.ehviewer.core.domain.download.GalleryDownloadFailure
 import com.ehviewer.core.domain.download.GalleryDownloadState
 import com.ehviewer.core.domain.reader.ReaderStateException
@@ -54,6 +56,7 @@ import com.ehviewer.shared.reader.readingResumeUrl
 import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_back_search
 import ehviewer.app.shared.generated.resources.gallery_continue_reading
+import ehviewer.app.shared.generated.resources.gallery_default_favorite_unavailable
 import ehviewer.app.shared.generated.resources.gallery_download_add
 import ehviewer.app.shared.generated.resources.gallery_download_add_failed
 import ehviewer.app.shared.generated.resources.gallery_download_adding
@@ -75,12 +78,14 @@ import ehviewer.app.shared.generated.resources.gallery_read_start
 import ehviewer.app.shared.generated.resources.gallery_refresh
 import ehviewer.app.shared.generated.resources.gallery_retry
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /** Detail and reader routes retain the original search and detail state when navigating back. */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, downloads: GalleryDownloads?, covers: GalleryCoverCache<CoilImage>, showComments: Boolean, onDownloads: () -> Unit, onCategory: (Int) -> Unit, onUploader: (String) -> Unit, onTag: (String) -> Unit, onSimilar: (GallerySimilarSearch) -> Unit, backLabel: String? = null, onBack: () -> Unit) {
+internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryInfo, readerState: ReaderStateStore, downloads: GalleryDownloads?, covers: GalleryCoverCache<CoilImage>, showComments: Boolean, onDownloads: () -> Unit, onCategory: (Int) -> Unit, onUploader: (String) -> Unit, onTag: (String) -> Unit, onSimilar: (GallerySimilarSearch) -> Unit, backLabel: String? = null, favoriteControls: GalleryFavoriteControls? = null, onBack: () -> Unit) {
     var detail by remember(gallery.gid) { mutableStateOf<GalleryDetail?>(null) }
     var failure by remember(gallery.gid) { mutableStateOf<GalleryFailure?>(null) }
     var loading by remember(gallery.gid) { mutableStateOf(false) }
@@ -100,6 +105,57 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
     var addingDownload by remember { mutableStateOf(false) }
     var downloadFailed by remember { mutableStateOf(false) }
     var editingFavorite by remember(gallery.gid, session.restricted) { mutableStateOf(false) }
+    var localFavorite by remember(gallery.gid, favoriteControls) { mutableStateOf<Boolean?>(null) }
+    var favoriteBusy by remember(gallery.gid) { mutableStateOf(false) }
+    var favoriteFailure by remember(gallery.gid) { mutableStateOf<GalleryFailure?>(null) }
+    var favoriteSettingsFailure by remember(gallery.gid) { mutableStateOf(false) }
+    LaunchedEffect(gallery.gid, favoriteControls) {
+        if (favoriteControls != null) {
+            try {
+                localFavorite = favoriteControls.local.contains(gallery.gid)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: GalleryLocalFavoritesException) {
+                favoriteFailure = GalleryFailure.LOCAL_STORAGE
+            }
+        }
+    }
+    fun changeFavorite(change: suspend () -> Unit) {
+        if (favoriteBusy) return
+        favoriteBusy = true
+        favoriteFailure = null
+        favoriteSettingsFailure = false
+        scope.launch {
+            try {
+                change()
+            } catch (cancelled: CancellationException) {
+                if (!currentCoroutineContext().isActive) throw cancelled
+                favoriteFailure = GalleryFailure.AUTHENTICATION
+            } catch (error: GalleryRequestException) {
+                favoriteFailure = error.failure
+            } catch (_: GalleryLocalFavoritesException) {
+                favoriteFailure = GalleryFailure.LOCAL_STORAGE
+            } catch (_: GalleryFavoritePreferencesException) {
+                favoriteSettingsFailure = true
+            } finally {
+                favoriteBusy = false
+            }
+        }
+    }
+    fun activateFavorite(document: GalleryDetail) {
+        val controls = favoriteControls
+        if (controls == null) {
+            editingFavorite = true
+            return
+        }
+        changeFavorite {
+            when (controls.activate(document, session.favorites)) {
+                GalleryFavoriteActionResult.SHOW_EDITOR -> editingFavorite = true
+                GalleryFavoriteActionResult.LOCAL_UPDATED -> localFavorite = controls.local.contains(gallery.gid)
+                GalleryFavoriteActionResult.ONLINE_UPDATED -> attempt++
+            }
+        }
+    }
     var information by remember(gallery.gid) { mutableStateOf(false) }
     var torrentsOpen by remember(gallery.gid, gallery.token) { mutableStateOf(false) }
     val torrentNotices = remember(gallery.gid, gallery.token) { SnackbarHostState() }
@@ -164,10 +220,25 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
         return
     }
     if (editingFavorite) {
-        GalleryFavoriteDialog(session.favorites, gallery.gid, gallery.token, onUpdated = {
-            editingFavorite = false
-            attempt++
-        }, onDismiss = { editingFavorite = false })
+        GalleryFavoriteDialog(
+            session.favorites, gallery.gid, gallery.token,
+            onUpdated = {
+                editingFavorite = false
+                attempt++
+            },
+            onDismiss = { editingFavorite = false },
+            localFavorite = localFavorite,
+            localBusy = favoriteBusy,
+            localFailure = favoriteFailure?.userMessage(),
+            onToggleLocal = favoriteControls?.let { controls ->
+                {
+                    changeFavorite {
+                        localFavorite = controls.local.toggle(document ?: gallery)
+                        editingFavorite = false
+                    }
+                }
+            },
+        )
     }
     if (torrentsOpen) {
         GalleryTorrentDialog(session.content, gallery.gid, gallery.token, onEmpty = ::emptyTorrents, onCopied = {
@@ -286,7 +357,9 @@ internal fun GalleryDetailScreen(session: GalleryLibrary, gallery: BaseGalleryIn
                             if (document != null) {
                                 if (resume != null && resume.index > 0 && first != null) TextButton(onClick = { reader = session.content.pageUrl(document.gid, first.pToken, first.position).toString() }) { Text(galleryString(Res.string.gallery_read_start)) }
                                 androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 16.dp))
-                                GalleryDetailActions(document, onFavorite = { editingFavorite = true }, onSimilar = onSimilar, onTorrents = {
+                                val favoriteMessage = if (favoriteSettingsFailure) galleryString(Res.string.gallery_default_favorite_unavailable) else favoriteFailure?.userMessage()
+                                favoriteMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                                GalleryDetailActions(document, localFavorite = localFavorite == true, favoriteEnabled = !favoriteBusy, onFavorite = { activateFavorite(document) }, onSimilar = onSimilar, onTorrents = {
                                     if (document.torrentCount <= 0) emptyTorrents() else torrentsOpen = true
                                 })
                                 GalleryDetailRating(document.rating, document.ratingCount, Modifier.padding(vertical = 16.dp))

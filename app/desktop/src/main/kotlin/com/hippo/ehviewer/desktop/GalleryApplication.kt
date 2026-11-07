@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import com.ehviewer.core.data.DataStoreGalleryFavoritePreferences
 import com.ehviewer.core.data.DataStoreGalleryListPreferences
 import com.ehviewer.core.data.DataStoreLanguageStore
 import com.ehviewer.core.data.DataStoreNetworkPreferences
@@ -14,6 +15,7 @@ import com.ehviewer.core.data.DataStoreStoragePreferences
 import com.ehviewer.core.data.FileArchiveLibrary
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.RoomGalleryHistoryStore
+import com.ehviewer.core.data.RoomGalleryLocalFavorites
 import com.ehviewer.core.database.DataDirectory
 import com.ehviewer.core.database.EhDatabase
 import com.ehviewer.core.database.Schema17to18
@@ -25,6 +27,7 @@ import com.ehviewer.core.network.archive.NativeArchiveBridge
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
 import com.ehviewer.core.network.session.NativeSessionVault
 import com.ehviewer.shared.ArchiveLibraryScreen
+import com.ehviewer.shared.GalleryFavoriteControls
 import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.reader.ReaderStateRepository
 import com.ehviewer.shared.settings.GalleryAppearanceRepository
@@ -77,6 +80,7 @@ fun galleryApplication(initialDocument: Path? = null) {
     val databaseOwner = ownedRoomDb<EhDatabase>("eh.db") { addMigrations(Schema17to18()) }
     val database = databaseOwner.database
     val history = RoomGalleryHistoryStore(database)
+    val favoriteControls = GalleryFavoriteControls(DataStoreGalleryFavoritePreferences(), RoomGalleryLocalFavorites(database))
     val downloadDatabaseOwner = ownedRoomDb<DownloadDatabase>("downloads.db") {}
     val downloadDatabase = downloadDatabaseOwner.database
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -113,7 +117,7 @@ fun galleryApplication(initialDocument: Path? = null) {
                             }
                         },
                     )
-                }, browserFactory = browsers::create, storageSettings = downloadStorage, listPreferences = listPreferences, initialLocalLibrary = initialDocument != null)
+                }, browserFactory = browsers::create, storageSettings = downloadStorage, listPreferences = listPreferences, favoriteControls = favoriteControls, initialLocalLibrary = initialDocument != null)
             }
         }
     } finally {

@@ -67,6 +67,7 @@ class SharedGalleryIntegrationTest {
             it[theme] = AppCompatDelegate.MODE_NIGHT_NO
             it[blackDarkTheme] = false
             it[harmonizeCategoryColor] = true
+            it[defaultFavSlot] = -2
         }
         try {
             // A preference-only setup does not reset Android's retained application night mode.
@@ -164,7 +165,12 @@ class SharedGalleryIntegrationTest {
                     assertEquals(AppCompatDelegate.MODE_NIGHT_YES, Settings.snapshot()[Settings.theme])
                 }
                 instrumentation.waitForIdleSync()
+                assertTrue(device.wait(Until.hasObject(By.text("You won't be able to add favorite notes if you enable this")), 5_000))
                 capturePage("eh-dark")
+                device.clickSharedControl("Default favorites collection")
+                capturePage("default-favorite-dialog")
+                device.clickSharedControl("Local Favorites")
+                runBlocking { withTimeout(5_000) { while (Settings.snapshot()[Settings.defaultFavSlot] != -1) delay(25) } }
                 device.clickSharedControl("Black dark theme")
                 runBlocking { withTimeout(5_000) { while (!Settings.snapshot()[Settings.blackDarkTheme]) delay(25) } }
                 device.clickSharedControl("Harmonize category color for Dynamic Color")
@@ -178,6 +184,7 @@ class SharedGalleryIntegrationTest {
                     val reopened = AndroidGalleryAppearanceStore().preferences()
                     assertTrue(reopened.blackDarkTheme)
                     assertFalse(reopened.harmonizeCategoryColor)
+                    assertEquals(-1, AndroidGalleryFavoritePreferences().target().slot)
                 }
                 device.clickSharedControl("Black dark theme")
                 runBlocking { withTimeout(5_000) { while (Settings.snapshot()[Settings.blackDarkTheme]) delay(25) } }
@@ -203,6 +210,7 @@ class SharedGalleryIntegrationTest {
                 restore(theme)
                 restore(blackDarkTheme)
                 restore(harmonizeCategoryColor)
+                restore(defaultFavSlot)
             }
             runBlocking { withContext(Dispatchers.Main) { updateWhenThemeChanges(saved[Settings.theme]) } }
             Settings.appLinkVerifyTip = linkTip

@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LocalFavoritesDao {
+    @Query("SELECT GALLERIES.* FROM LOCAL_FAVORITES JOIN GALLERIES USING(GID) ORDER BY TIME DESC, GID DESC LIMIT :limit OFFSET :offset")
+    suspend fun page(offset: Int, limit: Int): List<GalleryEntity>
+
     @Query("SELECT COUNT(*) FROM LOCAL_FAVORITES")
     fun count(): Flow<Int>
 

@@ -24,24 +24,33 @@ import ehviewer.app.shared.generated.resources.gallery_detail_similar
 import ehviewer.app.shared.generated.resources.gallery_favorite_add
 import ehviewer.app.shared.generated.resources.gallery_favorite_edit
 import ehviewer.app.shared.generated.resources.gallery_info_favorite_name
+import ehviewer.app.shared.generated.resources.gallery_local_favorites
 import ehviewer.app.shared.generated.resources.gallery_torrent_count
 
 /** Compact original detail actions, backed by the existing confirmed-state favorite editor. */
 @Composable
-internal fun GalleryDetailActions(detail: GalleryDetail, onFavorite: () -> Unit, onSimilar: (GallerySimilarSearch) -> Unit, onTorrents: () -> Unit) {
-    val favorited = detail.favoriteSlot != GalleryInfo.NOT_FAVORITED
+internal fun GalleryDetailActions(detail: GalleryDetail, onFavorite: () -> Unit, onSimilar: (GallerySimilarSearch) -> Unit, onTorrents: () -> Unit, localFavorite: Boolean = false, favoriteEnabled: Boolean = true) {
+    val cloudFavorite = detail.favoriteSlot in 0..9
+    val favorited = localFavorite || detail.favoriteSlot != GalleryInfo.NOT_FAVORITED
     val similar = similarGallerySearch(detail)
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             FilledTonalIconToggleButton(
                 checked = favorited,
-                // Do not optimistically toggle: only the server-confirmed refreshed detail changes it.
+                // Wait for the committed local row or a confirmed online refresh.
                 onCheckedChange = { onFavorite() },
+                enabled = favoriteEnabled,
                 colors = IconButtonDefaults.filledTonalIconToggleButtonColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer, checkedContainerColor = MaterialTheme.colorScheme.primaryContainer),
             ) {
                 Icon(if (favorited) GalleryIcons.Favorite else GalleryIcons.FavoriteBorder, galleryString(if (favorited) Res.string.gallery_favorite_edit else Res.string.gallery_favorite_add))
             }
-            Text(if (favorited) detail.favoriteName ?: galleryString(Res.string.gallery_info_favorite_name) else galleryString(Res.string.gallery_detail_not_favorited))
+            Text(
+                when {
+                    localFavorite && !cloudFavorite -> galleryString(Res.string.gallery_local_favorites)
+                    favorited -> detail.favoriteName ?: galleryString(Res.string.gallery_info_favorite_name)
+                    else -> galleryString(Res.string.gallery_detail_not_favorited)
+                },
+            )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             FilledIconButton(onClick = { similar?.let(onSimilar) }, enabled = similar != null, colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {

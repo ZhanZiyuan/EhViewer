@@ -10,6 +10,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -44,6 +45,7 @@ import ehviewer.app.shared.generated.resources.gallery_favorite_reload
 import ehviewer.app.shared.generated.resources.gallery_favorite_remove
 import ehviewer.app.shared.generated.resources.gallery_favorite_save
 import ehviewer.app.shared.generated.resources.gallery_favorite_uncertain
+import ehviewer.app.shared.generated.resources.gallery_local_favorites
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
@@ -51,7 +53,17 @@ import kotlinx.coroutines.launch
 
 /** One editor for every platform. Only a fresh server-confirmed result closes it successfully. */
 @Composable
-internal fun GalleryFavoriteDialog(repository: GalleryFavoritesRepository, gid: Long, token: String, onUpdated: () -> Unit, onDismiss: () -> Unit) {
+internal fun GalleryFavoriteDialog(
+    repository: GalleryFavoritesRepository,
+    gid: Long,
+    token: String,
+    onUpdated: () -> Unit,
+    onDismiss: () -> Unit,
+    localFavorite: Boolean? = null,
+    localBusy: Boolean = false,
+    localFailure: String? = null,
+    onToggleLocal: (() -> Unit)? = null,
+) {
     var state by remember(repository, gid, token) { mutableStateOf<GalleryFavoriteState?>(null) }
     var selected by remember(repository, gid, token) { mutableIntStateOf(0) }
     var note by remember(repository, gid, token) { mutableStateOf("") }
@@ -85,7 +97,7 @@ internal fun GalleryFavoriteDialog(repository: GalleryFavoritesRepository, gid: 
     val validNote = current != null && note.length <= current.note.maximumCharacters && '\u0000' !in note
     fun submit(category: Int?) {
         val loaded = state ?: return
-        if (busy || loading || requiresReload || !validNote) return
+        if (busy || localBusy || loading || requiresReload || !validNote) return
         busy = true
         failure = null
         scope.launch {
@@ -114,6 +126,13 @@ internal fun GalleryFavoriteDialog(repository: GalleryFavoritesRepository, gid: 
                 if (loading || busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 failure?.let { Text(it.userMessage(), color = MaterialTheme.colorScheme.error) }
                 if (requiresReload) Text(galleryString(Res.string.gallery_favorite_uncertain))
+                localFailure?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                if (onToggleLocal != null) {
+                    TextButton(onClick = onToggleLocal, enabled = !busy && !localBusy) {
+                        if (localFavorite == true) Icon(GalleryIcons.Check, contentDescription = null)
+                        Text(galleryString(Res.string.gallery_local_favorites))
+                    }
+                }
                 if (!loading) TextButton(onClick = { attempt++ }, enabled = !busy) { Text(galleryString(Res.string.gallery_favorite_reload)) }
                 if (current != null) {
                     Text(galleryString(Res.string.gallery_category))
@@ -132,11 +151,11 @@ internal fun GalleryFavoriteDialog(repository: GalleryFavoritesRepository, gid: 
                         enabled = !busy && !loading,
                         modifier = Modifier.fillMaxWidth().semantics { contentDescription = noteDescription },
                     )
-                    if (current.category != null) TextButton(onClick = { submit(null) }, enabled = !busy && !loading && !requiresReload && validNote) { Text(galleryString(Res.string.gallery_favorite_remove)) }
+                    if (current.category != null) TextButton(onClick = { submit(null) }, enabled = !busy && !localBusy && !loading && !requiresReload && validNote) { Text(galleryString(Res.string.gallery_favorite_remove)) }
                 }
             }
         },
-        confirmButton = { Button(onClick = { submit(selected) }, enabled = current != null && !busy && !loading && !requiresReload && validNote) { Text(galleryString(Res.string.gallery_favorite_save)) } },
+        confirmButton = { Button(onClick = { submit(selected) }, enabled = current != null && !busy && !localBusy && !loading && !requiresReload && validNote) { Text(galleryString(Res.string.gallery_favorite_save)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(galleryString(Res.string.gallery_cancel)) } },
     )
 }

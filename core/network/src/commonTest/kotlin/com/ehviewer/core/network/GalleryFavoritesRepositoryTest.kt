@@ -191,6 +191,34 @@ class GalleryFavoritesRepositoryTest {
         }
     }
 
+    @Test fun guestFavoritesCanUseDeviceStorageWithoutRequestingAccountEndpoints() = runTest {
+        val fixture = Fixture()
+        try {
+            assertFalse(fixture.repository.isSignedIn())
+            assertEquals(emptyList(), fixture.repository.availableCategories())
+            assertNull(fixture.repository.inspectIfSignedIn(1, "0123456789"))
+            assertTrue(fixture.requests.isEmpty())
+        } finally {
+            fixture.close()
+        }
+    }
+
+    @Test fun cloudChoicesComeFromTheCurrentSiteAndDiscardAnAccountChangeWhileLoading() = runTest {
+        owned(restricted = true) { fixture ->
+            assertTrue(fixture.repository.isSignedIn())
+            assertEquals(fixture.categories, fixture.repository.availableCategories())
+            assertEquals("/uconfig.php", fixture.requests.single().url.encodedPath)
+            assertEquals("exhentai.org", fixture.requests.single().url.host)
+            fixture.intercept = {
+                fixture.epoch++
+                respond("owned-config")
+            }
+            assertFailsWith<CancellationException> { fixture.repository.availableCategories() }
+            assertEquals(2, fixture.requests.size)
+            assertTrue(fixture.posts.isEmpty())
+        }
+    }
+
     @Test fun restrictedFavoritesKeepTheirOwnHostAndRejectAnotherSitesEditor() = runTest {
         owned { public ->
             owned(restricted = true) { restricted ->

@@ -332,4 +332,11 @@
     <string name="gallery_reader_crop_borders">Crop borders</string>
     <string name="gallery_settings_black_dark_theme">Black dark theme</string>
     <string name="gallery_settings_harmonize_category_color">Harmonize category color for Dynamic Color</string>
+    <string name="gallery_default_favorite">Default favorites collection</string>
+    <string name="gallery_default_favorite_warning">You won't be able to add favorite notes if you enable this</string>
+    <string name="gallery_default_favorite_disabled">Disabled</string>
+    <string name="gallery_local_favorites">Local Favorites</string>
+    <string name="gallery_default_favorite_unavailable">Default favorites collection is unavailable.</string>
+    <string name="gallery_favorites_destination">Favorites</string>
+    <string name="gallery_local_favorites_unavailable">Local favorites are unavailable.</string>
 </resources>

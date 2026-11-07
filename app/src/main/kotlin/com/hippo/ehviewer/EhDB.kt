@@ -20,6 +20,7 @@ import androidx.room.useWriterConnection
 import arrow.fx.coroutines.resource
 import arrow.fx.coroutines.resourceScope
 import com.ehviewer.core.data.RoomGalleryHistoryStore
+import com.ehviewer.core.data.RoomGalleryLocalFavorites
 import com.ehviewer.core.data.model.asEntity
 import com.ehviewer.core.database.EhDatabase
 import com.ehviewer.core.database.Schema17to18
@@ -48,6 +49,7 @@ object EhDB {
         addMigrations(Schema17to18())
     }
     val sharedHistory = RoomGalleryHistoryStore(db)
+    val sharedLocalFavorites = RoomGalleryLocalFavorites(db)
 
     suspend fun putGalleryInfo(galleryInfo: GalleryEntity) {
         db.galleryDao().upsert(galleryInfo)

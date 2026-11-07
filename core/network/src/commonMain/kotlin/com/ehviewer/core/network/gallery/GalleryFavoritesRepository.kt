@@ -43,9 +43,25 @@ class GalleryFavoritesRepository(
     private val host = if (restricted) "exhentai.org" else "e-hentai.org"
     private data class Authority(val identity: String, val epoch: Long)
 
+    suspend fun isSignedIn(): Boolean = operation { mutex.withLock { currentAuthority() != null } }
+
+    /** Uses the same authentication boundary as the existing editor. Guests have no cloud choices. */
+    suspend fun availableCategories(): List<String> = operation {
+        mutex.withLock {
+            val authority = currentAuthority() ?: return@withLock emptyList()
+            val requests = GalleryRequests(client, host) { guard(authority) }
+            readCategories(requests).also { guard(authority) }
+        }
+    }
+
     suspend fun inspect(gid: Long, token: String): GalleryFavoriteState {
         validateGallery(gid, token)
         return operation { mutex.withLock { read(gid, token, authority()) } }
+    }
+
+    suspend fun inspectIfSignedIn(gid: Long, token: String): GalleryFavoriteState? {
+        validateGallery(gid, token)
+        return operation { mutex.withLock { currentAuthority()?.let { read(gid, token, it) } } }
     }
 
     /** null removes the online favorite. Re-read server state before reporting success. */
@@ -85,8 +101,7 @@ class GalleryFavoritesRepository(
         guard(authority)
         val requests = GalleryRequests(client, host) { guard(authority) }
         // Authenticated configuration distinguishes expired sessions from a public guest detail.
-        val categories = requests.freshDocument(Url("https://$host/uconfig.php"), Url("https://$host/"), decoder::decodeUserConfig)
-        if (categories.size != 10 || categories.any { it.length > 256 }) invalid()
+        val categories = readCategories(requests)
         val note = requests.freshDocument(popup(gid, token), Url("https://$host/g/$gid/$token/"), decoder::decodeFavoriteNote)
         try {
             note.validate()
@@ -102,6 +117,12 @@ class GalleryFavoritesRepository(
         }
         guard(authority)
         return GalleryFavoriteState(gid, token, category, note, categories.toList(), host, authority.identity, authority.epoch)
+    }
+
+    private suspend fun readCategories(requests: GalleryRequests): List<String> {
+        val categories = requests.freshDocument(Url("https://$host/uconfig.php"), Url("https://$host/"), decoder::decodeUserConfig)
+        if (categories.size != 10 || categories.any { it.length > 256 }) invalid()
+        return categories.toList()
     }
 
     private fun popup(gid: Long, token: String): Url = URLBuilder(URLProtocol.HTTPS, host).apply {
@@ -128,12 +149,14 @@ class GalleryFavoritesRepository(
         return encoded.readByteArray().toByteString().sha256().hex()
     }
 
-    private suspend fun authority(): Authority {
+    private suspend fun currentAuthority(): Authority? {
         val epoch = sessionEpoch()
-        val identity = identity() ?: throw GalleryRequestException(GalleryFailure.AUTHENTICATION)
+        val identity = identity()
         if (sessionEpoch() != epoch) throw CancellationException("Session changed during favorite request")
-        return Authority(identity, epoch)
+        return identity?.let { Authority(it, epoch) }
     }
+
+    private suspend fun authority(): Authority = currentAuthority() ?: throw GalleryRequestException(GalleryFailure.AUTHENTICATION)
 
     private suspend fun guard(expected: Authority) {
         if (sessionEpoch() != expected.epoch || identity() != expected.identity) throw CancellationException("Session changed during favorite request")

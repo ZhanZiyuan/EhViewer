@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import ehviewer.app.shared.generated.resources.Res
 import ehviewer.app.shared.generated.resources.gallery_account
 import ehviewer.app.shared.generated.resources.gallery_downloads
+import ehviewer.app.shared.generated.resources.gallery_favorites_destination
 import ehviewer.app.shared.generated.resources.gallery_galleries
 import ehviewer.app.shared.generated.resources.gallery_history
 import ehviewer.app.shared.generated.resources.gallery_local_library
@@ -45,7 +46,7 @@ import ehviewer.app.shared.generated.resources.gallery_settings
 import kotlinx.coroutines.launch
 
 /** Top-level destinations, in the order of Android's original navigation drawer. */
-internal enum class GalleryDestination { GALLERIES, HISTORY, DOWNLOADS, LOCAL_LIBRARY, ACCOUNT, SETTINGS }
+internal enum class GalleryDestination { GALLERIES, FAVORITES, HISTORY, DOWNLOADS, LOCAL_LIBRARY, ACCOUNT, SETTINGS }
 
 /** Material's compact/medium boundary: narrower windows use the modal drawer, wider ones a rail. */
 internal val GalleryRailMinWidth = 600.dp
@@ -152,6 +153,7 @@ internal fun GalleryNavigationButton(openNavigation: () -> Unit) {
 private fun GalleryDestination.label() = galleryString(
     when (this) {
         GalleryDestination.GALLERIES -> Res.string.gallery_galleries
+        GalleryDestination.FAVORITES -> Res.string.gallery_favorites_destination
         GalleryDestination.HISTORY -> Res.string.gallery_history
         GalleryDestination.DOWNLOADS -> Res.string.gallery_downloads
         GalleryDestination.LOCAL_LIBRARY -> Res.string.gallery_local_library
@@ -163,6 +165,7 @@ private fun GalleryDestination.label() = galleryString(
 private val GalleryDestination.icon
     get() = when (this) {
         GalleryDestination.GALLERIES -> GalleryIcons.Home
+        GalleryDestination.FAVORITES -> GalleryIcons.Favorite
         GalleryDestination.HISTORY -> GalleryIcons.History
         GalleryDestination.DOWNLOADS -> GalleryIcons.Download
         GalleryDestination.LOCAL_LIBRARY -> GalleryIcons.LibraryBooks

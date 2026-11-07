@@ -31,6 +31,7 @@ import com.ehviewer.core.data.DataStoreStoragePreferences
 import com.ehviewer.core.data.RoomGalleryDownloadStorage
 import com.ehviewer.core.data.model.asEntity
 import com.ehviewer.core.database.download.DownloadDatabase
+import com.ehviewer.core.domain.GalleryFavoriteTarget
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.download.GalleryDownloadQueue
 import com.ehviewer.core.network.download.networkGalleryDownloadSource
@@ -41,6 +42,7 @@ import com.ehviewer.core.network.session.PersistentCookieStorage
 import com.ehviewer.core.network.session.SessionVault
 import com.ehviewer.core.preferences.PrefDelegate
 import com.ehviewer.core.preferences.edit
+import com.ehviewer.shared.GalleryFavoriteControls
 import com.ehviewer.shared.GalleryLibraryScreen
 import com.hippo.ehviewer.EhDB
 import com.hippo.ehviewer.Settings
@@ -93,6 +95,8 @@ class GalleryFavoriteIntegrationTest {
         val title = "Favorite integration fixture"
         val owned = File(context.cacheDir, "favorite-ui-${UUID.randomUUID()}").apply { check(mkdirs()) }
         val before = runBlocking { Settings.snapshot() }
+        val favorites = AndroidGalleryFavoritePreferences()
+        val favoriteControls = GalleryFavoriteControls(favorites, EhDB.sharedLocalFavorites)
         val tip = Settings.appLinkVerifyTip
         val category = AtomicReference<Int?>(null)
         val note = AtomicReference("")
@@ -226,6 +230,7 @@ class GalleryFavoriteIntegrationTest {
             it[needSignIn] = false
             it[updateIntervalDays] = 0
             it[launchPage] = 8
+            it[defaultFavSlot] = GalleryFavoriteTarget.Ask.slot
         }
         try {
             val intent = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
@@ -255,7 +260,7 @@ class GalleryFavoriteIntegrationTest {
                                 }
                             }
                             CompositionLocalProvider(LocalClipboardManager provides clipboard, LocalUriHandler provides browser) {
-                                GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() }, storageSettings = downloadStorage)
+                                GalleryLibraryScreen(library, library.readerState, AndroidGalleryAppearanceStore(), EhDB.sharedHistory, downloads, remember { androidGalleryLanguageSettings() }, storageSettings = downloadStorage, favoriteControls = favoriteControls)
                             }
                         }
                     }
@@ -350,6 +355,20 @@ class GalleryFavoriteIntegrationTest {
                     assertNull(category.get())
                     assertEquals("favdel", posts.last()["favcat"])
                     assertEquals(3, posts.size)
+                    runBlocking { favorites.setTarget(GalleryFavoriteTarget.Local) }
+                    click("Add to favorites")
+                    assertTrue(device.wait(Until.hasObject(By.text("Local Favorites")), 15_000))
+                    assertTrue(runBlocking { EhDB.sharedLocalFavorites.contains(gid) })
+                    assertFalse(device.hasObject(By.desc("Favorite editor")))
+                    assertEquals(3, posts.size)
+                    click("Back to search")
+                    device.openSharedDestination("Favorites")
+                    click(title)
+                    click("Edit favorite")
+                    assertTrue(device.wait(Until.hasObject(By.desc("Add to favorites")), 15_000))
+                    assertFalse(runBlocking { EhDB.sharedLocalFavorites.contains(gid) })
+                    assertEquals(3, posts.size)
+                    runBlocking { favorites.setTarget(GalleryFavoriteTarget.Ask) }
                     click("Similar", icon = true)
                     assertTrue(device.wait(Until.hasObject(By.text("The site is temporarily unavailable.")), 15_000))
                     assertEquals("\"$title\"", requireNotNull(device.findObject(By.clazz("android.widget.EditText"))).text)
@@ -446,6 +465,7 @@ class GalleryFavoriteIntegrationTest {
             engine.close()
             runBlocking {
                 cookies.logout()
+                if (EhDB.sharedLocalFavorites.contains(gid)) EhDB.sharedLocalFavorites.toggle(BaseGalleryInfo(gid = gid, token = token))
                 EhDB.deleteHistoryInfo(BaseGalleryInfo(gid = gid, token = token).asEntity())
                 assertNull(EhDB.getGalleryInfo(gid))
             }
@@ -456,6 +476,7 @@ class GalleryFavoriteIntegrationTest {
                 restore(needSignIn)
                 restore(updateIntervalDays)
                 restore(launchPage)
+                restore(defaultFavSlot)
             }
             Settings.appLinkVerifyTip = tip
             check(owned.deleteRecursively())

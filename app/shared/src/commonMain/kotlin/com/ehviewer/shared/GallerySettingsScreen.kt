@@ -86,6 +86,7 @@ internal fun GallerySettingsScreen(
     onAppearanceChanged: (GalleryAppearancePreferences) -> Unit,
     onRetryAppearance: () -> Unit,
     onBack: () -> Unit,
+    favoriteSettings: (@Composable () -> Unit)? = null,
     storageSettings: GalleryStorageSettings? = null,
     onPlatformStorageSettings: (() -> Unit)? = null,
     listPreferences: GalleryListPreferences? = null,
@@ -171,6 +172,7 @@ internal fun GallerySettingsScreen(
                     }
                 }
                 if (page == GallerySettingsPage.EH) {
+                    favoriteSettings?.invoke()
                     val mode = appearancePreferences?.mode
                     val themes = listOf(
                         GalleryThemeMode.SYSTEM to galleryString(Res.string.gallery_theme_system),

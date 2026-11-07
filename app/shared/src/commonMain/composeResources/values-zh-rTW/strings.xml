@@ -329,4 +329,11 @@
     <string name="gallery_reader_crop_borders">邊緣裁剪</string>
     <string name="gallery_settings_black_dark_theme">純黑深色主題</string>
     <string name="gallery_settings_harmonize_category_color">以動態顏色為分類顏色配色</string>
+    <string name="gallery_default_favorite">預設收藏夾</string>
+    <string name="gallery_default_favorite_warning">若啟用此項將無法新增收藏備註</string>
+    <string name="gallery_default_favorite_disabled">停用</string>
+    <string name="gallery_local_favorites">本機收藏</string>
+    <string name="gallery_default_favorite_unavailable">預設收藏夾設定暫不可用。</string>
+    <string name="gallery_favorites_destination">收藏夾</string>
+    <string name="gallery_local_favorites_unavailable">本機收藏暫不可用。</string>
 </resources>

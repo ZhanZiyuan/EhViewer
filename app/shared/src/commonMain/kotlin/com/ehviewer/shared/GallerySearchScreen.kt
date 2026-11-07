@@ -140,7 +140,22 @@ private val searchRequestSaver = Saver<GallerySearchRequest, String>(
 
 /** Product entry shared by Desktop/iOS, loading the homepage when online browsing is entered. */
 @Composable
-fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, appearance: GalleryAppearanceStore, history: GalleryHistoryStore, downloads: GalleryDownloads, language: GalleryLanguageSettings, backgroundDownloadsNote: Boolean = false, archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null, browserFactory: ((String) -> GalleryLoginBrowser)? = null, storageSettings: GalleryStorageSettings? = null, listPreferences: GalleryListPreferences? = null, initialLocalLibrary: Boolean = false, onReady: () -> Unit = {}) {
+fun GallerySearchScreen(
+    session: GallerySession,
+    readerState: ReaderStateStore,
+    appearance: GalleryAppearanceStore,
+    history: GalleryHistoryStore,
+    downloads: GalleryDownloads,
+    language: GalleryLanguageSettings,
+    backgroundDownloadsNote: Boolean = false,
+    archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null,
+    browserFactory: ((String) -> GalleryLoginBrowser)? = null,
+    storageSettings: GalleryStorageSettings? = null,
+    listPreferences: GalleryListPreferences? = null,
+    favoriteControls: GalleryFavoriteControls? = null,
+    initialLocalLibrary: Boolean = false,
+    onReady: () -> Unit = {},
+) {
     DisposableEffect(session) { onDispose { session.close() } }
     val library = remember(session, history) {
         object : GalleryLibrary by session {
@@ -155,7 +170,7 @@ fun GallerySearchScreen(session: GallerySession, readerState: ReaderStateStore, 
     }
     GalleryLibraryScreen(library, readerState, appearance, history, downloads, language, networkPreferences = session.networkPreferences, storageSettings = storageSettings, listPreferences = listPreferences, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
-    }, initialLocalLibrary = initialLocalLibrary, browseOnEntry = true, onReady = onReady)
+    }, favoriteControls = favoriteControls, initialLocalLibrary = initialLocalLibrary, browseOnEntry = true, onReady = onReady)
 }
 
 /** Android uses the same views while its original session/history adapters remain authoritative. */
@@ -170,6 +185,7 @@ fun GalleryLibraryScreen(
     networkPreferences: GalleryNetworkPreferences? = null,
     storageSettings: GalleryStorageSettings? = null,
     listPreferences: GalleryListPreferences? = null,
+    favoriteControls: GalleryFavoriteControls? = null,
     onPlatformStorageSettings: (() -> Unit)? = null,
     backgroundDownloadsNote: Boolean = false,
     onPlatformDownloadOpen: ((Long) -> Unit)? = null,
@@ -225,6 +241,7 @@ fun GalleryLibraryScreen(
     var failedSearch by remember { mutableStateOf<GallerySearchRequest?>(null) }
     var filtersOpen by remember { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    var favoritesOpen by rememberSaveable { mutableStateOf(false) }
     var historyOpen by rememberSaveable { mutableStateOf(false) }
     var downloadsOpen by rememberSaveable { mutableStateOf(false) }
     var archivesOpen by rememberSaveable { mutableStateOf(initialLocalLibrary && archiveContent != null) }
@@ -283,6 +300,7 @@ fun GalleryLibraryScreen(
     DisposableEffect(coverLoader) { onDispose { coverLoader.close() } }
     val covers = remember(coverLoader) { GalleryCoverCache(load = coverLoader::get) }
     val historyCovers = remember(coverLoader, historyOpen) { GalleryCoverCache(load = coverLoader::get) }
+    val favoriteCovers = remember(coverLoader, favoritesOpen) { GalleryCoverCache(load = coverLoader::get) }
 
     fun load(search: GallerySearchRequest, replaceResults: Boolean = false, mergeResults: Boolean = false, refreshGesture: Boolean = false) {
         entryStarted = true
@@ -372,6 +390,7 @@ fun GalleryLibraryScreen(
 
     val destinations = listOfNotNull(
         GalleryDestination.GALLERIES,
+        GalleryDestination.FAVORITES.takeIf { favoriteControls != null },
         GalleryDestination.HISTORY,
         GalleryDestination.DOWNLOADS,
         GalleryDestination.LOCAL_LIBRARY.takeIf { archiveContent != null },
@@ -383,6 +402,7 @@ fun GalleryLibraryScreen(
         account && accountContent != null -> GalleryDestination.ACCOUNT
         archivesOpen && archiveContent != null -> GalleryDestination.LOCAL_LIBRARY
         downloadsOpen -> GalleryDestination.DOWNLOADS
+        favoritesOpen && favoriteControls != null -> GalleryDestination.FAVORITES
         historyOpen -> GalleryDestination.HISTORY
         else -> GalleryDestination.GALLERIES
     }
@@ -403,6 +423,7 @@ fun GalleryLibraryScreen(
         if (target == GalleryDestination.ACCOUNT && !account) openAccount()
         account = target == GalleryDestination.ACCOUNT
         settingsOpen = target == GalleryDestination.SETTINGS
+        favoritesOpen = target == GalleryDestination.FAVORITES
         historyOpen = target == GalleryDestination.HISTORY
         downloadsOpen = target == GalleryDestination.DOWNLOADS
         archivesOpen = target == GalleryDestination.LOCAL_LIBRARY
@@ -427,8 +448,9 @@ fun GalleryLibraryScreen(
                     val immersive = galleryIsImmersive()
                     Box(Modifier.fillMaxSize().then(if (immersive) Modifier else Modifier.windowInsetsPadding(WindowInsets.safeDrawing)), contentAlignment = Alignment.TopCenter) {
                         // Search, History and Downloads use Android's floating search bar.
-                        val searchBarPage = !settingsOpen && !(account && accountContent != null) && !(archivesOpen && archiveContent != null) && (if (downloadsOpen) cached == null else selected == null)
-                        Column(galleryPageModifier(searchBarPage, immersive, edgeToEdge = settingsOpen || selected != null)) {
+                        val localFavorites = favoritesOpen && favoriteControls != null
+                        val searchBarPage = !settingsOpen && !localFavorites && !(account && accountContent != null) && !(archivesOpen && archiveContent != null) && (if (downloadsOpen) cached == null else selected == null)
+                        Column(galleryPageModifier(searchBarPage, immersive, edgeToEdge = settingsOpen || localFavorites || selected != null)) {
                             if (settingsOpen) {
                                 GallerySettingsScreen(
                                     networkPreferences, appearance, appearancePreferences, appearanceFailed,
@@ -438,6 +460,9 @@ fun GalleryLibraryScreen(
                                     onAppearanceChanged = { appearancePreferences = it },
                                     onRetryAppearance = { appearanceAttempt++ },
                                     onBack = ::leaveSettings,
+                                    favoriteSettings = favoriteControls?.let { controls ->
+                                        { GalleryDefaultFavoriteSettings(controls.preferences, session.favorites) }
+                                    },
                                     storageSettings = storageSettings,
                                     onPlatformStorageSettings = onPlatformStorageSettings,
                                     listPreferences = listPreferences,
@@ -503,31 +528,44 @@ fun GalleryLibraryScreen(
                                 return@Column
                             }
                             if (gallery != null) {
-                                GalleryDetailScreen(session, gallery, readerState, downloads.takeIf { downloadsReady }, covers = if (historyOpen) historyCovers else covers, showComments = showComments == true, onDownloads = { downloadsOpen = true }, onCategory = {
+                                val detailCovers = when {
+                                    localFavorites -> favoriteCovers
+                                    historyOpen -> historyCovers
+                                    else -> covers
+                                }
+                                GalleryDetailScreen(session, gallery, readerState, downloads.takeIf { downloadsReady }, covers = detailCovers, showComments = showComments == true, favoriteControls = favoriteControls, onDownloads = { downloadsOpen = true }, onCategory = {
                                     selected = null
                                     historyOpen = false
+                                    favoritesOpen = false
                                     filters = GallerySearchFilters(includedCategories = it)
                                     query = ""
                                     load(GallerySearchRequest(query, filters), replaceResults = true)
                                 }, onUploader = {
                                     selected = null
                                     historyOpen = false
+                                    favoritesOpen = false
                                     filters = GallerySearchFilters()
                                     query = "uploader:$it"
                                     load(GallerySearchRequest(query, filters, uploader = it), replaceResults = true)
                                 }, onTag = {
                                     selected = null
                                     historyOpen = false
+                                    favoritesOpen = false
                                     filters = GallerySearchFilters()
                                     query = it
                                     load(GallerySearchRequest(query, filters, tag = it), replaceResults = true)
                                 }, onSimilar = { related ->
                                     selected = null
                                     historyOpen = false
+                                    favoritesOpen = false
                                     filters = GallerySearchFilters()
                                     query = related.query
                                     load(GallerySearchRequest(query, filters, uploader = related.uploader, tag = related.tag), replaceResults = true)
                                 }, backLabel = if (historyOpen) galleryString(Res.string.gallery_back_history) else galleryString(Res.string.gallery_back_search), onBack = { selected = null })
+                                return@Column
+                            }
+                            if (localFavorites && favoriteControls != null) {
+                                GalleryLocalFavoritesScreen(favoriteControls.local, favoriteCovers, downloadedGids, openNavigation, onOpen = { selected = it }, onBack = { favoritesOpen = false })
                                 return@Column
                             }
                             if (historyOpen) {

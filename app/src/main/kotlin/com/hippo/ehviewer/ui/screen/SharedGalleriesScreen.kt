@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import com.ehviewer.core.data.DataStoreNetworkPreferences
+import com.ehviewer.shared.GalleryFavoriteControls
 import com.ehviewer.shared.GalleryLibraryScreen
 import com.hippo.ehviewer.EhDB
 import com.hippo.ehviewer.Settings
@@ -37,12 +38,13 @@ fun AnimatedVisibilityScope.SharedGalleriesScreen(navigator: DestinationsNavigat
     val networkPreferences = remember { DataStoreNetworkPreferences() }
     val language = remember { androidGalleryLanguageSettings() }
     val listPreferences = remember { AndroidGalleryListPreferences() }
+    val favoriteControls = remember { GalleryFavoriteControls(AndroidGalleryFavoritePreferences(), EhDB.sharedLocalFavorites) }
     val scope = rememberCoroutineScope()
     val downloads = remember { AndroidGalleryDownloads(scope) }
     key(site, signedIn) {
         val library = remember { AndroidGalleryLibrary(site == EhUrl.SITE_EX) }
         CompositionLocalProvider(LocalUriHandler provides rememberGalleryBrowserHandler()) {
-            GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, language, networkPreferences = networkPreferences, listPreferences = listPreferences, onPlatformStorageSettings = { navigator.navigate(DownloadScreenDestination) }, onPlatformDownloadOpen = { gid ->
+            GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, language, networkPreferences = networkPreferences, listPreferences = listPreferences, favoriteControls = favoriteControls, onPlatformStorageSettings = { navigator.navigate(DownloadScreenDestination) }, onPlatformDownloadOpen = { gid ->
                 with(navigator) { navToReader(checkNotNull(DownloadManager.getDownloadInfo(gid)).galleryInfo) }
             }, onBack = { navigator.popBackStack() }, onAccount = { navigator.navigate(EhScreenDestination) }, platformTheme = { dark, content -> EhTheme(dark, content) }, browseOnEntry = true)
         }
