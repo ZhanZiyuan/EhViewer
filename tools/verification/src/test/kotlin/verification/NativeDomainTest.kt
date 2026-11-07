@@ -77,7 +77,7 @@ class NativeDomainTest {
         val original = "default/linkdata/package_com.ehviewer.core.domain/0_domain.knm"
         val padded = "default/linkdata/package_com.ehviewer.core.domain/00_domain.knm"
         val contents = byteArrayOf(1)
-        val otherEntries = (listOf(
+        val requiredIr = listOf(
             "default/linkdata/module",
             "default/ir/files.knf",
             "default/ir/irDeclarations.knd",
@@ -85,9 +85,9 @@ class NativeDomainTest {
             "default/ir/strings.knt",
             "default/ir/signatures.knt",
             "default/ir/types.knt",
-        ) + domainNativeSpec.metadata.filter { it != original }).associateWith { contents }
-        fun verify(entries: Map<String, ByteArray>) =
-            domainNativeKlibEvidence(klibFixture("ios_arm64", "2.4.10", entries), "ios_arm64", "2.4.10")
+        )
+        val otherEntries = (requiredIr + domainNativeSpec.metadata.filter { it != original }).associateWith { contents }
+        fun verify(entries: Map<String, ByteArray>) = domainNativeKlibEvidence(klibFixture("ios_arm64", "2.4.10", entries), "ios_arm64", "2.4.10")
 
         assertEquals("PASS", verify(otherEntries + (original to contents))["result"])
         assertEquals("PASS", verify(otherEntries + (padded to contents))["result"])
