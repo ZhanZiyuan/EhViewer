@@ -1,4 +1,15 @@
 <resources>
+    <string name="gallery_error_no_watched_tags">Subscribe to tags in Settings-&gt;EH-&gt;My tags</string>
+    <string name="gallery_settings_launch_page">Launch page</string>
+    <string name="gallery_feed_homepage">Homepage</string>
+    <string name="gallery_feed_subscription">Subscription</string>
+    <string name="gallery_feed_whats_hot">What's hot</string>
+    <string name="gallery_feed_toplist">Toplist</string>
+    <string name="gallery_toplist_all_time">All-Time</string>
+    <string name="gallery_toplist_past_year">Past Year</string>
+    <string name="gallery_toplist_past_month">Past Month</string>
+    <string name="gallery_toplist_yesterday">Yesterday</string>
+    <string name="gallery_launch_preferences_unavailable">The launch page could not be loaded or saved.</string>
     <string name="gallery_back">Back</string>
     <string name="gallery_settings">Settings</string>
     <string name="gallery_language">App language</string>
@@ -339,4 +350,9 @@
     <string name="gallery_default_favorite_unavailable">Default favorites collection is unavailable.</string>
     <string name="gallery_favorites_destination">Favorites</string>
     <string name="gallery_local_favorites_unavailable">Local favorites are unavailable.</string>
+    <string name="gallery_settings_list_mode">List mode</string>
+    <string name="gallery_settings_list_mode_detail">Detail</string>
+    <string name="gallery_settings_list_mode_thumb">Thumb</string>
+    <string name="gallery_settings_detail_thumbnail_size">Thumb size in detail mode</string>
+    <string name="gallery_settings_thumbnail_columns">Thumb columns</string>
 </resources>

@@ -273,6 +273,15 @@ pub fn parse_info_list_cbor(input: &[u8]) -> Result<Vec<u8>> {
     let result = match parse_info_list(&dom, dom.parser()) {
         Ok(result) => result,
         Err(error) => {
+            if matches!(error.downcast_ref::<EhError>(), Some(EhError::NoWatched)) {
+                return serde_cbor::to_vec(&GalleryQueryFailure {
+                    prev: None,
+                    next: None,
+                    gallery_info_list: Vec::new(),
+                    query_error: "NO_WATCHED_TAGS",
+                })
+                .map_err(Into::into);
+            }
             if matches!(error.downcast_ref::<EhError>(), Some(EhError::NoHits))
                 && html.contains("No hits found")
             {
@@ -305,6 +314,16 @@ mod portable_tests {
         let bytes = parse_info_list_cbor(html).unwrap();
         let actual: serde_json::Value = serde_cbor::from_slice(&bytes).unwrap();
         assert_eq!(actual["queryError"], "TOO_MANY_KEYWORDS");
+        assert!(actual["galleryInfoList"].as_array().unwrap().is_empty());
+        assert!(actual["prev"].is_null() && actual["next"].is_null());
+    }
+
+    #[test]
+    fn portable_subscription_retains_the_original_no_watched_tags_warning() {
+        let html = br#"<!DOCTYPE html><html><body><div class="searchwarn"><p>You do not have any watched tags</p></div></body></html>"#;
+        let bytes = parse_info_list_cbor(html).unwrap();
+        let actual: serde_json::Value = serde_cbor::from_slice(&bytes).unwrap();
+        assert_eq!(actual["queryError"], "NO_WATCHED_TAGS");
         assert!(actual["galleryInfoList"].as_array().unwrap().is_empty());
         assert!(actual["prev"].is_null() && actual["next"].is_null());
     }

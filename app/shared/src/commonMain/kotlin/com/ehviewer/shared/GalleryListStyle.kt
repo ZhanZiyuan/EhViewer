@@ -32,7 +32,10 @@ internal const val GALLERY_COVER_RATIO = 0.67f
  * Android sizes list cards from list_tile_size (40) * 9 pixels, at least 120dp. Desktop density 1
  * would make that 360dp, so the tablet height (180dp at density 2) caps it.
  */
-internal fun galleryListCardHeight(density: Density) = with(density) { (40 * 9).toDp() }.coerceIn(120.dp, 180.dp)
+internal fun galleryListCardHeight(density: Density, thumbnailSize: Int = 40): Dp {
+    val reference = with(density) { (40 * 9).toDp() }.coerceIn(120.dp, 180.dp)
+    return (reference * (thumbnailSize / 40f)).coerceAtLeast(120.dp)
+}
 
 /** gallery_list_margin_h: 12dp, 20dp from values-sw600dp and 76dp from values-sw720dp-land. */
 internal fun galleryListMarginH(width: Dp, height: Dp): Dp {

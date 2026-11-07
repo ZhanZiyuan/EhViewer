@@ -1,4 +1,15 @@
 <resources>
+    <string name="gallery_error_no_watched_tags">请至 设置-&gt;EH-&gt;我的标签 订阅标签</string>
+    <string name="gallery_settings_launch_page">启动页</string>
+    <string name="gallery_feed_homepage">主页</string>
+    <string name="gallery_feed_subscription">订阅</string>
+    <string name="gallery_feed_whats_hot">热门</string>
+    <string name="gallery_feed_toplist">排行</string>
+    <string name="gallery_toplist_all_time">从始至终</string>
+    <string name="gallery_toplist_past_year">过去一年</string>
+    <string name="gallery_toplist_past_month">过去一个月</string>
+    <string name="gallery_toplist_yesterday">昨日</string>
+    <string name="gallery_launch_preferences_unavailable">无法读取或保存启动页。</string>
     <string name="gallery_back">返回</string>
     <string name="gallery_settings">设置</string>
     <string name="gallery_language">App 界面语言</string>
@@ -336,4 +347,9 @@
     <string name="gallery_default_favorite_unavailable">默认收藏夹设置暂不可用。</string>
     <string name="gallery_favorites_destination">收藏夹</string>
     <string name="gallery_local_favorites_unavailable">本地收藏暂不可用。</string>
+    <string name="gallery_settings_list_mode">列表模式</string>
+    <string name="gallery_settings_list_mode_detail">详情</string>
+    <string name="gallery_settings_list_mode_thumb">缩略图</string>
+    <string name="gallery_settings_detail_thumbnail_size">详情模式下缩略图大小</string>
+    <string name="gallery_settings_thumbnail_columns">缩略图列数</string>
 </resources>

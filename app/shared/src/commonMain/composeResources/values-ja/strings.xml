@@ -1,4 +1,15 @@
 <resources>
+    <string name="gallery_error_no_watched_tags">リストは空です。\n設定 -&gt; EH -&gt; マイタグでタグを購読できます。</string>
+    <string name="gallery_settings_launch_page">起動ページ</string>
+    <string name="gallery_feed_homepage">ホーム</string>
+    <string name="gallery_feed_subscription">購読</string>
+    <string name="gallery_feed_whats_hot">人気</string>
+    <string name="gallery_feed_toplist">トップリスト</string>
+    <string name="gallery_toplist_all_time">すべての期間</string>
+    <string name="gallery_toplist_past_year">昨年</string>
+    <string name="gallery_toplist_past_month">先月</string>
+    <string name="gallery_toplist_yesterday">昨日</string>
+    <string name="gallery_launch_preferences_unavailable">起動ページの読み込みまたは保存ができませんでした。</string>
     <string name="gallery_back">戻る</string>
     <string name="gallery_settings">設定</string>
     <string name="gallery_language">アプリの言語</string>
@@ -336,4 +347,9 @@
     <string name="gallery_default_favorite_unavailable">デフォルトのお気に入りリストを利用できません。</string>
     <string name="gallery_favorites_destination">お気に入り</string>
     <string name="gallery_local_favorites_unavailable">ローカルのお気に入りを利用できません。</string>
+    <string name="gallery_settings_list_mode">リストモード</string>
+    <string name="gallery_settings_list_mode_detail">詳細</string>
+    <string name="gallery_settings_list_mode_thumb">サムネイル</string>
+    <string name="gallery_settings_detail_thumbnail_size">詳細モードのサムネイルの大きさ</string>
+    <string name="gallery_settings_thumbnail_columns">サムネイルのカラム数</string>
 </resources>

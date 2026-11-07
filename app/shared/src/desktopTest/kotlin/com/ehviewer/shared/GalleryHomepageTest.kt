@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -21,6 +22,15 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import com.ehviewer.core.domain.AppLanguageStore
 import com.ehviewer.core.domain.GalleryHistoryStore
+import com.ehviewer.core.domain.GalleryLaunchPage
+import com.ehviewer.core.domain.GalleryLaunchPreferences
+import com.ehviewer.core.domain.GalleryLaunchSettings
+import com.ehviewer.core.domain.GalleryListDensity
+import com.ehviewer.core.domain.GalleryListMode
+import com.ehviewer.core.domain.GalleryListPreferences
+import com.ehviewer.core.domain.GalleryListPresentation
+import com.ehviewer.core.domain.GalleryListPresentationPreferences
+import com.ehviewer.core.domain.GalleryToplistPeriod
 import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.BaseGalleryInfo
@@ -44,11 +54,13 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
+import io.ktor.http.encodedPath
 import io.ktor.http.headersOf
 import java.util.Collections
 import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -62,7 +74,7 @@ import kotlinx.coroutines.test.setMain
 /** Actual shared screen, pointer actions, saved composition state and Ktor requests. */
 @OptIn(androidx.compose.ui.InternalComposeUiApi::class, ExperimentalCoroutinesApi::class)
 class GalleryHomepageTest {
-    private class Library(val withCovers: Boolean = false) : GalleryLibrary, AutoCloseable {
+    private class Library(val withCovers: Boolean = false, val galleryCount: Int = 1) : GalleryLibrary, AutoCloseable {
         val requests = Collections.synchronizedList(mutableListOf<Url>())
         val coverRequests = Collections.synchronizedList(mutableListOf<Url>())
 
@@ -80,11 +92,31 @@ class GalleryHomepageTest {
             }
             requests += request.url
             if (blocked) awaitCancellation()
-            if (unavailable) respond("Unavailable", HttpStatusCode.ServiceUnavailable) else respond(request.url.parameters["f_search"] ?: "Homepage")
+            if (unavailable) {
+                respond("Unavailable", HttpStatusCode.ServiceUnavailable)
+            } else {
+                respond(
+                    request.url.parameters["f_search"] ?: when (request.url.encodedPath) {
+                        "/watched" -> "Watched fixture"
+                        "/popular" -> "Popular fixture"
+                        "/toplist.php" -> "Toplist fixture"
+                        else -> "Homepage"
+                    },
+                )
+            }
         }
         private val client = HttpClient(engine)
         override val restricted = false
-        override val galleries = GalleryRepository(client, { bytes -> GallerySearchResult(null, null, listOf(BaseGalleryInfo(1, "0123456789", bytes.decodeToString(), thumbKey = "owned-cover.png".takeIf { withCovers }, category = 512))) })
+        override val galleries = GalleryRepository(client, { bytes ->
+            val title = bytes.decodeToString()
+            GallerySearchResult(
+                null,
+                null,
+                List(galleryCount) { index ->
+                    BaseGalleryInfo(index + 1L, "0123456789", if (index == 0) title else "$title ${index + 1}", thumbKey = "owned-cover.png".takeIf { withCovers }, category = 512)
+                },
+            )
+        })
         override val content: GalleryContent get() = error("Browsing must not request details")
         override val favorites: GalleryFavoritesRepository get() = error("Browsing must not mutate favorites")
         override fun close() {
@@ -93,7 +125,25 @@ class GalleryHomepageTest {
         }
     }
 
-    private class View(library: Library, browse: Boolean = true, local: Boolean = false, saved: Map<String, List<Any?>>? = null, appearance: GalleryAppearanceStore = browsingAppearance) : AutoCloseable {
+    private class ListingPreferences : GalleryListPreferences, GalleryListPresentationPreferences {
+        var value = GalleryListPresentation()
+        override suspend fun density() = GalleryListDensity.COMFORTABLE
+        override suspend fun setDensity(density: GalleryListDensity) = error("List-mode test must not change the saved detail width")
+        override suspend fun showComments() = true
+        override suspend fun setShowComments(show: Boolean) = error("List-mode test must not change comments")
+        override suspend fun presentation() = value
+        override suspend fun setMode(mode: GalleryListMode) {
+            value = value.copy(mode = mode)
+        }
+        override suspend fun setDetailThumbnailSize(size: Int) {
+            value = value.copy(detailThumbnailSize = size)
+        }
+        override suspend fun setThumbnailColumns(columns: Int) {
+            value = value.copy(thumbnailColumns = columns)
+        }
+    }
+
+    private class View(library: Library, browse: Boolean = true, local: Boolean = false, saved: Map<String, List<Any?>>? = null, appearance: GalleryAppearanceStore = browsingAppearance, listPreferences: ListingPreferences? = null, width: Int = 1000, launchPreferences: GalleryLaunchPreferences? = null) : AutoCloseable {
         var identityPauses = 0
             private set
         private val scheduler = TestCoroutineScheduler()
@@ -142,7 +192,7 @@ class GalleryHomepageTest {
         init {
             Dispatchers.setMain(dispatcher)
         }
-        val scene = ImageComposeScene(1000, 900, Density(1f), coroutineContext = dispatcher) {
+        val scene = ImageComposeScene(width, 900, Density(1f), coroutineContext = dispatcher) {
             CompositionLocalProvider(LocalSaveableStateRegistry provides registry) {
                 GalleryLibraryScreen(library, reader, appearance, history, downloads, language, archiveContent = { Text("Owned local library") }, accountContent = { changed, back ->
                     Column {
@@ -155,7 +205,7 @@ class GalleryHomepageTest {
                             }) { Text("Change owned identity") }
                         }
                     }
-                }, initialLocalLibrary = local, browseOnEntry = browse)
+                }, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = launchPreferences, initialLocalLibrary = local, browseOnEntry = browse, restoreLaunchPage = launchPreferences != null)
             }
         }
         private var frame = 0L
@@ -169,6 +219,11 @@ class GalleryHomepageTest {
         private fun nodes(node: SemanticsNode): List<SemanticsNode> = listOf(node) + node.children.flatMap(::nodes)
         fun all() = scene.semanticsOwners.flatMap { nodes(it.unmergedRootSemanticsNode) }
         fun text(value: String) = all().firstOrNull { it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { text -> text.text == value } }
+        fun detailCard(value: String) = all().first { node ->
+            node.config.getOrNull(SemanticsActions.OnClick) != null && nodes(node).any {
+                it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { text -> text.text == value }
+            }
+        }
         fun await(value: String, predicate: () -> Boolean = { text(value) != null }) {
             val deadline = System.nanoTime() + 10_000_000_000
             do {
@@ -180,13 +235,26 @@ class GalleryHomepageTest {
         }
         fun click(value: String) {
             val node = all().firstOrNull { value in it.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() } ?: requireNotNull(text(value))
-            val at = node.touchBoundsInRoot.center
+            tap(node.touchBoundsInRoot.center)
+        }
+        fun tap(at: Offset) {
             scene.sendPointerEvent(PointerEventType.Press, at)
             render()
             scene.sendPointerEvent(PointerEventType.Release, at)
             // Once a destination replaces its button, that pointer may hover the new cover.
             // Leave the window and settle the real interaction layer before pixel assertions.
             scene.sendPointerEvent(PointerEventType.Exit, Offset(-1f, -1f))
+            render()
+        }
+        fun drag(from: Offset, to: Offset) {
+            scene.sendPointerEvent(PointerEventType.Press, from, timeMillis = frame / 1_000_000, type = PointerType.Mouse)
+            render()
+            for (step in 1..20) {
+                val at = from + (to - from) * (step / 20f)
+                scene.sendPointerEvent(PointerEventType.Move, at, timeMillis = frame / 1_000_000, type = PointerType.Mouse)
+                render()
+            }
+            scene.sendPointerEvent(PointerEventType.Release, to, timeMillis = frame / 1_000_000, type = PointerType.Mouse)
             render()
         }
         fun query(value: String) {
@@ -288,6 +356,62 @@ class GalleryHomepageTest {
         }
     }
 
+    @Test fun changingTheOriginalLaunchPageOpensTheSelectedFeedImmediatelyAndOnRestart() = english {
+        for ((choice, title, path) in listOf(
+            Triple("Subscription", "Watched fixture", "/watched"),
+            Triple("What's hot", "Popular fixture", "/popular"),
+            Triple("Toplist", "Toplist fixture", "/toplist.php"),
+        )) {
+            Library(galleryCount = 45).use { library ->
+                val preferences = object : GalleryLaunchPreferences {
+                    var value = GalleryLaunchSettings(toplistPeriod = GalleryToplistPeriod.PAST_MONTH)
+                    override suspend fun launchSettings() = value
+                    override suspend fun setLaunchPage(page: GalleryLaunchPage) {
+                        value = value.copy(page = page)
+                    }
+                    override suspend fun setToplistPeriod(period: GalleryToplistPeriod) {
+                        value = value.copy(toplistPeriod = period)
+                    }
+                }
+                View(library, launchPreferences = preferences).use { view ->
+                    view.await("Homepage")
+                    view.click("Settings")
+                    view.await("EH")
+                    view.click("EH")
+                    view.await("Launch page")
+                    view.click("Launch page")
+                    view.await(choice)
+                    view.click(choice)
+                    view.await(title)
+                    assertEquals(listOf("/", path), library.requests.map { it.encodedPath })
+                    assertNull(view.text("Launch page"))
+                }
+                View(library, launchPreferences = preferences).use { view ->
+                    view.await(title)
+                    assertEquals(listOf("/", path, path), library.requests.map { it.encodedPath })
+                    when (preferences.value.page) {
+                        GalleryLaunchPage.SUBSCRIPTION -> {
+                            view.query("followed fixture")
+                            view.click("Search")
+                            view.await("followed fixture")
+                            assertEquals("/watched", library.requests.last().encodedPath)
+                            assertEquals("followed fixture", library.requests.last().parameters["f_search"])
+                        }
+                        GalleryLaunchPage.TOPLIST -> {
+                            assertEquals("13", library.requests.last().parameters["tl"])
+                            view.click("Toplist")
+                            view.await("Yesterday")
+                            view.click("Yesterday")
+                            view.await("Yesterday") { library.requests.last().parameters["tl"] == "15" }
+                            assertEquals(GalleryToplistPeriod.YESTERDAY, preferences.value.toplistPeriod)
+                        }
+                        else -> Unit
+                    }
+                }
+            }
+        }
+    }
+
     @Test fun incomingLocalDocumentStaysOfflineUntilGalleriesIsSelected() = english {
         Library().use { library ->
             View(library, local = true).use { view ->
@@ -384,6 +508,56 @@ class GalleryHomepageTest {
                 val (surface, categoryPixels) = reopened.appearancePixels()
                 assertEquals(black, surface)
                 assertTrue(categoryPixels > 30)
+            }
+        }
+    }
+
+    @Test fun originalListModeAndThumbColumnsChangeTheActualCompactViewport() = english {
+        Library(galleryCount = 5).use { library ->
+            val preferences = ListingPreferences()
+            View(library, listPreferences = preferences, width = 411).use { view ->
+                view.await("Homepage")
+                val before = view.detailCard("Homepage").boundsInRoot.height
+                fun openEh() {
+                    view.click("Open navigation")
+                    view.await("Settings")
+                    view.click("Settings")
+                    view.await("EH")
+                    view.click("EH")
+                    view.await("List mode")
+                }
+                fun leaveEh() {
+                    view.click("Back")
+                    view.await("EH")
+                    view.click("Back")
+                }
+                fun dragToLastTick(range: ClosedFloatingPointRange<Float>) {
+                    val slider = view.all().single { it.config.getOrNull(SemanticsProperties.ProgressBarRangeInfo)?.range == range }
+                    val bounds = slider.boundsInRoot
+                    view.drag(bounds.center, Offset(bounds.right - 16f, bounds.center.y))
+                }
+                openEh()
+                dragToLastTick(20f..60f)
+                assertEquals(60, preferences.value.detailThumbnailSize, "The actual gesture must save the last size")
+                leaveEh()
+                view.await("Homepage")
+                assertEquals(before + 90f, view.detailCard("Homepage").boundsInRoot.height, "The saved size changes the visible detail card")
+                openEh()
+                view.click("List mode")
+                view.await("Thumb")
+                view.click("Thumb")
+                view.await("Persist thumbnail mode") { preferences.value.mode == GalleryListMode.THUMBNAIL }
+                view.await("Detail-only size control disappears") { view.text("Thumb size in detail mode") == null }
+                dragToLastTick(1f..10f)
+                assertEquals(10, preferences.value.thumbnailColumns, "The actual gesture must save the last column count")
+                leaveEh()
+                fun cards() = view.all().filter { it.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().any { value -> value.startsWith("Homepage") } }
+                view.await("Thumbnail grid presents all five owned cards") { cards().size == 5 }
+                val items = cards().map { it.boundsInRoot }
+                // Fractional column widths and the card clip round individual edges by one pixel.
+                assertTrue(items.maxOf { it.top } - items.minOf { it.top } <= 1f, "All five cards must share the first row: $items")
+                assertTrue(items.all { it.width in 34f..36f }, "Ten compact columns must use the original spacing: $items")
+                assertEquals(1, library.requests.size, "A layout change must not submit a new site search")
             }
         }
     }

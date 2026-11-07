@@ -1,4 +1,15 @@
 <resources>
+    <string name="gallery_error_no_watched_tags">請至 設定-&gt;EH-&gt;我的標籤 訂閱標籤</string>
+    <string name="gallery_settings_launch_page">啟動頁</string>
+    <string name="gallery_feed_homepage">首頁</string>
+    <string name="gallery_feed_subscription">訂閱</string>
+    <string name="gallery_feed_whats_hot">熱門</string>
+    <string name="gallery_feed_toplist">排行</string>
+    <string name="gallery_toplist_all_time">從始至終</string>
+    <string name="gallery_toplist_past_year">過去一年</string>
+    <string name="gallery_toplist_past_month">過去一個月</string>
+    <string name="gallery_toplist_yesterday">昨日</string>
+    <string name="gallery_launch_preferences_unavailable">無法讀取或儲存啟動頁。</string>
     <string name="gallery_back">返回</string>
     <string name="gallery_settings">設定</string>
     <string name="gallery_language">應用程式介面語言</string>
@@ -336,4 +347,9 @@
     <string name="gallery_default_favorite_unavailable">預設收藏夾設定暫不可用。</string>
     <string name="gallery_favorites_destination">收藏夾</string>
     <string name="gallery_local_favorites_unavailable">本機收藏暫不可用。</string>
+    <string name="gallery_settings_list_mode">列表模式</string>
+    <string name="gallery_settings_list_mode_detail">詳細資料</string>
+    <string name="gallery_settings_list_mode_thumb">縮圖</string>
+    <string name="gallery_settings_detail_thumbnail_size">詳情模式下縮圖大小</string>
+    <string name="gallery_settings_thumbnail_columns">縮圖列數</string>
 </resources>

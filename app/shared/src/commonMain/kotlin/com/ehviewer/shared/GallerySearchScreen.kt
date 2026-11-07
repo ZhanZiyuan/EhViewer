@@ -22,9 +22,16 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearWavyProgressIndicator
@@ -72,10 +79,18 @@ import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.AppLanguageException
 import com.ehviewer.core.domain.GalleryHistoryException
 import com.ehviewer.core.domain.GalleryHistoryStore
+import com.ehviewer.core.domain.GalleryLaunchPage
+import com.ehviewer.core.domain.GalleryLaunchPreferences
+import com.ehviewer.core.domain.GalleryLaunchPreferencesException
+import com.ehviewer.core.domain.GalleryLaunchSettings
 import com.ehviewer.core.domain.GalleryListDensity
+import com.ehviewer.core.domain.GalleryListMode
 import com.ehviewer.core.domain.GalleryListPreferences
 import com.ehviewer.core.domain.GalleryListPreferencesException
+import com.ehviewer.core.domain.GalleryListPresentation
+import com.ehviewer.core.domain.GalleryListPresentationPreferences
 import com.ehviewer.core.domain.GalleryNetworkPreferences
+import com.ehviewer.core.domain.GalleryToplistPeriod
 import com.ehviewer.core.domain.download.GalleryStorageSettings
 import com.ehviewer.core.domain.reader.ReaderStateStore
 import com.ehviewer.core.model.BaseGalleryInfo
@@ -102,6 +117,7 @@ import ehviewer.app.shared.generated.resources.gallery_download_background
 import ehviewer.app.shared.generated.resources.gallery_error_authentication
 import ehviewer.app.shared.generated.resources.gallery_error_challenge
 import ehviewer.app.shared.generated.resources.gallery_error_local_storage
+import ehviewer.app.shared.generated.resources.gallery_error_no_watched_tags
 import ehviewer.app.shared.generated.resources.gallery_error_offline
 import ehviewer.app.shared.generated.resources.gallery_error_query
 import ehviewer.app.shared.generated.resources.gallery_error_rate_limit
@@ -109,8 +125,10 @@ import ehviewer.app.shared.generated.resources.gallery_error_response
 import ehviewer.app.shared.generated.resources.gallery_error_server
 import ehviewer.app.shared.generated.resources.gallery_error_session_storage
 import ehviewer.app.shared.generated.resources.gallery_error_too_large
+import ehviewer.app.shared.generated.resources.gallery_feed_toplist
 import ehviewer.app.shared.generated.resources.gallery_filters
 import ehviewer.app.shared.generated.resources.gallery_filters_applied
+import ehviewer.app.shared.generated.resources.gallery_launch_preferences_unavailable
 import ehviewer.app.shared.generated.resources.gallery_list_unavailable
 import ehviewer.app.shared.generated.resources.gallery_no_galleries
 import ehviewer.app.shared.generated.resources.gallery_retry
@@ -131,7 +149,16 @@ private val searchFiltersSaver = Saver<GallerySearchFilters, String>(
 )
 
 @Serializable
-private data class GallerySearchRequest(val query: String, val filters: GallerySearchFilters, val cursor: String? = null, val previous: Boolean = false, val uploader: String? = null, val tag: String? = null)
+private data class GallerySearchRequest(
+    val query: String,
+    val filters: GallerySearchFilters,
+    val cursor: String? = null,
+    val previous: Boolean = false,
+    val uploader: String? = null,
+    val tag: String? = null,
+    val feed: GalleryLaunchPage? = null,
+    val toplistPeriod: GalleryToplistPeriod = GalleryToplistPeriod.ALL_TIME,
+)
 
 private val searchRequestSaver = Saver<GallerySearchRequest, String>(
     save = { Json.encodeToString(it) },
@@ -152,6 +179,8 @@ fun GallerySearchScreen(
     browserFactory: ((String) -> GalleryLoginBrowser)? = null,
     storageSettings: GalleryStorageSettings? = null,
     listPreferences: GalleryListPreferences? = null,
+    presentationPreferences: GalleryListPresentationPreferences? = null,
+    launchPreferences: GalleryLaunchPreferences? = null,
     favoriteControls: GalleryFavoriteControls? = null,
     initialLocalLibrary: Boolean = false,
     onReady: () -> Unit = {},
@@ -170,7 +199,7 @@ fun GallerySearchScreen(
     }
     GalleryLibraryScreen(library, readerState, appearance, history, downloads, language, networkPreferences = session.networkPreferences, storageSettings = storageSettings, listPreferences = listPreferences, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
-    }, favoriteControls = favoriteControls, initialLocalLibrary = initialLocalLibrary, browseOnEntry = true, onReady = onReady)
+    }, presentationPreferences = presentationPreferences, launchPreferences = launchPreferences, favoriteControls = favoriteControls, initialLocalLibrary = initialLocalLibrary, browseOnEntry = true, restoreLaunchPage = true, onReady = onReady)
 }
 
 /** Android uses the same views while its original session/history adapters remain authoritative. */
@@ -185,6 +214,8 @@ fun GalleryLibraryScreen(
     networkPreferences: GalleryNetworkPreferences? = null,
     storageSettings: GalleryStorageSettings? = null,
     listPreferences: GalleryListPreferences? = null,
+    presentationPreferences: GalleryListPresentationPreferences? = null,
+    launchPreferences: GalleryLaunchPreferences? = null,
     favoriteControls: GalleryFavoriteControls? = null,
     onPlatformStorageSettings: (() -> Unit)? = null,
     backgroundDownloadsNote: Boolean = false,
@@ -196,27 +227,47 @@ fun GalleryLibraryScreen(
     archiveContent: (@Composable (onBack: () -> Unit) -> Unit)? = null,
     initialLocalLibrary: Boolean = false,
     browseOnEntry: Boolean = false,
+    restoreLaunchPage: Boolean = false,
     onReady: () -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     var listDensity by remember(listPreferences) { mutableStateOf<GalleryListDensity?>(null) }
     var showComments by remember(listPreferences) { mutableStateOf<Boolean?>(null) }
+    var presentation by remember(presentationPreferences) { mutableStateOf<GalleryListPresentation?>(null) }
     var listFailed by remember(listPreferences) { mutableStateOf(false) }
     var listAttempt by remember { mutableIntStateOf(0) }
-    LaunchedEffect(listPreferences, listAttempt) {
+    LaunchedEffect(listPreferences, presentationPreferences, listAttempt) {
         listDensity = null
         showComments = null
         listFailed = false
         try {
             val density = listPreferences?.density() ?: GalleryListDensity.COMPACT
             val comments = listPreferences?.showComments() ?: true
+            val view = presentationPreferences?.presentation() ?: GalleryListPresentation()
             listDensity = density
             showComments = comments
+            presentation = view
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: GalleryListPreferencesException) {
             listFailed = true
+        }
+    }
+    var launchSettings by remember(launchPreferences) { mutableStateOf<GalleryLaunchSettings?>(null) }
+    var launchReadFailed by remember(launchPreferences) { mutableStateOf(false) }
+    var launchSaveFailed by remember(launchPreferences) { mutableStateOf(false) }
+    var launchSaving by remember(launchPreferences) { mutableStateOf(false) }
+    var launchAttempt by remember { mutableIntStateOf(0) }
+    LaunchedEffect(launchPreferences, launchAttempt) {
+        try {
+            launchSettings = launchPreferences?.launchSettings() ?: GalleryLaunchSettings()
+            launchReadFailed = false
+            launchSaveFailed = false
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: GalleryLaunchPreferencesException) {
+            launchReadFailed = true
         }
     }
     var languageTag by remember(language) { mutableStateOf<String?>(null) }
@@ -286,9 +337,29 @@ fun GalleryLibraryScreen(
     // Restore the submitted route, rather than accidentally submitting an unfinished draft.
     var entrySearch by rememberSaveable(stateSaver = searchRequestSaver) { mutableStateOf(GallerySearchRequest("", GallerySearchFilters())) }
     val scope = rememberCoroutineScope()
+    fun saveLaunch(change: suspend GalleryLaunchPreferences.(GalleryLaunchSettings) -> GalleryLaunchSettings, onSaved: (GalleryLaunchSettings) -> Unit = {}) {
+        val preferences = launchPreferences ?: return
+        val current = launchSettings ?: return
+        if (launchSaving || launchReadFailed || launchSaveFailed) return
+        launchSaving = true
+        scope.launch {
+            try {
+                val saved = preferences.change(current)
+                launchSettings = saved
+                onSaved(saved)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: GalleryLaunchPreferencesException) {
+                launchSaveFailed = true
+            } finally {
+                launchSaving = false
+            }
+        }
+    }
     var selected by remember { mutableStateOf<BaseGalleryInfo?>(null) }
     var account by remember { mutableStateOf(false) }
     val resultsState = rememberLazyGridState()
+    val thumbnailState = rememberLazyStaggeredGridState()
     var searchBarOffsetY by remember { mutableIntStateOf(0) }
     // Android marks list cards whose gallery has any download entry.
     val downloadedGids by remember(downloads) { downloads.tasks.map { tasks -> tasks.mapTo(HashSet()) { it.gid } } }.collectAsState(emptySet())
@@ -304,7 +375,7 @@ fun GalleryLibraryScreen(
 
     fun load(search: GallerySearchRequest, replaceResults: Boolean = false, mergeResults: Boolean = false, refreshGesture: Boolean = false) {
         entryStarted = true
-        entrySearch = search
+        entrySearch = if (search.feed == null) search.copy(feed = GalleryLaunchPage.HOMEPAGE) else search
         request?.cancel()
         val current = ++generation
         val before = page
@@ -320,7 +391,17 @@ fun GalleryLibraryScreen(
             try {
                 val result = search.tag?.let { session.galleries.tag(it, search.cursor, search.previous, search.filters) }
                     ?: search.uploader?.let { session.galleries.uploader(it, search.cursor, search.previous, search.filters) }
-                    ?: session.galleries.search(search.query, search.cursor, search.previous, search.filters)
+                    ?: when (search.feed) {
+                        GalleryLaunchPage.SUBSCRIPTION -> session.galleries.subscription(search.query, search.cursor, search.previous, search.filters)
+                        GalleryLaunchPage.WHATS_HOT -> session.galleries.whatsHot()
+                        GalleryLaunchPage.TOPLIST -> {
+                            val number = search.cursor?.let { cursor ->
+                                cursor.toIntOrNull()?.takeIf { it in 1..200 } ?: throw GalleryRequestException(GalleryFailure.INVALID_RESPONSE)
+                            } ?: 1
+                            session.galleries.toplist(search.toplistPeriod, number)
+                        }
+                        GalleryLaunchPage.HOMEPAGE, null -> session.galleries.search(search.query, search.cursor, search.previous, search.filters)
+                    }
                 if (current == generation) {
                     page = if (mergeResults && before != null) {
                         val cursor = requireNotNull(search.cursor)
@@ -333,6 +414,7 @@ fun GalleryLibraryScreen(
                     loadedSearch = search
                     if (!mergeResults) {
                         resultsState.requestScrollToItem(0)
+                        thumbnailState.requestScrollToItem(0)
                         searchBarOffsetY = 0
                     }
                 }
@@ -358,7 +440,8 @@ fun GalleryLibraryScreen(
         focusManager.clearFocus(force = true)
         keyboard?.hide()
         val routed = (failedSearch ?: loadedSearch)?.takeIf { it.query == query }
-        load(GallerySearchRequest(query, filters, uploader = routed?.uploader, tag = routed?.tag), replaceResults = true)
+        val currentFeed = (failedSearch ?: loadedSearch)?.feed
+        load(GallerySearchRequest(query, filters, uploader = routed?.uploader, tag = routed?.tag, feed = currentFeed?.takeIf { it == GalleryLaunchPage.SUBSCRIPTION }), replaceResults = true)
     }
 
     fun turnPage(cursor: String?, previous: Boolean = false) {
@@ -409,9 +492,15 @@ fun GalleryLibraryScreen(
 
     // The original HomePageScreen immediately collects its default Pager. Embedded search
     // may opt in; opening a local document stays offline until Galleries is actually chosen.
-    LaunchedEffect(session, browseOnEntry, destination) {
+    LaunchedEffect(session, browseOnEntry, destination, launchSettings, restoreLaunchPage) {
         if (browseOnEntry && destination == GalleryDestination.GALLERIES && !entryStarted) {
-            load(entrySearch, replaceResults = true)
+            val entry = if (entrySearch.feed == null && restoreLaunchPage && launchPreferences != null) {
+                val saved = launchSettings ?: return@LaunchedEffect
+                entrySearch.copy(feed = saved.page, toplistPeriod = saved.toplistPeriod)
+            } else {
+                entrySearch
+            }
+            load(entry, replaceResults = true)
         }
     }
 
@@ -463,12 +552,33 @@ fun GalleryLibraryScreen(
                                     favoriteSettings = favoriteControls?.let { controls ->
                                         { GalleryDefaultFavoriteSettings(controls.preferences, session.favorites) }
                                     },
+                                    launchSettings = launchPreferences?.let {
+                                        {
+                                            GalleryLaunchSettingsRow(launchSettings?.page, launchReadFailed || launchSaveFailed, launchSaving, onSelect = { page ->
+                                                saveLaunch({ current ->
+                                                    setLaunchPage(page)
+                                                    current.copy(page = page)
+                                                }, onSaved = { saved ->
+                                                    // Android's original navigation graph changes its root immediately.
+                                                    if (restoreLaunchPage) {
+                                                        navigate(GalleryDestination.GALLERIES)
+                                                        query = ""
+                                                        filters = GallerySearchFilters()
+                                                        load(GallerySearchRequest(query, filters, feed = saved.page, toplistPeriod = saved.toplistPeriod), replaceResults = true)
+                                                    }
+                                                })
+                                            }, onRetry = { launchAttempt++ })
+                                        }
+                                    },
                                     storageSettings = storageSettings,
                                     onPlatformStorageSettings = onPlatformStorageSettings,
                                     listPreferences = listPreferences,
                                     listDensity = listDensity,
                                     listFailed = listFailed,
                                     onListChanged = { listDensity = it },
+                                    presentationPreferences = presentationPreferences,
+                                    presentation = presentation,
+                                    onPresentationChanged = { presentation = it },
                                     showComments = showComments,
                                     onCommentsChanged = { showComments = it },
                                     onRetryList = { listAttempt++ },
@@ -583,16 +693,18 @@ fun GalleryLibraryScreen(
                             }
                             val result = page
                             val error = failure
-                            val pendingCursor by remember(resultsState, result) {
+                            val thumbnails = presentation?.mode == GalleryListMode.THUMBNAIL
+                            val pendingCursor by remember(resultsState, thumbnailState, result, thumbnails) {
                                 derivedStateOf {
-                                    val layout = resultsState.layoutInfo
-                                    val visible = layout.visibleItemsInfo
-                                    when {
-                                        result == null || visible.isEmpty() || layout.totalItemsCount != result.galleryInfoList.size -> null
-                                        result.galleryInfoList.getOrNull(visible.first().index)?.gid != visible.first().key -> null
-                                        result.prev != null && visible.first().index < 20 -> result.prev to true
-                                        result.next != null && visible.last().index >= result.galleryInfoList.size - 21 -> result.next to false
-                                        else -> null
+                                    if (thumbnails) {
+                                        val layout = thumbnailState.layoutInfo
+                                        val first = layout.visibleItemsInfo.minByOrNull { it.index }
+                                        val last = layout.visibleItemsInfo.maxOfOrNull { it.index }
+                                        galleryVisibleCursor(result, layout.totalItemsCount, first?.index, first?.key, last)
+                                    } else {
+                                        val layout = resultsState.layoutInfo
+                                        val first = layout.visibleItemsInfo.firstOrNull()
+                                        galleryVisibleCursor(result, layout.totalItemsCount, first?.index, first?.key, layout.visibleItemsInfo.lastOrNull()?.index)
                                     }
                                 }
                             }
@@ -616,22 +728,44 @@ fun GalleryLibraryScreen(
                                     }
                                 }
                                 if (result != null && result.galleryInfoList.isNotEmpty()) {
-                                    LazyVerticalGrid(
-                                        columns = GridCells.Adaptive((listDensity ?: GalleryListDensity.COMPACT).minimumColumnWidth.dp),
-                                        modifier = Modifier.fillMaxSize().nestedScroll(barConnection),
-                                        state = resultsState,
-                                        contentPadding = PaddingValues(start = marginH, top = barSpace + GalleryListMarginV, end = marginH, bottom = GalleryListMarginV),
-                                        horizontalArrangement = Arrangement.spacedBy(GalleryListInterval),
-                                        verticalArrangement = Arrangement.spacedBy(GalleryListInterval),
-                                    ) {
-                                        if ((merging && loading || failedMerge && error != null) && entrySearch.previous) {
-                                            item(span = { GridItemSpan(maxLineSpan) }) { GalleryBrowseLoadState(loading, error, ::retryPage) }
+                                    if (thumbnails) {
+                                        val columns = presentation?.thumbnailColumns ?: 3
+                                        LazyVerticalStaggeredGrid(
+                                            columns = if (maxWidth < 600.dp) StaggeredGridCells.Fixed(columns) else StaggeredGridCells.Adaptive((411f / columns).dp),
+                                            modifier = Modifier.fillMaxSize().nestedScroll(barConnection),
+                                            state = thumbnailState,
+                                            contentPadding = PaddingValues(start = marginH, top = barSpace + GalleryListMarginV, end = marginH, bottom = GalleryListMarginV),
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalItemSpacing = 4.dp,
+                                        ) {
+                                            if ((merging && loading || failedMerge && error != null) && entrySearch.previous) {
+                                                item(span = StaggeredGridItemSpan.FullLine) { GalleryBrowseLoadState(loading, error, ::retryPage) }
+                                            }
+                                            items(result.galleryInfoList, key = { it.gid }) { gallery ->
+                                                GalleryThumbnailCard(gallery, covers) { selected = gallery }
+                                            }
+                                            if ((merging && loading || failedMerge && error != null) && !entrySearch.previous) {
+                                                item(span = StaggeredGridItemSpan.FullLine) { GalleryBrowseLoadState(loading, error, ::retryPage) }
+                                            }
                                         }
-                                        items(result.galleryInfoList, key = { it.gid }) { gallery ->
-                                            GallerySearchCard(gallery, covers, downloaded = gallery.gid in downloadedGids) { selected = gallery }
-                                        }
-                                        if ((merging && loading || failedMerge && error != null) && !entrySearch.previous) {
-                                            item(span = { GridItemSpan(maxLineSpan) }) { GalleryBrowseLoadState(loading, error, ::retryPage) }
+                                    } else {
+                                        LazyVerticalGrid(
+                                            columns = GridCells.Adaptive((listDensity ?: GalleryListDensity.COMPACT).minimumColumnWidth.dp),
+                                            modifier = Modifier.fillMaxSize().nestedScroll(barConnection),
+                                            state = resultsState,
+                                            contentPadding = PaddingValues(start = marginH, top = barSpace + GalleryListMarginV, end = marginH, bottom = GalleryListMarginV),
+                                            horizontalArrangement = Arrangement.spacedBy(GalleryListInterval),
+                                            verticalArrangement = Arrangement.spacedBy(GalleryListInterval),
+                                        ) {
+                                            if ((merging && loading || failedMerge && error != null) && entrySearch.previous) {
+                                                item(span = { GridItemSpan(maxLineSpan) }) { GalleryBrowseLoadState(loading, error, ::retryPage) }
+                                            }
+                                            items(result.galleryInfoList, key = { it.gid }) { gallery ->
+                                                GallerySearchCard(gallery, covers, downloaded = gallery.gid in downloadedGids, thumbnailSize = presentation?.detailThumbnailSize ?: 40) { selected = gallery }
+                                            }
+                                            if ((merging && loading || failedMerge && error != null) && !entrySearch.previous) {
+                                                item(span = { GridItemSpan(maxLineSpan) }) { GalleryBrowseLoadState(loading, error, ::retryPage) }
+                                            }
                                         }
                                     }
                                 }
@@ -651,12 +785,18 @@ fun GalleryLibraryScreen(
                                 }
                                 PullToRefreshDefaults.LoadingIndicator(state = refreshState, isRefreshing = refreshing, modifier = Modifier.align(Alignment.TopCenter).padding(top = barSpace).offset { IntOffset(0, searchBarOffsetY) })
                                 val offset = Modifier.offset { IntOffset(0, searchBarOffsetY) }
+                                val feed = entrySearch.feed ?: GalleryLaunchPage.HOMEPAGE
+                                val feedTitle = when (feed) {
+                                    GalleryLaunchPage.HOMEPAGE -> "EhViewer"
+                                    GalleryLaunchPage.TOPLIST -> galleryToplistPeriodLabel(entrySearch.toplistPeriod)
+                                    else -> galleryLaunchPageLabel(feed)
+                                }
                                 GallerySearchBar(
                                     query = query,
                                     onQueryChange = { query = it.take(4096) },
                                     onSearch = { search() },
                                     maxWidth = maxWidth,
-                                    title = "EhViewer",
+                                    title = feedTitle,
                                     hint = galleryString(Res.string.gallery_search_galleries),
                                     leading = {
                                         // Like Android's list, phones lead with the drawer; system Back still leaves an embedded screen.
@@ -668,11 +808,37 @@ fun GalleryLibraryScreen(
                                     },
                                     modifier = Modifier.align(Alignment.TopCenter).then(offset),
                                 ) {
-                                    IconButton(onClick = { search() }) { Icon(GalleryIcons.Search, contentDescription = galleryString(Res.string.gallery_search)) }
-                                    IconButton(onClick = { filtersOpen = true }) {
-                                        val filtered = filters != GallerySearchFilters()
-                                        val description = galleryString(if (filtered) Res.string.gallery_filters_applied else Res.string.gallery_filters)
-                                        Icon(GalleryIcons.FilterList, contentDescription = description, tint = if (filtered) MaterialTheme.colorScheme.primary else LocalContentColor.current)
+                                    if (feed == GalleryLaunchPage.TOPLIST && launchPreferences != null) {
+                                        var periodOpen by remember { mutableStateOf(false) }
+                                        Box {
+                                            IconButton(onClick = { periodOpen = true }, enabled = !launchSaving && !launchReadFailed && !launchSaveFailed) {
+                                                Icon(GalleryIcons.MoreVert, contentDescription = galleryString(Res.string.gallery_feed_toplist))
+                                            }
+                                            DropdownMenu(periodOpen, onDismissRequest = { periodOpen = false }) {
+                                                GalleryToplistPeriod.entries.forEach { period ->
+                                                    DropdownMenuItem(text = { Text(galleryToplistPeriodLabel(period)) }, onClick = {
+                                                        periodOpen = false
+                                                        if (period != entrySearch.toplistPeriod) {
+                                                            saveLaunch({ current ->
+                                                                setToplistPeriod(period)
+                                                                current.copy(toplistPeriod = period)
+                                                            }, onSaved = { saved ->
+                                                                if (entrySearch.feed == GalleryLaunchPage.TOPLIST) {
+                                                                    load(entrySearch.copy(cursor = null, previous = false, toplistPeriod = saved.toplistPeriod), replaceResults = true)
+                                                                }
+                                                            })
+                                                        }
+                                                    })
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        IconButton(onClick = { search() }) { Icon(GalleryIcons.Search, contentDescription = galleryString(Res.string.gallery_search)) }
+                                        IconButton(onClick = { filtersOpen = true }) {
+                                            val filtered = filters != GallerySearchFilters()
+                                            val description = galleryString(if (filtered) Res.string.gallery_filters_applied else Res.string.gallery_filters)
+                                            Icon(GalleryIcons.FilterList, contentDescription = description, tint = if (filtered) MaterialTheme.colorScheme.primary else LocalContentColor.current)
+                                        }
                                     }
                                 }
                             }
@@ -689,6 +855,12 @@ fun GalleryLibraryScreen(
                                         TextButton(onClick = { listAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
                                     }
                                 }
+                                if (launchReadFailed || launchSaveFailed) {
+                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(galleryString(Res.string.gallery_launch_preferences_unavailable), Modifier.weight(1f))
+                                        TextButton(onClick = { launchAttempt++ }) { Text(galleryString(Res.string.gallery_retry)) }
+                                    }
+                                }
                             }
                         }
                     }
@@ -697,6 +869,18 @@ fun GalleryLibraryScreen(
         }
     }
     if (languageReady || languageFailed) SideEffect(onReady)
+}
+
+private fun galleryVisibleCursor(result: GallerySearchResult?, count: Int, first: Int?, firstKey: Any?, last: Int?): Pair<String, Boolean>? {
+    if (result == null || first == null || last == null || count != result.galleryInfoList.size) return null
+    if (result.galleryInfoList.getOrNull(first)?.gid != firstKey) return null
+    val previous = result.prev
+    val next = result.next
+    return when {
+        previous != null && first < 20 -> previous to true
+        next != null && last >= result.galleryInfoList.size - 21 -> next to false
+        else -> null
+    }
 }
 
 @Composable
@@ -723,4 +907,5 @@ internal fun GalleryFailure.userMessage(): String = when (this) {
     GalleryFailure.SESSION_STORAGE -> galleryString(Res.string.gallery_error_session_storage)
     GalleryFailure.LOCAL_STORAGE -> galleryString(Res.string.gallery_error_local_storage)
     GalleryFailure.SEARCH_QUERY -> galleryString(Res.string.gallery_error_query)
+    GalleryFailure.NO_WATCHED_TAGS -> galleryString(Res.string.gallery_error_no_watched_tags)
 }

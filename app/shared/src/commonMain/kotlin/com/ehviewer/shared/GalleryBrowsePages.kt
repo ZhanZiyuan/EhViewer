@@ -11,7 +11,7 @@ internal fun mergeGalleryBrowsePages(current: GallerySearchResult, incoming: Gal
     if (cursor != expected || (cursor to previous) in consumed || continuation == cursor || continuation != null && (continuation to previous) in consumed) {
         throw GalleryRequestException(GalleryFailure.INVALID_RESPONSE)
     }
-    if (incoming.queryError != null) throw GalleryRequestException(GalleryFailure.SEARCH_QUERY)
+    incoming.queryError?.let { throw GalleryRequestException(it.failure) }
     val seen = HashSet<Long>()
     val galleries = (if (previous) incoming.galleryInfoList + current.galleryInfoList else current.galleryInfoList + incoming.galleryInfoList).filter { seen.add(it.gid) }
     return GallerySearchResult(

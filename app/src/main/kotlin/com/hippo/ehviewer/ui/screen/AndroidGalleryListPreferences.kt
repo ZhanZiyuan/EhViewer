@@ -1,15 +1,23 @@
 package com.hippo.ehviewer.ui.screen
 
+import com.ehviewer.core.domain.GalleryLaunchPage
+import com.ehviewer.core.domain.GalleryLaunchPreferences
+import com.ehviewer.core.domain.GalleryLaunchPreferencesException
+import com.ehviewer.core.domain.GalleryLaunchSettings
 import com.ehviewer.core.domain.GalleryListDensity
+import com.ehviewer.core.domain.GalleryListMode
 import com.ehviewer.core.domain.GalleryListPreferences
 import com.ehviewer.core.domain.GalleryListPreferencesException
+import com.ehviewer.core.domain.GalleryListPresentation
+import com.ehviewer.core.domain.GalleryListPresentationPreferences
+import com.ehviewer.core.domain.GalleryToplistPeriod
 import com.hippo.ehviewer.Settings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** Read/write the original preference directly; retain its default, key and unrelated settings. */
-internal class AndroidGalleryListPreferences : GalleryListPreferences {
+internal class AndroidGalleryListPreferences : GalleryListPreferences, GalleryListPresentationPreferences, GalleryLaunchPreferences {
     private suspend fun <T> stored(block: suspend () -> T): T = try {
         withContext(Dispatchers.IO) { block() }
     } catch (cancelled: CancellationException) {
@@ -35,5 +43,62 @@ internal class AndroidGalleryListPreferences : GalleryListPreferences {
             decode(snapshot[Settings.detailSize])
             snapshot[Settings.detailSize] = if (density == GalleryListDensity.COMFORTABLE) 0 else 1
         }
+    }
+
+    private fun decodeMode(value: Int) = when (value) {
+        0 -> GalleryListMode.DETAIL
+        1 -> GalleryListMode.THUMBNAIL
+        else -> error("Unknown gallery list mode")
+    }
+
+    override suspend fun presentation(): GalleryListPresentation = stored {
+        val snapshot = Settings.snapshot()
+        GalleryListPresentation(
+            mode = decodeMode(snapshot[Settings.listMode]),
+            detailThumbnailSize = snapshot[Settings.listThumbSize],
+            thumbnailColumns = snapshot[Settings.thumbColumns],
+        )
+    }
+
+    override suspend fun setMode(mode: GalleryListMode) = stored {
+        Settings.withMutableSnapshot {
+            decodeMode(it[Settings.listMode])
+            it[Settings.listMode] = if (mode == GalleryListMode.DETAIL) 0 else 1
+        }
+    }
+
+    override suspend fun setDetailThumbnailSize(size: Int) = stored {
+        require(size in 20..60)
+        Settings.withMutableSnapshot { it[Settings.listThumbSize] = size }
+    }
+
+    override suspend fun setThumbnailColumns(columns: Int) = stored {
+        require(columns in 1..10)
+        Settings.withMutableSnapshot { it[Settings.thumbColumns] = columns }
+    }
+
+    private suspend fun <T> storedLaunch(block: suspend () -> T): T = try {
+        withContext(Dispatchers.IO) { block() }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        throw GalleryLaunchPreferencesException()
+    }
+
+    override suspend fun launchSettings() = storedLaunch {
+        val index = Settings.snapshot()[Settings.launchPage]
+        GalleryLaunchSettings(
+            // The embedded shared browse destination is not one of the four original choices.
+            page = if (index == 8) GalleryLaunchPage.HOMEPAGE else GalleryLaunchPage.entries.single { it.originalIndex == index },
+            toplistPeriod = GalleryToplistPeriod.entries.single { it.originalCode == Settings.recentToplist },
+        )
+    }
+
+    override suspend fun setLaunchPage(page: GalleryLaunchPage) = storedLaunch {
+        Settings.withMutableSnapshot { it[Settings.launchPage] = page.originalIndex }
+    }
+
+    override suspend fun setToplistPeriod(period: GalleryToplistPeriod) = storedLaunch {
+        Settings.recentToplist = period.originalCode
     }
 }

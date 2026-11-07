@@ -202,7 +202,7 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                     }
                 }
                 if (languageVerified) {
-                    GallerySearchScreen(session, readerState, appearance, history, downloads, language, storageSettings = downloadStorage, listPreferences = listPreferences, favoriteControls = favoriteControls, backgroundDownloadsNote = true, archiveContent = { back ->
+                    GallerySearchScreen(session, readerState, appearance, history, downloads, language, storageSettings = downloadStorage, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = listPreferences, favoriteControls = favoriteControls, backgroundDownloadsNote = true, archiveContent = { back ->
                         ArchiveLibraryScreen(archives, session, pickAndImport = { archivePicker.pickAndImport(archives) }, pickAndImportDirectory = { archivePicker.pickAndImport(archives, directory = true) }, pickAndExport = { book -> archivePicker.pickAndExport(archives, book) }, readingState = { book -> ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/archive-reading-state/${book.id}")) }, onBack = back, shareComic = { book -> archiveShare.share(archives, book) })
                     }, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
                 }

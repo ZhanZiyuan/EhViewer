@@ -1,5 +1,6 @@
 package com.ehviewer.core.network.gallery
 
+import com.ehviewer.core.domain.GalleryToplistPeriod
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.model.TagNamespace
 import io.ktor.client.HttpClient
@@ -15,13 +16,16 @@ import kotlinx.serialization.Serializable
 data class GallerySearchResult(val prev: String?, val next: String?, val galleryInfoList: List<BaseGalleryInfo>, val queryError: GalleryQueryError? = null)
 
 @Serializable
-enum class GalleryQueryError { TOO_MANY_KEYWORDS, }
+enum class GalleryQueryError(val failure: GalleryFailure) {
+    TOO_MANY_KEYWORDS(GalleryFailure.SEARCH_QUERY),
+    NO_WATCHED_TAGS(GalleryFailure.NO_WATCHED_TAGS),
+}
 
 fun interface GalleryListDecoder {
     fun decode(html: ByteArray): GallerySearchResult
 }
 
-enum class GalleryFailure { AUTHENTICATION, CHALLENGE, RATE_LIMIT, OFFLINE, SERVER, INVALID_RESPONSE, RESPONSE_TOO_LARGE, SESSION_STORAGE, LOCAL_STORAGE, SEARCH_QUERY }
+enum class GalleryFailure { AUTHENTICATION, CHALLENGE, RATE_LIMIT, OFFLINE, SERVER, INVALID_RESPONSE, RESPONSE_TOO_LARGE, SESSION_STORAGE, LOCAL_STORAGE, SEARCH_QUERY, NO_WATCHED_TAGS }
 
 class GalleryRequestException(val failure: GalleryFailure) : Exception("Gallery request failed: $failure")
 
@@ -32,31 +36,55 @@ private fun validSearchCursor(cursor: String?) = cursor == null || cursor.length
 class GalleryRepository(private val client: HttpClient, private val decoder: GalleryListDecoder, private val restricted: Boolean = false) {
     private val host = if (restricted) "exhentai.org" else "e-hentai.org"
     private val requests = GalleryRequests(client, host)
+    private val toplistRequests = if (restricted) GalleryRequests(client, "e-hentai.org") else requests
 
     private fun decodeListing(html: ByteArray) = decoder.decode(html).also { page ->
         // Rust supplies raw tags; the original Android client derives its language badge here.
         page.galleryInfoList.filter { it.simpleLanguage == null }.forEach { it.generateSLang() }
     }
 
-    private suspend fun listing(url: Url): GallerySearchResult = requests.document(url, ::decodeListing).also { page ->
+    private suspend fun listing(url: Url, route: GalleryRequests = requests): GallerySearchResult = route.document(url, ::decodeListing).also { page ->
         // Check the typed envelope after document decoding, so it stays a query error.
         // An inconsistent envelope must still fail the untrusted-document boundary.
-        if (page.queryError != null) {
+        page.queryError?.let { warning ->
             if (page.prev != null || page.next != null || page.galleryInfoList.isNotEmpty()) invalid()
-            throw GalleryRequestException(GalleryFailure.SEARCH_QUERY)
+            if (warning == GalleryQueryError.NO_WATCHED_TAGS && url.encodedPath != "/watched") invalid()
+            throw GalleryRequestException(warning.failure)
         }
         if (!validSearchCursor(page.prev) || !validSearchCursor(page.next)) invalid()
     }
 
-    suspend fun search(query: String = "", cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult {
+    suspend fun search(query: String = "", cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult = searchFeed("/", query, cursor, previous, filters)
+
+    suspend fun subscription(query: String = "", cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult = searchFeed("/watched", query, cursor, previous, filters)
+
+    private suspend fun searchFeed(path: String, query: String, cursor: String?, previous: Boolean, filters: GallerySearchFilters): GallerySearchResult {
         require(query.length <= 4096 && validSearchCursor(cursor))
         val url = URLBuilder(URLProtocol.HTTPS, host).apply {
-            encodedPath = "/"
+            encodedPath = path
             if (query.isNotBlank()) parameters.append("f_search", query)
             if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
             filters.appendTo(this)
         }.build()
         return listing(url)
+    }
+
+    suspend fun whatsHot(): GallerySearchResult = listing(Url("https://$host/popular")).copy(prev = null, next = null)
+
+    /** v1.15.10 always uses the public Toplist, with a one-based local cursor and zero-based p. */
+    suspend fun toplist(period: GalleryToplistPeriod, page: Int = 1): GallerySearchResult {
+        require(page in 1..200)
+        val url = URLBuilder(URLProtocol.HTTPS, "e-hentai.org").apply {
+            encodedPath = "/toplist.php"
+            parameters.append("tl", period.originalCode)
+            if (page > 1) parameters.append("p", (page - 1).toString())
+        }.build()
+        val loaded = listing(url, toplistRequests)
+        if (loaded.galleryInfoList.isEmpty()) return loaded.copy(prev = null, next = null)
+        return loaded.copy(
+            prev = (page - 1).takeIf { it >= 1 }?.toString(),
+            next = (page + 1).takeIf { it <= 200 }?.toString(),
+        )
     }
 
     /** Match Android's uploader route, including names that cannot be expressed by search operators. */

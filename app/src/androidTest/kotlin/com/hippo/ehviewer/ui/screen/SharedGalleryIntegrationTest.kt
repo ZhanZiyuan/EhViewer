@@ -68,6 +68,9 @@ class SharedGalleryIntegrationTest {
             it[blackDarkTheme] = false
             it[harmonizeCategoryColor] = true
             it[defaultFavSlot] = -2
+            it[listMode] = 0
+            it[listThumbSize] = 40
+            it[thumbColumns] = 3
         }
         try {
             // A preference-only setup does not reset Android's retained application night mode.
@@ -127,10 +130,11 @@ class SharedGalleryIntegrationTest {
                 fun capturePage(name: String) {
                     val output = requireNotNull(context.getExternalFilesDir("kmp-ui-settings")).apply { mkdirs() }
                     instrumentation.waitForIdleSync()
+                    // Match the v1.15.10 reference's hierarchy-then-frame capture order.
+                    device.dumpWindowHierarchy(File(output, "$name.xml"))
                     instrumentation.uiAutomation.executeShellCommand("screencap -p").use { descriptor ->
                         FileInputStream(descriptor.fileDescriptor).use { input -> File(output, "$name.png").outputStream().use(input::copyTo) }
                     }
-                    device.dumpWindowHierarchy(File(output, "$name.xml"))
                 }
                 fun captureSettingsRoot(theme: String) {
                     listOf("EH", "Download", "Privacy", "Advanced", "About").forEach {
@@ -167,6 +171,10 @@ class SharedGalleryIntegrationTest {
                 instrumentation.waitForIdleSync()
                 assertTrue(device.wait(Until.hasObject(By.text("You won't be able to add favorite notes if you enable this")), 5_000))
                 capturePage("eh-dark")
+                device.clickSharedControl("Launch page")
+                assertTrue(device.wait(Until.hasObject(By.text("What's hot")), 5_000))
+                capturePage("launch-page-menu")
+                device.pressBack()
                 device.clickSharedControl("Default favorites collection")
                 capturePage("default-favorite-dialog")
                 device.clickSharedControl("Local Favorites")
@@ -190,6 +198,17 @@ class SharedGalleryIntegrationTest {
                 runBlocking { withTimeout(5_000) { while (Settings.snapshot()[Settings.blackDarkTheme]) delay(25) } }
                 device.clickSharedControl("Harmonize category color for Dynamic Color")
                 runBlocking { withTimeout(5_000) { while (!Settings.snapshot()[Settings.harmonizeCategoryColor]) delay(25) } }
+                device.clickSharedControl("List mode")
+                device.clickSharedControl("Thumb")
+                runBlocking { withTimeout(5_000) { while (Settings.snapshot()[Settings.listMode] != 1) delay(25) } }
+                assertTrue("Thumb mode keeps the column slider", device.wait(Until.hasObject(By.text("Thumb columns")), 5_000))
+                assertTrue("Thumb mode hides the detail-only width", device.wait(Until.gone(By.text("Detail width")), 5_000))
+                capturePage("eh-thumb-mode")
+                device.clickSharedControl("List mode")
+                device.clickSharedControl("Detail")
+                runBlocking { withTimeout(5_000) { while (Settings.snapshot()[Settings.listMode] != 0) delay(25) } }
+                assertTrue(device.wait(Until.hasObject(By.text("Thumb size in detail mode")), 5_000))
+                capturePage("eh-detail-mode")
                 device.pressBack()
                 device.pressBack()
                 searchIsVisible("settings-return")
@@ -197,6 +216,15 @@ class SharedGalleryIntegrationTest {
                 assertTrue("Original account settings did not open", device.wait(Until.hasObject(By.text(context.getString(com.ehviewer.core.i18n.R.string.settings_eh))), 10_000))
                 device.pressBack()
                 searchIsVisible("account-return")
+                device.openSharedDestination("Settings")
+                device.clickSharedControl("EH")
+                device.clickSharedControl("Launch page")
+                device.clickSharedControl("Subscription")
+                runBlocking { withTimeout(5_000) { while (Settings.snapshot()[Settings.launchPage] != 1) delay(25) } }
+                // Verified on the installed v1.15.10 APK: the original navigation graph
+                // immediately replaces Settings with Subscription when the launch root changes.
+                assertTrue("Launch change did not exit Settings", device.wait(Until.gone(By.text("Launch page")), 10_000))
+                assertTrue("The original Subscription route did not open", device.wait(Until.hasObject(By.text("Subscription")), 10_000))
             }
         } finally {
             device.unfreezeRotation()
@@ -211,6 +239,9 @@ class SharedGalleryIntegrationTest {
                 restore(blackDarkTheme)
                 restore(harmonizeCategoryColor)
                 restore(defaultFavSlot)
+                restore(listMode)
+                restore(listThumbSize)
+                restore(thumbColumns)
             }
             runBlocking { withContext(Dispatchers.Main) { updateWhenThemeChanges(saved[Settings.theme]) } }
             Settings.appLinkVerifyTip = linkTip

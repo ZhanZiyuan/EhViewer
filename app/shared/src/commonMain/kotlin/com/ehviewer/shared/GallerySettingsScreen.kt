@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import com.ehviewer.core.domain.AppLanguageException
 import com.ehviewer.core.domain.GalleryListDensity
 import com.ehviewer.core.domain.GalleryListPreferences
+import com.ehviewer.core.domain.GalleryListPresentation
+import com.ehviewer.core.domain.GalleryListPresentationPreferences
 import com.ehviewer.core.domain.GalleryNetworkPreferences
 import com.ehviewer.core.domain.download.GalleryStorageSettings
 import com.ehviewer.shared.settings.GalleryAppearanceException
@@ -87,12 +89,16 @@ internal fun GallerySettingsScreen(
     onRetryAppearance: () -> Unit,
     onBack: () -> Unit,
     favoriteSettings: (@Composable () -> Unit)? = null,
+    launchSettings: (@Composable () -> Unit)? = null,
     storageSettings: GalleryStorageSettings? = null,
     onPlatformStorageSettings: (() -> Unit)? = null,
     listPreferences: GalleryListPreferences? = null,
     listDensity: GalleryListDensity? = null,
     listFailed: Boolean = false,
     onListChanged: (GalleryListDensity) -> Unit = {},
+    presentationPreferences: GalleryListPresentationPreferences? = null,
+    presentation: GalleryListPresentation? = null,
+    onPresentationChanged: (GalleryListPresentation) -> Unit = {},
     showComments: Boolean? = null,
     onCommentsChanged: (Boolean) -> Unit = {},
     onRetryList: () -> Unit = {},
@@ -231,7 +237,15 @@ internal fun GallerySettingsScreen(
                         title = { Text(galleryString(Res.string.gallery_settings_harmonize_category_color)) },
                         enabled = appearanceEnabled,
                     )
-                    listPreferences?.let { GalleryListSettings(it, listDensity, showComments, listFailed, onListChanged, onCommentsChanged, onRetryList) }
+                    launchSettings?.invoke()
+                    listPreferences?.let {
+                        GalleryListSettings(
+                            it, listDensity, showComments, listFailed, onListChanged, onCommentsChanged, onRetryList,
+                            presentationPreferences = presentationPreferences,
+                            presentation = presentation,
+                            onPresentationChanged = onPresentationChanged,
+                        )
+                    }
                 }
                 if (page == GallerySettingsPage.ADVANCED) networkPreferences?.let { Column(Modifier.padding(16.dp)) { GalleryNetworkSettings(it) } }
                 if (page == GallerySettingsPage.DOWNLOAD) GalleryStorageSettingsSection(storageSettings, onPlatformStorageSettings)

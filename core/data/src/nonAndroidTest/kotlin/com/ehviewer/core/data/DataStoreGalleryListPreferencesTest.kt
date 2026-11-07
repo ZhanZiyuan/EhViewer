@@ -6,8 +6,14 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.ehviewer.core.domain.GalleryLaunchPage
+import com.ehviewer.core.domain.GalleryLaunchPreferencesException
+import com.ehviewer.core.domain.GalleryLaunchSettings
 import com.ehviewer.core.domain.GalleryListDensity
+import com.ehviewer.core.domain.GalleryListMode
 import com.ehviewer.core.domain.GalleryListPreferencesException
+import com.ehviewer.core.domain.GalleryListPresentation
+import com.ehviewer.core.domain.GalleryToplistPeriod
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -36,6 +42,70 @@ class DataStoreGalleryListPreferencesTest {
     private val files = FileSystem.SYSTEM
     private val schema = intPreferencesKey("schema")
     private val density = stringPreferencesKey("density")
+
+    @Test fun originalLaunchPageAndPeriodSurviveAFileReopenAndAnUnknownChoiceIsPreserved() = runTest {
+        val owned = ownedDatabaseFile()
+        val path = (owned.path + ".preferences_pb").toPath()
+        try {
+            val first = OwnedStore(path)
+            try {
+                assertEquals(GalleryLaunchSettings(), first.layout.launchSettings())
+                first.layout.setShowComments(false)
+                first.layout.setLaunchPage(GalleryLaunchPage.TOPLIST)
+                first.layout.setToplistPeriod(GalleryToplistPeriod.PAST_MONTH)
+            } finally {
+                first.close()
+            }
+            val reopened = OwnedStore(path)
+            try {
+                assertEquals(GalleryLaunchSettings(GalleryLaunchPage.TOPLIST, GalleryToplistPeriod.PAST_MONTH), reopened.layout.launchSettings())
+                assertEquals(false, reopened.layout.showComments())
+                assertEquals(3, reopened.data.data.first()[intPreferencesKey("launch_page_2")])
+                assertEquals("13", reopened.data.data.first()[stringPreferencesKey("recent_toplist")])
+                reopened.data.edit { it[intPreferencesKey("launch_page_2")] = 17 }
+                val before = files.read(path) { readByteArray() }
+                assertFailsWith<GalleryLaunchPreferencesException> { reopened.layout.setLaunchPage(GalleryLaunchPage.HOMEPAGE) }
+                assertContentEquals(before, files.read(path) { readByteArray() })
+            } finally {
+                reopened.close()
+            }
+        } finally {
+            owned.cleanup()
+        }
+    }
+
+    @Test fun listPresentationReopensWithoutReplacingTheExistingWidthOrCommentPreference() = runTest {
+        val owned = ownedDatabaseFile()
+        val path = (owned.path + ".preferences_pb").toPath()
+        try {
+            val first = OwnedStore(path)
+            try {
+                first.layout.setDensity(GalleryListDensity.COMFORTABLE)
+                first.layout.setShowComments(false)
+                assertEquals(GalleryListPresentation(), first.layout.presentation())
+                first.layout.setMode(GalleryListMode.THUMBNAIL)
+                first.layout.setDetailThumbnailSize(60)
+                first.layout.setThumbnailColumns(8)
+            } finally {
+                first.close()
+            }
+            val second = OwnedStore(path)
+            try {
+                assertEquals(GalleryListPresentation(GalleryListMode.THUMBNAIL, 60, 8), second.layout.presentation())
+                assertEquals(GalleryListDensity.COMFORTABLE, second.layout.density())
+                assertEquals(false, second.layout.showComments())
+                second.data.edit { it[intPreferencesKey("thumb_columns")] = 11 }
+                val before = files.read(path) { readByteArray() }
+                assertFailsWith<GalleryListPreferencesException> { second.layout.presentation() }
+                assertFailsWith<GalleryListPreferencesException> { second.layout.setThumbnailColumns(3) }
+                assertContentEquals(before, files.read(path) { readByteArray() })
+            } finally {
+                second.close()
+            }
+        } finally {
+            owned.cleanup()
+        }
+    }
 
     @Test fun actualFileReopenRetainsChoiceAndRestoresThePreviousCompactDefault() = runTest {
         val owned = ownedDatabaseFile()

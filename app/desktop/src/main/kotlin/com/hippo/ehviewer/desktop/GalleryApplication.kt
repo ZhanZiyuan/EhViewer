@@ -117,7 +117,7 @@ fun galleryApplication(initialDocument: Path? = null) {
                             }
                         },
                     )
-                }, browserFactory = browsers::create, storageSettings = downloadStorage, listPreferences = listPreferences, favoriteControls = favoriteControls, initialLocalLibrary = initialDocument != null)
+                }, browserFactory = browsers::create, storageSettings = downloadStorage, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = listPreferences, favoriteControls = favoriteControls, initialLocalLibrary = initialDocument != null)
             }
         }
     } finally {

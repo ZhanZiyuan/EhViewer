@@ -44,7 +44,7 @@ fun AnimatedVisibilityScope.SharedGalleriesScreen(navigator: DestinationsNavigat
     key(site, signedIn) {
         val library = remember { AndroidGalleryLibrary(site == EhUrl.SITE_EX) }
         CompositionLocalProvider(LocalUriHandler provides rememberGalleryBrowserHandler()) {
-            GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, language, networkPreferences = networkPreferences, listPreferences = listPreferences, favoriteControls = favoriteControls, onPlatformStorageSettings = { navigator.navigate(DownloadScreenDestination) }, onPlatformDownloadOpen = { gid ->
+            GalleryLibraryScreen(library, library.readerState, appearance, EhDB.sharedHistory, downloads, language, networkPreferences = networkPreferences, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = listPreferences, favoriteControls = favoriteControls, onPlatformStorageSettings = { navigator.navigate(DownloadScreenDestination) }, onPlatformDownloadOpen = { gid ->
                 with(navigator) { navToReader(checkNotNull(DownloadManager.getDownloadInfo(gid)).galleryInfo) }
             }, onBack = { navigator.popBackStack() }, onAccount = { navigator.navigate(EhScreenDestination) }, platformTheme = { dark, content -> EhTheme(dark, content) }, browseOnEntry = true)
         }

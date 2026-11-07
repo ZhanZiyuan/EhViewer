@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,9 +59,9 @@ import kotlinx.coroutines.CancellationException
  * title, then uploader/favorite, rating/language/pages and category/posted rows in labelLarge.
  */
 @Composable
-internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCache<CoilImage>, modifier: Modifier = Modifier, downloaded: Boolean = false, onOpen: () -> Unit) {
+internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCache<CoilImage>, modifier: Modifier = Modifier, downloaded: Boolean = false, thumbnailSize: Int = 40, onOpen: () -> Unit) {
     val cover = gallery.thumbKey?.takeIf { it.isNotBlank() }?.let { GalleryCoverRequest(gallery.gid, gallery.token, it) }
-    val height = galleryListCardHeight(LocalDensity.current)
+    val height = galleryListCardHeight(LocalDensity.current, thumbnailSize)
     OutlinedCard(onClick = onOpen, modifier = modifier.fillMaxWidth().height(height), border = galleryCrystalBorder()) {
         Row {
             Card(Modifier.aspectRatio(GALLERY_COVER_RATIO)) { GalleryCoverImage(cover, cache) }
@@ -100,15 +101,18 @@ internal fun GallerySearchCard(gallery: BaseGalleryInfo, cache: GalleryCoverCach
 }
 
 @Composable
-internal fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCoverCache<CoilImage>) {
+internal fun GalleryCoverImage(request: GalleryCoverRequest?, cache: GalleryCoverCache<CoilImage>, onDecoded: ((Int, Int) -> Unit)? = null) {
     var image by remember(request, cache) { mutableStateOf<CoilImage?>(null) }
     var failed by remember(request, cache) { mutableStateOf(false) }
     var attempt by remember(request, cache) { mutableIntStateOf(0) }
+    val decoded by rememberUpdatedState(onDecoded)
     LaunchedEffect(request, cache, attempt) {
         if (request == null) return@LaunchedEffect
         failed = false
         try {
-            image = cache.get(request).value
+            val loaded = cache.get(request).value
+            image = loaded
+            loaded?.let { decoded?.invoke(it.width, it.height) }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: GalleryRequestException) {

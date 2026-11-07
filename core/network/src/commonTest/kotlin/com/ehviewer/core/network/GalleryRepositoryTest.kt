@@ -1,5 +1,6 @@
 package com.ehviewer.core.network
 
+import com.ehviewer.core.domain.GalleryToplistPeriod
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.gallery.GalleryFailure
 import com.ehviewer.core.network.gallery.GalleryListDecoder
@@ -37,6 +38,49 @@ class GalleryRepositoryTest {
     private val decoder = GalleryListDecoder { bytes ->
         assertEquals("test-html", bytes.decodeToString())
         result
+    }
+
+    @Test fun launchFeedsPreserveTheOriginalHostQueryAndPaginationRules() = runTest {
+        val seen = mutableListOf<Url>()
+        val engine = MockEngine { request ->
+            seen += request.url
+            respond("test-html")
+        }
+        val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+        try {
+            val restricted = GalleryRepository(client, decoder, restricted = true)
+            assertEquals(result, restricted.subscription("owned fixture", "42", previous = true))
+            assertEquals(result.copy(next = null), restricted.whatsHot())
+            assertEquals(result.copy(next = "2"), restricted.toplist(GalleryToplistPeriod.PAST_YEAR))
+            assertEquals(result.copy(prev = "199", next = null), restricted.toplist(GalleryToplistPeriod.YESTERDAY, 200))
+            assertFailsWith<IllegalArgumentException> { restricted.toplist(GalleryToplistPeriod.ALL_TIME, 201) }
+            assertEquals(4, seen.size)
+            assertEquals(listOf("exhentai.org", "exhentai.org", "e-hentai.org", "e-hentai.org"), seen.map { it.host })
+            assertEquals(listOf("/watched", "/popular", "/toplist.php", "/toplist.php"), seen.map { it.encodedPath })
+            assertEquals("owned fixture", seen[0].parameters["f_search"])
+            assertEquals("42", seen[0].parameters["prev"])
+            assertTrue(seen[1].parameters.isEmpty())
+            assertEquals("12", seen[2].parameters["tl"])
+            assertNull(seen[2].parameters["p"])
+            assertEquals("15", seen[3].parameters["tl"])
+            assertEquals("199", seen[3].parameters["p"])
+        } finally {
+            client.close()
+            engine.close()
+        }
+    }
+
+    @Test fun anEmptySubscriptionIsAnActionableWarningOnlyOnTheWatchedRoute() = runTest {
+        val engine = MockEngine { respond("owned warning fixture") }
+        val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+        try {
+            val repository = GalleryRepository(client, GalleryListDecoder { GallerySearchResult(null, null, emptyList(), GalleryQueryError.NO_WATCHED_TAGS) })
+            assertEquals(GalleryFailure.NO_WATCHED_TAGS, assertFailsWith<GalleryRequestException> { repository.subscription() }.failure)
+            assertEquals(GalleryFailure.INVALID_RESPONSE, assertFailsWith<GalleryRequestException> { repository.search() }.failure)
+        } finally {
+            client.close()
+            engine.close()
+        }
     }
 
     @Test fun recognizedQueryWarningsRemainTypedErrorsAndAnEditedQueryCanRecover() = runTest {
