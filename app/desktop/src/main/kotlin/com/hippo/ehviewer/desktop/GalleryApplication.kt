@@ -27,6 +27,7 @@ import com.ehviewer.core.network.archive.NativeArchiveBridge
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
 import com.ehviewer.core.network.session.NativeSessionVault
 import com.ehviewer.shared.ArchiveLibraryScreen
+import com.ehviewer.shared.GalleryBuildInfo
 import com.ehviewer.shared.GalleryFavoriteControls
 import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.reader.ReaderStateRepository
@@ -117,7 +118,7 @@ fun galleryApplication(initialDocument: Path? = null) {
                             }
                         },
                     )
-                }, browserFactory = browsers::create, storageSettings = downloadStorage, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = listPreferences, favoriteControls = favoriteControls, initialLocalLibrary = initialDocument != null)
+                }, browserFactory = browsers::create, storageSettings = downloadStorage, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = listPreferences, favoriteControls = favoriteControls, initialLocalLibrary = initialDocument != null, buildInfo = GalleryBuildInfo(version))
             }
         }
     } finally {

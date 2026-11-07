@@ -216,7 +216,6 @@
     <string name="gallery_storage_help">此上限仅统计已保存的下载图片，不含临时文件、下载中的图片和导入书籍。不会删除现有下载。达到上限后，请提高上限并重试下载。</string>
     <string name="gallery_storage_limit_mib">上限 %1$d MiB</string>
     <string name="gallery_storage_loading">正在读取下载存储…</string>
-    <string name="gallery_storage_platform">打开 Android 下载存储设置</string>
     <string name="gallery_storage_reload">刷新存储用量</string>
     <string name="gallery_storage_save_failed">无法保存存储上限，请重新加载后重试。</string>
     <string name="gallery_storage_unavailable">下载存储不可用。</string>
@@ -356,4 +355,19 @@
     <string name="gallery_settings_list_mode_thumb">缩略图</string>
     <string name="gallery_settings_detail_thumbnail_size">详情模式下缩略图大小</string>
     <string name="gallery_settings_thumbnail_columns">缩略图列数</string>
+    <string name="gallery_home_actions">图库操作</string>
+    <string name="gallery_home_actions_close">关闭图库操作</string>
+    <string name="gallery_home_go_to">跳页</string>
+    <string name="gallery_home_go_to_hint">第 %1$d 页，共 %2$d 页</string>
+    <string name="gallery_home_invalid_number">非法数字</string>
+    <string name="gallery_home_last_page">最后一页</string>
+    <string name="gallery_home_ok">确定</string>
+    <string name="gallery_home_out_of_range">越界</string>
+    <string name="gallery_home_refresh">刷新</string>
+    <string name="gallery_home_shuffle">随机跳转</string>
+    <string name="gallery_about_author">作者</string>
+    <string name="gallery_about_build_version">构建版本</string>
+    <string name="gallery_about_declaration">EhViewer 与 E-Hentai.org 没有任何关联</string>
+    <string name="gallery_about_latest_release">最新版本</string>
+    <string name="gallery_about_source">源代码</string>
 </resources>

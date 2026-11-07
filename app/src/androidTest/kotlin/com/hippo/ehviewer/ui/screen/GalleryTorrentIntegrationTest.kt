@@ -130,13 +130,13 @@ class GalleryTorrentIntegrationTest {
                         }
                     }
                 }
-                requireNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000)).text = limitQuery
+                device.setSharedSearchText(limitQuery)
                 device.submitSharedSearch()
                 visible(limitMessage)
-                assertEquals(limitQuery, requireNotNull(device.findObject(By.clazz("android.widget.EditText"))).text)
+                assertTrue(device.wait(Until.hasObject(By.clazz("android.widget.EditText").text(limitQuery)), 5_000))
                 assertFalse(device.hasObject(By.text("The site returned a page that could not be read.")))
                 capture("query-keyword-limit.png")
-                requireNotNull(device.findObject(By.clazz("android.widget.EditText"))).text = "owned torrent"
+                device.setSharedSearchText("owned torrent")
                 device.submitSharedSearch()
                 visible(title)
                 device.clickSharedControl(title)

@@ -216,7 +216,6 @@
     <string name="gallery_storage_help">This limit covers saved download images. Temporary files, in-progress images and imported books are excluded. Existing downloads are never deleted. If the limit is reached, increase it and retry the download.</string>
     <string name="gallery_storage_limit_mib">%1$d MiB limit</string>
     <string name="gallery_storage_loading">Loading download storage…</string>
-    <string name="gallery_storage_platform">Open Android download storage settings</string>
     <string name="gallery_storage_reload">Refresh storage usage</string>
     <string name="gallery_storage_save_failed">The storage limit could not be saved. Reload before trying again.</string>
     <string name="gallery_storage_unavailable">Download storage is unavailable.</string>
@@ -359,4 +358,19 @@
     <string name="gallery_settings_list_mode_thumb">Thumb</string>
     <string name="gallery_settings_detail_thumbnail_size">Thumb size in detail mode</string>
     <string name="gallery_settings_thumbnail_columns">Thumb columns</string>
+    <string name="gallery_home_actions">Gallery actions</string>
+    <string name="gallery_home_actions_close">Close gallery actions</string>
+    <string name="gallery_home_go_to">Go to</string>
+    <string name="gallery_home_go_to_hint">Page %1$d, total %2$d pages</string>
+    <string name="gallery_home_invalid_number">Invalid number</string>
+    <string name="gallery_home_last_page">Last page</string>
+    <string name="gallery_home_ok">OK</string>
+    <string name="gallery_home_out_of_range">Out of range</string>
+    <string name="gallery_home_refresh">Refresh</string>
+    <string name="gallery_home_shuffle">Shuffle</string>
+    <string name="gallery_about_author">Author</string>
+    <string name="gallery_about_build_version">Build version</string>
+    <string name="gallery_about_declaration">EhViewer is not affiliated with E-Hentai.org in any way</string>
+    <string name="gallery_about_latest_release">Latest release</string>
+    <string name="gallery_about_source">Source</string>
 </resources>

@@ -214,7 +214,6 @@
     <string name="gallery_storage_help">保存済みのダウンロード画像にのみ適用します。一時ファイル、ダウンロード中の画像、インポートした本は含みません。既存の画像は削除しません。上限に達したら上限を増やしてダウンロードを再試行してください。</string>
     <string name="gallery_storage_limit_mib">上限 %1$d MiB</string>
     <string name="gallery_storage_loading">保存領域を読み込み中…</string>
-    <string name="gallery_storage_platform">Android のダウンロード保存設定を開く</string>
     <string name="gallery_storage_reload">使用量を更新</string>
     <string name="gallery_storage_save_failed">上限を保存できませんでした。再読み込みしてから試してください。</string>
     <string name="gallery_storage_unavailable">保存領域を利用できません。</string>
@@ -354,4 +353,19 @@
     <string name="gallery_settings_list_mode_thumb">サムネイル</string>
     <string name="gallery_settings_detail_thumbnail_size">詳細モードのサムネイルの大きさ</string>
     <string name="gallery_settings_thumbnail_columns">サムネイルのカラム数</string>
+    <string name="gallery_home_actions">ギャラリー操作</string>
+    <string name="gallery_home_actions_close">ギャラリー操作を閉じる</string>
+    <string name="gallery_home_go_to">ページに移動</string>
+    <string name="gallery_home_go_to_hint">ページ: %1$d - 合計: %2$d ページ</string>
+    <string name="gallery_home_invalid_number">無効な数字です</string>
+    <string name="gallery_home_last_page">最後のページ</string>
+    <string name="gallery_home_ok">OK</string>
+    <string name="gallery_home_out_of_range">範囲外</string>
+    <string name="gallery_home_refresh">更新</string>
+    <string name="gallery_home_shuffle">ランダム</string>
+    <string name="gallery_about_author">作者</string>
+    <string name="gallery_about_build_version">ビルドバージョン</string>
+    <string name="gallery_about_declaration">EhViewer は E-Hentai.org とは一切関係ありません</string>
+    <string name="gallery_about_latest_release">最新リリース</string>
+    <string name="gallery_about_source">ソース</string>
 </resources>

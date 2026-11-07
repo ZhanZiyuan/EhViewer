@@ -519,6 +519,42 @@ class GalleryHomepageTest {
         }
     }
 
+    @Test fun originalHomeActionsUseTheCommittedListingAndCloseWithoutUnwantedRequests() = english {
+        Library().use { library ->
+            View(library).use { view ->
+                fun awaitAction(label: String) = view.await(label) {
+                    view.all().any { label in it.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() }
+                }
+                fun openAction(label: String) {
+                    awaitAction("Gallery actions")
+                    view.click("Gallery actions")
+                    awaitAction(label)
+                    view.click(label)
+                }
+                view.await("Homepage")
+                view.query("submitted title")
+                view.click("Search")
+                view.await("submitted title")
+                view.query("unfinished draft")
+                openAction("Go to")
+                view.await("Cancel")
+                view.click("Cancel")
+                view.await("date dialog to close") { view.text("Cancel") == null }
+                assertEquals(2, library.requests.size)
+                openAction("Last page")
+                view.await("last-page request") { library.requests.size == 3 }
+                assertEquals("1", library.requests.last().parameters["prev"])
+                assertEquals("submitted title", library.requests.last().parameters["f_search"])
+                view.await("submitted title")
+                openAction("Refresh")
+                view.await("refresh request") { library.requests.size == 4 }
+                assertNull(library.requests.last().parameters["prev"])
+                assertNull(library.requests.last().parameters["seek"])
+                assertEquals("submitted title", library.requests.last().parameters["f_search"])
+            }
+        }
+    }
+
     @Test fun originalPageCountAndReadingProgressSwitchesChangeActualGalleryCards() = english {
         Library(pageCount = 18).use { library ->
             val preferences = ListingPreferences()

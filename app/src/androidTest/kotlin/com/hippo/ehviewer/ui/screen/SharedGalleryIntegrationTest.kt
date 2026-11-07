@@ -17,6 +17,7 @@ import com.ehviewer.core.domain.reader.ReaderPreferences
 import com.ehviewer.core.domain.reader.ReaderStateException
 import com.ehviewer.core.domain.reader.ReadingDirection
 import com.ehviewer.core.domain.reader.ReadingLayout
+import com.ehviewer.core.i18n.R
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.network.gallery.RustGalleryDecoder
 import com.ehviewer.core.preferences.PrefDelegate
@@ -73,6 +74,7 @@ class SharedGalleryIntegrationTest {
             it[thumbColumns] = 3
             it[showGalleryPages] = true
             it[showReadingProgress] = false
+            it[enabledSecurity] = false
         }
         try {
             // A preference-only setup does not reset Android's retained application night mode.
@@ -212,10 +214,37 @@ class SharedGalleryIntegrationTest {
                 assertTrue(device.wait(Until.hasObject(By.text("Thumb size in detail mode")), 5_000))
                 capturePage("eh-detail-mode")
                 device.pressBack()
+                fun originalPreference(label: Int) {
+                    val text = context.getString(label)
+                    assertTrue("Missing original Android preference: $text", device.wait(Until.hasObject(By.text(text)), 5_000))
+                }
+                device.clickSharedControl("Download")
+                originalPreference(R.string.settings_download_download_location)
+                originalPreference(R.string.settings_download_concurrency)
+                capturePage("download-original")
+                device.pressBack()
+                device.clickSharedControl("Privacy")
+                originalPreference(R.string.settings_privacy_require_unlock)
+                originalPreference(R.string.settings_privacy_secure)
+                capturePage("privacy-original")
+                device.clickSharedControl(context.getString(R.string.clear_search_history))
+                originalPreference(R.string.clear_search_history_confirm)
+                device.pressBack()
+                originalPreference(R.string.clear_search_history)
+                device.pressBack()
+                device.clickSharedControl("Advanced")
+                assertTrue("The shared language setting must remain available", device.wait(Until.hasObject(By.text("App language")), 5_000))
+                capturePage("advanced-shared")
+                device.pressBack()
+                device.clickSharedControl("About")
+                originalPreference(R.string.settings_about_version)
+                originalPreference(R.string.backup_before_update)
+                capturePage("about-original")
+                device.pressBack()
                 device.pressBack()
                 searchIsVisible("settings-return")
                 device.openSharedDestination("Account")
-                assertTrue("Original account settings did not open", device.wait(Until.hasObject(By.text(context.getString(com.ehviewer.core.i18n.R.string.settings_eh))), 10_000))
+                assertTrue("Original account settings did not open", device.wait(Until.hasObject(By.text(context.getString(R.string.settings_eh))), 10_000))
                 device.pressBack()
                 searchIsVisible("account-return")
                 device.openSharedDestination("Settings")

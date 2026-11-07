@@ -16,7 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import ehviewer.app.shared.generated.resources.Res
@@ -26,12 +25,10 @@ import ehviewer.app.shared.generated.resources.gallery_settings_about
 import ehviewer.app.shared.generated.resources.gallery_settings_advanced
 import ehviewer.app.shared.generated.resources.gallery_settings_download
 import ehviewer.app.shared.generated.resources.gallery_settings_eh
-import ehviewer.app.shared.generated.resources.gallery_settings_license
 import ehviewer.app.shared.generated.resources.gallery_settings_privacy
-import ehviewer.app.shared.generated.resources.gallery_settings_source
 import org.jetbrains.compose.resources.StringResource
 
-internal enum class GallerySettingsPage(val title: StringResource) {
+enum class GallerySettingsPage(internal val title: StringResource) {
     EH(Res.string.gallery_settings_eh),
     DOWNLOAD(Res.string.gallery_settings_download),
     PRIVACY(Res.string.gallery_settings_privacy),
@@ -69,12 +66,4 @@ internal fun GalleryPreferenceLink(title: String, icon: ImageVector, onClick: ()
 internal fun GalleryPrivacyDestinations(onAccount: (() -> Unit)?, onHistory: (() -> Unit)?) {
     onAccount?.let { GalleryPreferenceLink(galleryString(Res.string.gallery_account), GalleryIcons.AccountCircle, it) }
     onHistory?.let { GalleryPreferenceLink(galleryString(Res.string.gallery_history), GalleryIcons.History, it) }
-}
-
-@Composable
-internal fun GalleryAboutLinks() {
-    val uri = LocalUriHandler.current
-    Text("EhViewer", style = MaterialTheme.typography.headlineSmall)
-    GalleryPreferenceLink(galleryString(Res.string.gallery_settings_source), GalleryIcons.Info) { uri.openUri("https://github.com/ZhanZiyuan/EhViewer") }
-    GalleryPreferenceLink(galleryString(Res.string.gallery_settings_license), GalleryIcons.Info) { uri.openUri("https://github.com/ZhanZiyuan/EhViewer/blob/main/LICENSE") }
 }

@@ -27,6 +27,7 @@ import com.ehviewer.core.database.ownedRoomDb
 import com.ehviewer.core.network.GallerySession
 import com.ehviewer.shared.AppleGalleryLoginBrowser
 import com.ehviewer.shared.ArchiveLibraryScreen
+import com.ehviewer.shared.GalleryBuildInfo
 import com.ehviewer.shared.GalleryFavoriteControls
 import com.ehviewer.shared.GallerySearchScreen
 import com.ehviewer.shared.galleryViewController
@@ -202,9 +203,14 @@ class EhViewerSceneDelegate : UIResponder, UIWindowSceneDelegateProtocol {
                     }
                 }
                 if (languageVerified) {
+                    val buildInfo = remember {
+                        val bundle = NSBundle.mainBundle
+                        val version = bundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String ?: "development"
+                        GalleryBuildInfo(version, bundle.objectForInfoDictionaryKey("CFBundleVersion") as? String)
+                    }
                     GallerySearchScreen(session, readerState, appearance, history, downloads, language, storageSettings = downloadStorage, listPreferences = listPreferences, presentationPreferences = listPreferences, launchPreferences = listPreferences, favoriteControls = favoriteControls, backgroundDownloadsNote = true, archiveContent = { back ->
                         ArchiveLibraryScreen(archives, session, pickAndImport = { archivePicker.pickAndImport(archives) }, pickAndImportDirectory = { archivePicker.pickAndImport(archives, directory = true) }, pickAndExport = { book -> archivePicker.pickAndExport(archives, book) }, readingState = { book -> ReaderStateRepository(AppleSessionVault("${applicationDirectory()}/archive-reading-state/${book.id}")) }, onBack = back, shareComic = { book -> archiveShare.share(archives, book) })
-                    }, browserFactory = ::AppleGalleryLoginBrowser) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
+                    }, browserFactory = ::AppleGalleryLoginBrowser, buildInfo = buildInfo) { if (startupRegression) NSLog("EhViewerM1:compose-ready") }
                 }
             }
             makeKeyAndVisible()

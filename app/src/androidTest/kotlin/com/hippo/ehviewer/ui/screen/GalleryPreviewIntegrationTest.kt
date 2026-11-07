@@ -224,7 +224,23 @@ class GalleryPreviewIntegrationTest {
                 for (label in listOf("Previous", "Reload page", "Sort this page", "Next")) {
                     assertFalse("Unexpected homepage footer: $label", device.hasObject(By.text(label)))
                 }
+                fun homeAction(label: String) = checkNotNull(device.wait(Until.findObject(By.desc(label)), 5_000)) {
+                    "Missing homepage action: $label"
+                }
+                val beforeOpeningActions = roots.size
+                val trigger = homeAction("Gallery actions")
+                assertFalse("Collapsed homepage actions must hide the action buttons", device.hasObject(By.desc("Last page")))
                 assertTrue(device.takeScreenshot(File(homeCaptures, "homepage-without-footer.png")))
+                trigger.click()
+                listOf("Shuffle", "Refresh", "Go to", "Last page").forEach { homeAction(it) }
+                device.waitForIdle()
+                assertTrue(device.takeScreenshot(File(homeCaptures, "homepage-expanded-actions.png")))
+                homeAction("Go to").click()
+                visible("Go to")
+                assertTrue(device.takeScreenshot(File(homeCaptures, "homepage-go-to-date.png")))
+                device.clickSharedControl("Cancel")
+                homeAction("Gallery actions")
+                assertEquals("Opening and cancelling a jump must retain the loaded search", beforeOpeningActions, roots.size)
                 device.clickSharedControl(title)
                 visible("alice in wonderland")
                 assertTrue(device.hasObject(By.desc("parody:alice in wonderland")))

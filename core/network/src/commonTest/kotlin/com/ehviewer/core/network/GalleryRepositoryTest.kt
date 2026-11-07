@@ -7,6 +7,7 @@ import com.ehviewer.core.network.gallery.GalleryListDecoder
 import com.ehviewer.core.network.gallery.GalleryQueryError
 import com.ehviewer.core.network.gallery.GalleryRepository
 import com.ehviewer.core.network.gallery.GalleryRequestException
+import com.ehviewer.core.network.gallery.GallerySearchFilters
 import com.ehviewer.core.network.gallery.GallerySearchResult
 import com.ehviewer.core.network.session.PersistentCookieStorage
 import com.ehviewer.core.network.session.SessionVault
@@ -64,6 +65,40 @@ class GalleryRepositoryTest {
             assertNull(seen[2].parameters["p"])
             assertEquals("15", seen[3].parameters["tl"])
             assertEquals("199", seen[3].parameters["p"])
+        } finally {
+            client.close()
+            engine.close()
+        }
+    }
+
+    @Test fun originalHomeShortcutsUseDistinctValidatedLocations() = runTest {
+        val seen = mutableListOf<Url>()
+        val engine = MockEngine { request ->
+            seen += request.url
+            respond("test-html")
+        }
+        val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
+        try {
+            val repository = GalleryRepository(client, decoder)
+            val filters = GallerySearchFilters(includedCategories = 256)
+            repository.search("owned title", filters = filters, range = 47)
+            repository.subscription("owned title", cursor = "2", filters = filters, seekDate = "2024-02-29")
+            repository.uploader("Owned Uploader", cursor = "1", previous = true)
+            repository.tag("language:english", cursor = "2", seekDate = "2024-02-29")
+            assertEquals("47", seen[0].parameters["range"])
+            assertEquals("owned title", seen[0].parameters["f_search"])
+            assertEquals("767", seen[0].parameters["f_cats"])
+            assertNull(seen[0].parameters["next"])
+            assertEquals("/watched", seen[1].encodedPath)
+            assertEquals("2", seen[1].parameters["next"])
+            assertEquals("2024-02-29", seen[1].parameters["seek"])
+            assertNull(seen[1].parameters["range"])
+            assertEquals("1", seen[2].parameters["prev"])
+            assertEquals("2024-02-29", seen[3].parameters["seek"])
+            assertFailsWith<GalleryRequestException> { repository.search(cursor = "1", range = 47) }
+            assertFailsWith<GalleryRequestException> { repository.search(cursor = "2", previous = true, seekDate = "2024-02-29") }
+            assertFailsWith<GalleryRequestException> { repository.search(cursor = "2", seekDate = "2024-02-29&prev=1") }
+            assertEquals(4, seen.size)
         } finally {
             client.close()
             engine.close()
@@ -262,7 +297,7 @@ class GalleryRepositoryTest {
         }
         val client = galleryHttpClient(engine, PersistentCookieStorage(TestSessionVault()), "EhViewer-test")
         try {
-            val filters = com.ehviewer.core.network.gallery.GallerySearchFilters(minimumRating = 5)
+            val filters = GallerySearchFilters(minimumRating = 5)
             assertEquals(result, GalleryRepository(client, decoder).tag("language:english", "42", filters = filters))
             val invalidDecoder = GalleryListDecoder { result.copy(next = "../private") }
             assertEquals(GalleryFailure.INVALID_RESPONSE, assertFailsWith<GalleryRequestException> { GalleryRepository(client, invalidDecoder).tag("language:english", "42", filters = filters) }.failure)

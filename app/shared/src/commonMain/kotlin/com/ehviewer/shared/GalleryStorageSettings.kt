@@ -23,7 +23,6 @@ import ehviewer.app.shared.generated.resources.gallery_storage
 import ehviewer.app.shared.generated.resources.gallery_storage_help
 import ehviewer.app.shared.generated.resources.gallery_storage_limit_mib
 import ehviewer.app.shared.generated.resources.gallery_storage_loading
-import ehviewer.app.shared.generated.resources.gallery_storage_platform
 import ehviewer.app.shared.generated.resources.gallery_storage_reload
 import ehviewer.app.shared.generated.resources.gallery_storage_save_failed
 import ehviewer.app.shared.generated.resources.gallery_storage_unavailable
@@ -33,15 +32,14 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun GalleryStorageSettingsSection(settings: GalleryStorageSettings?, onPlatformSettings: (() -> Unit)?) {
-    if (settings == null && onPlatformSettings == null) {
+internal fun GalleryStorageSettingsSection(settings: GalleryStorageSettings?) {
+    if (settings == null) {
         Text(galleryString(Res.string.gallery_storage_unavailable))
         return
     }
     Column(Modifier.fillMaxWidth()) {
         Text(galleryString(Res.string.gallery_storage), style = MaterialTheme.typography.titleMedium)
-        onPlatformSettings?.let { TextButton(onClick = it) { Text(galleryString(Res.string.gallery_storage_platform)) } }
-        if (settings != null) DownloadBudgetSettings(settings)
+        DownloadBudgetSettings(settings)
     }
 }
 

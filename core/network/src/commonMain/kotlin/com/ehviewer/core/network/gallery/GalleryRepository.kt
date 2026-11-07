@@ -30,6 +30,7 @@ enum class GalleryFailure { AUTHENTICATION, CHALLENGE, RATE_LIMIT, OFFLINE, SERV
 class GalleryRequestException(val failure: GalleryFailure) : Exception("Gallery request failed: $failure")
 
 private val searchCursor = Regex("[0-9]+(?:-[0-9]+)?")
+private val browseDate = Regex("[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])")
 private fun validSearchCursor(cursor: String?) = cursor == null || cursor.length <= 64 && searchCursor.matches(cursor)
 
 /** Search and cursor pagination use the original service, Rust parser and shared gallery model. */
@@ -54,16 +55,16 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
         if (!validSearchCursor(page.prev) || !validSearchCursor(page.next)) invalid()
     }
 
-    suspend fun search(query: String = "", cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult = searchFeed("/", query, cursor, previous, filters)
+    suspend fun search(query: String = "", cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters(), range: Int = 0, seekDate: String? = null): GallerySearchResult = searchFeed("/", query, cursor, previous, filters, range, seekDate)
 
-    suspend fun subscription(query: String = "", cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult = searchFeed("/watched", query, cursor, previous, filters)
+    suspend fun subscription(query: String = "", cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters(), range: Int = 0, seekDate: String? = null): GallerySearchResult = searchFeed("/watched", query, cursor, previous, filters, range, seekDate)
 
-    private suspend fun searchFeed(path: String, query: String, cursor: String?, previous: Boolean, filters: GallerySearchFilters): GallerySearchResult {
+    private suspend fun searchFeed(path: String, query: String, cursor: String?, previous: Boolean, filters: GallerySearchFilters, range: Int, seekDate: String?): GallerySearchResult {
         require(query.length <= 4096 && validSearchCursor(cursor))
         val url = URLBuilder(URLProtocol.HTTPS, host).apply {
             encodedPath = path
             if (query.isNotBlank()) parameters.append("f_search", query)
-            if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
+            appendLocation(cursor, previous, range, seekDate)
             filters.appendTo(this)
         }.build()
         return listing(url)
@@ -88,18 +89,18 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
     }
 
     /** Match Android's uploader route, including names that cannot be expressed by search operators. */
-    suspend fun uploader(name: String, cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult {
+    suspend fun uploader(name: String, cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters(), range: Int = 0, seekDate: String? = null): GallerySearchResult {
         if (name.isBlank() || name.length > 256 || name in setOf(".", "..") || name.any { it.code < 32 || it.code == 127 } || !validSearchCursor(cursor)) invalid()
         val url = URLBuilder(URLProtocol.HTTPS, host).apply {
             appendPathSegments("uploader", name, encodeSlash = true)
-            if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
+            appendLocation(cursor, previous, range, seekDate)
             filters.appendTo(this)
         }.build()
         return listing(url)
     }
 
     /** Match Android's tag route without interpreting literal tag text as search operators. */
-    suspend fun tag(name: String, cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters()): GallerySearchResult {
+    suspend fun tag(name: String, cursor: String? = null, previous: Boolean = false, filters: GallerySearchFilters = GallerySearchFilters(), range: Int = 0, seekDate: String? = null): GallerySearchResult {
         if (name.length > 4096 || TagNamespace.from(name.substringBefore(':', "")) == null ||
             name.substringAfter(':', "").isBlank() || name.any { it.code < 32 || it.code == 127 } || !validSearchCursor(cursor)
         ) {
@@ -107,10 +108,19 @@ class GalleryRepository(private val client: HttpClient, private val decoder: Gal
         }
         val url = URLBuilder(URLProtocol.HTTPS, host).apply {
             appendPathSegments("tag", name, encodeSlash = true)
-            if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
+            appendLocation(cursor, previous, range, seekDate)
             filters.appendTo(this)
         }.build()
         return listing(url)
+    }
+
+    private fun URLBuilder.appendLocation(cursor: String?, previous: Boolean, range: Int, seekDate: String?) {
+        // Android's range and date shortcuts start a new listing, rather than merging a page.
+        if (range !in 0..99 || range != 0 && (cursor != null || seekDate != null)) invalid()
+        if (seekDate != null && (previous || cursor != "2" || !browseDate.matches(seekDate))) invalid()
+        if (cursor != null) parameters.append(if (previous) "prev" else "next", cursor)
+        if (range != 0) parameters.append("range", range.toString())
+        if (seekDate != null) parameters.append("seek", seekDate)
     }
 
     fun galleryUrl(gid: Long, token: String): Url {

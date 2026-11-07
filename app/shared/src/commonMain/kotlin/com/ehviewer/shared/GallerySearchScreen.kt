@@ -71,6 +71,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -136,6 +137,7 @@ import ehviewer.app.shared.generated.resources.gallery_search
 import ehviewer.app.shared.generated.resources.gallery_search_galleries
 import ehviewer.app.shared.generated.resources.gallery_search_hint
 import kotlin.math.roundToInt
+import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.map
@@ -158,6 +160,8 @@ private data class GallerySearchRequest(
     val tag: String? = null,
     val feed: GalleryLaunchPage? = null,
     val toplistPeriod: GalleryToplistPeriod = GalleryToplistPeriod.ALL_TIME,
+    val range: Int = 0,
+    val seekDate: String? = null,
 )
 
 private val searchRequestSaver = Saver<GallerySearchRequest, String>(
@@ -183,6 +187,7 @@ fun GallerySearchScreen(
     launchPreferences: GalleryLaunchPreferences? = null,
     favoriteControls: GalleryFavoriteControls? = null,
     initialLocalLibrary: Boolean = false,
+    buildInfo: GalleryBuildInfo? = null,
     onReady: () -> Unit = {},
 ) {
     DisposableEffect(session) { onDispose { session.close() } }
@@ -199,7 +204,7 @@ fun GallerySearchScreen(
     }
     GalleryLibraryScreen(library, readerState, appearance, history, downloads, language, networkPreferences = session.networkPreferences, storageSettings = storageSettings, listPreferences = listPreferences, backgroundDownloadsNote = backgroundDownloadsNote, archiveContent = archiveContent, accountContent = { changed, back ->
         GalleryAccountScreen(session, browserFactory, changed, back)
-    }, presentationPreferences = presentationPreferences, launchPreferences = launchPreferences, favoriteControls = favoriteControls, initialLocalLibrary = initialLocalLibrary, browseOnEntry = true, restoreLaunchPage = true, onReady = onReady)
+    }, presentationPreferences = presentationPreferences, launchPreferences = launchPreferences, favoriteControls = favoriteControls, initialLocalLibrary = initialLocalLibrary, browseOnEntry = true, restoreLaunchPage = true, buildInfo = buildInfo, onReady = onReady)
 }
 
 /** Android uses the same views while its original session/history adapters remain authoritative. */
@@ -217,7 +222,6 @@ fun GalleryLibraryScreen(
     presentationPreferences: GalleryListPresentationPreferences? = null,
     launchPreferences: GalleryLaunchPreferences? = null,
     favoriteControls: GalleryFavoriteControls? = null,
-    onPlatformStorageSettings: (() -> Unit)? = null,
     backgroundDownloadsNote: Boolean = false,
     onPlatformDownloadOpen: ((Long) -> Unit)? = null,
     onBack: (() -> Unit)? = null,
@@ -228,6 +232,8 @@ fun GalleryLibraryScreen(
     initialLocalLibrary: Boolean = false,
     browseOnEntry: Boolean = false,
     restoreLaunchPage: Boolean = false,
+    buildInfo: GalleryBuildInfo? = null,
+    onPlatformSettings: ((GallerySettingsPage) -> Boolean)? = null,
     onReady: () -> Unit = {},
 ) {
     val focusManager = LocalFocusManager.current
@@ -361,12 +367,13 @@ fun GalleryLibraryScreen(
     val resultsState = rememberLazyGridState()
     val thumbnailState = rememberLazyStaggeredGridState()
     var searchBarOffsetY by remember { mutableIntStateOf(0) }
+    var homeActionsHidden by remember { mutableStateOf(false) }
     // Android marks list cards whose gallery has any download entry.
     val downloadedGids by remember(downloads) { downloads.tasks.map { tasks -> tasks.mapTo(HashSet()) { it.gid } } }.collectAsState(emptySet())
     val coverContext = coil3.compose.LocalPlatformContext.current
     // Keep one pipeline across cursor merges, but discard it on replacement routes and the
     // existing identity callback's loadedSearch=null transition, cancelling old decode work.
-    val coverRoute = loadedSearch?.copy(cursor = null, previous = false)
+    val coverRoute = loadedSearch?.copy(cursor = null, previous = false, range = 0, seekDate = null)
     val coverLoader = remember(session, coverContext, coverRoute) { GalleryCoverLoader(coverContext) { session.galleries.cover(it.gid, it.token, it.key) } }
     DisposableEffect(coverLoader) { onDispose { coverLoader.close() } }
     val covers = remember(coverLoader) { GalleryCoverCache(load = coverLoader::get) }
@@ -389,10 +396,10 @@ fun GalleryLibraryScreen(
         failedSearch = null
         request = scope.launch {
             try {
-                val result = search.tag?.let { session.galleries.tag(it, search.cursor, search.previous, search.filters) }
-                    ?: search.uploader?.let { session.galleries.uploader(it, search.cursor, search.previous, search.filters) }
+                val result = search.tag?.let { session.galleries.tag(it, search.cursor, search.previous, search.filters, search.range, search.seekDate) }
+                    ?: search.uploader?.let { session.galleries.uploader(it, search.cursor, search.previous, search.filters, search.range, search.seekDate) }
                     ?: when (search.feed) {
-                        GalleryLaunchPage.SUBSCRIPTION -> session.galleries.subscription(search.query, search.cursor, search.previous, search.filters)
+                        GalleryLaunchPage.SUBSCRIPTION -> session.galleries.subscription(search.query, search.cursor, search.previous, search.filters, search.range, search.seekDate)
                         GalleryLaunchPage.WHATS_HOT -> session.galleries.whatsHot()
                         GalleryLaunchPage.TOPLIST -> {
                             val number = search.cursor?.let { cursor ->
@@ -400,7 +407,7 @@ fun GalleryLibraryScreen(
                             } ?: 1
                             session.galleries.toplist(search.toplistPeriod, number)
                         }
-                        GalleryLaunchPage.HOMEPAGE, null -> session.galleries.search(search.query, search.cursor, search.previous, search.filters)
+                        GalleryLaunchPage.HOMEPAGE, null -> session.galleries.search(search.query, search.cursor, search.previous, search.filters, search.range, search.seekDate)
                     }
                 if (current == generation) {
                     page = if (mergeResults && before != null) {
@@ -416,6 +423,7 @@ fun GalleryLibraryScreen(
                         resultsState.requestScrollToItem(0)
                         thumbnailState.requestScrollToItem(0)
                         searchBarOffsetY = 0
+                        homeActionsHidden = false
                     }
                 }
             } catch (cancelled: CancellationException) {
@@ -445,14 +453,14 @@ fun GalleryLibraryScreen(
     }
 
     fun turnPage(cursor: String?, previous: Boolean = false) {
-        if (cursor != null) loadedSearch?.let { load(it.copy(cursor = cursor, previous = previous), mergeResults = true) }
+        if (cursor != null) loadedSearch?.let { load(it.copy(cursor = cursor, previous = previous, range = 0, seekDate = null), mergeResults = true) }
     }
 
     fun retryPage() {
         failedSearch?.let { load(it, mergeResults = failedMerge) }
     }
 
-    fun refresh() = loadedSearch?.let { load(it.copy(cursor = null, previous = false), refreshGesture = true) }
+    fun refresh() = loadedSearch?.let { load(it.copy(cursor = null, previous = false, range = 0, seekDate = null), refreshGesture = true) }
 
     fun leaveSettings() {
         settingsOpen = false
@@ -572,7 +580,6 @@ fun GalleryLibraryScreen(
                                         }
                                     },
                                     storageSettings = storageSettings,
-                                    onPlatformStorageSettings = onPlatformStorageSettings,
                                     listPreferences = listPreferences,
                                     listDensity = listDensity,
                                     listFailed = listFailed,
@@ -585,6 +592,8 @@ fun GalleryLibraryScreen(
                                     onRetryList = { listAttempt++ },
                                     onAccount = { navigate(GalleryDestination.ACCOUNT) }.takeIf { onAccount != null || accountContent != null },
                                     onHistory = { navigate(GalleryDestination.HISTORY) },
+                                    buildInfo = buildInfo,
+                                    onPlatformSettings = onPlatformSettings,
                                 )
                                 return@Column
                             }
@@ -720,9 +729,12 @@ fun GalleryLibraryScreen(
                                 val marginH = with(density) { galleryListMarginH(window.width.toDp(), window.height.toDp()) }
                                 val barSpace = SearchBarDefaults.InputFieldHeight + 16.dp
                                 val barSpacePx = with(density) { barSpace.roundToPx() }
-                                val barConnection = remember(barSpacePx) {
+                                val touchSlop = LocalViewConfiguration.current.touchSlop
+                                val barConnection = remember(barSpacePx, touchSlop) {
                                     object : NestedScrollConnection {
                                         override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                                            if (consumed.y <= -touchSlop) homeActionsHidden = true
+                                            if (consumed.y >= touchSlop / 2) homeActionsHidden = false
                                             searchBarOffsetY = (searchBarOffsetY + consumed.y).roundToInt().coerceIn(-barSpacePx, 0)
                                             return Offset.Zero
                                         }
@@ -842,6 +854,22 @@ fun GalleryLibraryScreen(
                                         }
                                     }
                                 }
+                                val actionRoute = if (loading) entrySearch else failedSearch ?: loadedSearch ?: entrySearch
+                                val actionFeed = actionRoute.feed ?: GalleryLaunchPage.HOMEPAGE
+                                GalleryHomeActions(
+                                    visible = !homeActionsHidden && !filtersOpen,
+                                    canShuffle = actionFeed == GalleryLaunchPage.HOMEPAGE,
+                                    canJump = actionFeed != GalleryLaunchPage.WHATS_HOT,
+                                    toplistPage = if (actionFeed == GalleryLaunchPage.TOPLIST) actionRoute.cursor?.toIntOrNull() ?: 1 else null,
+                                    onRefresh = { load(actionRoute.copy(cursor = null, previous = false, range = 0, seekDate = null), replaceResults = true) },
+                                    onShuffle = { load(actionRoute.copy(cursor = null, previous = false, range = Random.nextInt(100), seekDate = null), replaceResults = true) },
+                                    onSeekDate = { load(actionRoute.copy(cursor = "2", previous = false, range = 0, seekDate = it), replaceResults = true) },
+                                    onJumpToPage = { load(actionRoute.copy(cursor = it.toString(), previous = false, range = 0, seekDate = null), replaceResults = true) },
+                                    onLast = {
+                                        val target = if (actionFeed == GalleryLaunchPage.TOPLIST) "200" else "1"
+                                        load(actionRoute.copy(cursor = target, previous = actionFeed != GalleryLaunchPage.TOPLIST, range = 0, seekDate = null), replaceResults = true)
+                                    },
+                                )
                             }
                             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                                 if (appearanceFailed) {

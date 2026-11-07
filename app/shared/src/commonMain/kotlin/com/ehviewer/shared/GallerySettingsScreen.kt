@@ -91,7 +91,6 @@ internal fun GallerySettingsScreen(
     favoriteSettings: (@Composable () -> Unit)? = null,
     launchSettings: (@Composable () -> Unit)? = null,
     storageSettings: GalleryStorageSettings? = null,
-    onPlatformStorageSettings: (() -> Unit)? = null,
     listPreferences: GalleryListPreferences? = null,
     listDensity: GalleryListDensity? = null,
     listFailed: Boolean = false,
@@ -104,6 +103,8 @@ internal fun GallerySettingsScreen(
     onRetryList: () -> Unit = {},
     onAccount: (() -> Unit)? = null,
     onHistory: (() -> Unit)? = null,
+    buildInfo: GalleryBuildInfo? = null,
+    onPlatformSettings: ((GallerySettingsPage) -> Boolean)? = null,
 ) {
     var section by rememberSaveable { mutableStateOf<String?>(null) }
     val page = GallerySettingsPage.entries.firstOrNull { it.name == section }
@@ -138,10 +139,12 @@ internal fun GallerySettingsScreen(
             GallerySettingsHeader(title = page?.let { galleryString(it.title) } ?: galleryString(Res.string.gallery_settings), onBack = ::back)
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (page == null) {
-                GallerySettingsOverview { section = it.name }
+                GallerySettingsOverview { choice ->
+                    if (onPlatformSettings?.invoke(choice) != true) section = choice.name
+                }
                 return@Column
             }
-            val originalRows = page == GallerySettingsPage.EH || page == GallerySettingsPage.ADVANCED
+            val originalRows = page in setOf(GallerySettingsPage.EH, GallerySettingsPage.ADVANCED, GallerySettingsPage.ABOUT)
             Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = if (originalRows) 0.dp else 16.dp, vertical = if (originalRows) 0.dp else 12.dp), verticalArrangement = if (originalRows) Arrangement.Top else Arrangement.spacedBy(8.dp)) {
                 if (page == GallerySettingsPage.ADVANCED) {
                     if (!languageReady || languageSaveFailed) {
@@ -248,9 +251,9 @@ internal fun GallerySettingsScreen(
                     }
                 }
                 if (page == GallerySettingsPage.ADVANCED) networkPreferences?.let { Column(Modifier.padding(16.dp)) { GalleryNetworkSettings(it) } }
-                if (page == GallerySettingsPage.DOWNLOAD) GalleryStorageSettingsSection(storageSettings, onPlatformStorageSettings)
+                if (page == GallerySettingsPage.DOWNLOAD) GalleryStorageSettingsSection(storageSettings)
                 if (page == GallerySettingsPage.PRIVACY) GalleryPrivacyDestinations(onAccount, onHistory)
-                if (page == GallerySettingsPage.ABOUT) GalleryAboutLinks()
+                if (page == GallerySettingsPage.ABOUT) GalleryAboutSettings(buildInfo)
             }
         }
     }

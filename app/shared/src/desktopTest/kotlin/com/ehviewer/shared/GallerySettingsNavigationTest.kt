@@ -137,7 +137,7 @@ class GallerySettingsNavigationTest {
                                     assertTrue(all().none { it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { value -> value.text == "日本語" } })
                                 }
                                 "About" -> {
-                                    click(text("Source code"))
+                                    click(text("Source"))
                                     click(text("License"))
                                 }
                             }
