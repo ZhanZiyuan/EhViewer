@@ -327,4 +327,6 @@
     <string name="gallery_reader_mode_webtoon">ウェブトゥーン</string>
     <string name="gallery_reader_mode_continuous_vertical">連続した垂直</string>
     <string name="gallery_reader_crop_borders">境界線をクロップ</string>
+    <string name="gallery_settings_black_dark_theme">ブラックダークテーマ</string>
+    <string name="gallery_settings_harmonize_category_color">カテゴリーの色をダイナミックカラーで調和する</string>
 </resources>

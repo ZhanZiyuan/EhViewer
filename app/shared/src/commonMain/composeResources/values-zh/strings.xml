@@ -327,4 +327,6 @@
     <string name="gallery_reader_mode_webtoon">条漫</string>
     <string name="gallery_reader_mode_continuous_vertical">从上到下（连续）</string>
     <string name="gallery_reader_crop_borders">裁剪边缘</string>
+    <string name="gallery_settings_black_dark_theme">纯黑深色主题</string>
+    <string name="gallery_settings_harmonize_category_color">类别颜色适配动态配色</string>
 </resources>

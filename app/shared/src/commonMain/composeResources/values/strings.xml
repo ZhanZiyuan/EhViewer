@@ -330,4 +330,6 @@
     <string name="gallery_reader_mode_webtoon">Webtoon</string>
     <string name="gallery_reader_mode_continuous_vertical">Continuous vertical</string>
     <string name="gallery_reader_crop_borders">Crop borders</string>
+    <string name="gallery_settings_black_dark_theme">Black dark theme</string>
+    <string name="gallery_settings_harmonize_category_color">Harmonize category color for Dynamic Color</string>
 </resources>

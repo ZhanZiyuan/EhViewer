@@ -89,6 +89,7 @@ import com.ehviewer.core.network.gallery.GalleryRequestException
 import com.ehviewer.core.network.gallery.GallerySearchFilters
 import com.ehviewer.core.network.gallery.GallerySearchResult
 import com.ehviewer.shared.settings.GalleryAppearanceException
+import com.ehviewer.shared.settings.GalleryAppearancePreferences
 import com.ehviewer.shared.settings.GalleryAppearanceStore
 import com.ehviewer.shared.settings.GalleryLanguageSettings
 import com.ehviewer.shared.settings.GalleryThemeMode
@@ -242,12 +243,12 @@ fun GalleryLibraryScreen(
             downloadsFailed = true
         }
     }
-    var themeMode by remember(appearance) { mutableStateOf<GalleryThemeMode?>(null) }
+    var appearancePreferences by remember(appearance) { mutableStateOf<GalleryAppearancePreferences?>(null) }
     var appearanceFailed by remember { mutableStateOf(false) }
     var appearanceAttempt by remember { mutableIntStateOf(0) }
     LaunchedEffect(appearance, appearanceAttempt) {
         try {
-            themeMode = appearance.mode()
+            appearancePreferences = appearance.preferences()
             appearanceFailed = false
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -414,9 +415,12 @@ fun GalleryLibraryScreen(
             request?.cancel()
         }
     }
-    val theme = themeMode ?: GalleryThemeMode.SYSTEM
+    val theme = appearancePreferences?.mode ?: GalleryThemeMode.SYSTEM
     val dark = theme == GalleryThemeMode.DARK || theme == GalleryThemeMode.SYSTEM && isSystemInDarkTheme()
-    CompositionLocalProvider(LocalGalleryLanguage provides languageTag) {
+    CompositionLocalProvider(
+        LocalGalleryLanguage provides languageTag,
+        LocalGalleryAppearance provides (appearancePreferences ?: GalleryAppearancePreferences()),
+    ) {
         GalleryTheme(dark, platformTheme) {
             Surface(Modifier.fillMaxSize()) {
                 GalleryNavigationShell(destinations, destination, ::navigate) { openNavigation ->
@@ -426,7 +430,26 @@ fun GalleryLibraryScreen(
                         val searchBarPage = !settingsOpen && !(account && accountContent != null) && !(archivesOpen && archiveContent != null) && (if (downloadsOpen) cached == null else selected == null)
                         Column(galleryPageModifier(searchBarPage, immersive, edgeToEdge = settingsOpen || selected != null)) {
                             if (settingsOpen) {
-                                GallerySettingsScreen(networkPreferences, appearance, readerState, themeMode, appearanceFailed, language, languageTag, languageReady, languageFailed, onLanguageChanged = { languageTag = it }, onRetryLanguage = { languageAttempt++ }, onModeChanged = { themeMode = it }, onRetryAppearance = { appearanceAttempt++ }, onBack = ::leaveSettings, storageSettings = storageSettings, onPlatformStorageSettings = onPlatformStorageSettings, listPreferences = listPreferences, listDensity = listDensity, listFailed = listFailed, onListChanged = { listDensity = it }, showComments = showComments, onCommentsChanged = { showComments = it }, onRetryList = { listAttempt++ }, onAccount = { navigate(GalleryDestination.ACCOUNT) }.takeIf { onAccount != null || accountContent != null }, onHistory = { navigate(GalleryDestination.HISTORY) })
+                                GallerySettingsScreen(
+                                    networkPreferences, appearance, appearancePreferences, appearanceFailed,
+                                    language, languageTag, languageReady, languageFailed,
+                                    onLanguageChanged = { languageTag = it },
+                                    onRetryLanguage = { languageAttempt++ },
+                                    onAppearanceChanged = { appearancePreferences = it },
+                                    onRetryAppearance = { appearanceAttempt++ },
+                                    onBack = ::leaveSettings,
+                                    storageSettings = storageSettings,
+                                    onPlatformStorageSettings = onPlatformStorageSettings,
+                                    listPreferences = listPreferences,
+                                    listDensity = listDensity,
+                                    listFailed = listFailed,
+                                    onListChanged = { listDensity = it },
+                                    showComments = showComments,
+                                    onCommentsChanged = { showComments = it },
+                                    onRetryList = { listAttempt++ },
+                                    onAccount = { navigate(GalleryDestination.ACCOUNT) }.takeIf { onAccount != null || accountContent != null },
+                                    onHistory = { navigate(GalleryDestination.HISTORY) },
+                                )
                                 return@Column
                             }
                             if (account && accountContent != null) {

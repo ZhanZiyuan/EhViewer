@@ -68,7 +68,9 @@ internal fun galleryCategoryName(category: Int) = categories[category]?.first ?:
 @Composable
 @ReadOnlyComposable
 internal fun galleryCategoryColor(category: Int): Color {
-    val source = Hct.fromInt(Color(categories[category]?.second ?: 0xff000000).toArgb())
+    val original = Color(categories[category]?.second ?: 0xff000000)
+    if (!LocalGalleryAppearance.current.harmonizeCategoryColor) return original
+    val source = Hct.fromInt(original.toArgb())
     val container = Hct.fromInt(MaterialTheme.colorScheme.primaryContainer.toArgb())
     return Color(Hct.from(source.hue, container.chroma, container.tone).toInt())
 }

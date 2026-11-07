@@ -2,6 +2,7 @@ package com.hippo.ehviewer.ui.screen
 
 import androidx.appcompat.app.AppCompatDelegate
 import com.ehviewer.shared.settings.GalleryAppearanceException
+import com.ehviewer.shared.settings.GalleryAppearancePreferences
 import com.ehviewer.shared.settings.GalleryAppearanceStore
 import com.ehviewer.shared.settings.GalleryThemeMode
 import com.hippo.ehviewer.Settings
@@ -19,12 +20,14 @@ internal class AndroidGalleryAppearanceStore : GalleryAppearanceStore {
         throw GalleryAppearanceException()
     }
 
-    override suspend fun mode(): GalleryThemeMode = stored {
-        when (Settings.snapshot()[Settings.theme]) {
+    override suspend fun preferences(): GalleryAppearancePreferences = stored {
+        val snapshot = Settings.snapshot()
+        val mode = when (snapshot[Settings.theme]) {
             AppCompatDelegate.MODE_NIGHT_NO -> GalleryThemeMode.LIGHT
             AppCompatDelegate.MODE_NIGHT_YES -> GalleryThemeMode.DARK
             else -> GalleryThemeMode.SYSTEM
         }
+        GalleryAppearancePreferences(mode, snapshot[Settings.blackDarkTheme], snapshot[Settings.harmonizeCategoryColor])
     }
 
     override suspend fun setMode(mode: GalleryThemeMode) = stored {
@@ -35,5 +38,13 @@ internal class AndroidGalleryAppearanceStore : GalleryAppearanceStore {
                 GalleryThemeMode.DARK -> AppCompatDelegate.MODE_NIGHT_YES
             }
         }
+    }
+
+    override suspend fun setBlackDarkTheme(enabled: Boolean) = stored {
+        Settings.withMutableSnapshot { it[Settings.blackDarkTheme] = enabled }
+    }
+
+    override suspend fun setHarmonizeCategoryColor(enabled: Boolean) = stored {
+        Settings.withMutableSnapshot { it[Settings.harmonizeCategoryColor] = enabled }
     }
 }

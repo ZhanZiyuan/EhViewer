@@ -327,4 +327,6 @@
     <string name="gallery_reader_mode_webtoon">Webtoon 模式</string>
     <string name="gallery_reader_mode_continuous_vertical">垂直連貫</string>
     <string name="gallery_reader_crop_borders">邊緣裁剪</string>
+    <string name="gallery_settings_black_dark_theme">純黑深色主題</string>
+    <string name="gallery_settings_harmonize_category_color">以動態顏色為分類顏色配色</string>
 </resources>

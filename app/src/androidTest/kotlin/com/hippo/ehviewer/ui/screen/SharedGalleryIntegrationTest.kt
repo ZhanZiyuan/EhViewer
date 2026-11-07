@@ -65,6 +65,8 @@ class SharedGalleryIntegrationTest {
             // Exercise a real theme transition even when the retained device already stores Dark.
             // An idempotent Dark write has no change event to update AppCompat's process default.
             it[theme] = AppCompatDelegate.MODE_NIGHT_NO
+            it[blackDarkTheme] = false
+            it[harmonizeCategoryColor] = true
         }
         try {
             // A preference-only setup does not reset Android's retained application night mode.
@@ -163,9 +165,25 @@ class SharedGalleryIntegrationTest {
                 }
                 instrumentation.waitForIdleSync()
                 capturePage("eh-dark")
+                device.clickSharedControl("Black dark theme")
+                runBlocking { withTimeout(5_000) { while (!Settings.snapshot()[Settings.blackDarkTheme]) delay(25) } }
+                device.clickSharedControl("Harmonize category color for Dynamic Color")
+                runBlocking { withTimeout(5_000) { while (Settings.snapshot()[Settings.harmonizeCategoryColor]) delay(25) } }
+                capturePage("eh-black-dark")
                 assertTrue("Restored settings did not render before Back", device.wait(Until.hasObject(By.desc("Back").enabled(true)), 5_000))
                 device.pressBack()
                 captureSettingsRoot("dark")
+                device.clickSharedControl("EH")
+                runBlocking {
+                    val reopened = AndroidGalleryAppearanceStore().preferences()
+                    assertTrue(reopened.blackDarkTheme)
+                    assertFalse(reopened.harmonizeCategoryColor)
+                }
+                device.clickSharedControl("Black dark theme")
+                runBlocking { withTimeout(5_000) { while (Settings.snapshot()[Settings.blackDarkTheme]) delay(25) } }
+                device.clickSharedControl("Harmonize category color for Dynamic Color")
+                runBlocking { withTimeout(5_000) { while (!Settings.snapshot()[Settings.harmonizeCategoryColor]) delay(25) } }
+                device.pressBack()
                 device.pressBack()
                 searchIsVisible("settings-return")
                 device.openSharedDestination("Account")
@@ -183,6 +201,8 @@ class SharedGalleryIntegrationTest {
                 restore(updateIntervalDays)
                 restore(launchPage)
                 restore(theme)
+                restore(blackDarkTheme)
+                restore(harmonizeCategoryColor)
             }
             runBlocking { withContext(Dispatchers.Main) { updateWhenThemeChanges(saved[Settings.theme]) } }
             Settings.appLinkVerifyTip = linkTip

@@ -2,6 +2,7 @@ package com.ehviewer.shared
 
 import com.ehviewer.core.network.session.SessionVault
 import com.ehviewer.shared.settings.GalleryAppearanceException
+import com.ehviewer.shared.settings.GalleryAppearancePreferences
 import com.ehviewer.shared.settings.GalleryAppearanceRepository
 import com.ehviewer.shared.settings.GalleryThemeMode
 import kotlin.test.Test
@@ -13,7 +14,7 @@ import kotlin.test.assertNull
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 
-private class AppearanceTestVault : SessionVault {
+internal class AppearanceTestVault : SessionVault {
     var bytes: ByteArray? = null
     var writes = 0
     var failRead = false
@@ -51,6 +52,22 @@ class GalleryAppearanceRepositoryTest {
             assertEquals(mode, GalleryAppearanceRepository(vault).mode())
         }
         assertEquals(3, vault.writes)
+    }
+
+    @Test fun existingModeOnlyRecordsKeepOriginalDefaultsAndStoreBothToggles() = runTest {
+        val vault = AppearanceTestVault().apply { bytes = """{"schema":1,"mode":"DARK"}""".encodeToByteArray() }
+        val repository = GalleryAppearanceRepository(vault)
+        assertEquals(GalleryAppearancePreferences(GalleryThemeMode.DARK), repository.preferences())
+        repository.setBlackDarkTheme(false)
+        repository.setHarmonizeCategoryColor(true)
+        assertEquals(0, vault.writes, "Reading legacy data must not rewrite it")
+
+        repository.setBlackDarkTheme(true)
+        repository.setHarmonizeCategoryColor(false)
+        val recreated = GalleryAppearanceRepository(vault)
+        assertEquals(GalleryAppearancePreferences(GalleryThemeMode.DARK, true, false), recreated.preferences())
+        recreated.setMode(GalleryThemeMode.LIGHT)
+        assertEquals(GalleryAppearancePreferences(GalleryThemeMode.LIGHT, true, false), repository.preferences())
     }
 
     @Test fun failedAtomicWritesPreserveThePreviousPreferenceAndHideBackendDetails() = runTest {

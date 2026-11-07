@@ -15,6 +15,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Configurator
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
@@ -171,16 +172,31 @@ class GalleryPreviewIntegrationTest {
             val grid = checkNotNull(device.findObject(By.scrollable(true))).visibleBounds
             val upper = grid.top + grid.height() / 4
             val lower = grid.bottom - grid.height() / 8
-            while (SystemClock.uptimeMillis() < deadline) {
-                val target = device.findObject(By.text(text))?.visibleBounds
-                if (target != null && !target.isEmpty && target.top >= grid.top + 8 && target.bottom <= grid.bottom - 8) return
-                val down = direction == Direction.DOWN
-                device.swipe(grid.centerX(), if (down) lower else upper, grid.centerX(), if (down) upper else lower, 18)
-                SystemClock.sleep(25)
+            val configuration = Configurator.getInstance()
+            val originalIdleTimeout = configuration.waitForIdleTimeout
+            var swipes = 0
+            // Search a moving viewport. The default global idle wait can spend
+            // most of the gesture deadline waiting for cover/scroll animation events.
+            configuration.waitForIdleTimeout = minOf(originalIdleTimeout, 250L)
+            try {
+                while (SystemClock.uptimeMillis() < deadline) {
+                    try {
+                        val target = device.findObject(By.text(text))?.visibleBounds
+                        if (target != null && !target.isEmpty && target.top >= grid.top + 8 && target.bottom <= grid.bottom - 8) return
+                    } catch (_: StaleObjectException) {
+                        // The grid moved since this visible node was obtained.
+                    }
+                    val down = direction == Direction.DOWN
+                    device.swipe(grid.centerX(), if (down) lower else upper, grid.centerX(), if (down) upper else lower, 18)
+                    swipes++
+                    SystemClock.sleep(25)
+                }
+            } finally {
+                configuration.waitForIdleTimeout = originalIdleTimeout
             }
             device.dumpWindowHierarchy(File(homeCaptures, "paging-failure.xml"))
             device.takeScreenshot(File(homeCaptures, "paging-failure.png"))
-            error("The original scrolling list did not reach $text")
+            error("The original scrolling list did not reach $text after $swipes swipes")
         }
         fun query(value: String) {
             device.setSharedSearchText(value)

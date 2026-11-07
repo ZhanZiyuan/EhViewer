@@ -8,6 +8,7 @@ import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
 import androidx.compose.runtime.saveable.SaveableStateRegistry
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -32,6 +33,8 @@ import com.ehviewer.core.network.gallery.GalleryContent
 import com.ehviewer.core.network.gallery.GalleryFavoritesRepository
 import com.ehviewer.core.network.gallery.GalleryRepository
 import com.ehviewer.core.network.gallery.GallerySearchResult
+import com.ehviewer.shared.settings.GalleryAppearancePreferences
+import com.ehviewer.shared.settings.GalleryAppearanceRepository
 import com.ehviewer.shared.settings.GalleryAppearanceStore
 import com.ehviewer.shared.settings.GalleryLanguageSettings
 import com.ehviewer.shared.settings.GalleryThemeMode
@@ -90,15 +93,19 @@ class GalleryHomepageTest {
         }
     }
 
-    private class View(library: Library, browse: Boolean = true, local: Boolean = false, saved: Map<String, List<Any?>>? = null) : AutoCloseable {
+    private class View(library: Library, browse: Boolean = true, local: Boolean = false, saved: Map<String, List<Any?>>? = null, appearance: GalleryAppearanceStore = browsingAppearance) : AutoCloseable {
         var identityPauses = 0
             private set
         private val scheduler = TestCoroutineScheduler()
         private val dispatcher = StandardTestDispatcher(scheduler)
         val registry = SaveableStateRegistry(saved) { true }
-        private val appearance = object : GalleryAppearanceStore {
-            override suspend fun mode() = GalleryThemeMode.LIGHT
-            override suspend fun setMode(mode: GalleryThemeMode) = error("Browsing must not change appearance")
+        companion object {
+            private val browsingAppearance = object : GalleryAppearanceStore {
+                override suspend fun preferences() = GalleryAppearancePreferences(mode = GalleryThemeMode.LIGHT)
+                override suspend fun setMode(mode: GalleryThemeMode) = error("Browsing must not change appearance")
+                override suspend fun setBlackDarkTheme(enabled: Boolean) = error("Browsing must not change black theme")
+                override suspend fun setHarmonizeCategoryColor(enabled: Boolean) = error("Browsing must not change category colors")
+            }
         }
         private val language = GalleryLanguageSettings(object : AppLanguageStore {
             override suspend fun tag(): String? = "en"
@@ -201,6 +208,17 @@ class GalleryHomepageTest {
                 }
                 count
             }
+        }
+        fun appearancePixels(): Pair<Int, Int> = scene.render(frame).use { image ->
+            frame += 16_666_667
+            val pixels = image.toComposeImageBitmap().toPixelMap()
+            var originalCategoryPixels = 0
+            for (y in 0 until 340) {
+                for (x in 0 until pixels.width) {
+                    if (pixels[x, y].toArgb() == 0xff8bc34a.toInt()) originalCategoryPixels++
+                }
+            }
+            pixels[pixels.width - 10, pixels.height - 10].toArgb() to originalCategoryPixels
         }
         fun captureFailure() {
             val output = java.io.File("build/tmp/gallery-identity-cover-failure.png").also { it.parentFile.mkdirs() }
@@ -334,6 +352,38 @@ class GalleryHomepageTest {
                 assertEquals(2, library.requests.size)
                 assertEquals(2, library.coverRequests.size)
                 assertEquals(1, view.identityPauses)
+            }
+        }
+    }
+
+    @Test fun originalEhTogglesChangeRenderedGalleryColorsAndSurviveReopening() = english {
+        Library().use { library ->
+            val vault = AppearanceTestVault().apply { bytes = """{"schema":1,"mode":"DARK"}""".encodeToByteArray() }
+            val black = 0xff000000.toInt()
+            View(library, appearance = GalleryAppearanceRepository(vault)).use { view ->
+                view.await("Homepage")
+                val (originalSurface, originalCategoryPixels) = view.appearancePixels()
+                assertTrue(originalSurface != black, "The legacy dark mode must not implicitly enable the black background")
+                assertEquals(0, originalCategoryPixels, "The default must retain the harmonized category")
+                view.click("Settings")
+                view.await("EH")
+                view.click("EH")
+                view.await("Black dark theme")
+                view.click("Black dark theme")
+                view.click("Harmonize category color for Dynamic Color")
+                view.click("Back")
+                view.await("EH")
+                view.click("Back")
+                view.await("Homepage")
+                val (surface, categoryPixels) = view.appearancePixels()
+                assertEquals(black, surface, "The normal gallery surface must be pure black")
+                assertTrue(categoryPixels > 30, "The visible category must use its original palette color")
+            }
+            View(library, appearance = GalleryAppearanceRepository(vault)).use { reopened ->
+                reopened.await("Homepage")
+                val (surface, categoryPixels) = reopened.appearancePixels()
+                assertEquals(black, surface)
+                assertTrue(categoryPixels > 30)
             }
         }
     }

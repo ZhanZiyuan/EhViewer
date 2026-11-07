@@ -10,6 +10,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.ehviewer.core.domain.reader.ReaderBackground
+import com.ehviewer.shared.settings.GalleryAppearancePreferences
 
 /** The platform's dynamic palette (Android 12+ wallpaper colors), or null where none exists. */
 @Composable
@@ -31,6 +32,7 @@ internal fun galleryFallbackColorScheme(dark: Boolean) = if (dark) darkColorSche
 typealias GalleryPlatformTheme = @Composable (dark: Boolean, content: @Composable () -> Unit) -> Unit
 
 private val LocalGalleryPlatformTheme = staticCompositionLocalOf<GalleryPlatformTheme?> { null }
+internal val LocalGalleryAppearance = staticCompositionLocalOf { GalleryAppearancePreferences() }
 
 /**
  * Material 3 theme shared by all platforms. Android supplies its original EhTheme as [platformTheme]
@@ -43,7 +45,14 @@ internal fun GalleryTheme(dark: Boolean, platformTheme: GalleryPlatformTheme?, c
         if (platformTheme != null) {
             platformTheme(dark, content)
         } else {
-            MaterialTheme(colorScheme = platformDynamicColorScheme(dark) ?: galleryFallbackColorScheme(dark), typography = galleryTypography()) {
+            val base = platformDynamicColorScheme(dark) ?: galleryFallbackColorScheme(dark)
+            val colors = if (dark && LocalGalleryAppearance.current.blackDarkTheme) {
+                // Original EhTheme changes only these four tokens; preserve dynamic accents.
+                base.copy(surface = Color.Black, onSurface = Color.White, background = Color.Black, onBackground = Color.White)
+            } else {
+                base
+            }
+            MaterialTheme(colorScheme = colors, typography = galleryTypography()) {
                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground, content = content)
             }
         }

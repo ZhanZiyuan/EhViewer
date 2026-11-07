@@ -13,8 +13,7 @@ import androidx.compose.ui.unit.Density
 import com.ehviewer.core.domain.AppLanguageStore
 import com.ehviewer.core.domain.GalleryListDensity
 import com.ehviewer.core.domain.GalleryListPreferences
-import com.ehviewer.core.domain.reader.ReaderPreferences
-import com.ehviewer.core.domain.reader.ReaderStateStore
+import com.ehviewer.shared.settings.GalleryAppearancePreferences
 import com.ehviewer.shared.settings.GalleryAppearanceStore
 import com.ehviewer.shared.settings.GalleryLanguageSettings
 import com.ehviewer.shared.settings.GalleryThemeMode
@@ -42,14 +41,10 @@ class GallerySettingsNavigationTest {
                     var backLabel = ""
                     val urls = mutableListOf<String>()
                     val appearance = object : GalleryAppearanceStore {
-                        override suspend fun mode() = GalleryThemeMode.LIGHT
+                        override suspend fun preferences() = GalleryAppearancePreferences(mode = GalleryThemeMode.LIGHT)
                         override suspend fun setMode(mode: GalleryThemeMode) = error("Navigation must not save appearance")
-                    }
-                    val reader = object : ReaderStateStore {
-                        override suspend fun preferences() = ReaderPreferences()
-                        override suspend fun position(gid: Long) = null
-                        override suspend fun setPreferences(preferences: ReaderPreferences) = error("Navigation must not save reading preferences")
-                        override suspend fun savePosition(gid: Long, index: Int, pageToken: String?) = error("Navigation must not save reading progress")
+                        override suspend fun setBlackDarkTheme(enabled: Boolean) = error("Navigation must not save black theme")
+                        override suspend fun setHarmonizeCategoryColor(enabled: Boolean) = error("Navigation must not save category colors")
                     }
                     val language = GalleryLanguageSettings(object : AppLanguageStore {
                         override suspend fun tag(): String? = null
@@ -71,7 +66,7 @@ class GallerySettingsNavigationTest {
                         ) {
                             MaterialTheme {
                                 backLabel = galleryString(Res.string.gallery_back)
-                                GallerySettingsScreen(null, appearance, reader, GalleryThemeMode.LIGHT, false, language, null, true, false, {}, {}, {}, {}, { leaves++ }, listPreferences = listPreferences, listDensity = GalleryListDensity.COMPACT, showComments = true, onAccount = { accounts++ }, onHistory = { histories++ })
+                                GallerySettingsScreen(null, appearance, GalleryAppearancePreferences(mode = GalleryThemeMode.LIGHT), false, language, null, true, false, {}, {}, {}, {}, { leaves++ }, listPreferences = listPreferences, listDensity = GalleryListDensity.COMPACT, showComments = true, onAccount = { accounts++ }, onHistory = { histories++ })
                             }
                         }
                     }
@@ -113,12 +108,14 @@ class GallerySettingsNavigationTest {
                             assertTrue(all().none { it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { text -> text.text == if (label == "About") "Advanced" else "About" } }, "Root categories must leave the content tree")
                             when (label) {
                                 "EH" -> {
-                                    text("Reading")
+                                    assertTrue(all().none { it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { value -> value.text in listOf("Reading", "Reading mode") } }, "Reader controls belong to the real reader sheet, not EH settings")
                                     click(text("Dark theme"))
                                     listOf("Follow system", "Always off", "Always on").forEach { text(it) }
                                     // Selecting the persisted choice closes the actual menu without a write.
                                     choose("Always off")
                                     assertTrue(all().none { it.config.getOrNull(SemanticsProperties.Text).orEmpty().any { value -> value.text == "Always on" } })
+                                    val appearanceRows = listOf("Dark theme", "Black dark theme", "Harmonize category color for Dynamic Color", "Detail width")
+                                    assertTrue(appearanceRows.map { text(it).boundsInRoot.top }.zipWithNext().all { (a, b) -> a < b })
                                     click(text("Detail width"))
                                     text("Long")
                                     text("Short")
