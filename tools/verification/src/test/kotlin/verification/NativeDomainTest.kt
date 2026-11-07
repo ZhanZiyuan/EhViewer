@@ -46,7 +46,7 @@ class NativeDomainTest {
         variants.forEach { bytes -> assertThrows(IllegalArgumentException::class.java) { verifyDomainSimulatorMachO(bytes) } }
     }
 
-    private fun manifestOnly(target: String, compiler: String): ByteArray = ByteArrayOutputStream().also { bytes ->
+    private fun klibFixture(target: String, compiler: String, entries: Map<String, ByteArray> = emptyMap()): ByteArray = ByteArrayOutputStream().also { bytes ->
         ZipOutputStream(bytes).use { zip ->
             zip.putNextEntry(ZipEntry("default/manifest"))
             zip.write(
@@ -56,16 +56,48 @@ class NativeDomainTest {
                     ).toByteArray(),
             )
             zip.closeEntry()
+            entries.forEach { (path, contents) ->
+                zip.putNextEntry(ZipEntry(path))
+                zip.write(contents)
+                zip.closeEntry()
+            }
         }
     }.toByteArray()
 
     @Test fun declarationOnlyMissingIrWrongTargetAndCompilerCannotPassAsNativeLibrary() {
         for ((target, compiler) in listOf("ios_arm64" to "2.4.10", "ios_simulator_arm64" to "2.4.10", "ios_arm64" to "0.0.0")) {
             assertThrows(IllegalArgumentException::class.java) {
-                domainNativeKlibEvidence(manifestOnly(target, compiler), "ios_arm64", "2.4.10")
+                domainNativeKlibEvidence(klibFixture(target, compiler), "ios_arm64", "2.4.10")
             }
         }
         assertThrows(IllegalArgumentException::class.java) { domainNativeKlibEvidence(byteArrayOf(), "ios_arm64", "2.4.10") }
+    }
+
+    @Test fun paddedMetadataPartitionsStillRequireOneNonemptyShard() {
+        val original = "default/linkdata/package_com.ehviewer.core.domain/0_domain.knm"
+        val padded = "default/linkdata/package_com.ehviewer.core.domain/00_domain.knm"
+        val contents = byteArrayOf(1)
+        val otherEntries = (listOf(
+            "default/linkdata/module",
+            "default/ir/files.knf",
+            "default/ir/irDeclarations.knd",
+            "default/ir/bodies.knb",
+            "default/ir/strings.knt",
+            "default/ir/signatures.knt",
+            "default/ir/types.knt",
+        ) + domainNativeSpec.metadata.filter { it != original }).associateWith { contents }
+        fun verify(entries: Map<String, ByteArray>) =
+            domainNativeKlibEvidence(klibFixture("ios_arm64", "2.4.10", entries), "ios_arm64", "2.4.10")
+
+        assertEquals("PASS", verify(otherEntries + (original to contents))["result"])
+        assertEquals("PASS", verify(otherEntries + (padded to contents))["result"])
+        for (invalid in listOf(
+            otherEntries,
+            otherEntries + (padded to byteArrayOf()),
+            otherEntries + (original to contents) + (padded to contents),
+        )) {
+            assertThrows(IllegalArgumentException::class.java) { verify(invalid) }
+        }
     }
 
     @Test fun missingPublicNativeApiCannotBeCertifiedByADump() {

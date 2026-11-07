@@ -94,6 +94,8 @@ val domainNativeSpec = NativeLibrarySpec(
 
 fun domainNativeKlibEvidence(bytes: ByteArray, target: String, compiler: String): Map<String, Any?> = nativeLibraryKlibEvidence(bytes, target, compiler, domainNativeSpec)
 
+private val nativeKlibPartitionPadding = Regex("""(?<=/)0+(?=[0-9]+_[^/]+\.knm$)""")
+
 /** Check actual compiler KLIB bytes, independently of a target declaration or file extension. */
 fun nativeLibraryKlibEvidence(bytes: ByteArray, target: String, compiler: String, spec: NativeLibrarySpec): Map<String, Any?> {
     require(target in setOf("ios_arm64", "ios_simulator_arm64"))
@@ -120,7 +122,10 @@ fun nativeLibraryKlibEvidence(bytes: ByteArray, target: String, compiler: String
         "default/ir/signatures.knt",
         "default/ir/types.knt",
     ) + spec.metadata
-    require(required.all { entries[it]?.isNotEmpty() == true }) { "Empty/missing real production metadata or IR; NO-SOURCE is not acceptance" }
+    // Kotlin/Native widens the partition number when a package grows to ten shards.
+    val byPartition = entries.entries.groupBy { it.key.replace(nativeKlibPartitionPadding, "") }
+    val invalid = required.filter { byPartition[it]?.singleOrNull()?.value?.isNotEmpty() != true }
+    require(invalid.isEmpty()) { "Missing, empty or ambiguous production metadata or IR: ${invalid.joinToString()}" }
     return mapOf(
         "result" to "PASS",
         "target" to target,
