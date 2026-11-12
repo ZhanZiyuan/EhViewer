@@ -94,6 +94,35 @@ The decrypt command authenticates the complete envelope before retaining a
 local device and captures its API, page size, APK digests and logs. The removed
 CI emulator matrix and its AVD provisioning code are no longer maintained here.
 
+### Pending device checks for v1.15.12
+
+The instrumentation APK built locally, but no emulator was connected. No device
+tests ran, so Android acceptance is still pending.
+
+| API | Required page size | Local status |
+| --- | ---: | --- |
+| 26 | 4 KiB | AVD unavailable |
+| 29 (optional) | Record on device | AVD unavailable |
+| 36 (optional) | Record on device | `Pixel_10_Pro_XL_API_36` configured, not booted |
+| 37 | 16 KiB | AVD unavailable |
+
+Run the full suite on booted API 26 and API 37 emulators using the existing
+`device` command above. Save the serial, reported page size, and test counts
+(including any skips). Then complete the remaining device checks:
+
+- Verify archive and JNI buffer lifetimes, image and animation behavior, DOM
+  Storage, and Room search on both required API levels.
+- Exercise download cancellation, service restart, and CBZ recovery after
+  interruption, write failure, or low storage, including with a SAF provider.
+- Verify HTTP/2 and HTTP/3/QUIC where available, including cookie parity, redirects,
+  cancellation, and fallback with QUIC disabled.
+- Measure download throughput and tail latency, image and animation rendering,
+  memory use, and peak open file descriptors. Exercise repeated open/read/close
+  and scrolling under memory pressure.
+
+Live Cloudflare sign-in remains a manual check when a test account and network
+are available. It is not a CI dependency.
+
 The host JNI performance workload is reproducible with JDK 25 and the same
 client for original C and Rust libraries. Fixtures are generated locally:
 
