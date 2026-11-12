@@ -94,24 +94,26 @@ The decrypt command authenticates the complete envelope before retaining a
 local device and captures its API, page size, APK digests and logs. The removed
 CI emulator matrix and its AVD provisioning code are no longer maintained here.
 
-### Pending device checks for v1.15.12
+### Device validation for v1.15.12
 
-The instrumentation APK built locally, but no emulator was connected. No device
-tests ran, so Android acceptance is still pending.
+The full instrumentation suite ran from the same debug and test APKs built at
+`ce9229713`. The page sizes below were measured on the devices.
 
-| API | Required page size | Local status |
-| --- | ---: | --- |
-| 26 | 4 KiB | AVD unavailable |
-| 29 (optional) | Record on device | AVD unavailable |
-| 36 (optional) | Record on device | `Pixel_10_Pro_XL_API_36` configured, not booted |
-| 37 | 16 KiB | AVD unavailable |
+| API | Serial | Page size | Passed | Failed | Skipped |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 26 | `emulator-5562` | 4 KiB | 31 | 0 | 0 |
+| 29 | `emulator-5564` | 4 KiB | 31 | 0 | 0 |
+| 36 | `emulator-5560` | 4 KiB | 31 | 0 | 0 |
+| 37 | `emulator-5566` | 16 KiB | 31 | 0 | 0 |
 
-Run the full suite on booted API 26 and API 37 emulators using the existing
-`device` command above. Save the serial, reported page size, and test counts
-(including any skips). Then complete the remaining device checks:
+The suite covered archive and JNI buffer lifetimes, image decoding, DOM Storage,
+Room search, and CBZ validation through an Android descriptor. The local
+`reports/v1.15.12-api<API>` directories contain the JUnit logs, measured page
+sizes, and APK digests. To reproduce the run, use the existing `device` command
+above with the serial for each booted emulator.
 
-- Verify archive and JNI buffer lifetimes, image and animation behavior, DOM
-  Storage, and Room search on both required API levels.
+The following device checks were not part of these runs:
+
 - Exercise download cancellation, service restart, and CBZ recovery after
   interruption, write failure, or low storage, including with a SAF provider.
 - Verify HTTP/2 and HTTP/3/QUIC where available, including cookie parity, redirects,
