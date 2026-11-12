@@ -219,7 +219,7 @@ object EhDB {
     val historyLazyList
         get() = db.historyDao().joinListLazy()
 
-    fun searchHistory(keyword: String) = db.historyDao().joinListLazy("*$keyword*")
+    fun searchHistory(keyword: String) = db.historyDao().joinListLazy(gallerySearchExpression(keyword))
 
     val localFavLazyList
         get() = db.localFavoritesDao().joinListLazy()
@@ -227,7 +227,7 @@ object EhDB {
     val localFavCount: Flow<Int>
         get() = db.localFavoritesDao().count()
 
-    fun searchLocalFav(keyword: String) = db.localFavoritesDao().joinListLazy("*$keyword*")
+    fun searchLocalFav(keyword: String) = db.localFavoritesDao().joinListLazy(gallerySearchExpression(keyword))
 
     suspend fun putHistoryInfo(galleryInfo: GalleryInfo) {
         putGalleryInfo(galleryInfo.asEntity())
