@@ -110,6 +110,10 @@ report JVM GC count/time during the measured interval. Collection and serializat
 occur outside operation timers. Use `--warmup 50 --loops 300 --retained 0` and
 `--retained 64` for the existing comparison protocol, interleave independent JVM
 trials, and stop build/emulator work before collecting performance results.
+Use `--readonly --session` on the updated Rust library to measure the production
+handle API, and `--readonly` on the historical Rust baseline. Use `--password`
+only for non-secret regression fixture passwords. The first-page sample includes
+the first read and release; it is reported separately from the warmed samples.
 GC counters cannot attribute native tails or explain an earlier run that did not
 record them; process-wide RSS/fault counts also include JVM startup.
 `--mutate` adds a deterministic byte write to each extracted page as a separate
