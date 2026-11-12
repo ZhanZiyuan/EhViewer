@@ -283,8 +283,18 @@ where
 
 fn serialize_to_buffer<T: Serialize>(buffer: &mut [u8], value: &T) -> Result<i32> {
     let mut cursor = Cursor::new(buffer);
-    serde_cbor::to_writer(&mut cursor, value)?;
-    Ok(cursor.position() as i32)
+    serde_cbor::to_writer(&mut cursor, value)
+        .context("Unable to encode CBOR into the direct output buffer")?;
+    Ok(i32::try_from(cursor.position())?)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn output_requires_enough_writable_capacity() {
+        assert_eq!(super::serialize_to_buffer(&mut [0; 4], &"abc").unwrap(), 4);
+        assert!(super::serialize_to_buffer(&mut [0; 3], &"abc").is_err());
+    }
 }
 
 #[unsafe(no_mangle)]

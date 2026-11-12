@@ -1,5 +1,39 @@
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn malformed_html_returns_errors_and_prefixes_do_not_panic() {
+        use crate::parser::{detail, fav, list};
+
+        let previews = r#"<div id="gdt"><a href="https://example.org/s/0000000000/1-999999999999999999"><div title="Page" style="width:20px;height:10px;background:url(x)"></div></a></div>"#;
+        let comments = r#"<div id="cdiv"><div id="chd"></div><div class="c1"><div class="c3"></div></div></div>"#;
+        let table = r#"<div id="gdd"><table><tr><td class="gdt2"></td></tr></table></div>"#;
+        let dom = tl::parse(previews, tl::ParserOptions::default().track_ids()).unwrap();
+        assert!(detail::parse_preview_list(&dom, dom.parser()).is_err());
+        let mut dom = tl::parse(comments, tl::ParserOptions::default().track_ids()).unwrap();
+        assert!(detail::parse_comments(&mut dom).is_err());
+        let dom = tl::parse(table, tl::ParserOptions::default().track_ids()).unwrap();
+        assert!(detail::parse_pages(&dom, dom.parser()).is_err());
+
+        for input in [
+            previews,
+            comments,
+            table,
+            "<div class=fp></div>",
+            "<div class=d><p></p></div>",
+        ] {
+            for end in 0..=input.len() {
+                let prefix = &input[..end];
+                if let Ok(mut dom) = tl::parse(prefix, tl::ParserOptions::default().track_ids()) {
+                    let _ = detail::parse_preview_list(&dom, dom.parser());
+                    let _ = detail::parse_pages(&dom, dom.parser());
+                    let _ = list::parse_info_list(&dom, dom.parser());
+                    let _ = fav::parse_fav(&dom, dom.parser());
+                    let _ = detail::parse_gallery_detail(&mut dom, prefix);
+                    let _ = detail::parse_comments(&mut dom);
+                }
+            }
+        }
+    }
     use crate::parser::api::parse_vote_tag;
     use crate::parser::archive::{parse_archive_url, parse_archives_with_funds};
     use crate::parser::detail::parse_gallery_detail;

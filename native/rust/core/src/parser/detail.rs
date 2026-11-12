@@ -108,7 +108,11 @@ fn parse_detail_info(gd: &mut GalleryDetail, node: &NodeHandle, parser: &Parser)
     let value_tag = iter.next()?;
 
     let key = key_tag.inner_text(parser);
-    let value = value_tag.children().top()[0]
+    let value = value_tag
+        .children()
+        .top()
+        .as_slice()
+        .first()?
         .get(parser)?
         .inner_text(parser);
 
@@ -260,13 +264,15 @@ pub fn parse_tag_groups(
     is_root: bool,
 ) -> Result<Vec<GalleryTagGroup>> {
     let nodes: Vec<_> = if is_root {
-        dom.query_selector("tr").unwrap().collect()
+        dom.query_selector("tr")
+            .context("Invalid tag row selector")?
+            .collect()
     } else {
         dom.get_element_by_id("taglist")
             .and_then(|n| n.get(parser)?.as_tag())
             .context("Failed to find taglist")?
             .query_selector(parser, "tr")
-            .unwrap()
+            .context("Invalid tag row selector")?
             .collect()
     };
     nodes
@@ -358,19 +364,25 @@ pub fn parse_comments(dom: &mut VDom) -> Result<GalleryCommentList> {
 
     let comment_nodes = cdiv
         .query_selector(parser, ".c1")
-        .unwrap()
+        .context("Invalid comment selector")?
         .collect::<Vec<_>>();
     let comments = comment_nodes
         .iter()
         .map(|node_handle| {
             let parser = dom.parser_mut();
-            let node = node_handle.get(parser).unwrap();
+            let node = node_handle.get(parser).context("Missing comment node")?;
             let mut c = GalleryComment::default();
 
             let c3 = get_first_element_by_class_name(node, parser, "c3")
                 .and_then(Node::as_tag)
                 .context("Failed to find c3")?;
-            let posted_node = c3.children().top()[0].get(parser).unwrap();
+            let posted_node = c3
+                .children()
+                .top()
+                .as_slice()
+                .first()
+                .and_then(|child| child.get(parser))
+                .context("Missing comment timestamp")?;
             c.time = parse_comment_time(&posted_node.inner_text(parser), "Posted on ")
                 .context("Failed to parse posted date")?;
             c.user = get_first_child(c3, parser)
@@ -422,17 +434,26 @@ pub fn parse_comments(dom: &mut VDom) -> Result<GalleryCommentList> {
                         .is_some_and(|tag| tag.attributes().is_class_member("c6"))
                 })
                 .context("Failed to find c6")?;
-            let c6 = c6_handle.get(parser).and_then(Node::as_tag).unwrap();
+            let c6 = c6_handle
+                .get(parser)
+                .and_then(Node::as_tag)
+                .context("Invalid comment content")?;
             let nodes = c6
                 .query_selector(parser, "span[style='text-decoration:underline;']")
-                .unwrap()
+                .context("Invalid comment underline selector")?
                 .collect::<Vec<_>>();
             for node in nodes {
-                let tag = node.get_mut(parser).and_then(Node::as_tag_mut).unwrap();
+                let tag = node
+                    .get_mut(parser)
+                    .and_then(Node::as_tag_mut)
+                    .context("Missing underlined comment span")?;
                 *tag.name_mut() = "u".into();
                 tag.attributes_mut().remove("style");
             }
-            let c6 = c6_handle.get(parser).and_then(Node::as_tag).unwrap();
+            let c6 = c6_handle
+                .get(parser)
+                .and_then(Node::as_tag)
+                .context("Missing comment content")?;
             c.id = c6
                 .attributes()
                 .id()
@@ -458,7 +479,11 @@ pub fn parse_pages(dom: &VDom, parser: &Parser) -> Result<i32> {
                 .as_tag()?
                 .query_selector(parser, "td.gdt2")?
                 .find_map(|n| {
-                    n.get(parser)?.children()?.top()[0]
+                    n.get(parser)?
+                        .children()?
+                        .top()
+                        .as_slice()
+                        .first()?
                         .get(parser)?
                         .inner_text(parser)
                         .strip_suffix(" pages")?
@@ -472,9 +497,16 @@ pub fn parse_pages(dom: &VDom, parser: &Parser) -> Result<i32> {
 pub fn parse_preview_list(dom: &VDom, parser: &Parser) -> Result<Vec<GalleryPreview>> {
     let error = get_vdom_first_element_by_class_name(dom, "d");
     if let Some(tag) = error.and_then(|n| get_first_child(n.as_tag()?, parser)) {
-        let node = tag.children().top()[0].get(parser).unwrap();
-        let err = EhError::GalleryUnavailable(node.inner_text(parser).to_string());
-        bail!(err);
+        let reason = tag
+            .children()
+            .top()
+            .as_slice()
+            .first()
+            .and_then(|node| node.get(parser))
+            .context("Gallery unavailable without a reason")?;
+        bail!(EhError::GalleryUnavailable(
+            reason.inner_text(parser).to_string()
+        ));
     }
 
     dom.get_element_by_id("gdt")
@@ -487,7 +519,10 @@ pub fn parse_preview_list(dom: &VDom, parser: &Parser) -> Result<Vec<GalleryPrev
             let href_regex = regex!(r#"https[^s#"]+(?:s/([0-9a-f]{10})/\d+-|#page)(\d+)"#);
             let caps = href_regex.captures(get_tag_attr(a, "href")?)?;
             let p_token = caps.get(1).map_or("", |m| m.as_str()).to_string();
-            let position = caps[2].parse::<i32>().unwrap() - 1;
+            let position = caps.get(2)?.as_str().parse::<i32>().ok()?.checked_sub(1)?;
+            if position < 0 {
+                return None;
+            }
 
             let div = a.query_selector(parser, "div[title]")?.next()?;
             let style_regex = regex!(r#"\D+(\d+)\D+(\d+)[^(]+\(([^)]+)\)(?: -(\d+))?"#);

@@ -74,7 +74,6 @@ import io.ktor.http.Url
 import io.ktor.util.moveToByteArray
 import io.ktor.utils.io.pool.DirectByteBufferPool
 import io.ktor.utils.io.pool.useInstance
-import io.ktor.utils.io.readAvailable
 import java.io.File
 import java.nio.ByteBuffer
 import kotlin.math.ceil
@@ -166,7 +165,7 @@ private fun rethrowExactly(response: HttpResponse, body: Either<String, ByteBuff
     throw e
 }
 
-private val httpContentPool = DirectByteBufferPool(8, 0x80000)
+private val httpContentPool = DirectByteBufferPool(8, HTML_RESPONSE_LIMIT_BYTES)
 
 private suspend inline fun <T> HttpStatement.fetchUsingAsText(crossinline block: suspend String.() -> T) = executeSafely { response ->
     if (response.request.url.isLogin) throw NotLoggedInException()
@@ -181,8 +180,8 @@ private suspend inline fun <T> HttpStatement.fetchUsingAsText(crossinline block:
 private suspend inline fun <T> HttpStatement.fetchUsingAsByteBuffer(crossinline block: suspend ByteBuffer.() -> T) = executeSafely { response ->
     if (response.request.url.isLogin) throw NotLoggedInException()
     httpContentPool.useInstance { buffer ->
-        with(response.bodyAsChannel()) { while (!isClosedForRead) readAvailable(buffer) }
-        buffer.flip()
+        if (response.headers["cf-mitigated"] == "challenge") throw CloudflareBypassException()
+        response.bodyAsChannel().readBoundedHtml(buffer)
         runSuspendCatching {
             block(buffer)
         }.onFailure {

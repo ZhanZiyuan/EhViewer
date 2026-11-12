@@ -95,9 +95,9 @@ fn parse_uploader_and_pages(str: &str) -> (Option<String>, bool, i32) {
     let uploader =
         regex!(r#"<a href="https://e[x-]hentai.org/uploader/.*?">(.*?)</a>|(\(Disowned\))"#)
             .captures(str)
-            .map(|grp| {
-                let str = grp.get(1).or_else(|| grp.get(2)).unwrap().as_str();
-                unescape(str).as_deref().unwrap_or(str).to_string()
+            .and_then(|grp| {
+                let str = grp.get(1).or_else(|| grp.get(2))?.as_str();
+                Some(unescape(str).as_deref().unwrap_or(str).to_string())
             });
     let pages = match regex!(r"<div>(\d+) pages</div>").captures(str) {
         None => 0,
@@ -205,11 +205,13 @@ pub fn parse_info_list(dom: &VDom, parser: &Parser) -> Result<GalleryListResult>
         bail!(e)
     }
     let info = get_vdom_first_element_by_class_name(dom, "itg")
-        .map(|itg| {
-            let children = itg.children().unwrap();
+        .and_then(|itg| {
+            let children = itg.children()?;
             let iter = children.top().iter();
-            iter.filter_map(|x| parse_gallery_info(x.get(parser)?, parser))
-                .collect::<Vec<_>>()
+            Some(
+                iter.filter_map(|x| parse_gallery_info(x.get(parser)?, parser))
+                    .collect::<Vec<_>>(),
+            )
         })
         .filter(|v| !v.is_empty())
         .context(EhError::NoHits)?;

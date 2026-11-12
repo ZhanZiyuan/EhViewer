@@ -23,9 +23,11 @@ pub fn parse_fav(dom: &VDom, parser: &Parser) -> Result<FavResult> {
             }
             let top = e.get(parser)?.children()?;
             let children = top.top();
-            let cat = children[5].get(parser)?.inner_text(parser);
+            let cat = children.as_slice().get(5)?.get(parser)?.inner_text(parser);
             let name = unescape(&cat).ok()?.trim().to_string();
-            let count = children[1]
+            let count = children
+                .as_slice()
+                .get(1)?
                 .get(parser)?
                 .inner_text(parser)
                 .parse::<i32>()
