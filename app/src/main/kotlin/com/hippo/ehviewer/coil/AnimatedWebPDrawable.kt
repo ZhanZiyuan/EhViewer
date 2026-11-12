@@ -11,6 +11,7 @@ import android.os.SystemClock
 import androidx.core.graphics.createBitmap
 import com.ehviewer.core.util.logcat
 import java.nio.ByteBuffer
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +28,7 @@ class AnimatedWebPDrawable(private val source: ByteBuffer) : Drawable(), Animata
     private val decodeScope = CoroutineScope(Dispatchers.IO.limitedParallelism(1))
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val decoder = nativeCreateDecoder(source)
+    private val disposed = AtomicBoolean()
     private val width: Int
     private val height: Int
     private val loopCount: Int
@@ -43,14 +45,16 @@ class AnimatedWebPDrawable(private val source: ByteBuffer) : Drawable(), Animata
         width = (packed shr 40).toInt()
         height = (packed shr 16 and 0xFFFFFF).toInt()
         loopCount = (packed and 0xFFFF).toInt()
-        val bitmap = createBitmap(width, height)
-        val timestamp = nativeDecodeNextFrame(decoder, false, bitmap)
-        check(timestamp != 0) {
+        try {
+            val bitmap = createBitmap(width, height)
+            val timestamp = nativeDecodeNextFrame(decoder, false, bitmap)
+            check(timestamp != 0) { "Failed to decode first frame" }
+            currentFrame = Frame(bitmap, timestamp)
+            nextFrame = Frame(createBitmap(width, height), 0)
+        } catch (failure: Throwable) {
             nativeDestroyDecoder(decoder)
-            "Failed to decode first frame"
+            throw failure
         }
-        currentFrame = Frame(bitmap, timestamp)
-        nextFrame = Frame(createBitmap(width, height), 0)
     }
 
     override fun getIntrinsicWidth() = width
@@ -77,6 +81,7 @@ class AnimatedWebPDrawable(private val source: ByteBuffer) : Drawable(), Animata
         nextFrame.bitmap.prepareToDraw()
     }.apply {
         invokeOnCompletion { cause ->
+            if (disposed.get()) return@invokeOnCompletion
             when (cause) {
                 null -> if (reset) {
                     runnable.run()
@@ -124,7 +129,7 @@ class AnimatedWebPDrawable(private val source: ByteBuffer) : Drawable(), Animata
     override fun isRunning() = decodeJob != null
 
     override fun start() {
-        if (decodeJob == null) {
+        if (!disposed.get() && decodeJob == null) {
             decodeJob = decodeNextFrame(true)
         }
     }
@@ -136,9 +141,11 @@ class AnimatedWebPDrawable(private val source: ByteBuffer) : Drawable(), Animata
     }
 
     fun dispose() {
+        if (!disposed.compareAndSet(false, true)) return
         runBlocking {
             decodeScope.coroutineContext.job.cancelAndJoin()
         }
+        unscheduleSelf(runnable)
         nativeDestroyDecoder(decoder)
     }
 }

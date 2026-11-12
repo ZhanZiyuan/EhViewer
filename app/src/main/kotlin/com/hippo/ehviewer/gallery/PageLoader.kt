@@ -14,6 +14,7 @@ import com.hippo.ehviewer.util.FileUtils
 import com.hippo.ehviewer.util.OSUtils
 import com.hippo.ehviewer.util.detectAds
 import com.hippo.ehviewer.util.displayString
+import java.util.WeakHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.read
@@ -34,6 +35,12 @@ import okio.Path
 private val progressScope = CoroutineScope(Dispatchers.IO)
 private const val MAX_CACHE_SIZE = 512 * 1024 * 1024
 private const val MIN_CACHE_SIZE = 256 * 1024 * 1024
+private val activeLoaders = WeakHashMap<PageLoader, Unit>()
+
+internal fun trimReaderMemory() {
+    val loaders = synchronized(activeLoaders) { activeLoaders.keys.toList() }
+    loaders.forEach { it.trimIdleImages() }
+}
 
 abstract class PageLoader(val scope: CoroutineScope, val info: GalleryInfo?, startPage: Int, val size: Int, val hasAds: Boolean = false) : AutoCloseable {
     var startPage = startPage.coerceIn(0, size - 1)
@@ -73,6 +80,19 @@ abstract class PageLoader(val scope: CoroutineScope, val info: GalleryInfo?, sta
 
     private val prevIndex = AtomicInt(-1)
 
+    init {
+        synchronized(activeLoaders) { activeLoaders[this] = Unit }
+    }
+
+    internal fun trimIdleImages() = lock.write {
+        val current = prevIndex.load()
+        val candidates = mutableListOf<Int>()
+        cache.forEach { index, image ->
+            if (index != current && image.refcnt.load() == 1) candidates += index
+        }
+        candidates.forEach { cache.remove(it) }
+    }
+
     fun retryPage(index: Int, orgImg: Boolean = false) {
         notifyPageWait(index)
         lock.write { cache.remove(index) }
@@ -106,6 +126,7 @@ abstract class PageLoader(val scope: CoroutineScope, val info: GalleryInfo?, sta
     }
 
     override fun close() {
+        synchronized(activeLoaders) { activeLoaders.remove(this) }
         lock.write { cache.evictAll() }
         info?.run {
             progressScope.launch {
