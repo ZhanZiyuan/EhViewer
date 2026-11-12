@@ -94,6 +94,37 @@ The decrypt command authenticates the complete envelope before retaining a
 local device and captures its API, page size, APK digests and logs. The removed
 CI emulator matrix and its AVD provisioning code are no longer maintained here.
 
+### Device validation for v1.15.12
+
+The full instrumentation suite ran from the same debug and test APKs built at
+`ce9229713`. The page sizes below were measured on the devices.
+
+| API | Serial | Page size | Passed | Failed | Skipped |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 26 | `emulator-5562` | 4 KiB | 31 | 0 | 0 |
+| 29 | `emulator-5564` | 4 KiB | 31 | 0 | 0 |
+| 36 | `emulator-5560` | 4 KiB | 31 | 0 | 0 |
+| 37 | `emulator-5566` | 16 KiB | 31 | 0 | 0 |
+
+The suite covered archive and JNI buffer lifetimes, image decoding, DOM Storage,
+Room search, and CBZ validation through an Android descriptor. The local
+`reports/v1.15.12-api<API>` directories contain the JUnit logs, measured page
+sizes, and APK digests. To reproduce the run, use the existing `device` command
+above with the serial for each booted emulator.
+
+The following device checks were not part of these runs:
+
+- Exercise download cancellation, service restart, and CBZ recovery after
+  interruption, write failure, or low storage, including with a SAF provider.
+- Verify HTTP/2 and HTTP/3/QUIC where available, including cookie parity, redirects,
+  cancellation, and fallback with QUIC disabled.
+- Measure download throughput and tail latency, image and animation rendering,
+  memory use, and peak open file descriptors. Exercise repeated open/read/close
+  and scrolling under memory pressure.
+
+Live Cloudflare sign-in remains a manual check when a test account and network
+are available. It is not a CI dependency.
+
 The host JNI performance workload is reproducible with JDK 25 and the same
 client for original C and Rust libraries. Fixtures are generated locally:
 
@@ -110,6 +141,10 @@ report JVM GC count/time during the measured interval. Collection and serializat
 occur outside operation timers. Use `--warmup 50 --loops 300 --retained 0` and
 `--retained 64` for the existing comparison protocol, interleave independent JVM
 trials, and stop build/emulator work before collecting performance results.
+Use `--readonly --session` on the updated Rust library to measure the production
+handle API, and `--readonly` on the historical Rust baseline. Use `--password`
+only for non-secret regression fixture passwords. The first-page sample includes
+the first read and release; it is reported separately from the warmed samples.
 GC counters cannot attribute native tails or explain an earlier run that did not
 record them; process-wide RSS/fault counts also include JVM startup.
 `--mutate` adds a deterministic byte write to each extracted page as a separate

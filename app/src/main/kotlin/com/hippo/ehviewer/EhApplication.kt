@@ -17,6 +17,7 @@
 package com.hippo.ehviewer
 
 import android.app.Application
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.os.StrictMode
 import androidx.appcompat.app.AppCompatDelegate
@@ -26,6 +27,7 @@ import androidx.compose.runtime.tooling.ComposeStackTraceMode
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.coroutineScope
 import coil3.EventListener
+import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.asImage
 import coil3.gif.AnimatedImageDecoder
@@ -59,6 +61,8 @@ import com.hippo.ehviewer.coil.QrCodeInterceptor
 import com.hippo.ehviewer.dailycheck.checkDawn
 import com.hippo.ehviewer.download.DownloadManager
 import com.hippo.ehviewer.download.DownloadsFilterMode
+import com.hippo.ehviewer.gallery.trimReaderMemory
+import com.hippo.ehviewer.jni.trimArchiveCaches
 import com.hippo.ehviewer.ktbuilder.diskCache
 import com.hippo.ehviewer.ktbuilder.imageLoader
 import com.hippo.ehviewer.ktor.Cronet
@@ -88,6 +92,21 @@ private val lifecycle = ProcessLifecycleOwner.get().lifecycle
 private val lifecycleScope = lifecycle.coroutineScope
 
 class EhApplication : Application(), SingletonImageLoader.Factory {
+    @Volatile
+    private var activeImageLoader: ImageLoader? = null
+
+    @Suppress("DEPRECATION")
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                activeImageLoader?.memoryCache?.clear()
+                trimReaderMemory()
+                trimArchiveCaches()
+            }
+        }
+    }
+
     override fun onCreate() = with(lifecycleScope) {
         initSETConnection()
         // Initialize Settings on first access
@@ -206,7 +225,7 @@ class EhApplication : Application(), SingletonImageLoader.Factory {
                 }
             })
         }
-    }
+    }.also { activeImageLoader = it }
 
     companion object {
         @Volatile
@@ -214,16 +233,22 @@ class EhApplication : Application(), SingletonImageLoader.Factory {
             private set
 
         val ktorClient by lazy {
-            if (isCronetAvailable && Settings.enableCronet.value) {
-                HttpClient(Cronet) {
-                    engine { configureClient(Settings.enableQuic.value) }
-                    configureCommon()
+            val cronet = if (isCronetAvailable && Settings.enableCronet.value) {
+                try {
+                    HttpClient(Cronet) {
+                        engine { configureClient(Settings.enableQuic.value) }
+                        configureCommon()
+                    }
+                } catch (error: Exception) {
+                    logcat(error)
+                    null
                 }
             } else {
-                HttpClient(OkHttp) {
-                    engine { configureClient() }
-                    configureCommon()
-                }
+                null
+            }
+            cronet ?: HttpClient(OkHttp) {
+                engine { configureClient() }
+                configureCommon()
             }
         }
 

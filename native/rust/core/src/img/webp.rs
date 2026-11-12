@@ -1,12 +1,24 @@
 use libwebp_sys::{
     MODE_rgbA, WebPAnimDecoder, WebPAnimDecoderGetInfo, WebPAnimDecoderGetNext,
     WebPAnimDecoderHasMoreFrames, WebPAnimDecoderNew, WebPAnimDecoderOptions, WebPAnimDecoderReset,
-    WebPAnimInfo, WebPData,
+    WebPAnimInfo, WebPData, WebPGetInfo,
 };
 use std::mem::zeroed;
 use std::ptr::null_mut;
 
 pub fn create_decoder(data: &[u8]) -> *mut WebPAnimDecoder {
+    // Four RGBA canvases (two in libwebp, two in Android) cost up to 256 MiB at this limit.
+    const MAX_ANIMATION_PIXELS: i64 = 16 * 1024 * 1024;
+    let (mut width, mut height) = (0, 0);
+    // SAFETY: both outputs are live and data remains readable through this call.
+    let valid = unsafe { WebPGetInfo(data.as_ptr(), data.len(), &mut width, &mut height) };
+    if valid == 0
+        || width <= 0
+        || height <= 0
+        || i64::from(width) * i64::from(height) > MAX_ANIMATION_PIXELS
+    {
+        return null_mut();
+    }
     let webp_data = WebPData {
         bytes: data.as_ptr(),
         size: data.len(),

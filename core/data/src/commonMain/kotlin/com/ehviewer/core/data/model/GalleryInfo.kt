@@ -14,7 +14,9 @@ fun GalleryInfo.findBaseInfo(): BaseGalleryInfo = when (this) {
 
 fun GalleryInfo.asGalleryDetail(): GalleryDetail? = this as? GalleryDetail
 
-fun GalleryInfo.asEntity() = this as? GalleryEntity ?: GalleryEntity(
+fun GalleryInfo.asEntity() = this as? GalleryEntity ?: toEntitySnapshot()
+
+fun GalleryInfo.toEntitySnapshot() = GalleryEntity(
     gid = gid,
     token = token,
     title = title,
@@ -24,7 +26,7 @@ fun GalleryInfo.asEntity() = this as? GalleryEntity ?: GalleryEntity(
     posted = posted,
     uploader = uploader,
     rating = rating,
-    simpleTags = simpleTags,
+    simpleTags = simpleTags?.toList(),
     pages = pages,
     simpleLanguage = simpleLanguage,
     favoriteSlot = favoriteSlot,

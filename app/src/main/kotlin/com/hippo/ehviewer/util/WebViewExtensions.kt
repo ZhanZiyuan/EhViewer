@@ -9,6 +9,7 @@ fun WebView.setDefaultSettings() = with(settings) {
     builtInZoomControls = true
     displayZoomControls = false
     javaScriptEnabled = true
+    domStorageEnabled = true
 
     // Always use mobile user-agent to bypass Cloudflare
     userAgentString = CHROME_MOBILE_USER_AGENT

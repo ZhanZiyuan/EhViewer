@@ -16,6 +16,14 @@ struct Cache {
 }
 pub(super) struct StoredPool(Mutex<Cache>);
 impl StoredPool {
+    pub(super) fn trim(&self) {
+        self.0
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .entries
+            .clear();
+    }
+
     pub(super) fn new() -> Arc<Self> {
         Arc::new(Self(Mutex::new(Cache {
             entries: Vec::with_capacity(MAX_PARALLEL),

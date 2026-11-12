@@ -91,6 +91,7 @@ class Image private constructor(image: CoilImage, private val src: ImageSource) 
     }
 
     companion object {
+        private const val MAX_DECODE_EDGE = 8192
         private val sizeResolver = with(appCtx.resources.displayMetrics) {
             val targetSize = minOf(widthPixels, heightPixels) * 4 / 3
             SizeResolver(Size(targetSize, targetSize))
@@ -104,10 +105,13 @@ class Image private constructor(image: CoilImage, private val src: ImageSource) 
                     size(sizeResolver)
                     scale(Scale.FILL)
                     precision(Precision.INEXACT)
-                    maxBitmapSize(Size.ORIGINAL)
-                    allowHardware(false)
-                    hardwareThreshold(Settings.hardwareBitmapThreshold.value)
-                    maybeCropBorder(Settings.cropBorder.value)
+                    maxBitmapSize(Size(MAX_DECODE_EDGE, MAX_DECODE_EDGE))
+                    val threshold = Settings.hardwareBitmapThreshold.value
+                    val crop = Settings.cropBorder.value
+                    // Direct hardware decode avoids a full copy only when no CPU inspection is needed.
+                    allowHardware(isAtLeastP && !crop && !checkExtraneousAds && threshold >= MAX_DECODE_EDGE)
+                    hardwareThreshold(threshold)
+                    maybeCropBorder(crop)
                     detectQrCode(checkExtraneousAds)
                     memoryCachePolicy(CachePolicy.DISABLED)
                 }

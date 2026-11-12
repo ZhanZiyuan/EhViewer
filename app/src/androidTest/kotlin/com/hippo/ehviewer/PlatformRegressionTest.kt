@@ -43,6 +43,7 @@ class PlatformRegressionTest {
             view = WebView(instrumentation.targetContext).apply {
                 setDefaultSettings()
                 assertTrue(settings.javaScriptEnabled)
+                assertTrue(settings.domStorageEnabled)
                 assertTrue(settings.userAgentString.contains("Mobile"))
                 CookieManager.getInstance().setCookie("https://native-regression.invalid", "p3_test=value; Secure") { saved.countDown() }
             }

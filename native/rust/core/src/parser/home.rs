@@ -23,13 +23,13 @@ pub fn parse_limit(dom: &VDom, parser: &Parser) -> Option<Limits> {
                 .ok()
         })
         .collect::<Vec<_>>();
-    match vec.len() {
-        3 => Some(Limits {
-            current: vec[0],
-            maximum: vec[1],
-            resetCost: vec[2],
+    match vec.as_slice() {
+        [current, maximum, reset_cost] => Some(Limits {
+            current: *current,
+            maximum: *maximum,
+            resetCost: *reset_cost,
         }),
-        1 => Some(Limits {
+        [_] => Some(Limits {
             current: 0,
             maximum: if limit_box.inner_text(parser).contains("No restrictions") {
                 0

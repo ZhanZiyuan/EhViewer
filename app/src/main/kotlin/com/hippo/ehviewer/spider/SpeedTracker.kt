@@ -8,7 +8,7 @@ import com.hippo.ehviewer.client.executeSafely
 import com.hippo.ehviewer.ktor.reset
 import com.hippo.ehviewer.util.LowSpeedException
 import com.hippo.ehviewer.util.ensureSuccess
-import io.ktor.client.plugins.ConnectTimeoutException
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.onDownload
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
@@ -22,6 +22,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
+import kotlin.time.TimeSource
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.mapNotNull
@@ -74,38 +75,54 @@ suspend inline fun <R> timeoutBySpeed(
     val watchdog = launch {
         val timeout = 10.seconds
         delay(timeout)
-        onTimeout(ConnectTimeoutException(url, timeout.inWholeMilliseconds))
+        onTimeout(HttpRequestTimeoutException(url, timeout.inWholeMilliseconds))
     }
     val tracker = SpeedTracker(2.seconds)
-    request {
-        var prev = 0L
-        onDownload { done, total ->
-            val bytesRead = (done - prev).toInt()
-            if (done == total!!) {
-                tracker.reset()
-            } else {
-                tracker.track(bytesRead)
-            }
-            l(total, done, bytesRead)
-            prev = done
-        }
-        timeout { reset() }
-    }.executeSafely { resp ->
-        watchdog.cancel()
-        resp.status.ensureSuccess()
-        val speedWatchdog = launch {
-            val timeoutSpeed = speedLevelToSpeed(Settings.timeoutSpeed.value) * 1024L
-            tracker.speedFlow().collect { speed ->
-                if (speed < timeoutSpeed) {
-                    onTimeout(LowSpeedException(url, speed))
+    var reported = 0L
+    var received = 0L
+    var contentLength = -1L
+    var lastReport = TimeSource.Monotonic.markNow()
+    try {
+        request {
+            onDownload { done, total ->
+                val delta = (done - received).coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
+                received = done
+                contentLength = total ?: -1L
+                if (done == total) tracker.reset() else tracker.track(delta)
+                if (done == total || lastReport.elapsedNow() >= 100.milliseconds) {
+                    l(contentLength, done, (done - reported).coerceIn(0, Int.MAX_VALUE.toLong()).toInt())
+                    reported = done
+                    lastReport = TimeSource.Monotonic.markNow()
                 }
             }
+            timeout {
+                reset()
+                connectTimeoutMillis = 10_000
+                socketTimeoutMillis = 30_000
+            }
+        }.executeSafely { resp ->
+            watchdog.cancel()
+            resp.status.ensureSuccess()
+            val speedWatchdog = launch {
+                val timeoutSpeed = speedLevelToSpeed(Settings.timeoutSpeed.value) * 1024L
+                if (timeoutSpeed > 0) {
+                    tracker.speedFlow().collect { speed ->
+                        if (speed < timeoutSpeed) onTimeout(LowSpeedException(url, speed))
+                    }
+                }
+            }
+            try {
+                f(resp).also {
+                    if (received != reported) {
+                        l(contentLength, received, (received - reported).coerceIn(0, Int.MAX_VALUE.toLong()).toInt())
+                    }
+                }
+            } finally {
+                speedWatchdog.cancel()
+            }
         }
-        try {
-            f(resp)
-        } finally {
-            speedWatchdog.cancel()
-        }
+    } finally {
+        watchdog.cancel()
     }
 }
 

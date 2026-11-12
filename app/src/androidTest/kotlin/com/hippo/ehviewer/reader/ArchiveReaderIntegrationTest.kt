@@ -7,6 +7,12 @@ import com.hippo.ehviewer.gallery.useArchivePageLoader
 import com.hippo.ehviewer.image.ByteBufferSource
 import com.hippo.ehviewer.image.Image
 import com.hippo.ehviewer.image.byteBufferSource
+import com.hippo.ehviewer.jni.archiveSessionPageCount
+import com.hippo.ehviewer.jni.archiveSessionRead
+import com.hippo.ehviewer.jni.closeArchiveSession
+import com.hippo.ehviewer.jni.openArchiveSession
+import com.hippo.ehviewer.jni.releaseByteBuffer
+import com.hippo.ehviewer.jni.trimArchiveCaches
 import com.hippo.ehviewer.reader.data.NativeArchiveReader
 import java.io.File
 import kotlinx.coroutines.runBlocking
@@ -35,9 +41,8 @@ class ArchiveReaderIntegrationTest {
                 val first = NativeArchiveReader.open(fd.fd, file.length(), true)
                 val page = first.read(0)
                 try {
-                    assertThrows(IllegalStateException::class.java) { NativeArchiveReader.open(fd.fd, file.length(), true) }
-                    first.close()
                     NativeArchiveReader.open(fd.fd, file.length(), true).use { second ->
+                        assertEquals(3, first.pageCount)
                         first.close()
                         assertEquals(3, second.pageCount)
                         val bytes = ByteArray(page.buffer.remaining())
@@ -48,6 +53,31 @@ class ArchiveReaderIntegrationTest {
                     first.close()
                     page.close()
                     page.close()
+                }
+            }
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun closedHandleCannotReadReplacementSessionAndLivePageSurvivesTrim() {
+        val file = fixture("stored.zip")
+        try {
+            ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+                val old = openArchiveSession(fd.fd, file.length(), true)
+                val page = requireNotNull(archiveSessionRead(old, 0, false))
+                closeArchiveSession(old)
+                val current = openArchiveSession(fd.fd, file.length(), true)
+                try {
+                    trimArchiveCaches()
+                    assertEquals(null, archiveSessionRead(old, 0, false))
+                    assertThrows(RuntimeException::class.java) { archiveSessionPageCount(old) }
+                    assertEquals(3, archiveSessionPageCount(current))
+                    assertEquals('o'.code.toByte(), page.get(0))
+                } finally {
+                    closeArchiveSession(current)
+                    releaseByteBuffer(page)
                 }
             }
         } finally {
