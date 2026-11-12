@@ -18,6 +18,12 @@ pub(super) struct BufferPool {
     stored_bytes: AtomicUsize,
 }
 impl BufferPool {
+    pub(super) fn trim(&self) {
+        let mut cache = self.cache.lock().unwrap_or_else(|e| e.into_inner());
+        cache.buffers.clear();
+        cache.bytes = 0;
+    }
+
     pub(super) fn new() -> Arc<Self> {
         Arc::new(Self {
             cache: Mutex::new(Cache {

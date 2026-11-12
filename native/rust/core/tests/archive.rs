@@ -1,4 +1,4 @@
-use ehviewer_core::archive::{ArchiveSession, Limits, safe_path, write_zip};
+use ehviewer_core::archive::{ArchiveSession, Limits, ZipWriter, safe_path, write_zip};
 use std::{
     fs::{self, File},
     io::{Seek, SeekFrom},
@@ -324,6 +324,49 @@ fn zip_writer_preserves_fds_and_offsets() {
         .is_err()
     );
     fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn incremental_zip_uses_one_input_at_a_time_and_failed_writer_cannot_commit() {
+    let dir = std::env::temp_dir().join(format!("ehviewer-zip-incremental-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let input = dir.join("input.jpg");
+    let output = dir.join("result.zip");
+    fs::write(&input, b"page").unwrap();
+    let mut writer = ZipWriter::new(File::create(&output).unwrap()).unwrap();
+    for index in 1..=2000 {
+        let mut file = File::open(&input).unwrap();
+        writer
+            .append(&mut file, &format!("{index:08}.jpg"))
+            .unwrap();
+    }
+    writer.finish().unwrap();
+    let file = File::open(&output).unwrap();
+    let size = file.metadata().unwrap().len();
+    let session = unsafe { ArchiveSession::open(file, size, false, Limits::default()) }.unwrap();
+    assert_eq!(session.len(), 2000);
+    assert_eq!(session.extract_readonly(1999).unwrap().as_slice(), b"page");
+    let mut failed = ZipWriter::new(File::create(dir.join("failed.part")).unwrap()).unwrap();
+    assert!(
+        failed
+            .append(&mut File::open(&input).unwrap(), "../bad.jpg")
+            .is_err()
+    );
+    assert!(failed.finish().is_err());
+    fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn trimming_preserves_live_buffers_across_repeated_session_close() {
+    for _ in 0..16 {
+        let session = open("deflated.zip", true);
+        let page = session.extract_readonly(0).unwrap();
+        drop(session.extract_readonly(2).unwrap());
+        session.trim_caches();
+        assert_eq!(session.extract_readonly(1).unwrap().as_slice(), b"two");
+        drop(session);
+        assert_eq!(page.as_slice(), b"one");
+    }
 }
 
 #[test]

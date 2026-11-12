@@ -22,23 +22,24 @@ class NativeArchiveReaderTest {
             put(byteArrayOf(1, 2, 3))
             flip()
         }
-        override fun open(fd: Int, size: Long, sortEntries: Boolean): Int {
+        override fun open(fd: Int, size: Long, sortEntries: Boolean): Long {
             opens++
             check(!failOpen)
-            return count
+            return opens.toLong()
         }
-        override fun close() {
+        override fun pageCount(handle: Long) = count
+        override fun close(handle: Long) {
             closes++
             check(!failClose)
         }
-        override fun needsPassword() = true
-        override fun providePassword(password: String): Boolean {
+        override fun needsPassword(handle: Long) = true
+        override fun providePassword(handle: Long, password: String): Boolean {
             this.password = password
             return password == "密码🔑"
         }
-        override fun extension(index: Int) = "jpg"
-        override fun read(index: Int) = bytes
-        override fun copyTo(index: Int, outputFd: Int): Boolean {
+        override fun extension(handle: Long, index: Int) = "jpg"
+        override fun read(handle: Long, index: Int) = bytes
+        override fun copyTo(handle: Long, index: Int, outputFd: Int): Boolean {
             copied = outputFd
             return true
         }
@@ -96,16 +97,19 @@ class NativeArchiveReaderTest {
     }
 
     @Test
-    fun rejectsOverlappingReadersWithoutReplacingTheActiveSession() {
+    fun closesOverlappingReadersIndependently() {
         val backend = FakeBackend()
         val factory = NativeArchiveReader.Factory(backend)
-        factory.open(7, 100, false).use {
-            assertThrows(IllegalStateException::class.java) { factory.open(8, 100, true) }
-            assertEquals(1, backend.opens)
-            assertEquals(0, backend.closes)
+        factory.open(7, 100, false).use { first ->
+            factory.open(8, 100, true).use { second ->
+                assertEquals("jpg", second.extension(0))
+                assertEquals(2, backend.opens)
+                assertEquals(0, backend.closes)
+            }
+            assertEquals("jpg", first.extension(0))
+            assertEquals(1, backend.closes)
         }
-        factory.open(8, 100, true).close()
-        assertEquals(2, backend.opens)
+        assertEquals(2, backend.closes)
     }
 
     @Test

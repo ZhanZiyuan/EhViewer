@@ -10,7 +10,7 @@ use memmap2::{Mmap, MmapMut, MmapOptions};
 use std::ffi::{CStr, CString};
 use std::fs::File;
 use std::io::{Read, Write};
-use std::os::fd::RawFd;
+use std::os::fd::{AsRawFd, RawFd};
 use std::ptr::NonNull;
 use std::sync::{Arc, Condvar, Mutex, Weak};
 pub use stored::StoredBuffer;
@@ -396,6 +396,22 @@ pub fn safe_path(name: &[u8]) -> bool {
             .any(|p| p == b".." || p.is_empty())
 }
 impl ArchiveSession {
+    /// Drop idle caches only. In-flight readers and published leases keep their own owners.
+    pub fn trim_caches(&self) {
+        {
+            let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+            state.generation = state.generation.wrapping_add(1);
+            state.pool.clear();
+        }
+        self.source
+            .views
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
+        self.buffers.trim();
+        self.stored.trim();
+    }
+
     /// # Safety
     /// The backing file must remain unmodified/untruncated until this session and every returned
     /// mapped lease (writable or read-only) has been dropped. Closing/unlinking the caller's fd is safe.
@@ -734,29 +750,51 @@ impl Writer {
         }
     }
 }
-/// ZIP/store writer. Caller owns fd; reads each input from its current offset and never closes it.
-pub fn write_zip(inputs: &mut [(File, String)], output: RawFd) -> Result<()> {
-    ensure!(
-        output >= 0 && inputs.len() <= Limits::default().entries,
-        "Invalid ZIP writer arguments"
-    );
-    for (file, name) in inputs.iter() {
+/// Incremental ZIP/STORE output; only the output descriptor lives with the writer.
+pub struct ZipWriter {
+    writer: Writer,
+    output: File,
+    entries: usize,
+    failed: bool,
+}
+
+// SAFETY: libarchive writers are independent; moving one does not grant concurrent access.
+// Every call uses exclusive Rust ownership, including when JNI stores it behind a mutex.
+unsafe impl Send for ZipWriter {}
+
+impl ZipWriter {
+    pub fn new(output: File) -> Result<Self> {
+        let writer = Writer(
+            NonNull::new(unsafe { archive_write_new() })
+                .ok_or_else(|| anyhow!("archive allocation failed"))?,
+        );
+        let a = writer.0.as_ptr();
+        unsafe {
+            writer.check(archive_write_set_format_zip(a))?;
+            writer.check(archive_write_zip_set_compression_store(a))?;
+            writer.check(archive_write_open_fd(a, output.as_raw_fd()))?;
+        }
+        Ok(Self {
+            writer,
+            output,
+            entries: 0,
+            failed: false,
+        })
+    }
+
+    pub fn append(&mut self, file: &mut File, name: &str) -> Result<()> {
+        ensure!(!self.failed, "ZIP writer already failed");
+        self.failed = true;
+        ensure!(
+            self.entries < Limits::default().entries,
+            "Too many ZIP entries"
+        );
         ensure!(
             safe_path(name.as_bytes()) && file.metadata()?.is_file(),
             "Unsafe ZIP input"
         );
-    }
-    let writer = Writer(
-        NonNull::new(unsafe { archive_write_new() })
-            .ok_or_else(|| anyhow!("archive allocation failed"))?,
-    );
-    let a = writer.0.as_ptr();
-    unsafe {
-        writer.check(archive_write_set_format_zip(a))?;
-        writer.check(archive_write_zip_set_compression_store(a))?;
-        writer.check(archive_write_open_fd(a, output))?;
-    }
-    for (file, name) in inputs {
+        let writer = &self.writer;
+        let a = writer.0.as_ptr();
         let name = CString::new(name.as_bytes())?;
         // SEEK_CUR yields the size remaining, preserving fd stream semantics for partially read files.
         let position = std::io::Seek::stream_position(file)?;
@@ -795,8 +833,38 @@ pub fn write_zip(inputs: &mut [(File, String)], output: RawFd) -> Result<()> {
             remaining -= n as u64;
         }
         writer.check(unsafe { archive_write_finish_entry(a) })?;
+        self.entries += 1;
+        self.failed = false;
+        Ok(())
     }
-    writer.check(unsafe { archive_write_close(a) })
+
+    pub fn finish(self) -> Result<()> {
+        ensure!(!self.failed, "Cannot commit a failed ZIP writer");
+        self.writer
+            .check(unsafe { archive_write_close(self.writer.0.as_ptr()) })?;
+        self.output.sync_all()?;
+        Ok(())
+    }
+}
+
+/// Legacy batch interface for existing clients. Inputs keep their current offset semantics.
+pub fn write_zip(inputs: &mut [(File, String)], output: RawFd) -> Result<()> {
+    ensure!(
+        output >= 0 && inputs.len() <= Limits::default().entries,
+        "Invalid ZIP writer arguments"
+    );
+    for (file, name) in inputs.iter() {
+        ensure!(
+            safe_path(name.as_bytes()) && file.metadata()?.is_file(),
+            "Unsafe ZIP input"
+        );
+    }
+    // SAFETY: the caller owns this descriptor for the duration of the call.
+    let mut writer = ZipWriter::new(unsafe { crate::fd::clone_fd(output)? })?;
+    for (file, name) in inputs {
+        writer.append(file, name)?;
+    }
+    writer.finish()
 }
 
 #[cfg(test)]

@@ -25,9 +25,20 @@ internal external fun releaseByteBuffer(buffer: ByteBuffer)
 internal external fun getExtension(index: Int): String
 internal external fun needPassword(): Boolean
 internal external fun providePassword(password: String): Boolean
+internal external fun openArchiveSession(fd: Int, size: Long, sort: Boolean): Long
+internal external fun closeArchiveSession(handle: Long)
+internal external fun archiveSessionPageCount(handle: Long): Int
+internal external fun archiveSessionNeedsPassword(handle: Long): Boolean
+internal external fun archiveSessionProvidePassword(handle: Long, password: String): Boolean
+internal external fun archiveSessionRead(handle: Long, index: Int, rewriteGif: Boolean): ByteBuffer?
 
 private var readonly = false
-private fun extract(index: Int) = if (readonly) extractForReading(index, false) else extractToByteBuffer(index)
+private var sessionHandle = 0L
+private fun extract(index: Int) = when {
+    sessionHandle != 0L -> archiveSessionRead(sessionHandle, index, false)
+    readonly -> extractForReading(index, false)
+    else -> extractToByteBuffer(index)
+}
 
 private class Worker {
     // Preserve the original volatile 4-KiB touch workload, without sharing a cache line across workers.
@@ -142,6 +153,8 @@ fun nativeArchiveBenchmark(options: Options): Map<String, Any> {
     val samples = options.has("--samples") || cpuSamples || phases
     val mutate = options.has("--mutate")
     readonly = options.has("--readonly")
+    val explicitSession = options.has("--session")
+    require(!explicitSession || readonly) { "The explicit session uses the production read-only API" }
     require(!readonly || !mutate) { "Read-only output cannot be mutated" }
     require(loops in 1..100_000 && warmup in 0..100_000 && retained in 0..64 && threads in 1..8)
     require(order in setOf("legacy", "forward", "reverse", "random", "repeat"))
@@ -159,7 +172,14 @@ fun nativeArchiveBenchmark(options: Options): Map<String, Any> {
     FileInputStream(archive.toFile()).use { input ->
         val field = FileDescriptor::class.java.getDeclaredField("fd").apply { isAccessible = true }
         val start = System.nanoTime()
-        val pages = openArchive(field.getInt(input.fd), Files.size(archive), true)
+        val fd = field.getInt(input.fd)
+        val size = Files.size(archive)
+        val pages = if (explicitSession) {
+            sessionHandle = openArchiveSession(fd, size, true)
+            archiveSessionPageCount(sessionHandle)
+        } else {
+            openArchive(fd, size, true)
+        }
         require(pages > 0) { "Unable to open benchmark archive" }
         val opened = System.nanoTime() - start
         val held = mutableListOf<ByteBuffer>()
@@ -167,6 +187,15 @@ fun nativeArchiveBenchmark(options: Options): Map<String, Any> {
         var closed = 0L
         var heldRelease = 0L
         val result = try {
+            if (if (explicitSession) archiveSessionNeedsPassword(sessionHandle) else needPassword()) {
+                val password = options.get("--password", "")
+                require(password.isNotEmpty() && if (explicitSession) archiveSessionProvidePassword(sessionHandle, password) else providePassword(password)) {
+                    "Benchmark archive requires a valid password"
+                }
+            }
+            val firstStart = System.nanoTime()
+            releaseByteBuffer(checkNotNull(extract(0)))
+            val firstPage = System.nanoTime() - firstStart
             repeat(retained) { held += checkNotNull(extract(it % pages)) }
             val ready = CountDownLatch(threads)
             val go = CountDownLatch(1)
@@ -240,7 +269,7 @@ fun nativeArchiveBenchmark(options: Options): Map<String, Any> {
                 "archive" to archive.fileName.toString(), "library" to library.toString(),
                 "loops" to loops, "warmup" to warmup, "retained" to retained, "threads" to threads, "order" to order,
                 "mutate" to mutate, "readonly" to readonly, "instrumented" to (cpuSamples || phases || pause > 0),
-                "open_ms" to opened / 1e6, "median_ms" to times[times.size / 2] / 1e6,
+                "session" to explicitSession, "open_ms" to opened / 1e6, "first_page_ms" to firstPage / 1e6, "median_ms" to times[times.size / 2] / 1e6,
                 "p95_ms" to times[(times.size * 95 / 100).coerceAtMost(times.lastIndex)] / 1e6,
                 "p99_ms" to times[(times.size * 99 / 100).coerceAtMost(times.lastIndex)] / 1e6,
                 "wall_ms" to wall / 1e6, "pages_per_second" to (loops.toDouble() * threads * 1e9 / wall),
@@ -256,7 +285,12 @@ fun nativeArchiveBenchmark(options: Options): Map<String, Any> {
             held.forEach(::releaseByteBuffer)
             heldRelease = System.nanoTime() - beforeRelease
             val beforeClose = System.nanoTime()
-            closeArchive()
+            if (explicitSession) {
+                closeArchiveSession(sessionHandle)
+                sessionHandle = 0
+            } else {
+                closeArchive()
+            }
             closed = System.nanoTime() - beforeClose
         }
         return result + mapOf("held_release_ms" to heldRelease / 1e6, "close_ms" to closed / 1e6)
