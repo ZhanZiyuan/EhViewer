@@ -101,8 +101,7 @@ class DownloadService :
         val scope = this
         launch {
             val manager = deferredMgr.await()
-            manager.setDownloadListener(null)
-            if (serviceTimedOut) manager.stopAllDownload()
+            manager.detachDownloadListener(this@DownloadService, serviceTimedOut)
             // Wait for the last notification to be posted
             delay(DELAY)
             scope.cancel()

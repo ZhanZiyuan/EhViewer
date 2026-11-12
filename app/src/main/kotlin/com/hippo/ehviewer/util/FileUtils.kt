@@ -18,8 +18,14 @@ package com.hippo.ehviewer.util
 import com.ehviewer.core.files.write
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
+import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.rethrowCloseCauseIfNeeded
 import java.io.File
+import java.io.IOException
+import java.security.MessageDigest
+import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.io.Sink
 import okio.Path
 
 object FileUtils {
@@ -128,4 +134,23 @@ suspend fun ByteReadChannel.copyTo(file: Path) {
         }
         rethrowCloseCauseIfNeeded()
     }
+}
+
+/** Hash the same bytes that are written; the caller still owns and closes the sink. */
+@OptIn(InternalAPI::class)
+internal suspend fun ByteReadChannel.copyWithSha1(sink: Sink): String {
+    val digest = MessageDigest.getInstance("SHA-1")
+    val bytes = ByteArray(64 * 1024)
+    while (true) {
+        coroutineContext.ensureActive()
+        if (!awaitContent()) break
+        val size = readAvailable(bytes, 0, bytes.size)
+        if (size < 0) break
+        if (size == 0) throw IOException("Image response read made no progress")
+        sink.write(bytes, 0, size)
+        digest.update(bytes, 0, size)
+    }
+    rethrowCloseCauseIfNeeded()
+    coroutineContext.ensureActive()
+    return digest.digest().toHexString()
 }

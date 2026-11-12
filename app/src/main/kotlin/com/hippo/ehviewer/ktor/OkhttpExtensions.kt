@@ -7,6 +7,7 @@ import okhttp3.android.AndroidAsyncDns
 
 fun OkHttpConfig.configureClient() {
     config {
+        retryOnConnectionFailure(false)
         if (isAtLeastQ) {
             dns(AsyncDns.toDns(AndroidAsyncDns.IPv4, AndroidAsyncDns.IPv6))
         }

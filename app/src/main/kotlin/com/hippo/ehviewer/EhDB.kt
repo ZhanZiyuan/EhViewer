@@ -25,6 +25,7 @@ import com.ehviewer.core.database.Schema17to18
 import com.ehviewer.core.database.getDatabasePath
 import com.ehviewer.core.database.model.DownloadArtist
 import com.ehviewer.core.database.model.DownloadDirname
+import com.ehviewer.core.database.model.DownloadEntity
 import com.ehviewer.core.database.model.DownloadInfo
 import com.ehviewer.core.database.model.DownloadLabel
 import com.ehviewer.core.database.model.Filter
@@ -75,6 +76,10 @@ object EhDB {
         dao.update(downloadInfo.map(DownloadInfo::downloadInfo))
     }
 
+    suspend fun updateDownloadStates(downloads: List<DownloadEntity>) {
+        if (downloads.isNotEmpty()) db.downloadsDao().update(downloads)
+    }
+
     suspend fun putDownloadInfo(downloadInfo: DownloadInfo) {
         putGalleryInfo(downloadInfo.galleryInfo)
         db.downloadsDao().upsert(downloadInfo.downloadInfo)
@@ -89,11 +94,9 @@ object EhDB {
     suspend fun randomLocalFav() = db.localFavoritesDao().random()
 
     suspend fun removeDownloadInfo(downloadInfo: List<DownloadInfo>) {
-        val dao = db.downloadsDao()
-        downloadInfo.forEach {
-            dao.delete(it.downloadInfo)
-            deleteGalleryInfo(it.galleryInfo)
-        }
+        if (downloadInfo.isEmpty()) return
+        db.downloadsDao().delete(downloadInfo.map(DownloadInfo::downloadInfo))
+        downloadInfo.forEach { deleteGalleryInfo(it.galleryInfo) }
     }
 
     suspend fun getDownloadDirname(gid: Long): String? {

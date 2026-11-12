@@ -13,6 +13,7 @@ import androidx.annotation.RequiresExtension
 import io.ktor.client.engine.HttpClientEngineBase
 import io.ktor.client.engine.callContext
 import io.ktor.client.plugins.HttpTimeoutCapability
+import io.ktor.client.plugins.SocketTimeoutException
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
@@ -24,20 +25,18 @@ import io.ktor.util.date.GMTDate
 import io.ktor.util.flattenForEach
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
-import io.ktor.utils.io.pool.DirectByteBufferPool
-import io.ktor.utils.io.pool.useInstance
 import io.ktor.utils.io.writeFully
 import io.ktor.utils.io.writer
 import java.nio.ByteBuffer
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.consumeEach
-import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.job
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 
 class CronetEngine(override val config: CronetConfig) : HttpClientEngineBase("Cronet") {
     // Limit thread to 1 since we are async & non-blocking
@@ -47,10 +46,7 @@ class CronetEngine(override val config: CronetConfig) : HttpClientEngineBase("Cr
     override val supportedCapabilities = setOf(HttpTimeoutCapability)
 
     private val executor = dispatcher.limitedParallelism(1).asExecutor()
-    private val pool = DirectByteBufferPool(32)
-    private val client by lazy {
-        with(config) { HttpEngine.Builder(context).apply(config).build() }
-    }
+    private val client = with(config) { HttpEngine.Builder(context).apply(config).build() }
 
     @InternalAPI
     override suspend fun execute(data: HttpRequestData) = executeHttpRequest(callContext(), data)
@@ -60,9 +56,12 @@ class CronetEngine(override val config: CronetConfig) : HttpClientEngineBase("Cr
         data: HttpRequestData,
     ) = suspendCancellableCoroutine { continuation ->
         val requestTime = GMTDate()
+        val socketTimeout = data.getCapabilityOrNull(HttpTimeoutCapability)?.socketTimeoutMillis
+            ?.takeUnless { it == Long.MAX_VALUE }
 
         val callback = object : UrlRequest.Callback {
-            val chunkChan = Channel<ByteBuffer>()
+            // There is only one outstanding read; its callback can always deposit one result.
+            val chunkChan = Channel<ByteBuffer>(1)
             override fun onRedirectReceived(request: UrlRequest, info: UrlResponseInfo, newLocationUrl: String) {
                 continuation.resume(
                     info.toHttpResponseData(
@@ -70,6 +69,8 @@ class CronetEngine(override val config: CronetConfig) : HttpClientEngineBase("Cr
                         callContext = callContext,
                     ),
                 )
+                // Redirects belong to Ktor, including cookie processing and policy.
+                request.cancel()
             }
 
             override fun onResponseStarted(request: UrlRequest, info: UrlResponseInfo) {
@@ -78,14 +79,28 @@ class CronetEngine(override val config: CronetConfig) : HttpClientEngineBase("Cr
                         requestTime = requestTime,
                         callContext = callContext,
                         responseBody = writer(callContext.job) {
-                            pool.useInstance {
-                                request.read(it)
-                                chunkChan.consumeEach { buffer ->
+                            try {
+                                // Keep the buffer private to this request. After cancellation Cronet
+                                // may still be writing into it until its terminal callback arrives.
+                                var buffer = ByteBuffer.allocateDirect(32 * 1024)
+                                while (true) {
+                                    request.read(buffer)
+                                    val chunk = if (socketTimeout != null) {
+                                        withTimeoutOrNull(socketTimeout) { chunkChan.receiveCatching() }
+                                            ?: throw SocketTimeoutException(data)
+                                    } else {
+                                        chunkChan.receiveCatching()
+                                    }
+                                    chunk.exceptionOrNull()?.let { throw it }
+                                    buffer = chunk.getOrNull() ?: break
                                     buffer.flip()
                                     channel.writeFully(buffer)
+                                    channel.flush()
                                     buffer.clear()
-                                    request.read(buffer)
                                 }
+                            } finally {
+                                chunkChan.cancel()
+                                request.cancel()
                             }
                         }.channel,
                     ),
@@ -93,7 +108,7 @@ class CronetEngine(override val config: CronetConfig) : HttpClientEngineBase("Cr
             }
 
             override fun onReadCompleted(request: UrlRequest, info: UrlResponseInfo, byteBuffer: ByteBuffer) {
-                chunkChan.trySendBlocking(byteBuffer).getOrThrow()
+                if (chunkChan.trySend(byteBuffer).isFailure) request.cancel()
             }
 
             override fun onSucceeded(request: UrlRequest, info: UrlResponseInfo) {
@@ -101,14 +116,15 @@ class CronetEngine(override val config: CronetConfig) : HttpClientEngineBase("Cr
             }
 
             override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error: HttpException) {
-                if (continuation.isActive) {
-                    continuation.resumeWithException(error)
-                } else {
-                    chunkChan.close(error)
-                }
+                chunkChan.close(error)
+                if (continuation.isActive) continuation.resumeWithException(error)
             }
 
-            override fun onCanceled(request: UrlRequest, info: UrlResponseInfo?) = Unit
+            override fun onCanceled(request: UrlRequest, info: UrlResponseInfo?) {
+                val cause = CancellationException("Cronet request cancelled")
+                chunkChan.cancel(cause)
+                continuation.cancel(cause)
+            }
         }
 
         client.newUrlRequestBuilder(data.url.toString(), executor, callback).apply {
@@ -118,8 +134,12 @@ class CronetEngine(override val config: CronetConfig) : HttpClientEngineBase("Cr
             data.body.contentLength?.let { addHeader(HttpHeaders.ContentLength, it.toString()) }
             data.body.toUploadDataProvider()?.let { setUploadDataProvider(it, executor) }
         }.build().apply {
-            start()
+            continuation.invokeOnCancellation { cancel() }
             callContext.job.invokeOnCompletion { cancel() }
+            if (continuation.isActive) {
+                start()
+                if (continuation.isCancelled) cancel()
+            }
         }
     }
 }
@@ -152,7 +172,10 @@ private fun OutgoingContent.toUploadDataProvider() = when (this) {
         val buffer = ByteBuffer.wrap(bytes()).slice()
         override fun getLength() = buffer.limit().toLong()
         override fun read(uploadDataSink: UploadDataSink, byteBuffer: ByteBuffer) {
+            val end = buffer.limit()
+            buffer.limit(buffer.position() + minOf(buffer.remaining(), byteBuffer.remaining()))
             byteBuffer.put(buffer)
+            buffer.limit(end)
             uploadDataSink.onReadSucceeded(false)
         }
         override fun rewind(uploadDataSink: UploadDataSink) {
