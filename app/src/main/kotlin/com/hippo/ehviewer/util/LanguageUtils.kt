@@ -4,31 +4,24 @@ import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.ehviewer.core.i18n.R
-import org.xmlpull.v1.XmlPullParser
+
+private val selectableAppLanguages = listOf("en", "ja", "zh-CN", "zh-HK", "zh-TW")
 
 context(ctx: Context)
-fun getLanguages(): Map<String, String> = with(ctx) {
-    val languages = mutableMapOf("system" to getString(R.string.app_language_system))
-    resources.getXml(com.hippo.ehviewer.R.xml.locale_config).use { parser ->
-        var event = parser.eventType
-        while (event != XmlPullParser.END_DOCUMENT) {
-            if (event == XmlPullParser.START_TAG && parser.name == "locale") {
-                val tag = parser.getAttributeValue("http://schemas.android.com/apk/res/android", "name").removeSuffix("-US")
-                LocaleListCompat.forLanguageTags(tag)[0]?.let { locale ->
-                    languages[tag] = locale.getDisplayName(locale).replaceFirstChar { it.uppercase(locale) }
-                }
-            }
-            event = parser.next()
-        }
-    }
-    return languages
+fun getLanguages(): Map<String, String> = buildMap {
+    put("system", ctx.getString(R.string.app_language_system))
+    selectableAppLanguages.forEach { put(it, getLanguageDisplayName(it)) }
 }
+
+fun getLanguageDisplayName(language: String): String = LocaleListCompat.forLanguageTags(language)[0]?.let { locale ->
+    locale.getDisplayName(locale).replaceFirstChar { it.uppercase(locale) }
+}.orEmpty()
 
 fun getAppLanguage(): String {
     val locale = AppCompatDelegate.getApplicationLocales()[0]
     return when (val language = locale?.language) {
         null -> "system"
-        "zh", "nb" -> "$language-${locale.country}"
+        "zh", "nb" -> locale.country.takeIf(String::isNotEmpty)?.let { "$language-$it" } ?: language
         else -> language
     }
 }

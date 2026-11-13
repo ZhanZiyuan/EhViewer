@@ -26,7 +26,7 @@ class PlatformRegressionTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
 
     @Test
-    fun cronetTitleIsTranslatedForEveryAppLanguage() {
+    fun cronetTitleIsTranslatedForEveryPackagedLanguage() {
         val context = instrumentation.targetContext
         val expected = mapOf(
             "en" to "Enable Cronet",
@@ -42,11 +42,16 @@ class PlatformRegressionTest {
             "zh-HK" to "啟用 Cronet",
             "zh-TW" to "啟用 Cronet",
         )
-        assertEquals(expected.keys + "system", with(context) { getLanguages() }.keys)
         expected.forEach { (tag, title) ->
             val config = Configuration(context.resources.configuration).apply { setLocale(Locale.forLanguageTag(tag)) }
             assertEquals(tag, title, context.createConfigurationContext(config).getString(R.string.settings_advanced_enable_cronet))
         }
+    }
+
+    @Test
+    fun appLanguagePickerOffersOnlyCompleteTranslations() {
+        val languages = with(instrumentation.targetContext) { getLanguages() }
+        assertEquals(listOf("system", "en", "ja", "zh-CN", "zh-HK", "zh-TW"), languages.keys.toList())
     }
 
     @Test
