@@ -16,6 +16,7 @@ import com.ehviewer.core.database.model.HistoryInfo
 import com.ehviewer.core.database.model.LocalFavoriteInfo
 import com.ehviewer.core.files.delete
 import com.ehviewer.core.files.exists
+import com.ehviewer.core.files.isDirectory
 import com.ehviewer.core.files.mkdirs
 import com.ehviewer.core.files.openFileDescriptor
 import com.ehviewer.core.files.toOkioPath
@@ -34,6 +35,7 @@ import com.hippo.ehviewer.spider.isSameCbzDocument
 import com.hippo.ehviewer.spider.verifyCbz
 import com.hippo.ehviewer.spider.write
 import com.hippo.ehviewer.spider.writeComicInfo
+import com.hippo.ehviewer.util.AppConfig
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -150,6 +152,12 @@ class StorageIntegrationTest {
         val different = DocumentsContract.buildDocumentUri(authority, "primary:Download/other.cbz").toOkioPath()
         assertTrue(fromTree.isSameCbzDocument(single))
         assertFalse(fromTree.isSameCbzDocument(different))
+    }
+
+    @Test
+    fun defaultDownloadDirectoryIsAnExistingAbsolutePath() {
+        val directory = AppConfig.defaultDownloadDir.toOkioPath()
+        assertTrue(directory.isAbsolute && directory.isDirectory)
     }
 
     @Test

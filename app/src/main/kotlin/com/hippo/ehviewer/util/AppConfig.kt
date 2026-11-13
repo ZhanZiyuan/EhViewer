@@ -57,10 +57,12 @@ object AppConfig {
             return null
         }
 
-    private fun getDirInExternalAppDir(filename: String, create: Boolean = true) = externalAppDir?.run { File(this, filename).takeIf { if (create) it.ensureDirectory() else it.isDirectory } }
+    private fun getDirInExternalAppDir(filename: String) = externalAppDir?.run { File(this, filename).takeIf { it.ensureDirectory() } }
 
-    val defaultDownloadDir: File?
-        get() = getDirInExternalAppDir(DOWNLOAD, false)
+    val defaultDownloadDir: File
+        get() = getDirInExternalAppDir(DOWNLOAD) ?: File(appCtx.filesDir, DOWNLOAD).apply {
+            check(ensureDirectory()) { "Unable to prepare the default download directory" }
+        }
     val externalTempPersistDir
         get() = getDirInExternalAppDir(TEMP)?.toOkioPath()
     val externalParseErrorDir: File?

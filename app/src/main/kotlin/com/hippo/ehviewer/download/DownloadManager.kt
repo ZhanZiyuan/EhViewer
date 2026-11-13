@@ -71,7 +71,6 @@ import kotlinx.coroutines.sync.withLock
 import logcat.LogPriority
 import okio.Path
 import okio.Path.Companion.toOkioPath
-import okio.Path.Companion.toPath
 
 object DownloadManager : CoroutineScope {
     override val coroutineContext = Dispatchers.IO + Job()
@@ -901,7 +900,7 @@ var downloadLocation: Path
                 encodedFragment(downloadFragment)
             }.build().toOkioPath()
         } else {
-            AppConfig.defaultDownloadDir?.toOkioPath() ?: "".toPath()
+            AppConfig.defaultDownloadDir.toOkioPath()
         }
     }
     set(value) = with(value.toUri()) {

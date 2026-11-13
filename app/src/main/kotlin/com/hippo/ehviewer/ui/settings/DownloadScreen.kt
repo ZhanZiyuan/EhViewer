@@ -125,7 +125,7 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
             ) {
                 launchIO {
                     val defaultDownloadDir = AppConfig.defaultDownloadDir
-                    if (defaultDownloadDir?.delete() == false) {
+                    if (!defaultDownloadDir.delete()) {
                         val path = defaultDownloadDir.toOkioPath()
                         awaitConfirmationOrCancel(
                             confirmText = R.string.pick_new_download_location,
