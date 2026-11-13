@@ -17,8 +17,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -70,6 +73,7 @@ import com.hippo.ehviewer.ui.Screen
 import com.hippo.ehviewer.ui.keepNoMediaFileStatus
 import com.hippo.ehviewer.ui.main.NavigationIcon
 import com.hippo.ehviewer.ui.tools.awaitConfirmationOrCancel
+import com.hippo.ehviewer.ui.tools.dialog
 import com.hippo.ehviewer.util.AppConfig
 import com.hippo.ehviewer.util.displayPath
 import com.hippo.ehviewer.util.displayString
@@ -78,6 +82,7 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import java.io.File
+import kotlin.coroutines.resume
 import moe.tarsin.coroutines.runSuspendCatching
 import moe.tarsin.snackbar
 import moe.tarsin.string
@@ -149,30 +154,33 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
                     val hasDownloads = defaultDownloadDir.hasDownloadContents()
                     val canReset = Settings.snapshot()[Settings.downloadScheme] != null
                     if (hasDownloads || canReset) {
-                        awaitConfirmationOrCancel(
-                            confirmText = R.string.pick_new_download_location,
-                            dismissText = if (canReset) {
-                                R.string.reset_download_location
-                            } else {
-                                android.R.string.cancel
-                            },
-                            title = if (hasDownloads) R.string.waring else R.string.settings_download_download_location,
-                            onCancelButtonClick = {
-                                if (canReset) {
-                                    launchIO {
-                                        runSuspendCatching { saveLocation(null) }.onFailure {
-                                            logcat(it)
-                                            launchSnackbar(cannotGetDownloadLocation)
-                                        }
+                        val pickNew = dialog { result ->
+                            AlertDialog(
+                                onDismissRequest = { result.cancel() },
+                                title = { Text(stringResource(if (hasDownloads) R.string.waring else R.string.settings_download_download_location)) },
+                                text = if (hasDownloads) ({ Text(stringResource(R.string.default_download_dir_not_empty)) }) else null,
+                                confirmButton = {
+                                    TextButton(onClick = { result.resume(true) }, shapes = ButtonDefaults.shapes()) {
+                                        Text(stringResource(R.string.pick_new_download_location))
                                     }
-                                }
-                            },
-                            text = if (hasDownloads) {
-                                { Text(stringResource(id = R.string.default_download_dir_not_empty)) }
-                            } else {
-                                null
-                            },
-                        )
+                                },
+                                dismissButton = {
+                                    TextButton(
+                                        onClick = { if (canReset) result.resume(false) else result.cancel() },
+                                        shapes = ButtonDefaults.shapes(),
+                                    ) {
+                                        Text(stringResource(if (canReset) R.string.reset_download_location else android.R.string.cancel))
+                                    }
+                                },
+                            )
+                        }
+                        if (!pickNew) {
+                            runSuspendCatching { saveLocation(null) }.onFailure {
+                                logcat(it)
+                                launchSnackbar(cannotGetDownloadLocation)
+                            }
+                            return@launchIO
+                        }
                     }
                     try {
                         selectDownloadDirLauncher.launch(null)
