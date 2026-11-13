@@ -1,5 +1,6 @@
 package com.hippo.ehviewer
 
+import android.provider.DocumentsContract
 import androidx.core.content.FileProvider
 import androidx.paging.PagingSource
 import androidx.room.Room
@@ -13,17 +14,33 @@ import com.ehviewer.core.database.model.DownloadLabel
 import com.ehviewer.core.database.model.GalleryEntity
 import com.ehviewer.core.database.model.HistoryInfo
 import com.ehviewer.core.database.model.LocalFavoriteInfo
+import com.ehviewer.core.files.delete
+import com.ehviewer.core.files.exists
+import com.ehviewer.core.files.mkdirs
 import com.ehviewer.core.files.openFileDescriptor
 import com.ehviewer.core.files.toOkioPath
+import com.ehviewer.core.files.write
 import com.hippo.ehviewer.jni.appendZipEntry
 import com.hippo.ehviewer.jni.beginZipWriter
 import com.hippo.ehviewer.jni.closeZipWriter
 import com.hippo.ehviewer.spider.CbzCommit
+import com.hippo.ehviewer.spider.SpiderInfo
+import com.hippo.ehviewer.spider.SpiderQueen
 import com.hippo.ehviewer.spider.copyCbz
 import com.hippo.ehviewer.spider.copyVerifiedCbz
+import com.hippo.ehviewer.spider.getComicInfo
+import com.hippo.ehviewer.spider.getGalleryDownloadDir
+import com.hippo.ehviewer.spider.isSameCbzDocument
 import com.hippo.ehviewer.spider.verifyCbz
+import com.hippo.ehviewer.spider.write
+import com.hippo.ehviewer.spider.writeComicInfo
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -49,6 +66,10 @@ class StorageIntegrationTest {
             assertEquals(listOf(17L), gids(db.localFavoritesDao().joinListLazy(old)))
             gallery.title = "Cloud changed"
             db.galleryDao().update(gallery)
+            db.galleryDao().updatePageCount(gallery.gid, 10)
+            val updated = checkNotNull(db.galleryDao().load(gallery.gid))
+            assertEquals(10, updated.pages)
+            assertEquals("Cloud changed", updated.title)
             assertTrue(gids(db.historyDao().joinListLazy(old)).isEmpty())
             assertTrue(gids(db.localFavoritesDao().joinListLazy(old)).isEmpty())
             assertEquals(listOf(17L), gids(db.historyDao().joinListLazy(gallerySearchExpression("changed"))))
@@ -101,6 +122,10 @@ class StorageIntegrationTest {
             assertEquals("page data", image.readText())
             commit.write(1) { writeArchive(it, image, metadata) }
             val saved = output.readBytes()
+            marker.writeText("torn marker")
+            assertFalse(commit.recover(1))
+            assertTrue(marker.exists())
+            assertEquals(saved.toList(), output.readBytes().toList())
             marker.writeText(output.inputStream().use { copyCbz(it) })
             output.writeText("interrupted copy")
             assertFalse(commit.recover(1))
@@ -112,6 +137,73 @@ class StorageIntegrationTest {
             assertEquals(saved.toList(), output.readBytes().toList())
         } finally {
             folder.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun treeAndSingleDocumentUrisIdentifyTheSameArchive() {
+        val authority = "com.android.externalstorage.documents"
+        val root = DocumentsContract.buildTreeDocumentUri(authority, "primary:Download")
+        val documentId = "primary:Download/archive.cbz"
+        val fromTree = DocumentsContract.buildDocumentUriUsingTree(root, documentId).toOkioPath()
+        val single = DocumentsContract.buildDocumentUri(authority, documentId).toOkioPath()
+        val different = DocumentsContract.buildDocumentUri(authority, "primary:Download/other.cbz").toOkioPath()
+        assertTrue(fromTree.isSameCbzDocument(single))
+        assertFalse(fromTree.isSameCbzDocument(different))
+    }
+
+    @Test
+    fun retryWaitsForPreviousArchiveToReleaseTheGallery() = runBlocking {
+        val gid = 8_000_000_000L + System.nanoTime().ushr(1) % 1_000_000_000
+        val gallery = GalleryEntity(gid, "test", "Archive restart", "", null, 0, null, null, 0f, null, 1, null, -2)
+        val directory = getGalleryDownloadDir(gallery).apply { mkdirs() }
+        val cbzEnabled = Settings.saveAsCbz.value
+        val archiving = CompletableDeferred<Unit>()
+        val unblock = CountDownLatch(1)
+        val completed = CompletableDeferred<Boolean>()
+        var running: SpiderQueen? = null
+        try {
+            Settings.withMutableSnapshot { it[Settings.saveAsCbz] = true }
+            SpiderInfo(gid, gallery.token, 1).write(directory / SpiderQueen.SPIDER_INFO_FILENAME)
+            (directory / "00000001.jpg").write { write("test page".encodeToByteArray()) }
+            writeComicInfo(gallery.getComicInfo(), directory / "ComicInfo.xml")
+            val first = SpiderQueen.obtainSpiderQueen(
+                gallery,
+                SpiderQueen.MODE_DOWNLOAD,
+                object : SpiderQueen.OnSpiderListener {
+                    override fun onArchiving() {
+                        archiving.complete(Unit)
+                        check(unblock.await(15, TimeUnit.SECONDS))
+                    }
+                },
+            )
+            running = first
+            withTimeout(10_000) { archiving.await() }
+            SpiderQueen.releaseSpiderQueen(first, SpiderQueen.MODE_DOWNLOAD)
+            running = null
+            val retry = SpiderQueen.obtainSpiderQueen(
+                gallery,
+                SpiderQueen.MODE_DOWNLOAD,
+                object : SpiderQueen.OnSpiderListener {
+                    override fun onFinish(finished: Int, downloaded: Int, total: Int, failed: Boolean) {
+                        completed.complete(!failed && finished == 1 && downloaded == 1 && total == 1)
+                    }
+                },
+            )
+            running = retry
+            assertEquals(null, withTimeoutOrNull(250) { retry.awaitReady() })
+            unblock.countDown()
+            assertTrue(withTimeout(15_000) { completed.await() })
+            verifyCbz(directory / "$gid.cbz", 1, "ComicInfo.xml")
+            assertFalse((directory / "$gid.cbz.part").exists())
+            assertFalse((directory / "$gid.cbz.pending").exists())
+        } finally {
+            unblock.countDown()
+            running?.let { SpiderQueen.releaseSpiderQueen(it, SpiderQueen.MODE_DOWNLOAD) }
+            withTimeout(15_000) { SpiderQueen.awaitDownloadCleanup(gid) }
+            Settings.withMutableSnapshot { it[Settings.saveAsCbz] = cbzEnabled }
+            directory.delete()
+            EhDB.removeDownloadDirname(gid)
         }
     }
 

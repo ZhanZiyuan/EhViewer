@@ -28,6 +28,8 @@ internal class PageFileIndex {
 
     fun candidates(index: Int, temporary: Boolean) = files[Key(index, temporary)]?.toList().orEmpty()
 
+    fun finalPathsFrom(index: Int): List<Path> = files.filterKeys { !it.temporary && it.index >= index }.values.flatten()
+
     private fun key(path: Path): Key? {
         val name = path.name
         if (name.length < 10 || name[8] != '.') return null

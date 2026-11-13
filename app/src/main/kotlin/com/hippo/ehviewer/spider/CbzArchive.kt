@@ -1,10 +1,12 @@
 package com.hippo.ehviewer.spider
 
+import android.provider.DocumentsContract
 import com.ehviewer.core.files.delete
 import com.ehviewer.core.files.exists
 import com.ehviewer.core.files.moveTo
 import com.ehviewer.core.files.openInputStream
 import com.ehviewer.core.files.openOutputStream
+import com.ehviewer.core.files.toUri
 import com.ehviewer.core.util.logcat
 import java.io.File
 import java.io.InputStream
@@ -20,8 +22,15 @@ import okio.Path
 import okio.Path.Companion.toOkioPath
 import splitties.init.appCtx
 
-internal suspend fun <T> withCbzTemp(directory: File = appCtx.cacheDir, block: suspend (File) -> T): T {
-    val file = File.createTempFile("ehviewer-", ".cbz.part", directory)
+private val cbzStagingDirectory by lazy {
+    File(appCtx.cacheDir, "cbz-staging").apply {
+        check(deleteRecursively() && mkdir()) { "Unable to prepare CBZ staging directory" }
+    }
+}
+
+internal suspend fun <T> withCbzTemp(block: suspend (File) -> T): T = useCbzStage(File.createTempFile("ehviewer-", ".cbz.part", cbzStagingDirectory), block)
+
+private suspend fun <T> useCbzStage(file: File, block: suspend (File) -> T): T {
     try {
         return block(file)
     } finally {
@@ -57,15 +66,29 @@ internal suspend fun copyVerifiedCbz(file: File, target: Path, create: Boolean, 
 
 internal fun Path.cbzSidecar(suffix: String) = checkNotNull(parent).resolve(name + suffix)
 
+internal fun Path.isSameCbzDocument(other: Path): Boolean {
+    if (this == other) return true
+    if (isAbsolute && other.isAbsolute) return toFile().canonicalFile == other.toFile().canonicalFile
+    if (isAbsolute || other.isAbsolute) return false
+    val first = toUri()
+    val second = other.toUri()
+    return first.authority == second.authority && DocumentsContract.isDocumentUri(appCtx, first) &&
+        DocumentsContract.isDocumentUri(appCtx, second) &&
+        DocumentsContract.getDocumentId(first) == DocumentsContract.getDocumentId(second)
+}
+
 // The marker hides incomplete copies from the reader and identifies files we may resume.
 internal class CbzCommit(private val target: Path) {
     private val pending = target.cbzSidecar(".pending")
 
     suspend fun recover(pages: Int): Boolean {
         if (!target.exists()) return false
-        val fingerprint = pendingFingerprint()
+        val marker = pendingMarker()
+        if (marker != null && marker != LEGACY_CBZ_MARKER && !CbzFingerprint.matches(marker)) return false
         val verified = withLocalCbz(target) { local ->
-            if (fingerprint != null && local.inputStream().use { copyCbz(it) } != fingerprint) return@withLocalCbz false
+            if (marker != null && marker != LEGACY_CBZ_MARKER && local.inputStream().use { copyCbz(it) } != marker) {
+                return@withLocalCbz false
+            }
             verifyCbz(local, pages, COMIC_INFO_FILE)
             true
         }
@@ -82,8 +105,7 @@ internal class CbzCommit(private val target: Path) {
                 "Existing CBZ could not be safely replaced"
             }
         }
-        val directory = if (target.isAbsolute) checkNotNull(target.parent).toFile() else appCtx.cacheDir
-        withCbzTemp(directory) { staged ->
+        val stage: suspend (File) -> Unit = { staged ->
             build(staged)
             onStage("validation")
             verifyCbz(staged, pages, COMIC_INFO_FILE)
@@ -99,6 +121,13 @@ internal class CbzCommit(private val target: Path) {
             coroutineContext.ensureActive()
             finish()
         }
+        if (target.isAbsolute) {
+            val file = target.cbzSidecar(".part").toFile()
+            check(!file.exists() || file.delete()) { "Unable to clear stale CBZ staging file" }
+            useCbzStage(file, stage)
+        } else {
+            withCbzTemp(stage)
+        }
     }
 
     private suspend fun canReplaceIncompleteArchive(): Boolean = try {
@@ -108,9 +137,11 @@ internal class CbzCommit(private val target: Path) {
         true
     }
 
-    private fun pendingFingerprint(): String? {
+    private fun pendingFingerprint() = pendingMarker()?.takeIf(CbzFingerprint::matches)
+
+    private fun pendingMarker(): String? {
         if (!pending.exists()) return null
-        val text = pending.openInputStream().buffered().use { input ->
+        return pending.openInputStream().buffered().use { input ->
             buildString {
                 repeat(128) {
                     val byte = input.read()
@@ -119,7 +150,6 @@ internal class CbzCommit(private val target: Path) {
                 }
             }
         }
-        return text.takeIf(CbzFingerprint::matches)
     }
 
     private fun mark(fingerprint: String) {
@@ -136,6 +166,7 @@ internal class CbzCommit(private val target: Path) {
 }
 
 private val CbzFingerprint = Regex("[0-9]+:[0-9a-f]{64}")
+private const val LEGACY_CBZ_MARKER = "CBZ commit in progress"
 
 internal suspend fun verifyCbz(file: Path, pages: Int, comicInfoName: String) {
     withLocalCbz(file) { verifyCbz(it, pages, comicInfoName) }
@@ -151,10 +182,10 @@ internal suspend fun <T> withLocalCbz(file: Path, block: suspend (File) -> T): T
 }
 
 /** Verify the central directory, full payload checksums, entry order, and gallery completeness. */
-internal suspend fun verifyCbz(file: File, pages: Int, comicInfoName: String) {
-    check(pages > 0)
+internal suspend fun verifyCbz(file: File, expectedPages: Int?, comicInfoName: String) {
     ZipFile(file).use { zip ->
-        check(zip.size() == pages + 1) { "CBZ entry count does not match gallery" }
+        val pages = zip.size() - 1
+        check(pages > 0 && (expectedPages == null || pages == expectedPages)) { "CBZ entry count does not match gallery" }
         val entries = zip.entries()
         val bytes = ByteArray(64 * 1024)
         repeat(pages + 1) { index ->

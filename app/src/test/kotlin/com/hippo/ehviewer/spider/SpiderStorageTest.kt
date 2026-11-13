@@ -34,6 +34,8 @@ class SpiderStorageTest {
         val index = PageFileIndex()
         index.refresh(sequenceOf(jpg, webp, partial, "/cache/ComicInfo.xml".toPath()))
         assertEquals(listOf(jpg, webp), index.candidates(0, temporary = false))
+        assertEquals(listOf(jpg, webp), index.finalPathsFrom(0))
+        assertTrue(index.finalPathsFrom(1).isEmpty())
         assertEquals(listOf(partial), index.candidates(0, temporary = true))
         index.remove(jpg)
         assertEquals(listOf(webp), index.candidates(0, temporary = false))

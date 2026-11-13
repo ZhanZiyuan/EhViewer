@@ -17,6 +17,7 @@ package com.hippo.ehviewer.spider
 
 import android.webkit.MimeTypeMap
 import arrow.fx.coroutines.parMap
+import com.ehviewer.core.data.model.toEntitySnapshot
 import com.ehviewer.core.database.model.DownloadArtist
 import com.ehviewer.core.files.delete
 import com.ehviewer.core.files.exists
@@ -350,15 +351,20 @@ class SpiderDen(val info: GalleryInfo) {
     suspend fun exportAsCbz(file: Path) {
         val directory = checkNotNull(downloadDir)
         val existing = directory / archiveName
-        val pages = readComicInfo(directory / COMIC_INFO_FILE)?.pageCount?.takeIf { it > 0 } ?: info.pages
-        check(existing != file) { "CBZ export destination is the source" }
+        check(!existing.isSameCbzDocument(file)) { "CBZ export destination is the source" }
         withCbzTemp { staged ->
             if (existing.exists() && !existing.cbzSidecar(".pending").exists()) {
                 existing.openInputStream().use { source -> staged.outputStream().use { copyCbz(source, it) } }
+                verifyCbz(staged, expectedPages = null, COMIC_INFO_FILE)
             } else {
-                buildCbz(staged, archiveSources(pages), refreshMetadata = false)
+                val pages = info.pages.takeIf { it > 0 } ?: readComicInfo(directory / COMIC_INFO_FILE)?.pageCount ?: 0
+                val extra = lock.read { fileIndex.finalPathsFrom(pages) }
+                check(extra.none { it.exists() }) { "CBZ export has source pages beyond the recorded page count" }
+                val sources = archiveSources(pages)
+                check(sources.none { it.isSameCbzDocument(file) }) { "CBZ export destination is a source page" }
+                buildCbz(staged, sources, refreshMetadata = false)
+                verifyCbz(staged, pages, COMIC_INFO_FILE)
             }
-            verifyCbz(staged, pages, COMIC_INFO_FILE)
             val fingerprint = staged.inputStream().use { copyCbz(it) }
             copyVerifiedCbz(staged, file, create = false, fingerprint = fingerprint)
         }
@@ -374,11 +380,19 @@ class SpiderDen(val info: GalleryInfo) {
     private suspend fun buildCbz(file: File, sources: List<Path>, refreshMetadata: Boolean) {
         val directory = checkNotNull(downloadDir)
         val existingMetadata = readComicInfo(directory / COMIC_INFO_FILE)
-        if (refreshMetadata && existingMetadata == null && info !is GalleryDetail) {
-            runSuspendCatching { EhEngine.fillGalleryListByApi(listOf(info)) }
-                .onFailure { logcat("SpiderDen") { "CBZ metadata refresh failed (${it.javaClass.simpleName})" } }
-        }
-        val metadata = (existingMetadata ?: info.getComicInfo()).copy(pageCount = sources.size)
+        val metadata = (
+            existingMetadata ?: run {
+                val metadataInfo = if (refreshMetadata && info !is GalleryDetail) {
+                    info.toEntitySnapshot().also { snapshot ->
+                        runSuspendCatching { EhEngine.fillGalleryListByApi(listOf(snapshot)) }
+                            .onFailure { logcat("SpiderDen") { "CBZ metadata refresh failed (${it.javaClass.simpleName})" } }
+                    }
+                } else {
+                    info
+                }
+                metadataInfo.getComicInfo()
+            }
+            ).copy(pageCount = sources.size)
         withCbzTemp { comicInfo ->
             writeComicInfo(metadata, comicInfo.toOkioPath())
             file.toOkioPath().openFileDescriptor("rwt").use { output ->

@@ -15,9 +15,9 @@
  */
 package com.hippo.ehviewer.gallery
 
+import android.os.ParcelFileDescriptor
 import arrow.autoCloseScope
 import com.ehviewer.core.files.openFileDescriptor
-import com.ehviewer.core.files.openInputStream
 import com.ehviewer.core.model.GalleryInfo
 import com.ehviewer.core.util.logcat
 import com.hippo.ehviewer.Settings.archivePasswds
@@ -89,15 +89,17 @@ suspend inline fun <T> useArchivePageLoader(
 
 @PublishedApi
 internal suspend fun openArchiveForReading(file: Path, sort: Boolean): ArchiveReader {
-    file.openFileDescriptor("r").use { descriptor ->
-        val length = descriptor.statSize
-        if (length > 0) return NativeArchiveReader.open(descriptor.fd, length, sort)
-    }
+    val descriptor = file.openFileDescriptor("r")
+    val length = descriptor.statSize
+    if (length > 0) return descriptor.use { NativeArchiveReader.open(it.fd, length, sort) }
+
     // A document provider can expose a pipe instead of a seekable file.
-    return withCbzTemp { local ->
-        file.openInputStream().use { input -> local.outputStream().use { copyCbz(input, it) } }
-        local.toOkioPath().openFileDescriptor("r").use { descriptor ->
-            NativeArchiveReader.open(descriptor.fd, descriptor.statSize, sort)
+    return ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { input ->
+        withCbzTemp { local ->
+            local.outputStream().use { copyCbz(input, it) }
+            local.toOkioPath().openFileDescriptor("r").use { staged ->
+                NativeArchiveReader.open(staged.fd, staged.statSize, sort)
+            }
         }
     }
 }

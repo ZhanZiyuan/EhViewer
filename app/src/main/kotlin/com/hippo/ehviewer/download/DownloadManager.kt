@@ -438,6 +438,7 @@ object DownloadManager : CoroutineScope {
             ensureDownload()
 
             if (deleteFiles) {
+                SpiderQueen.awaitDownloadCleanup(gid)
                 info.downloadDir?.delete()
                 info.tempDownloadDir?.delete()
                 persist { EhDB.removeDownloadDirname(info.gid) }
@@ -763,8 +764,7 @@ object DownloadManager : CoroutineScope {
             info.archiving = false
             if (!failed && total > 0 && info.pages != total) {
                 info.pages = total
-                val metadata = info.galleryInfo.toEntitySnapshot()
-                persist { EhDB.updateGalleryInfo(listOf(metadata)) }
+                persist { EhDB.updateGalleryPageCount(info.gid, total) }
             }
             info.legacy = total - finished
             info.state = if (failed) DownloadInfo.STATE_FAILED else DownloadInfo.STATE_FINISH

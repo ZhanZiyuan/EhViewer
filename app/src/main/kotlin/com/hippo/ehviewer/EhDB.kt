@@ -61,6 +61,8 @@ object EhDB {
         db.galleryDao().update(galleryInfoList)
     }
 
+    suspend fun updateGalleryPageCount(gid: Long, pages: Int) = db.galleryDao().updatePageCount(gid, pages)
+
     fun getReadProgressFlow(gid: Long) = db.progressDao().getPageFlow(gid)
     suspend fun getReadProgress(gid: Long) = db.progressDao().getPage(gid)
     suspend fun putReadProgress(gid: Long, page: Int) = db.progressDao().upsert(ProgressInfo(gid, page))

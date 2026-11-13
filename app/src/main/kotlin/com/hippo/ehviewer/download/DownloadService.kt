@@ -47,9 +47,11 @@ import com.hippo.ehviewer.util.FileUtils
 import com.hippo.ehviewer.util.ReadableTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -71,6 +73,7 @@ class DownloadService :
     private var serviceTimedOut = false
     private val starts = Mutex()
     private val startRequests = Channel<Pair<Int, Intent?>>(Channel.UNLIMITED)
+    private var startJob: Job? = null
 
     @Volatile
     private var latestStartId = 0
@@ -81,7 +84,7 @@ class DownloadService :
     override fun onTimeout(startId: Int, fgsType: Int) {
         // Stop immediately: dataSync timeouts allow only a few seconds to leave the service.
         serviceTimedOut = true
-        stopSelf(startId)
+        stopSelf()
     }
 
     override fun onCreate() {
@@ -102,7 +105,7 @@ class DownloadService :
                 throw it
             }
         }
-        launch {
+        startJob = launch {
             for ((startId, intent) in startRequests) {
                 starts.withLock {
                     deferredMgr.await().setDownloadListener(this@DownloadService)
@@ -121,9 +124,12 @@ class DownloadService :
     }
 
     override fun onDestroy() {
-        startRequests.close()
+        startRequests.cancel()
+        val worker = startJob
+        worker?.cancel()
         val scope = this
         launch {
+            worker?.cancelAndJoin()
             val manager = deferredMgr.await()
             manager.detachDownloadListener(this@DownloadService, serviceTimedOut)
             // Wait for the last notification to be posted
