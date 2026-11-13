@@ -26,6 +26,7 @@ import com.ehviewer.core.files.list
 import com.ehviewer.core.files.mkdirs
 import com.ehviewer.core.files.moveTo
 import com.ehviewer.core.files.openFileDescriptor
+import com.ehviewer.core.files.openInputStream
 import com.ehviewer.core.files.sendTo
 import com.ehviewer.core.files.write
 import com.ehviewer.core.model.GalleryDetail
@@ -54,12 +55,12 @@ import com.hippo.ehviewer.util.copyWithSha1
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.request
+import java.io.File
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.io.writeString
 import moe.tarsin.coroutines.runSuspendCatching
 import okio.Path
 import okio.Path.Companion.toOkioPath
@@ -73,7 +74,8 @@ class SpiderDen(val info: GalleryInfo) {
     private var tempDownloadDir: Path? = null
     private val saveAsCbz = Settings.saveAsCbz.value
     private val archiveName = "$gid.cbz"
-    private var archiveCommitted = false
+    val archivesDownload get() = saveAsCbz
+    private var archivedSources: List<Path>? = null
 
     private val lock = ReentrantReadWriteLock()
 
@@ -89,6 +91,7 @@ class SpiderDen(val info: GalleryInfo) {
 
     constructor(info: GalleryInfo, dirname: String) : this(info) {
         downloadDir = downloadLocation / dirname
+        tempDownloadDir = info.tempDownloadDir?.takeIf { it.isDirectory }
         refreshFileIndex()
     }
 
@@ -311,109 +314,102 @@ class SpiderDen(val info: GalleryInfo) {
         }
     }
 
-    suspend fun archive(): Boolean {
-        if (!saveAsCbz) return false
-        val file = downloadDir?.resolve(archiveName) ?: return true
+    suspend fun archive(pages: Int): Boolean {
+        if (!saveAsCbz) return true
+        var stage = "write"
         return runSuspendCatching {
-            if (!recoverCommittedArchive(file)) archiveTo(file)
-            archiveCommitted = true
-        }.onFailure { logcat(it) }.isFailure
+            val target = checkNotNull(downloadDir) / archiveName
+            val sources = archiveSources(pages)
+            CbzCommit(target).write(pages, onStage = { stage = it }) { staged ->
+                buildCbz(staged, sources, refreshMetadata = true)
+            }
+            archivedSources = sources
+        }.onFailure { failure ->
+            logcat("SpiderDen") { "CBZ $stage failed (${failure.javaClass.simpleName})" }
+        }.isSuccess
     }
 
-    // Postpone this to `SpiderQueen.stop` because files may still be in use by reader
+    suspend fun recoverArchive(pages: Int): Boolean {
+        val target = downloadDir?.resolve(archiveName) ?: return false
+        return runSuspendCatching {
+            CbzCommit(target).recover(pages)
+        }.onFailure { logcat("SpiderDen") { "CBZ recovery failed (${it.javaClass.simpleName})" } }.getOrDefault(false)
+    }
+
+    // Postpone source cleanup until the last reader releases this gallery.
     suspend fun postArchive(): Boolean {
-        val dir = downloadDir
-        if (saveAsCbz && dir != null && (archiveCommitted || recoverCommittedArchive(dir / archiveName))) {
-            dir.list().parMap(concurrency = 10) {
-                if (it.name.matches(FileNameRegex)) {
-                    it.delete()
-                }
-            }
-            (dir / SpiderQueen.SPIDER_INFO_FILENAME).delete()
-            tempDownloadDir?.delete()
+        val sources = archivedSources ?: return false
+        val cleanup = runSuspendCatching {
+            sources.parMap(concurrency = 10) { it.delete() }
             refreshFileIndex()
-            return true
         }
-        return false
+        cleanup.onFailure { logcat("SpiderDen") { "CBZ source cleanup failed (${it.javaClass.simpleName})" } }
+        return true
     }
 
     suspend fun exportAsCbz(file: Path) {
-        val existing = downloadDir?.resolve(archiveName)
-        if (existing != null && recoverCommittedArchive(existing)) {
-            if (existing != file) commitCbz(file, pageCountForArchive()) { existing sendTo it }
-        } else {
-            archiveTo(file)
+        val directory = checkNotNull(downloadDir)
+        val existing = directory / archiveName
+        val pages = readComicInfo(directory / COMIC_INFO_FILE)?.pageCount?.takeIf { it > 0 } ?: info.pages
+        check(existing != file) { "CBZ export destination is the source" }
+        withCbzTemp { staged ->
+            if (existing.exists() && !existing.cbzSidecar(".pending").exists()) {
+                existing.openInputStream().use { source -> staged.outputStream().use { copyCbz(source, it) } }
+            } else {
+                buildCbz(staged, archiveSources(pages), refreshMetadata = false)
+            }
+            verifyCbz(staged, pages, COMIC_INFO_FILE)
+            val fingerprint = staged.inputStream().use { copyCbz(it) }
+            copyVerifiedCbz(staged, file, create = false, fingerprint = fingerprint)
         }
     }
 
-    private fun pageCountForArchive(): Int {
-        val directory = checkNotNull(downloadDir)
-        return info.pages.takeIf { it > 0 }
-            ?: readComicInfo(directory / COMIC_INFO_FILE)?.pageCount
-            ?: 0
-    }
-
-    private suspend fun recoverCommittedArchive(file: Path): Boolean {
-        if (!file.exists()) return false
-        return runSuspendCatching {
-            verifyCbz(file, pageCountForArchive(), COMIC_INFO_FILE)
-            file.sidecar(".pending").delete()
-            check(!file.sidecar(".pending").exists()) { "Unable to clear CBZ commit marker" }
-            file.sidecar(".part").delete()
-        }.onFailure { logcat(it) }.isSuccess
-    }
-
-    private fun Path.sidecar(suffix: String) = checkNotNull(parent).resolve(name + suffix)
-
-    private suspend fun archiveTo(file: Path) {
-        val comicInfo = checkNotNull(downloadDir) / COMIC_INFO_FILE
-        if (!comicInfo.exists()) writeComicInfo()
-        val pages = pageCountForArchive()
+    private fun archiveSources(pages: Int): List<Path> {
         check(pages > 0) { "Unknown CBZ page count" }
-        commitCbz(file, pages) { part ->
-            part.openFileDescriptor("rwt").use { output ->
+        return List(pages) { index ->
+            checkNotNull(findImageFile(index)) { "Missing CBZ source page ${index + 1}" }
+        }
+    }
+
+    private suspend fun buildCbz(file: File, sources: List<Path>, refreshMetadata: Boolean) {
+        val directory = checkNotNull(downloadDir)
+        val existingMetadata = readComicInfo(directory / COMIC_INFO_FILE)
+        if (refreshMetadata && existingMetadata == null && info !is GalleryDetail) {
+            runSuspendCatching { EhEngine.fillGalleryListByApi(listOf(info)) }
+                .onFailure { logcat("SpiderDen") { "CBZ metadata refresh failed (${it.javaClass.simpleName})" } }
+        }
+        val metadata = (existingMetadata ?: info.getComicInfo()).copy(pageCount = sources.size)
+        withCbzTemp { comicInfo ->
+            writeComicInfo(metadata, comicInfo.toOkioPath())
+            file.toOkioPath().openFileDescriptor("rwt").use { output ->
                 val handle = beginZipWriter(output.fd)
                 try {
-                    repeat(pages) { index ->
+                    sources.forEachIndexed { index, image ->
                         coroutineContext.ensureActive()
-                        getImageSource(index).use { image ->
-                            image.source.openFileDescriptor("r").use { input ->
-                                appendZipEntry(handle, input.fd, perFilename(index, image.type))
+                        val extension = checkNotNull(FileUtils.getExtensionFromFilename(image.name))
+                        val name = perFilename(index, extension)
+                        if (image.isAbsolute) {
+                            image.openFileDescriptor("r").use { appendZipEntry(handle, it.fd, name) }
+                        } else {
+                            // A provider may return a pipe. Stage at most one page for the ZIP writer.
+                            withCbzTemp { page ->
+                                image.openInputStream().use { input -> page.outputStream().use { copyCbz(input, it) } }
+                                page.toOkioPath().openFileDescriptor("r").use { appendZipEntry(handle, it.fd, name) }
                             }
                         }
                     }
-                    comicInfo.openFileDescriptor("r").use { appendZipEntry(handle, it.fd, COMIC_INFO_FILE) }
+                    comicInfo.toOkioPath().openFileDescriptor("r").use { appendZipEntry(handle, it.fd, COMIC_INFO_FILE) }
                     closeZipWriter(handle, true)
                 } finally {
                     closeZipWriter(handle, false)
                 }
             }
         }
-    }
-
-    private suspend fun commitCbz(file: Path, pages: Int, writePart: suspend (Path) -> Unit) {
-        val part = file.sidecar(".part")
-        val pending = file.sidecar(".pending")
-        part.delete()
-        try {
-            writePart(part)
-            verifyCbz(part, pages, COMIC_INFO_FILE)
-            coroutineContext.ensureActive()
-            // A process restart must not expose an unfinished copy or failed final validation.
-            pending.write { writeString("CBZ commit in progress") }
-            check(pending.exists()) { "Unable to create CBZ commit marker" }
-            if (file.isAbsolute) {
-                part moveTo file
-            } else {
-                // A provider may implement rename as copy or report success without renaming.
-                part sendTo file
-                file.openFileDescriptor("rw").use { it.fileDescriptor.sync() }
-            }
-            verifyCbz(file, pages, COMIC_INFO_FILE)
-            pending.delete()
-            check(!pending.exists()) { "Unable to clear CBZ commit marker" }
-        } finally {
-            part.delete()
+        if (refreshMetadata) {
+            runSuspendCatching {
+                writeComicInfo(metadata, directory / COMIC_INFO_FILE)
+                saveDownloadArtists(metadata)
+            }.onFailure { logcat("SpiderDen") { "Unable to update local CBZ metadata (${it.javaClass.simpleName})" } }
         }
     }
 
@@ -436,12 +432,16 @@ class SpiderDen(val info: GalleryInfo) {
                 }
                 info.getComicInfo().apply {
                     writeComicInfo(this, it)
-                    DownloadManager.getDownloadInfo(gid)?.let { downloadInfo ->
-                        downloadInfo.artistInfoList = DownloadArtist.from(gid, penciller.orEmpty())
-                        EhDB.putDownloadArtist(gid, downloadInfo.artistInfoList)
-                    }
+                    saveDownloadArtists(this)
                 }
             }
+        }
+    }
+
+    private suspend fun saveDownloadArtists(metadata: ComicInfo) {
+        DownloadManager.getDownloadInfo(gid)?.let { downloadInfo ->
+            downloadInfo.artistInfoList = DownloadArtist.from(gid, metadata.penciller.orEmpty())
+            EhDB.putDownloadArtist(gid, downloadInfo.artistInfoList)
         }
     }
 }

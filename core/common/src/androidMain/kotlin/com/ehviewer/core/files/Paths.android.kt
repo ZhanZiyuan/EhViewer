@@ -2,6 +2,7 @@ package com.ehviewer.core.files
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import androidx.core.net.toUri
 import kotlinx.io.Sink
 import kotlinx.io.Source
@@ -10,6 +11,10 @@ import okio.Path
 import okio.Path.Companion.toPath
 
 fun Path.openFileDescriptor(mode: String) = PlatformSystemFileSystem.openFileDescriptor(this, mode)
+
+fun Path.openInputStream() = ParcelFileDescriptor.AutoCloseInputStream(openFileDescriptor("r"))
+
+fun Path.openOutputStream(create: Boolean = true) = ParcelFileDescriptor.AutoCloseOutputStream(PlatformSystemFileSystem.openFileDescriptor(this, "wt", create))
 
 actual inline fun <T> Path.read(f: Source.() -> T) = PlatformSystemFileSystem.rawSource(this).buffered().use(f)
 

@@ -290,7 +290,7 @@ fun AnimatedVisibilityScope.GalleryDetailScreen(args: GalleryDetailScreenArgs, n
                                                 exportSuccess
                                             }.getOrElse {
                                                 logcat(it)
-                                                file.delete()
+                                                runCatching { file.delete() }.onFailure { logcat(it) }
                                                 exportFailed
                                             }
                                             snackbar(message = msg)

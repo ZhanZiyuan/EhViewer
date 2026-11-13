@@ -84,6 +84,15 @@ class SpiderStorageTest {
         assertTrue(runCatching { verifyCbz(bad, 2, "ComicInfo.xml") }.isFailure)
     }
 
+    @Test
+    fun fingerprintsIncludeLengthAndContent() = runBlocking {
+        val original = "archive data".byteInputStream().use { copyCbz(it) }
+        assertEquals("12", original.substringBefore(':'))
+        assertEquals(original, "archive data".byteInputStream().use { copyCbz(it) })
+        assertTrue(original != "archive Data".byteInputStream().use { copyCbz(it) })
+        assertTrue(original != "archive dat".byteInputStream().use { copyCbz(it) })
+    }
+
     private fun writeStoredArchive(file: File, names: List<String>) {
         ZipOutputStream(file.outputStream()).use { zip ->
             names.forEach { name ->

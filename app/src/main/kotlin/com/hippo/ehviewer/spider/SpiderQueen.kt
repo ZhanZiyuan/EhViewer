@@ -40,7 +40,6 @@ import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -62,6 +61,7 @@ class SpiderQueen private constructor(val galleryInfo: GalleryInfo) : CoroutineS
     @Volatile
     lateinit var pageStates: IntArray
     lateinit var spiderInfo: SpiderInfo
+    private var pageCountConfirmed = false
 
     val spiderDen: SpiderDen = SpiderDen(galleryInfo)
     private val mPageStateLock = Any()
@@ -70,6 +70,8 @@ class SpiderQueen private constructor(val galleryInfo: GalleryInfo) : CoroutineS
     private val mSpiderListeners: MutableList<OnSpiderListener> = ArrayList()
 
     private var mReadReference = 0
+
+    @Volatile
     private var mDownloadReference = 0
 
     fun addOnSpiderListener(listener: OnSpiderListener) {
@@ -153,7 +155,9 @@ class SpiderQueen private constructor(val galleryInfo: GalleryInfo) : CoroutineS
         }
     }
 
+    @Volatile
     private var downloadMode = false
+    private var archiveJob: Job? = null
 
     private val isReady
         get() = this::spiderInfo.isInitialized && this::pageStates.isInitialized
@@ -173,6 +177,14 @@ class SpiderQueen private constructor(val galleryInfo: GalleryInfo) : CoroutineS
             // Update download page
             val intoDownloadMode = mode == MODE_DOWNLOAD
             if (intoDownloadMode && !downloadMode) {
+                val recovered = pageCountConfirmed && spiderDen.recoverArchive(size)
+                if (mDownloadReference == 0) return@withLock
+                if (recovered) {
+                    mDownloadedPages.store(size)
+                    mFinishedPages.store(size)
+                    notifyAllPageDownloaded(failed = false)
+                    return@withLock
+                }
                 // Clear download state
                 synchronized(mPageStateLock) {
                     val temp: IntArray = pageStates
@@ -187,10 +199,21 @@ class SpiderQueen private constructor(val galleryInfo: GalleryInfo) : CoroutineS
                     }
                     mDownloadedPages.store(0)
                     mFinishedPages.store(0)
+                    archiveJob = null
+                    downloadMode = true
                 }
                 mWorkerScope.enterDownloadMode()
+            } else if (!intoDownloadMode && downloadMode) {
+                mWorkerScope.leaveDownloadMode()
             }
             downloadMode = intoDownloadMode
+        }
+    }.onFailure {
+        logcat("SpiderQueen") { "Download preparation failed (${it.javaClass.simpleName})" }
+        if (mDownloadReference > 0) {
+            synchronized(mSpiderListeners) {
+                mSpiderListeners.forEach { listener -> listener.onFinish(0, 0, galleryInfo.pages, failed = true) }
+            }
         }
     }
 
@@ -212,15 +235,11 @@ class SpiderQueen private constructor(val galleryInfo: GalleryInfo) : CoroutineS
 
     private val prepareScope = CoroutineScope(coroutineContext + SupervisorJob())
     private val prepareJob = prepareScope.async { doPrepare() }
-    private val archiveJob = launch(start = CoroutineStart.LAZY) {
-        val failed = spiderDen.archive()
-        notifyAllPageDownloaded(failed)
-    }
-
     private suspend fun doPrepare() {
         spiderDen.initDownloadDirIfExist()
         val pages = Either.catch {
             spiderInfo = readSpiderInfoFromLocal() ?: readSpiderInfoFromInternet()
+            pageCountConfirmed = true
             spiderInfo.pages
         }.getOrElse {
             logcat(it)
@@ -236,9 +255,7 @@ class SpiderQueen private constructor(val galleryInfo: GalleryInfo) : CoroutineS
     private fun stop() {
         val queenScope = this
         launch {
-            if (archiveJob.isActive) {
-                archiveJob.join()
-            }
+            synchronized(mPageStateLock) { archiveJob }?.join()
             if (!spiderDen.postArchive()) {
                 if (mWorkerScope.isDownloadMode) {
                     runCatching {
@@ -410,11 +427,15 @@ class SpiderQueen private constructor(val galleryInfo: GalleryInfo) : CoroutineS
         } else if (state == STATE_FINISHED) {
             notifyPageSuccess(index)
         }
-        if (mDownloadedPages.load() == size) {
-            if (mFinishedPages.load() == size) {
-                archiveJob.start()
-            } else {
-                notifyAllPageDownloaded(failed = true)
+        synchronized(mPageStateLock) {
+            if (!downloadMode || mDownloadReference == 0 || mDownloadedPages.load() != size || archiveJob != null) return
+            val allPages = mFinishedPages.load() == size
+            archiveJob = launch {
+                if (allPages && spiderDen.archivesDownload) {
+                    synchronized(mSpiderListeners) { mSpiderListeners.forEach { it.onArchiving() } }
+                }
+                val success = allPages && (!spiderDen.archivesDownload || pageCountConfirmed && spiderDen.archive(size))
+                notifyAllPageDownloaded(failed = !success)
             }
         }
     }
@@ -432,6 +453,7 @@ class SpiderQueen private constructor(val galleryInfo: GalleryInfo) : CoroutineS
         fun onPageDownload(index: Int, contentLength: Long, receivedSize: Long, bytesRead: Int) {}
         fun onPageSuccess(index: Int, finished: Int, downloaded: Int, total: Int) {}
         fun onPageFailure(index: Int, error: String?, finished: Int, downloaded: Int, total: Int) {}
+        fun onArchiving() {}
         fun onFinish(finished: Int, downloaded: Int, total: Int, failed: Boolean) {}
         fun onPageReady(index: Int) {}
     }
@@ -461,6 +483,7 @@ class SpiderQueen private constructor(val galleryInfo: GalleryInfo) : CoroutineS
         fun releaseSpiderQueen(queen: SpiderQueen, @Mode mode: Int) {
             queen.run {
                 clearMode(mode)
+                if (mode == MODE_DOWNLOAD) synchronized(mPageStateLock) { archiveJob?.cancel() }
                 if (mReadReference == 0 && mDownloadReference == 0) {
                     stop()
                     sQueenMap.remove(galleryInfo.gid)
@@ -484,6 +507,11 @@ class SpiderQueen private constructor(val galleryInfo: GalleryInfo) : CoroutineS
             if (isDownloadMode) return
             updateRAList((0 until size).toList())
             isDownloadMode = true
+        }
+
+        @Synchronized
+        fun leaveDownloadMode() {
+            isDownloadMode = false
         }
 
         fun updateRAList(list: List<Int>, aliveBound: IntRange = 0..Int.MAX_VALUE) {
