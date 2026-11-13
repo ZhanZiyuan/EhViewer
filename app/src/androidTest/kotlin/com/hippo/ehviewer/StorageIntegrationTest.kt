@@ -21,6 +21,8 @@ import com.ehviewer.core.files.mkdirs
 import com.ehviewer.core.files.openFileDescriptor
 import com.ehviewer.core.files.toOkioPath
 import com.ehviewer.core.files.write
+import com.hippo.ehviewer.download.downloadLocation
+import com.hippo.ehviewer.download.setDownloadLocation
 import com.hippo.ehviewer.jni.appendZipEntry
 import com.hippo.ehviewer.jni.beginZipWriter
 import com.hippo.ehviewer.jni.closeZipWriter
@@ -35,6 +37,8 @@ import com.hippo.ehviewer.spider.isSameCbzDocument
 import com.hippo.ehviewer.spider.verifyCbz
 import com.hippo.ehviewer.spider.write
 import com.hippo.ehviewer.spider.writeComicInfo
+import com.hippo.ehviewer.ui.keepNoMediaFileStatus
+import com.hippo.ehviewer.ui.settings.hasDownloadContents
 import com.hippo.ehviewer.util.AppConfig
 import java.io.File
 import java.util.concurrent.CountDownLatch
@@ -158,6 +162,46 @@ class StorageIntegrationTest {
     fun defaultDownloadDirectoryIsAnExistingAbsolutePath() {
         val directory = AppConfig.defaultDownloadDir.toOkioPath()
         assertTrue(directory.isAbsolute && directory.isDirectory)
+    }
+
+    @Test
+    fun defaultFolderWarningIgnoresOnlyTheMediaScanMarker() = runBlocking {
+        val folder = File.createTempFile("download-warning-", "", context.cacheDir).apply {
+            check(delete() && mkdir())
+        }
+        try {
+            assertFalse(folder.hasDownloadContents())
+            keepNoMediaFileStatus(folder.toOkioPath(), mediaScan = false)
+            val marker = File(folder, ".nomedia")
+            assertTrue(marker.isFile)
+            assertFalse(folder.hasDownloadContents())
+            assertTrue(marker.isFile)
+            val gallery = File(folder, "gallery").apply { check(mkdir()) }
+            assertTrue(folder.hasDownloadContents())
+            assertTrue(gallery.isDirectory)
+        } finally {
+            folder.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun resettingDownloadLocationClearsTheStoredOverride() = runBlocking {
+        val saved = Settings.snapshot()
+        val authority = "com.android.externalstorage.documents"
+        val root = DocumentsContract.buildTreeDocumentUri(authority, "primary:Download/Test Folder")
+        val custom = DocumentsContract.buildDocumentUriUsingTree(root, DocumentsContract.getTreeDocumentId(root)).toOkioPath()
+        val prefs = with(Settings) { listOf(downloadScheme, downloadAuthority, downloadPath, downloadQuery, downloadFragment) }
+        try {
+            setDownloadLocation(custom)
+            assertEquals(custom, downloadLocation)
+            setDownloadLocation(null)
+            val reset = Settings.snapshot()
+            assertTrue(prefs.none { it in reset })
+            assertEquals(AppConfig.defaultDownloadDir.toOkioPath(), downloadLocation)
+            assertTrue(downloadLocation.isDirectory)
+        } finally {
+            Settings.withMutableSnapshot { current -> prefs.forEach { current[it] = saved[it] } }
+        }
     }
 
     @Test

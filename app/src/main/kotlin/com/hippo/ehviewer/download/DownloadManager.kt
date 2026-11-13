@@ -40,7 +40,6 @@ import com.ehviewer.core.files.toOkioPath
 import com.ehviewer.core.files.toUri
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.model.GalleryInfo
-import com.ehviewer.core.preferences.edit
 import com.ehviewer.core.util.logcat
 import com.ehviewer.core.util.mapNotNull
 import com.hippo.ehviewer.EhDB
@@ -66,6 +65,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import logcat.LogPriority
@@ -889,29 +889,29 @@ object DownloadManager : CoroutineScope {
     private const val TAG = "DownloadManager"
 }
 
-var downloadLocation: Path
-    get() = with(Settings) {
-        if (downloadScheme != null) {
-            Uri.Builder().apply {
-                scheme(downloadScheme)
-                encodedAuthority(downloadAuthority)
-                encodedPath(downloadPath)
-                encodedQuery(downloadQuery)
-                encodedFragment(downloadFragment)
-            }.build().toOkioPath()
-        } else {
-            AppConfig.defaultDownloadDir.toOkioPath()
-        }
+val downloadLocation: Path
+    get() {
+        val settings = runBlocking { Settings.snapshot() }
+        val scheme = settings[Settings.downloadScheme] ?: return AppConfig.defaultDownloadDir.toOkioPath()
+        return Uri.Builder()
+            .scheme(scheme)
+            .encodedAuthority(settings[Settings.downloadAuthority])
+            .encodedPath(settings[Settings.downloadPath])
+            .encodedQuery(settings[Settings.downloadQuery])
+            .encodedFragment(settings[Settings.downloadFragment])
+            .build().toOkioPath()
     }
-    set(value) = with(value.toUri()) {
-        Settings.edit {
-            downloadScheme = scheme
-            downloadAuthority = encodedAuthority
-            downloadPath = encodedPath
-            downloadQuery = encodedQuery
-            downloadFragment = encodedFragment
-        }
+
+suspend fun setDownloadLocation(path: Path?) {
+    val uri = path?.toUri()
+    Settings.withMutableSnapshot {
+        it[Settings.downloadScheme] = uri?.scheme
+        it[Settings.downloadAuthority] = uri?.encodedAuthority
+        it[Settings.downloadPath] = uri?.encodedPath
+        it[Settings.downloadQuery] = uri?.encodedQuery
+        it[Settings.downloadFragment] = uri?.encodedFragment
     }
+}
 
 val DownloadInfo.downloadDir get() = dirname?.let { downloadLocation / it }
 val DownloadInfo.archiveFile get() = downloadDir?.run {

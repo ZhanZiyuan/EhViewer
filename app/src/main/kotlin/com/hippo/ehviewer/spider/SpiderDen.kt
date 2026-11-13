@@ -108,7 +108,7 @@ class SpiderDen(val info: GalleryInfo) {
                 downloadDir = getGalleryDownloadDir(info).apply { mkdirs() }
             }
             if (saveAsCbz && tempDownloadDir == null) {
-                tempDownloadDir = info.tempDownloadDir!!.apply { mkdirs() }
+                tempDownloadDir = info.tempDownloadDir?.apply { mkdirs() }
             }
             if (refresh) refreshFileIndex()
         }

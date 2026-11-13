@@ -21,7 +21,7 @@ import com.ehviewer.core.i18n.R
 import com.ehviewer.core.preferences.PrefDelegate
 import com.ehviewer.core.preferences.edit
 import com.hippo.ehviewer.Settings
-import com.hippo.ehviewer.download.downloadLocation
+import com.hippo.ehviewer.download.setDownloadLocation
 import com.hippo.ehviewer.ui.MainActivity
 import java.io.File
 import java.util.regex.Pattern
@@ -79,8 +79,7 @@ class AboutUpdateTest {
         }
         val saved = runBlocking { Settings.snapshot() }
         val channel = saved[Settings.useCIUpdateChannel]
-        val location = with(Settings) { listOf(downloadScheme, downloadAuthority, downloadPath, downloadQuery, downloadFragment) }
-        downloadLocation = File(context.cacheDir, "about-smoke-downloads").apply { mkdirs() }.toOkioPath()
+        runBlocking { setDownloadLocation(File(context.cacheDir, "about-smoke-downloads").apply { mkdirs() }.toOkioPath()) }
         Settings.edit(blocking = true) {
             it[needSignIn] = false
             it[updateIntervalDays] = 0
@@ -145,13 +144,11 @@ class AboutUpdateTest {
                 restore(needSignIn)
                 restore(updateIntervalDays)
                 restore(useCIUpdateChannel)
-            }
-            with(Settings) {
-                downloadScheme = location[0]
-                downloadAuthority = location[1]
-                downloadPath = location[2]
-                downloadQuery = location[3]
-                downloadFragment = location[4]
+                restore(downloadScheme)
+                restore(downloadAuthority)
+                restore(downloadPath)
+                restore(downloadQuery)
+                restore(downloadFragment)
             }
         }
     }

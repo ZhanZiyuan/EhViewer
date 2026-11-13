@@ -27,7 +27,7 @@ import okio.Path
 import okio.Path.Companion.toOkioPath
 import splitties.init.appCtx
 
-fun File.ensureDirectory() = if (exists()) isDirectory else mkdirs()
+fun File.ensureDirectory() = isDirectory || mkdirs() || isDirectory
 
 fun Path.ensureDirectory() = if (exists()) isDirectory else mkdirs().let { true }
 
@@ -60,9 +60,8 @@ object AppConfig {
     private fun getDirInExternalAppDir(filename: String) = externalAppDir?.run { File(this, filename).takeIf { it.ensureDirectory() } }
 
     val defaultDownloadDir: File
-        get() = getDirInExternalAppDir(DOWNLOAD) ?: File(appCtx.filesDir, DOWNLOAD).apply {
-            check(ensureDirectory()) { "Unable to prepare the default download directory" }
-        }
+        get() = getDirInExternalAppDir(DOWNLOAD) ?: File(appCtx.filesDir, DOWNLOAD).apply { ensureDirectory() }
+
     val externalTempPersistDir
         get() = getDirInExternalAppDir(TEMP)?.toOkioPath()
     val externalParseErrorDir: File?
