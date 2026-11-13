@@ -188,13 +188,15 @@ fun GalleryDetailContent(
         stringResource(R.string.read_from, startPage + 1)
     }
     val downloadState by DownloadManager.collectDownloadState(galleryInfo.gid)
+    val downloadInfo = DownloadManager.getDownloadInfo(galleryInfo.gid)
+    val archiving = downloadInfo?.let { DownloadManager.updatedDownloadInfo(it) { archiving } } == true
     val downloadButtonText = when (downloadState) {
         DownloadInfo.STATE_INVALID -> stringResource(R.string.download)
         DownloadInfo.STATE_NONE -> stringResource(R.string.download_state_none)
         DownloadInfo.STATE_WAIT -> stringResource(R.string.download_state_wait)
-        DownloadInfo.STATE_DOWNLOAD -> stringResource(R.string.download_state_downloading)
+        DownloadInfo.STATE_DOWNLOAD -> stringResource(if (archiving) R.string.download_state_archiving else R.string.download_state_downloading)
         DownloadInfo.STATE_FINISH -> stringResource(R.string.download_state_downloaded)
-        DownloadInfo.STATE_FAILED -> stringResource(R.string.download_state_failed)
+        DownloadInfo.STATE_FAILED -> stringResource(if (downloadInfo?.archiveFailed == true) R.string.download_state_archive_failed else R.string.download_state_failed)
         else -> error("Invalid DownloadState!!!")
     }
     fun onReadButtonClick() {

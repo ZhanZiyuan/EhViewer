@@ -81,6 +81,11 @@ data class DownloadInfo(
     @Embedded
     val downloadInfo: DownloadEntity = DownloadEntity(galleryInfo.gid),
 ) : GalleryInfo by galleryInfo, AbstractDownloadInfo by downloadInfo {
+    @Ignore
+    var archiving: Boolean = false
+
+    @get:Ignore
+    val archiveFailed get() = state == STATE_FAILED && legacy == 0
 
     companion object {
         const val STATE_INVALID = -1
