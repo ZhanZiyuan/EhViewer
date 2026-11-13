@@ -227,6 +227,7 @@
     <string name="settings_eh_detail_size">Größe der Details</string>
     <string name="settings_eh_detail_size_long">Lange</string>
     <string name="settings_eh_detail_size_short">Kurz</string>
+    <string name="settings_advanced_enable_cronet">Cronet aktivieren</string>
     <string name="settings_advanced_app_language_title">Sprache der App (Language)</string>
     <string name="torrent_count">Torrent (%d)</string>
     <string name="settings_eh_show_jpn_title">Japanische Titel anzeigen</string>

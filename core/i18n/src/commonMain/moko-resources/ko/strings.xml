@@ -296,6 +296,7 @@
     <string name="settings_advanced_dump_logcat_failed">로그캣을 덤프하지 못했습니다.</string>
     <string name="settings_advanced_dump_logcat_to">%s 경로에 로그캣을 저장했습니다.</string>
     <string name="settings_advanced_read_cache_size">읽기 캐시 크기</string>
+    <string name="settings_advanced_enable_cronet">Cronet 사용</string>
     <string name="settings_advanced_app_language_title">앱 언어 (Language)</string>
     <string name="settings_advanced_export_data">데이터 내보내기</string>
     <string name="settings_advanced_export_data_summary">다운로드 목록, 빠른 검색 목록 등의 데이터를 외부 저장소에 저장</string>

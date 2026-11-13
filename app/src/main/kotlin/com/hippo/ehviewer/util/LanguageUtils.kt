@@ -9,11 +9,11 @@ import org.xmlpull.v1.XmlPullParser
 context(ctx: Context)
 fun getLanguages(): Map<String, String> = with(ctx) {
     val languages = mutableMapOf("system" to getString(R.string.app_language_system))
-    resources.getXml(com.hippo.ehviewer.R.xml._generated_res_locale_config).use { parser ->
+    resources.getXml(com.hippo.ehviewer.R.xml.locale_config).use { parser ->
         var event = parser.eventType
         while (event != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG && parser.name == "locale") {
-                val tag = parser.getAttributeValue(0).removeSuffix("-US")
+                val tag = parser.getAttributeValue("http://schemas.android.com/apk/res/android", "name").removeSuffix("-US")
                 LocaleListCompat.forLanguageTags(tag)[0]?.let { locale ->
                     languages[tag] = locale.getDisplayName(locale).replaceFirstChar { it.uppercase(locale) }
                 }

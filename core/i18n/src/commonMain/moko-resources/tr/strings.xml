@@ -7,6 +7,7 @@
     <string name="favourite">Favoriler</string>
     <string name="history">Geçmiş</string>
     <string name="downloads">İndirilenler</string>
+    <string name="settings_advanced_enable_cronet">Cronet’i etkinleştir</string>
     <string name="settings">Ayarlar</string>
     <string name="username">Kullanıcı adı</string>
     <string name="password">Şifre</string>

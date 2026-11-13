@@ -135,7 +135,6 @@ android {
             "!PublicSuffixDatabase.list", // OkHttp
             "!composepreference.preference.generated.resources",
         )
-        generateLocaleConfig = true
         localeFilters += listOf(
             "zh",
             "zh-rCN",

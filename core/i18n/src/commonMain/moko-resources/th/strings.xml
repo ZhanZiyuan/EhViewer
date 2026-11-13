@@ -311,6 +311,7 @@
     <string name="settings_advanced_dump_logcat_failed">การสร้าง Logcat เกิดข้อผิดพลาด</string>
     <string name="settings_advanced_dump_logcat_to">Logcat ถูกสร้างอยู่ที่ %s</string>
     <string name="settings_advanced_read_cache_size">ขนาดในการเก็บไฟล์ชั่วคราวเพื่ออ่าน</string>
+    <string name="settings_advanced_enable_cronet">เปิดใช้ Cronet</string>
     <string name="settings_advanced_app_language_title">ภาษาของแอป</string>
     <string name="settings_advanced_export_data">สำเนาข้อมูล</string>
     <string name="settings_advanced_export_data_summary">บันทึกข้อมูลต่างๆเช่นรายการดาวน์โหลด และค้นหาอย่างด่วนลงพื้นที่จัดเก็บภายนอก</string>

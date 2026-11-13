@@ -188,7 +188,7 @@ fun AnimatedVisibilityScope.AdvancedScreen(navigator: DestinationsNavigator) = S
                 val enableCronet = Settings.enableCronet.asMutableState()
                 if (BuildConfig.DEBUG || !enableCronet.value) {
                     SwitchPreference(
-                        title = "Enable Cronet",
+                        title = stringResource(R.string.settings_advanced_enable_cronet),
                         state = enableCronet,
                     )
                 }
