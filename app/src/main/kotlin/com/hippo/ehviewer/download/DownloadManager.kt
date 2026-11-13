@@ -40,7 +40,6 @@ import com.ehviewer.core.files.toOkioPath
 import com.ehviewer.core.files.toUri
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.model.GalleryInfo
-import com.ehviewer.core.preferences.edit
 import com.ehviewer.core.util.logcat
 import com.ehviewer.core.util.mapNotNull
 import com.hippo.ehviewer.EhDB
@@ -66,12 +65,12 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import logcat.LogPriority
 import okio.Path
 import okio.Path.Companion.toOkioPath
-import okio.Path.Companion.toPath
 
 object DownloadManager : CoroutineScope {
     override val coroutineContext = Dispatchers.IO + Job()
@@ -178,12 +177,20 @@ object DownloadManager : CoroutineScope {
         if (listener.compareAndSet(owner, null) && timedOut) stopAllDownloadOwned()
     }
 
+    suspend fun stopServiceIfIdle(owner: DownloadListener, stop: () -> Unit) = commands.execute {
+        if (listener.get() === owner && mCurrentTask == null && mWaitList.isEmpty()) stop()
+    }
+
+    private fun notifyIfIdle() {
+        if (mCurrentTask == null && mWaitList.isEmpty()) mDownloadListener?.onIdle()
+    }
+
     private suspend fun ensureDownload() {
         try {
             while (mCurrentTask == null && mWaitList.isNotEmpty()) {
                 val info = mWaitList.removeFirst()
                 mCurrentTask = info
-                if (info.archiveFile != null) {
+                if (info.archiveFile?.name?.endsWith(".zip") == true) {
                     finishCurrent(info.pages, info.pages, info.pages, failed = false)
                     continue
                 }
@@ -194,6 +201,7 @@ object DownloadManager : CoroutineScope {
                     total = -1
                     finished = 0
                     downloaded = 0
+                    archiving = false
                     legacy = -1
                 }
                 val callback = TaskListener()
@@ -209,7 +217,7 @@ object DownloadManager : CoroutineScope {
                 mutableNotifyFlow.emit(info)
             }
         } finally {
-            isIdle = mCurrentTask == null && mWaitList.isEmpty()
+            notifyIfIdle()
         }
     }
 
@@ -316,24 +324,23 @@ object DownloadManager : CoroutineScope {
     }
 
     suspend fun addDownload(downloadInfoList: List<DownloadInfo>) = command {
-        sortMutex.withLock {
-            val comparator = sortMode.comparator()
-            downloadInfoList.forEach { info ->
-                if (containDownloadInfo(info.gid)) return@forEach
-
-                // Ensure download state
-                if (DownloadInfo.STATE_WAIT == info.state || DownloadInfo.STATE_DOWNLOAD == info.state) {
-                    info.state = DownloadInfo.STATE_NONE
-                }
-
-                // Add to all download list and map
-                allInfoList.insertWith(info, comparator)
-                mAllInfoMap[info.gid] = info
-
-                // Save to
-                saveNew(info)
-                EhDB.putDownloadArtist(info.gid, info.artistInfoList)
+        val imported = downloadInfoList.distinctBy { it.gid }.filterNot { containDownloadInfo(it.gid) }.map { info ->
+            val state = when (info.state) {
+                DownloadInfo.STATE_WAIT, DownloadInfo.STATE_DOWNLOAD -> DownloadInfo.STATE_NONE
+                else -> info.state
             }
+            info.copy(
+                galleryInfo = info.galleryInfo.toEntitySnapshot(),
+                artistInfoList = info.artistInfoList.toList(),
+                downloadInfo = info.downloadInfo.copy(state = state),
+            )
+        }
+        val comparator = sortMode.comparator()
+        // Commit each parent and its artists together. Only expose rows that were persisted.
+        for (info in imported) {
+            persistence.execute { EhDB.importDownloadWithArtists(info) }
+            sortMutex.withLock { allInfoList.insertWith(info, comparator) }
+            mAllInfoMap[info.gid] = info
         }
     }
 
@@ -351,6 +358,7 @@ object DownloadManager : CoroutineScope {
         if (containDownloadInfo(galleryInfo.gid)) return@command
         val info = DownloadInfo(galleryInfo.asEntity(), dirname)
         info.state = DownloadInfo.STATE_NONE
+        info.archiving = false
 
         // Add to all download list and map
         sortMutex.withLock {
@@ -405,7 +413,7 @@ object DownloadManager : CoroutineScope {
             val info = stopCurrentDownloadInternal()
             info?.let { mutableNotifyFlow.emit(it) }
         } finally {
-            isIdle = mCurrentTask == null && mWaitList.isEmpty()
+            notifyIfIdle()
         }
     }
 
@@ -429,6 +437,7 @@ object DownloadManager : CoroutineScope {
             ensureDownload()
 
             if (deleteFiles) {
+                SpiderQueen.awaitDownloadCleanup(gid)
                 info.downloadDir?.delete()
                 info.tempDownloadDir?.delete()
                 persist { EhDB.removeDownloadDirname(info.gid) }
@@ -507,6 +516,7 @@ object DownloadManager : CoroutineScope {
 
         // Update state
         info.state = DownloadInfo.STATE_NONE
+        info.archiving = false
         // Update in DB
         saveStates(listOf(info))
         // Listener
@@ -669,10 +679,6 @@ object DownloadManager : CoroutineScope {
         if (galleryInfoList.isNotEmpty()) EhDB.updateGalleryInfo(galleryInfoList)
     }
 
-    @Volatile
-    var isIdle = true
-        private set
-
     private class TaskListener : OnSpiderListener {
         private fun active(event: suspend () -> Unit) = commands.post {
             if (spiderListener === this) event()
@@ -730,6 +736,14 @@ object DownloadManager : CoroutineScope {
             finishCurrent(finished, downloaded, total, failed)
             ensureDownload()
         }
+
+        override fun onArchiving() = active {
+            mCurrentTask?.let { info ->
+                info.archiving = true
+                mDownloadListener?.onDownload(info)
+                mutableNotifyFlow.emit(info)
+            }
+        }
     }
 
     private suspend fun finishCurrent(finished: Int, downloaded: Int, total: Int, failed: Boolean) {
@@ -746,6 +760,11 @@ object DownloadManager : CoroutineScope {
             info.finished = finished
             info.downloaded = downloaded
             info.total = total
+            info.archiving = false
+            if (!failed && total > 0 && info.pages != total) {
+                info.pages = total
+                persist { EhDB.updateGalleryPageCount(info.gid, total) }
+            }
             info.legacy = total - finished
             info.state = if (failed) DownloadInfo.STATE_FAILED else DownloadInfo.STATE_FINISH
             saveStates(listOf(info))
@@ -779,6 +798,8 @@ object DownloadManager : CoroutineScope {
          * Download done
          */
         fun onCancel(info: DownloadInfo)
+
+        fun onIdle()
     }
 
     private val mSpeedReminder = object {
@@ -868,29 +889,29 @@ object DownloadManager : CoroutineScope {
     private const val TAG = "DownloadManager"
 }
 
-var downloadLocation: Path
-    get() = with(Settings) {
-        if (downloadScheme != null) {
-            Uri.Builder().apply {
-                scheme(downloadScheme)
-                encodedAuthority(downloadAuthority)
-                encodedPath(downloadPath)
-                encodedQuery(downloadQuery)
-                encodedFragment(downloadFragment)
-            }.build().toOkioPath()
-        } else {
-            AppConfig.defaultDownloadDir?.toOkioPath() ?: "".toPath()
-        }
+val downloadLocation: Path
+    get() {
+        val settings = runBlocking { Settings.snapshot() }
+        val scheme = settings[Settings.downloadScheme] ?: return AppConfig.defaultDownloadDir.toOkioPath()
+        return Uri.Builder()
+            .scheme(scheme)
+            .encodedAuthority(settings[Settings.downloadAuthority])
+            .encodedPath(settings[Settings.downloadPath])
+            .encodedQuery(settings[Settings.downloadQuery])
+            .encodedFragment(settings[Settings.downloadFragment])
+            .build().toOkioPath()
     }
-    set(value) = with(value.toUri()) {
-        Settings.edit {
-            downloadScheme = scheme
-            downloadAuthority = encodedAuthority
-            downloadPath = encodedPath
-            downloadQuery = encodedQuery
-            downloadFragment = encodedFragment
-        }
+
+suspend fun setDownloadLocation(path: Path?) {
+    val uri = path?.toUri()
+    Settings.withMutableSnapshot {
+        it[Settings.downloadScheme] = uri?.scheme
+        it[Settings.downloadAuthority] = uri?.encodedAuthority
+        it[Settings.downloadPath] = uri?.encodedPath
+        it[Settings.downloadQuery] = uri?.encodedQuery
+        it[Settings.downloadFragment] = uri?.encodedFragment
     }
+}
 
 val DownloadInfo.downloadDir get() = dirname?.let { downloadLocation / it }
 val DownloadInfo.archiveFile get() = downloadDir?.run {

@@ -34,6 +34,8 @@ class SpiderStorageTest {
         val index = PageFileIndex()
         index.refresh(sequenceOf(jpg, webp, partial, "/cache/ComicInfo.xml".toPath()))
         assertEquals(listOf(jpg, webp), index.candidates(0, temporary = false))
+        assertEquals(listOf(jpg, webp), index.finalPathsFrom(0))
+        assertTrue(index.finalPathsFrom(1).isEmpty())
         assertEquals(listOf(partial), index.candidates(0, temporary = true))
         index.remove(jpg)
         assertEquals(listOf(webp), index.candidates(0, temporary = false))
@@ -82,6 +84,15 @@ class SpiderStorageTest {
         val bad = folder.newFile("unordered.part")
         writeStoredArchive(bad, listOf("00000002.jpg", "00000001.jpg", "ComicInfo.xml"))
         assertTrue(runCatching { verifyCbz(bad, 2, "ComicInfo.xml") }.isFailure)
+    }
+
+    @Test
+    fun fingerprintsIncludeLengthAndContent() = runBlocking {
+        val original = "archive data".byteInputStream().use { copyCbz(it) }
+        assertEquals("12", original.substringBefore(':'))
+        assertEquals(original, "archive data".byteInputStream().use { copyCbz(it) })
+        assertTrue(original != "archive Data".byteInputStream().use { copyCbz(it) })
+        assertTrue(original != "archive dat".byteInputStream().use { copyCbz(it) })
     }
 
     private fun writeStoredArchive(file: File, names: List<String>) {

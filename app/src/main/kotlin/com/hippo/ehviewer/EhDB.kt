@@ -16,6 +16,7 @@
 package com.hippo.ehviewer
 
 import androidx.room.execSQL
+import androidx.room.immediateTransaction
 import androidx.room.useWriterConnection
 import arrow.fx.coroutines.resource
 import arrow.fx.coroutines.resourceScope
@@ -60,6 +61,8 @@ object EhDB {
         db.galleryDao().update(galleryInfoList)
     }
 
+    suspend fun updateGalleryPageCount(gid: Long, pages: Int) = db.galleryDao().updatePageCount(gid, pages)
+
     fun getReadProgressFlow(gid: Long) = db.progressDao().getPageFlow(gid)
     suspend fun getReadProgress(gid: Long) = db.progressDao().getPage(gid)
     suspend fun putReadProgress(gid: Long, page: Int) = db.progressDao().upsert(ProgressInfo(gid, page))
@@ -84,6 +87,8 @@ object EhDB {
         putGalleryInfo(downloadInfo.galleryInfo)
         db.downloadsDao().upsert(downloadInfo.downloadInfo)
     }
+
+    suspend fun importDownloadWithArtists(info: DownloadInfo) = db.importDownloadWithArtists(info)
 
     suspend fun removeDownloadInfo(downloadInfo: DownloadInfo) {
         val dao = db.downloadsDao()
@@ -336,6 +341,19 @@ object EhDB {
 
         oldDB.filterDao().list().forEach {
             addFilter(it)
+        }
+    }
+}
+
+internal suspend fun EhDatabase.importDownloadWithArtists(info: DownloadInfo) {
+    useWriterConnection { writer ->
+        writer.immediateTransaction {
+            galleryDao().upsert(info.galleryInfo)
+            downloadsDao().upsert(info.downloadInfo)
+            if (info.artistInfoList.isNotEmpty()) {
+                downloadArtistDao().deleteByGid(info.gid)
+                downloadArtistDao().insertOrIgnore(info.artistInfoList)
+            }
         }
     }
 }

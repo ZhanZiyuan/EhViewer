@@ -231,7 +231,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             suspend fun DialogState.checkDownloadLocation() {
-                val valid = withIOContext { downloadLocation.isDirectory }
+                val valid = withIOContext { runCatching { downloadLocation.isDirectory }.getOrDefault(false) }
                 if (!valid) {
                     awaitConfirmationOrCancel(
                         confirmText = R.string.open_settings,

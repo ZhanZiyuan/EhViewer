@@ -54,6 +54,7 @@ import com.hippo.ehviewer.util.CrashHandler
 import com.hippo.ehviewer.util.ReadableTime
 import com.hippo.ehviewer.util.displayPath
 import com.hippo.ehviewer.util.getAppLanguage
+import com.hippo.ehviewer.util.getLanguageDisplayName
 import com.hippo.ehviewer.util.getLanguages
 import com.hippo.ehviewer.util.setAppLanguage
 import com.ramcosta.composedestinations.annotation.Destination
@@ -182,13 +183,13 @@ fun AnimatedVisibilityScope.AdvancedScreen(navigator: DestinationsNavigator) = S
                 },
                 items = languages,
                 title = { Text(stringResource(id = R.string.settings_advanced_app_language_title)) },
-                summary = { Text(languages[currentLanguage].orEmpty()) },
+                summary = { Text(languages[currentLanguage] ?: getLanguageDisplayName(currentLanguage)) },
             )
             if (isCronetAvailable) {
                 val enableCronet = Settings.enableCronet.asMutableState()
                 if (BuildConfig.DEBUG || !enableCronet.value) {
                     SwitchPreference(
-                        title = "Enable Cronet",
+                        title = stringResource(R.string.settings_advanced_enable_cronet),
                         state = enableCronet,
                     )
                 }

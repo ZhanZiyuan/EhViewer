@@ -15,6 +15,7 @@
  */
 package com.hippo.ehviewer.gallery
 
+import android.os.ParcelFileDescriptor
 import arrow.autoCloseScope
 import com.ehviewer.core.files.openFileDescriptor
 import com.ehviewer.core.model.GalleryInfo
@@ -23,12 +24,16 @@ import com.hippo.ehviewer.Settings.archivePasswds
 import com.hippo.ehviewer.client.EhUtils
 import com.hippo.ehviewer.image.ImageSource
 import com.hippo.ehviewer.image.byteBufferSource
+import com.hippo.ehviewer.reader.ArchiveReader
 import com.hippo.ehviewer.reader.data.NativeArchiveReader
+import com.hippo.ehviewer.spider.copyCbz
+import com.hippo.ehviewer.spider.withCbzTemp
 import com.hippo.ehviewer.util.FileUtils
 import com.hippo.ehviewer.util.displayName
 import kotlinx.coroutines.coroutineScope
 import moe.tarsin.kt.install
 import okio.Path
+import okio.Path.Companion.toOkioPath
 
 typealias PasswdInvalidator = (String) -> Boolean
 typealias PasswdProvider = suspend (PasswdInvalidator) -> String
@@ -42,8 +47,8 @@ suspend inline fun <T> useArchivePageLoader(
     crossinline block: suspend (PageLoader) -> T,
 ) = autoCloseScope {
     coroutineScope {
-        val pfd = install(file.openFileDescriptor("r"))
-        val reader = install(NativeArchiveReader.open(pfd.fd, pfd.statSize, info == null || file.name.endsWith(".zip")))
+        val sort = info == null || file.name.endsWith(".zip")
+        val reader = install(openArchiveForReading(file, sort))
         if (reader.needsPassword && archivePasswds.none(reader::providePassword)) {
             archivePasswds += passwdProvider(reader::providePassword)
         }
@@ -79,5 +84,22 @@ suspend inline fun <T> useArchivePageLoader(
             },
         )
         block(loader)
+    }
+}
+
+@PublishedApi
+internal suspend fun openArchiveForReading(file: Path, sort: Boolean): ArchiveReader {
+    val descriptor = file.openFileDescriptor("r")
+    val length = descriptor.statSize
+    if (length > 0) return descriptor.use { NativeArchiveReader.open(it.fd, length, sort) }
+
+    // A document provider can expose a pipe instead of a seekable file.
+    return ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { input ->
+        withCbzTemp { local ->
+            local.outputStream().use { copyCbz(input, it) }
+            local.toOkioPath().openFileDescriptor("r").use { staged ->
+                NativeArchiveReader.open(staged.fd, staged.statSize, sort)
+            }
+        }
     }
 }

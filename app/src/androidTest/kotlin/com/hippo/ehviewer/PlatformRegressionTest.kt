@@ -2,13 +2,17 @@ package com.hippo.ehviewer
 
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.webkit.CookieManager
 import android.webkit.WebView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.ehviewer.core.i18n.R
 import com.hippo.ehviewer.ui.MainActivity
 import com.hippo.ehviewer.util.AppConfig
+import com.hippo.ehviewer.util.getLanguages
 import com.hippo.ehviewer.util.setDefaultSettings
+import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
@@ -20,6 +24,35 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class PlatformRegressionTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
+
+    @Test
+    fun cronetTitleIsTranslatedForEveryPackagedLanguage() {
+        val context = instrumentation.targetContext
+        val expected = mapOf(
+            "en" to "Enable Cronet",
+            "de" to "Cronet aktivieren",
+            "es" to "Activar Cronet",
+            "fr" to "Activer Cronet",
+            "ja" to "Cronet を有効にする",
+            "ko" to "Cronet 사용",
+            "nb-NO" to "Aktiver Cronet",
+            "th" to "เปิดใช้ Cronet",
+            "tr" to "Cronet’i etkinleştir",
+            "zh-CN" to "启用 Cronet",
+            "zh-HK" to "啟用 Cronet",
+            "zh-TW" to "啟用 Cronet",
+        )
+        expected.forEach { (tag, title) ->
+            val config = Configuration(context.resources.configuration).apply { setLocale(Locale.forLanguageTag(tag)) }
+            assertEquals(tag, title, context.createConfigurationContext(config).getString(R.string.settings_advanced_enable_cronet))
+        }
+    }
+
+    @Test
+    fun appLanguagePickerOffersOnlyCompleteTranslations() {
+        val languages = with(instrumentation.targetContext) { getLanguages() }
+        assertEquals(listOf("system", "en", "ja", "zh-CN", "zh-HK", "zh-TW"), languages.keys.toList())
+    }
 
     @Test
     fun mainActivityLaunchesAcrossRotation() {

@@ -26,6 +26,9 @@ interface GalleryDao {
     @Update
     suspend fun update(galleryInfoList: List<GalleryEntity>)
 
+    @Query("UPDATE GALLERIES SET PAGES = :pages WHERE GID = :gid")
+    suspend fun updatePageCount(gid: Long, pages: Int)
+
     @Upsert
     suspend fun upsert(galleryInfo: GalleryEntity)
 

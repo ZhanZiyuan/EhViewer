@@ -88,6 +88,7 @@ fun DownloadCard(
         val stateFailed = stringResource(R.string.download_state_failed)
         val stateFailed2 = stringResource(R.string.download_state_failed_2, info.legacy)
         val downloadState by DownloadManager.collectDownloadState(info.gid)
+        val archiving = DownloadManager.updatedDownloadInfo(info) { archiving }
         Column(modifier = Modifier.padding(start = 8.dp, top = 2.dp, end = 4.dp)) {
             Text(
                 text = EhUtils.getSuitableTitle(info),
@@ -100,7 +101,11 @@ fun DownloadCard(
                 val stateText = when (downloadState) {
                     DownloadInfo.STATE_NONE -> stringResource(R.string.download_state_none)
                     DownloadInfo.STATE_WAIT -> stringResource(R.string.download_state_wait)
-                    DownloadInfo.STATE_FAILED -> if (info.legacy <= 0) stateFailed else stateFailed2
+                    DownloadInfo.STATE_FAILED -> when {
+                        info.archiveFailed -> stringResource(R.string.download_state_archive_failed)
+                        info.legacy > 0 -> stateFailed2
+                        else -> stateFailed
+                    }
                     DownloadInfo.STATE_FINISH -> {
                         if (showProgress) {
                             val readProgress by remember { EhDB.getReadProgressFlow(info.gid) }.collectAsState(0)
@@ -124,6 +129,9 @@ fun DownloadCard(
                         )
                     }
                 }
+            } else if (archiving) {
+                Text(stringResource(R.string.download_state_archiving), style = MaterialTheme.typography.labelMedium)
+                LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
             } else {
                 var total by remember { mutableIntStateOf(info.total) }
                 var finished by remember { mutableIntStateOf(info.finished) }

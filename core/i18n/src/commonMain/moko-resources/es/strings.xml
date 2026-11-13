@@ -286,6 +286,7 @@
     <string name="settings_advanced_dump_logcat_failed">Guardado de logcat fallido</string>
     <string name="settings_advanced_dump_logcat_to">Logcat guardado en %s</string>
     <string name="settings_advanced_read_cache_size">Tamaño del caché (archivos temporales)</string>
+    <string name="settings_advanced_enable_cronet">Activar Cronet</string>
     <string name="settings_advanced_app_language_title">Idioma de la aplicación</string>
     <string name="settings_advanced_export_data">Exportar datos</string>
     <string name="settings_advanced_export_data_summary">Guardar datos en almacenamiento externo, tales como la lista de descarga, lista de búsqueda rápida, entre otros</string>

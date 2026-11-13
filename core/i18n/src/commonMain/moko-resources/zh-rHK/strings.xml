@@ -346,6 +346,7 @@
     <string name="settings_advanced_dump_logcat_failed">導出日誌失敗</string>
     <string name="settings_advanced_dump_logcat_to">已保存日誌至 %s</string>
     <string name="settings_advanced_read_cache_size">閲讀緩存大小</string>
+    <string name="settings_advanced_enable_cronet">啟用 Cronet</string>
     <string name="settings_advanced_app_language_title">App 界面語言</string>
     <string name="settings_advanced_export_data">導出數據</string>
     <string name="settings_advanced_export_data_summary">保存數據至外置存儲器，例如下載列表，快速搜索列表</string>

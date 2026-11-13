@@ -7,6 +7,7 @@ import android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
 import android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.provider.DocumentsContract.Document
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -16,12 +17,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -55,6 +61,7 @@ import com.hippo.ehviewer.client.parser.ParserUtils
 import com.hippo.ehviewer.download.DownloadManager
 import com.hippo.ehviewer.download.downloadDir
 import com.hippo.ehviewer.download.downloadLocation
+import com.hippo.ehviewer.download.setDownloadLocation
 import com.hippo.ehviewer.spider.COMIC_INFO_FILE
 import com.hippo.ehviewer.spider.MIN_SPEED_LEVEL
 import com.hippo.ehviewer.spider.SpiderDen
@@ -66,7 +73,7 @@ import com.hippo.ehviewer.ui.Screen
 import com.hippo.ehviewer.ui.keepNoMediaFileStatus
 import com.hippo.ehviewer.ui.main.NavigationIcon
 import com.hippo.ehviewer.ui.tools.awaitConfirmationOrCancel
-import com.hippo.ehviewer.ui.tools.observed
+import com.hippo.ehviewer.ui.tools.dialog
 import com.hippo.ehviewer.util.AppConfig
 import com.hippo.ehviewer.util.displayPath
 import com.hippo.ehviewer.util.displayString
@@ -74,6 +81,8 @@ import com.hippo.ehviewer.util.requestPermission
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import java.io.File
+import kotlin.coroutines.resume
 import moe.tarsin.coroutines.runSuspendCatching
 import moe.tarsin.snackbar
 import moe.tarsin.string
@@ -82,6 +91,8 @@ import okio.Path.Companion.toOkioPath
 import splitties.init.appCtx
 
 private const val URI_FLAGS = FLAG_GRANT_READ_URI_PERMISSION or FLAG_GRANT_WRITE_URI_PERMISSION
+
+internal fun File.hasDownloadContents(): Boolean = listFiles()?.any { it.name != ".nomedia" || !it.isFile } == true
 
 @Destination<RootGraph>
 @Composable
@@ -98,22 +109,37 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
         },
     ) { paddingValues ->
         Column(modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).verticalScroll(rememberScrollState()).padding(paddingValues)) {
-            var downloadLocationState by ::downloadLocation.observed
+            var downloadLocationState by remember { mutableStateOf(runCatching { downloadLocation }.getOrNull()) }
             val cannotGetDownloadLocation = stringResource(id = R.string.settings_download_cant_get_download_location)
+            suspend fun saveLocation(path: Path?) {
+                val selected = path ?: AppConfig.defaultDownloadDir.toOkioPath()
+                check(selected.isDirectory) { "Download location is unavailable" }
+                keepNoMediaFileStatus(selected)
+                setDownloadLocation(path)
+                downloadLocationState = selected
+            }
             val selectDownloadDirLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { treeUri ->
                 treeUri?.run {
                     launchIO {
-                        contextOf<Context>().contentResolver.runCatching {
-                            persistedUriPermissions.forEach {
-                                releasePersistableUriPermission(it.uri, URI_FLAGS)
+                        val resolver = contextOf<Context>().contentResolver
+                        var addedFlags = 0
+                        runSuspendCatching {
+                            val document = DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri))
+                            val previous = resolver.persistedUriPermissions.firstOrNull { it.uri == treeUri }
+                            val read = if (previous?.isReadPermission == true) FLAG_GRANT_READ_URI_PERMISSION else 0
+                            val write = if (previous?.isWritePermission == true) FLAG_GRANT_WRITE_URI_PERMISSION else 0
+                            resolver.takePersistableUriPermission(treeUri, URI_FLAGS)
+                            addedFlags = URI_FLAGS xor (read or write)
+                            val writable = resolver.query(document, arrayOf(Document.COLUMN_FLAGS), null, null, null)?.use {
+                                it.moveToFirst() && it.getInt(0) and Document.FLAG_DIR_SUPPORTS_CREATE != 0
+                            } == true
+                            check(writable) { "Download location does not support creating documents" }
+                            saveLocation(document.toOkioPath())
+                        }.onFailure { failure ->
+                            if (addedFlags != 0) {
+                                runCatching { resolver.releasePersistableUriPermission(treeUri, addedFlags) }.onFailure { logcat(it) }
                             }
-                            takePersistableUriPermission(treeUri, URI_FLAGS)
-                            val path = DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri)).toOkioPath()
-                            check(path.isDirectory) { "$path is not a directory" }
-                            keepNoMediaFileStatus(path) // Check if the directory is writable
-                            downloadLocationState = path
-                        }.onFailure {
-                            logcat(it)
+                            logcat(failure)
                             launchSnackbar(cannotGetDownloadLocation)
                         }
                     }
@@ -121,32 +147,39 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
             }
             Preference(
                 title = stringResource(id = R.string.settings_download_download_location),
-                summary = downloadLocationState.toUri().displayPath,
+                summary = downloadLocationState?.toUri()?.displayPath,
             ) {
                 launchIO {
                     val defaultDownloadDir = AppConfig.defaultDownloadDir
-                    if (defaultDownloadDir?.delete() == false) {
-                        val path = defaultDownloadDir.toOkioPath()
-                        awaitConfirmationOrCancel(
-                            confirmText = R.string.pick_new_download_location,
-                            dismissText = if (downloadLocationState != path) {
-                                R.string.reset_download_location
-                            } else {
-                                android.R.string.cancel
-                            },
-                            title = R.string.waring,
-                            onCancelButtonClick = {
-                                if (downloadLocationState != path) {
-                                    contextOf<Context>().contentResolver.run {
-                                        persistedUriPermissions.forEach {
-                                            releasePersistableUriPermission(it.uri, URI_FLAGS)
-                                        }
+                    val hasDownloads = defaultDownloadDir.hasDownloadContents()
+                    val canReset = Settings.snapshot()[Settings.downloadScheme] != null
+                    if (hasDownloads || canReset) {
+                        val pickNew = dialog { result ->
+                            AlertDialog(
+                                onDismissRequest = { result.cancel() },
+                                title = { Text(stringResource(if (hasDownloads) R.string.waring else R.string.settings_download_download_location)) },
+                                text = if (hasDownloads) ({ Text(stringResource(R.string.default_download_dir_not_empty)) }) else null,
+                                confirmButton = {
+                                    TextButton(onClick = { result.resume(true) }, shapes = ButtonDefaults.shapes()) {
+                                        Text(stringResource(R.string.pick_new_download_location))
                                     }
-                                    downloadLocationState = path
-                                }
-                            },
-                        ) {
-                            Text(stringResource(id = R.string.default_download_dir_not_empty))
+                                },
+                                dismissButton = {
+                                    TextButton(
+                                        onClick = { if (canReset) result.resume(false) else result.cancel() },
+                                        shapes = ButtonDefaults.shapes(),
+                                    ) {
+                                        Text(stringResource(if (canReset) R.string.reset_download_location else android.R.string.cancel))
+                                    }
+                                },
+                            )
+                        }
+                        if (!pickNew) {
+                            runSuspendCatching { saveLocation(null) }.onFailure {
+                                logcat(it)
+                                launchSnackbar(cannotGetDownloadLocation)
+                            }
+                            return@launchIO
                         }
                     }
                     try {
@@ -154,12 +187,10 @@ fun AnimatedVisibilityScope.DownloadScreen(navigator: DestinationsNavigator) = S
                     } catch (_: ActivityNotFoundException) {
                         // Best effort for devices without DocumentsUI
                         if (!isAtLeastQ && requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                            runCatching {
+                            runSuspendCatching {
                                 val path = Environment.getExternalStorageDirectory().toOkioPath() / AppConfig.APP_DIRNAME
                                 path.mkdirs()
-                                check(path.isDirectory) { "$path is not a directory" }
-                                keepNoMediaFileStatus(path) // Check if the directory is writable
-                                downloadLocationState = path
+                                saveLocation(path)
                                 return@launchIO
                             }.onFailure {
                                 logcat(it)

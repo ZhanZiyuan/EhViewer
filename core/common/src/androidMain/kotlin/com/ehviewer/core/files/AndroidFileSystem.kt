@@ -211,21 +211,26 @@ class AndroidFileSystem(context: Context) : FileSystem() {
 
     fun rawSource(file: Path) = file.inputStream().asSource()
 
-    fun openFileDescriptor(path: Path, mode: String): ParcelFileDescriptor {
+    fun openFileDescriptor(path: Path, mode: String, create: Boolean = true): ParcelFileDescriptor {
         if (path.isPhysicalFile()) {
             return ParcelFileDescriptor.open(path.toFile(), ParcelFileDescriptor.parseMode(mode))
         }
 
         return runCatching {
-            if ('w' in mode && !exists(path)) {
+            val uri = if (create && 'w' in mode && !exists(path)) {
                 val parent = path.parent ?: return@runCatching null
                 val displayName = path.name
                 val extension = displayName.substringAfterLast('.', "").ifEmpty { null }?.lowercase()
                 val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "application/octet-stream"
                 DocumentsContract.createDocument(contentResolver, parent.toUri(), mimeType, displayName)
+                    ?: return@runCatching null
+            } else {
+                path.toUri()
             }
-            contentResolver.openFileDescriptor(path.toUri(), mode)
-        }.getOrNull() ?: throw FileNotFoundException("Failed to open file: $path")
+            contentResolver.openFileDescriptor(uri, mode)
+        }.getOrElse { failure ->
+            throw FileNotFoundException("Failed to open file: $path").apply { initCause(failure) }
+        } ?: throw FileNotFoundException("Failed to open file: $path")
     }
 
     private fun Path.inputStream() = ParcelFileDescriptor.AutoCloseInputStream(openFileDescriptor(this, "r"))

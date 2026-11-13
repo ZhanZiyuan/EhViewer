@@ -228,6 +228,8 @@
     <string name="download_state_downloading">Downloading</string>
     <string name="download_state_downloaded">Downloaded</string>
     <string name="download_state_failed">Failed</string>
+    <string name="download_state_archiving">Preparing CBZ</string>
+    <string name="download_state_archive_failed">CBZ failed</string>
     <string name="download_state_failed_2">%d incomplete</string>
     <string name="download_state_finish">Done</string>
     <string name="stat_509_alert_title">509 Alert</string>
@@ -238,6 +240,7 @@
     <string name="stat_download_done_text_mix">%1$d succeeded, %2$d failed</string>
     <string name="stat_download_done_line_succeeded">Succeeded: %s</string>
     <string name="stat_download_done_line_failed">Failed: %s</string>
+    <string name="stat_download_done_line_archive_failed">CBZ failed: %s</string>
     <string name="download_remove_dialog_title">Remove Download Item</string>
     <string name="download_remove_dialog_message">Remove %s from download list ?</string>
     <string name="download_remove_dialog_message_2">Remove %d items from download list ?</string>
@@ -376,6 +379,7 @@
     <string name="settings_advanced_dump_logcat_to">Logcat dumped to %s</string>
     <string name="settings_advanced_read_cache_size">Read cache size</string>
     <string name="settings_advanced_app_language_title">App language</string>
+    <string name="settings_advanced_enable_cronet">Enable Cronet</string>
     <string name="settings_advanced_enable_quic">QUIC support</string>
     <string name="settings_advanced_hardware_bitmap_threshold">Hardware bitmap (better performance) threshold</string>
     <string name="settings_advanced_hardware_bitmap_threshold_summary">Try decreasing this if long images fail to load</string>

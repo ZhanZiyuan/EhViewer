@@ -83,6 +83,7 @@
     <string name="settings_my_tags">Mine etiketter</string>
     <string name="settings_eh_tag_translations_source">Plassholder</string>
     <string name="settings_eh_show_gallery_pages">Vis gallerisider</string>
+    <string name="settings_advanced_enable_cronet">Aktiver Cronet</string>
     <string name="settings_advanced">Avansert</string>
     <string name="settings_about">Om</string>
     <string name="settings_advanced_export_data">Eksporter data</string>
