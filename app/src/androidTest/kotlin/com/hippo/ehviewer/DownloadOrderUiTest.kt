@@ -55,8 +55,11 @@ class DownloadOrderUiTest {
             DownloadManager.deleteLabel(labelB)
             DownloadManager.addLabel(labelA)
             DownloadManager.addLabel(labelB)
-            DownloadManager.restoreDownload(first, "order-fixture-first")
-            DownloadManager.restoreDownload(second, "order-fixture-second")
+            DownloadManager.addDownload(
+                listOf(first, second).map {
+                    DownloadInfo(it, "order-fixture-${it.gid}").apply { state = DownloadInfo.STATE_FINISH }
+                },
+            )
             DownloadManager.changeLabel(gids.map { checkNotNull(DownloadManager.getDownloadInfo(it)) }, labelA)
             Settings.appLinkVerifyTip = true
             Settings.withMutableSnapshot {
@@ -77,6 +80,15 @@ class DownloadOrderUiTest {
                 assertTrue("The download list should show the gallery drag handle", device.wait(Until.hasObject(handle), 20_000))
                 assertTrue(device.wait(Until.hasObject(By.text(checkNotNull(first.title))), 10_000))
                 assertTrue(device.wait(Until.hasObject(By.text(checkNotNull(second.title))), 10_000))
+                val pageCount = By.text("113P")
+                val customRight = device.wait(Until.findObject(pageCount), 5_000).visibleBounds.right
+                assertTrue("The page count should reach the trailing edge of the row", customRight >= device.displayWidth * 0.9)
+                Settings.downloadSortMode.value = SortMode.Default.flag
+                assertTrue(device.wait(Until.gone(handle), 5_000))
+                val automaticRight = device.wait(Until.findObject(pageCount), 5_000).visibleBounds.right
+                assertEquals("Page count alignment should match automatic sorting", automaticRight, customRight)
+                Settings.downloadSortMode.value = SortMode.Custom.flag
+                assertTrue(device.wait(Until.hasObject(handle), 5_000))
                 val handles = device.findObjects(handle).sortedBy { it.visibleCenter.y }
                 assertEquals(2, handles.size)
                 drag(handles.first(), handles.last())
