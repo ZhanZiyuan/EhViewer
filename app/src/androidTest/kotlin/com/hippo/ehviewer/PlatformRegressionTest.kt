@@ -21,11 +21,11 @@ import com.hippo.ehviewer.util.setDefaultSettings
 import io.ktor.http.Cookie
 import io.ktor.http.Url
 import java.util.Locale
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
@@ -83,33 +83,31 @@ class PlatformRegressionTest {
     fun webViewUsesMobileUserAgentAndStoresCookies() = runBlocking {
         val url = Url("https://native-regression.invalid")
         val manager = getCookieManager()
-        val completed = CountDownLatch(1)
-        var result = ""
-        var view: WebView? = null
-        instrumentation.runOnMainSync {
-            view = WebView(instrumentation.targetContext).apply {
-                setDefaultSettings()
-                assertTrue(settings.javaScriptEnabled)
-                assertTrue(settings.domStorageEnabled)
-                assertTrue(settings.userAgentString.contains("Mobile"))
-            }
-        }
         try {
             manager.setCookie(url, Cookie("platform_fixture", "value", path = "/", secure = true))
             assertTrue(CookieManager.getInstance().getCookie(url.toString()).contains("platform_fixture=value"))
-            instrumentation.runOnMainSync {
-                view!!.evaluateJavascript("navigator.userAgent.includes('Mobile')") {
-                    result = it
-                    completed.countDown()
+            withContext(Dispatchers.Main) {
+                val webView = WebView(instrumentation.targetContext).apply { setDefaultSettings() }
+                try {
+                    assertTrue(webView.settings.javaScriptEnabled)
+                    assertTrue(webView.settings.domStorageEnabled)
+                    val headers = webView.loadLocalPage("https://native-regression.invalid/", "<title>WebView fixture</title>")
+                    val requestedUserAgent = headers.entries.first { it.key.equals("User-Agent", ignoreCase = true) }.value
+                    assertEquals(webView.settings.userAgentString, requestedUserAgent)
+                    val reportsMobile = withTimeout(10_000) {
+                        suspendCancellableCoroutine<String?> { continuation ->
+                            webView.evaluateJavascript("navigator.userAgent.includes('Mobile')") {
+                                if (continuation.isActive) continuation.resume(it)
+                            }
+                        }
+                    }
+                    assertEquals("true", reportsMobile)
+                } finally {
+                    webView.destroy()
                 }
             }
-            assertTrue(completed.await(10, TimeUnit.SECONDS))
-            assertEquals("true", result)
         } finally {
             manager.setCookie(url, Cookie("platform_fixture", "", maxAge = 0, path = "/", secure = true))
-            instrumentation.runOnMainSync {
-                view?.destroy()
-            }
         }
     }
 
@@ -120,19 +118,8 @@ class PlatformRegressionTest {
             val view = WebView(context).apply { setDefaultSettings() }
             try {
                 suspend fun confirms(page: String, html: String): Boolean {
-                    val finished = CompletableDeferred<Unit>()
-                    view.webViewClient = object : WebViewClient() {
-                        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse = WebResourceResponse("text/html", "UTF-8", html.byteInputStream())
-
-                        override fun onPageFinished(view: WebView, url: String?) {
-                            if (url == page) finished.complete(Unit)
-                        }
-                    }
-                    view.loadUrl(page)
-                    return withTimeout(10_000) {
-                        finished.await()
-                        view.confirmsForumSession(page)
-                    }
+                    view.loadLocalPage(page, html)
+                    return withTimeout(10_000) { view.confirmsForumSession(page) }
                 }
 
                 val acknowledgement = "<p>You are now logged in as: Reader</p>"
@@ -146,6 +133,26 @@ class PlatformRegressionTest {
             } finally {
                 view.destroy()
             }
+        }
+    }
+
+    private suspend fun WebView.loadLocalPage(page: String, html: String): Map<String, String> {
+        val headers = CompletableDeferred<Map<String, String>>()
+        val finished = CompletableDeferred<Unit>()
+        webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse {
+                if (request.isForMainFrame && request.url.toString() == page) headers.complete(request.requestHeaders)
+                return WebResourceResponse("text/html", "UTF-8", html.byteInputStream())
+            }
+
+            override fun onPageFinished(view: WebView, url: String?) {
+                if (url == page) finished.complete(Unit)
+            }
+        }
+        loadUrl(page)
+        return withTimeout(10_000) {
+            finished.await()
+            headers.await()
         }
     }
 
