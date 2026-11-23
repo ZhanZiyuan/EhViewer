@@ -75,6 +75,11 @@ and [Dynamic Color](https://m3.material.io/styles/color/dynamic-color/overview) 
 <img alt="Get it on GitHub" src="https://github.com/FooIbar/EhViewer-art/blob/master/get-it-on-github.svg" width="200px"/>
 </a>
 
+# Documentation
+
+- [User guide and developer documentation](docs/README.md)
+- [Changelog in Simplified Chinese](docs/CHANGELOG_zh-CN.md)
+
 # Screenshot
 
 ![screenshots-01](https://github.com/FooIbar/EhViewer-art/blob/master/screenshots-01.webp)

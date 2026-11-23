@@ -2,6 +2,10 @@
 
 ## [1.15.13] - 2026-11-13
 
+### 改进
+
+* 下载通知显示归档进度，串行处理下载完成和归档结果 [#18](https://github.com/ZhanZiyuan/EhViewer/pull/18)
+
 ### Bug 修复
 
 * 修复在系统选择的目录中保存 CBZ 时，校验因文件权限失败的问题
@@ -11,6 +15,7 @@
 * 修复取消下载后立即重试时的文件冲突，避免导出覆盖归档源文件
 * 修复全新安装时默认下载目录未创建导致的下载失败
 * 修复默认下载目录仅含媒体扫描标记时的误报，并保留切换目录失败前的访问权限
+* 修复在下载目录选择对话框中重置为默认目录时，设置可能未保存的问题
 * 让「启用 Cronet」跟随 App 界面语言，语言菜单仅列出翻译完整的语言
 
 ## [1.15.12] - 2026-11-12
@@ -28,8 +33,73 @@
 * 在移动网页登录中启用 DOM Storage
 * 修复 HTML 响应缓冲区写满时可能卡住的问题，并改进异常网页的解析错误
 * 修复 Cronet 回调阻塞、下载取消以及未知文件大小时的进度处理
+* Cronet 初始化失败时回退到 OkHttp [#17](https://github.com/ZhanZiyuan/EhViewer/pull/17)
 * 修复历史记录和本地收藏搜索中标点可能导致的查询错误
 * 限制超大图片和动画的解码内存
+
+
+## [1.15.10] - 2026-10-19
+
+### 改进
+
+* CI 按提交生成快照 APK，通过 GitHub Actions 提供下载，正式版仍通过 GitHub Releases 提供 [#13](https://github.com/ZhanZiyuan/EhViewer/pull/13)
+* CI 更新仅提示较新的主分支快照，通过浏览器打开适合设备架构的产物
+* 优化归档的只读缓冲区，限制大型 Stored ZIP 的内存占用，并复用 JNI 缓冲区视图 [#14](https://github.com/ZhanZiyuan/EhViewer/pull/14)
+
+### Bug 修复
+
+* 修复检查正式版更新时可能提示降级的问题
+* 校验同一次 CI 构建的快照产物是否齐全，避免混用不同构建的文件
+
+
+## [1.15.9] - 2026-10-15
+
+### 改进
+
+* 恢复每日构建，以预发行版本提供按设备架构区分的 APK [#11](https://github.com/ZhanZiyuan/EhViewer/pull/11)
+* 移除 App 中的 GitHub 令牌设置，使用公开的发布信息检查更新
+
+### Bug 修复
+
+* 将基线配置文件的编译与设备采集分开，减少设备任务重试对编译的影响
+
+
+## [1.15.8] - 2026-10-14
+
+### 改进
+
+* 复用通过内容校验的 Stored ZIP 私有缓冲区，限制缓存和历史记录的占用 [#9](https://github.com/ZhanZiyuan/EhViewer/pull/9)
+* 复用归档密码数据，减少创建读取器时的复制
+* 将归档基准测试的常规计时与诊断采样分开，便于分析解压耗时
+
+
+## [1.15.7] - 2026-10-14
+
+### 改进
+
+* 复用归档提取过程中释放的缓冲区，减少连续读取页面时的内存分配 [#8](https://github.com/ZhanZiyuan/EhViewer/pull/8)
+
+### Bug 修复
+
+* 从官方发布镜像获取并校验 Nettle 源码，修复基线配置文件工作流的依赖下载问题
+
+
+## [1.15.6] - 2026-10-11
+
+### 重大变更
+
+* 最低系统版本提升至 Android 8.0（API 26），移除旧版兼容构建 [#2](https://github.com/ZhanZiyuan/EhViewer/pull/2)
+
+### 改进
+
+* 将原生归档等功能迁移至 Rust Core 和 JNI，整理 Android 与原生代码的目录结构 [#3](https://github.com/ZhanZiyuan/EhViewer/pull/3)
+* 校验 APK 的签名、设备架构与 16 KiB 页对齐，随正式版提供 ARM64、ARMv7、x86_64 和通用 APK [#6](https://github.com/ZhanZiyuan/EhViewer/pull/6)
+* 由主分支通过的 CI 触发正式发布，并将调试符号和混淆映射加密保存 [#5](https://github.com/ZhanZiyuan/EhViewer/pull/5)
+
+### Bug 修复
+
+* 移除 APK 中预置的 GitHub 更新凭据
+* 修复单架构 APK 构建时的 ABI 筛选冲突及发布前的 Git 标签校验 [#7](https://github.com/ZhanZiyuan/EhViewer/pull/7)
 
 
 ## [1.15.0] - 2026-10-09
@@ -39,6 +109,7 @@
 * 分离缩略图和画廊图片缓存
 * 调整图片目标尺寸以减少摩尔纹
 * 更新 Android、Kotlin、Java、Rust 及相关依赖
+* 将目标系统版本更新至 Android API 37，迁移到 Android Gradle Plugin 9
 * 发布工作流支持手动指定已有版本标签，产物和发布信息保持使用该标签
 
 ### Bug 修复
@@ -47,6 +118,7 @@
 * 获取原图链接时的错误处理
 * 上传者名称中的引号缺失
 * 首次通知显示延迟
+* 补齐网页解析中的不换行空格和乘号实体
 
 
 ## [1.14.6] - 2025-12-17
