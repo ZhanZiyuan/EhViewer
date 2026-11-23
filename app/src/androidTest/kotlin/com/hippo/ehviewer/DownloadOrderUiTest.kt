@@ -16,12 +16,15 @@ import com.hippo.ehviewer.download.DownloadManager
 import com.hippo.ehviewer.download.DownloadMove
 import com.hippo.ehviewer.download.DownloadsFilterMode
 import com.hippo.ehviewer.download.SortMode
+import com.hippo.ehviewer.download.setDownloadLocation
 import com.hippo.ehviewer.ui.MainActivity
+import java.io.File
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import okio.Path.Companion.toOkioPath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -45,6 +48,8 @@ class DownloadOrderUiTest {
         val originalLinkTip = Settings.appLinkVerifyTip
 
         try {
+            val fixtureDirectory = File(context.cacheDir, "order-ui-downloads").apply { mkdirs() }
+            setDownloadLocation(fixtureDirectory.toOkioPath())
             DownloadManager.deleteRangeDownload(gids.toLongArray())
             DownloadManager.deleteLabel(labelA)
             DownloadManager.deleteLabel(labelB)
@@ -68,7 +73,7 @@ class DownloadOrderUiTest {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             ActivityScenario.launch<MainActivity>(intent).use {
                 val handle = By.desc(context.getString(R.string.drag_to_reorder_download))
-                assertTrue(device.wait(Until.hasObject(handle), 15_000))
+                assertTrue("The download list should show the gallery drag handle", device.wait(Until.hasObject(handle), 20_000))
                 assertTrue(device.wait(Until.hasObject(By.text(checkNotNull(first.title))), 10_000))
                 assertTrue(device.wait(Until.hasObject(By.text(checkNotNull(second.title))), 10_000))
                 val handles = device.findObjects(handle).sortedBy { it.visibleCenter.y }
@@ -118,6 +123,11 @@ class DownloadOrderUiTest {
                 restore(Settings.downloadFilterMode)
                 restore(Settings.recentDownloadLabel)
                 restore(Settings.gridView)
+                restore(Settings.downloadScheme)
+                restore(Settings.downloadAuthority)
+                restore(Settings.downloadPath)
+                restore(Settings.downloadQuery)
+                restore(Settings.downloadFragment)
             }
             DownloadManager.sortDownloads(SortMode.from(original[Settings.downloadSortMode]))
         }

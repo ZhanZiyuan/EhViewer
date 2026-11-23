@@ -83,6 +83,8 @@ class AboutUpdateTest {
         Settings.edit(blocking = true) {
             it[needSignIn] = false
             it[updateIntervalDays] = 0
+            it[launchPage] = 0
+            it[recentDownloadLabel] = ""
         }
         try {
             // MainActivity is singleTask. Give this test its own fresh activity stack without
@@ -101,8 +103,12 @@ class AboutUpdateTest {
                             assertTrue("App-link notice did not close", device.wait(Until.gone(notice), 5_000))
                         }
                     }
-                    val mainTitles = listOf(R.string.app_name, R.string.homepage, R.string.downloads)
-                        .joinToString("|") { Pattern.quote(context.getString(it)) }
+                    val mainTitles = listOf(
+                        context.getString(R.string.app_name),
+                        context.getString(R.string.homepage),
+                        context.getString(R.string.downloads),
+                        context.getString(R.string.scene_download_title, context.getString(R.string.download_all)),
+                    ).joinToString("|", transform = Pattern::quote)
                     assertTrue("Main content is not ready", device.wait(Until.hasObject(By.pkg(context.packageName).text(Pattern.compile(mainTitles))), 15_000))
                     var drawerStart = 0
                     scenario.onActivity { activity ->
@@ -143,6 +149,8 @@ class AboutUpdateTest {
                 }
                 restore(needSignIn)
                 restore(updateIntervalDays)
+                restore(launchPage)
+                restore(recentDownloadLabel)
                 restore(useCIUpdateChannel)
                 restore(downloadScheme)
                 restore(downloadAuthority)
