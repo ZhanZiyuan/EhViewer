@@ -1,6 +1,7 @@
 package com.hippo.ehviewer
 
 import android.content.Intent
+import android.graphics.Point
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -8,7 +9,6 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
 import com.ehviewer.core.database.model.DownloadInfo
 import com.ehviewer.core.database.model.GalleryEntity
@@ -94,10 +94,7 @@ class DownloadOrderUiTest {
                 }
                 Settings.downloadSortMode.value = SortMode.Custom.flag
                 DownloadManager.sortDownloads(SortMode.Custom)
-                assertTrue(device.wait(Until.hasObject(handle), 5_000))
-                val handles = device.findObjects(handle).sortedBy { it.visibleCenter.y }
-                assertEquals(2, handles.size)
-                drag(handles.first(), handles.last())
+                dragBetweenHandles(handle)
                 awaitCondition("Gallery order was not saved") {
                     EhDB.getAllDownloadInfo().filter { it.gid in gids }.sortedWith(SortMode.Custom.comparator()).map { it.gid } == gids
                 }
@@ -118,10 +115,7 @@ class DownloadOrderUiTest {
                 assertNotNull(labels)
                 labels.click()
                 val labelHandle = By.desc(context.getString(R.string.reorder_download_label))
-                assertTrue(device.wait(Until.hasObject(labelHandle), 5_000))
-                val labelHandles = device.findObjects(labelHandle).sortedBy { it.visibleCenter.y }
-                assertEquals(2, labelHandles.size)
-                drag(labelHandles.first(), labelHandles.last())
+                dragBetweenHandles(labelHandle)
                 awaitCondition("Label order was not saved") {
                     EhDB.getAllDownloadLabelList().filter { it.label in listOf(labelA, labelB) }.map { it.label } == listOf(labelB, labelA)
                 }
@@ -200,9 +194,19 @@ class DownloadOrderUiTest {
         return checkNotNull(right)
     }
 
-    private fun drag(from: UiObject2, to: UiObject2) {
-        val start = from.visibleCenter
-        val end = to.visibleCenter
+    private suspend fun dragBetweenHandles(selector: BySelector) {
+        var centers = emptyList<Point>()
+        awaitCondition("Both reorder handles must be visible before dragging") {
+            val current = try {
+                device.findObjects(selector).map { it.visibleCenter }.sortedBy { it.y }
+            } catch (_: StaleObjectException) {
+                emptyList()
+            }
+            val settled = current.size == 2 && current == centers
+            centers = current
+            settled
+        }
+        val (start, end) = centers
         assertTrue(device.drag(start.x, start.y, end.x, end.y + 6, 25))
     }
 
