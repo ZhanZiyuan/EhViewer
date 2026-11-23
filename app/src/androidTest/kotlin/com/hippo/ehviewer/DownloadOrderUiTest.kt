@@ -83,11 +83,15 @@ class DownloadOrderUiTest {
                 val pageCount = By.text("113P")
                 val customRight = device.wait(Until.findObject(pageCount), 5_000).visibleBounds.right
                 assertTrue("The page count should reach the trailing edge of the row", customRight >= device.displayWidth * 0.9)
-                Settings.downloadSortMode.value = SortMode.Default.flag
-                assertTrue(device.wait(Until.gone(handle), 5_000))
-                val automaticRight = device.wait(Until.findObject(pageCount), 5_000).visibleBounds.right
-                assertEquals("Page count alignment should match automatic sorting", automaticRight, customRight)
+                for (mode in SortMode.All.filter { it.field != SortMode.Field.CUSTOM }) {
+                    Settings.downloadSortMode.value = mode.flag
+                    DownloadManager.sortDownloads(mode)
+                    assertTrue("Gallery handles should be hidden in $mode", device.wait(Until.gone(handle), 5_000))
+                    val automaticRight = device.wait(Until.findObject(pageCount), 5_000).visibleBounds.right
+                    assertEquals("Page count alignment should match $mode", automaticRight, customRight)
+                }
                 Settings.downloadSortMode.value = SortMode.Custom.flag
+                DownloadManager.sortDownloads(SortMode.Custom)
                 assertTrue(device.wait(Until.hasObject(handle), 5_000))
                 val handles = device.findObjects(handle).sortedBy { it.visibleCenter.y }
                 assertEquals(2, handles.size)
