@@ -616,4 +616,12 @@
     <string name="show_blocked_image">ブロックされた画像を表示</string>
     <!-- Tachiyomi Reader End-->
     <string name="sign_out_saved_session">ログアウトすると、この端末に保存されたセッションが削除されます。保持するにはキャンセルしてください。</string>
+    <string name="custom_download_order">カスタム順</string>
+    <string name="drag_to_reorder_download">ドラッグしてダウンロードを並べ替え</string>
+    <string name="reorder_download_label">ダウンロードラベルを並べ替え</string>
+    <string name="download_order_move_up">上に移動</string>
+    <string name="download_order_move_down">下に移動</string>
+    <string name="download_order_filter_hint">並べ替えるには、すべてのダウンロードまたは単一ラベルのリストで、グループ化・検索・状態フィルターを解除してください。</string>
+    <string name="download_order_save_failed">ダウンロードの順序を保存できませんでした。</string>
+    <string name="download_options">ダウンロードのオプション</string>
 </resources>

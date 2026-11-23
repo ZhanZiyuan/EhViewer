@@ -34,6 +34,8 @@ androidComponents {
 }
 
 android {
+    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("core/data/schemas"))
+
     splits {
         abi {
             isEnable = releaseAbi != "universal"
@@ -188,6 +190,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.ktor:ktor-client-mock:${libs.versions.ktor.get()}")
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation("androidx.room:room-testing:${libs.versions.androidx.room.get()}")
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.uiautomator)
 

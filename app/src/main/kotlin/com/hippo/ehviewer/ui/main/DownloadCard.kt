@@ -64,6 +64,7 @@ fun DownloadCard(
     showProgress: Boolean,
     modifier: Modifier = Modifier,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    dragHandle: (@Composable () -> Unit)? = null,
 ) = CrystalCard(modifier = modifier, onClick = onClick, onLongClick = onLongClick, interactionSource = interactionSource) {
     Row {
         val thumb = remember {
@@ -171,6 +172,7 @@ fun DownloadCard(
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
+                dragHandle?.invoke()
                 val running = downloadState == DownloadInfo.STATE_WAIT || downloadState == DownloadInfo.STATE_DOWNLOAD
                 val icon = when (downloadState) {
                     DownloadInfo.STATE_WAIT, DownloadInfo.STATE_DOWNLOAD -> Icons.Default.Pause

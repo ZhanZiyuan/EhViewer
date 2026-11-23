@@ -8,6 +8,7 @@ import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import com.ehviewer.core.database.model.CUSTOM_DOWNLOAD_POSITION_STEP
 import com.ehviewer.core.model.GalleryInfo.Companion.NOT_FAVORITED
 
 class Schema4to5 : AutoMigrationSpec {
@@ -126,3 +127,20 @@ class Schema20to21 : AutoMigrationSpec {
 // Virtual tables can't be altered, so we use rename to recreate it
 @RenameTable(fromTableName = "GalleryFts", toTableName = "GALLERIES_FTS")
 class Schema21to22 : AutoMigrationSpec
+
+class Schema23to24 : AutoMigrationSpec {
+    override fun onPostMigrate(connection: SQLiteConnection) {
+        // Materialize the old order before writing to the table. API 26 SQLite has no window functions.
+        val gids = connection.prepare("SELECT GID FROM DOWNLOADS ORDER BY TIME DESC, GID DESC").use { rows ->
+            buildList { while (rows.step()) add(rows.getLong(0)) }
+        }
+        connection.prepare("UPDATE DOWNLOADS SET CUSTOM_POSITION = ? WHERE GID = ?").use { update ->
+            gids.forEachIndexed { index, gid ->
+                update.bindLong(1, index * CUSTOM_DOWNLOAD_POSITION_STEP)
+                update.bindLong(2, gid)
+                update.step()
+                update.reset()
+            }
+        }
+    }
+}

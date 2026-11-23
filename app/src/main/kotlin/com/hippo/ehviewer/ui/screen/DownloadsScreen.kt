@@ -7,6 +7,10 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitVerticalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.verticalDrag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -81,9 +86,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import arrow.core.partially1
 import com.ehviewer.core.database.model.DownloadInfo
@@ -116,6 +126,7 @@ import com.hippo.ehviewer.asMutableState
 import com.hippo.ehviewer.client.EhTagDatabase
 import com.hippo.ehviewer.collectAsState
 import com.hippo.ehviewer.download.DownloadManager
+import com.hippo.ehviewer.download.DownloadMove
 import com.hippo.ehviewer.download.DownloadService
 import com.hippo.ehviewer.download.DownloadsFilterMode
 import com.hippo.ehviewer.download.SortMode
@@ -137,9 +148,39 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import moe.tarsin.coroutines.runSuspendCatching
 import moe.tarsin.navigate
+import moe.tarsin.snackbar
+import sh.calvin.reorderable.DragGestureDetector
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+
+private class GalleryDrag(val gid: Long, val origin: Int, source: List<DownloadInfo>) {
+    val rows = mutableStateListOf<DownloadInfo>().apply { addAll(source) }
+    var move: DownloadMove? = null
+}
+
+private fun galleryDragDetector(onCancel: () -> Unit) = DragGestureDetector { onStart, onEnd, onStop, onMove ->
+    awaitEachGesture {
+        val down = awaitFirstDown()
+        // Reserve presses on the handle so the card's long-press selection stays independent.
+        down.consume()
+        var overSlop = 0f
+        val start = awaitVerticalTouchSlopOrCancellation(down.id) { change, excess ->
+            change.consume()
+            overSlop = excess
+        } ?: return@awaitEachGesture
+
+        onStart(start.position)
+        onMove(start, Offset(0f, overSlop))
+        if (verticalDrag(start.id) { onMove(it, Offset(0f, it.positionChange().y)) }) {
+            onEnd()
+        } else {
+            onCancel()
+            onStop()
+        }
+    }
+}
 
 @Destination<RootGraph>
 @Composable
@@ -159,6 +200,9 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
     var fabHidden by remember { mutableStateOf(false) }
     val checkedInfoMap = remember { mutableStateMapOf<Long, DownloadInfo>() }
     val selectMode by rememberUpdatedState(checkedInfoMap.isNotEmpty())
+    val currentSortMode = SortMode.from(sortMode)
+    val canReorder = currentSortMode == SortMode.Custom && filterState.allowsGalleryReorder &&
+        !gridView && !searchBarExpanded && !selectMode
     DrawerHandle(!selectMode && !searchBarExpanded)
 
     val density = LocalDensity.current
@@ -187,8 +231,9 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
     )
     val hint = stringResource(R.string.search_bar_hint, title)
     val list = if (DownloadManager.isInitialized) {
-        remember(filterState, invalidateKey) {
-            DownloadManager.downloadInfoList.filterTo(mutableStateListOf()) { info ->
+        val source = DownloadManager.downloadInfoList
+        remember(filterState, invalidateKey, source) {
+            source.filterTo(mutableStateListOf()) { info ->
                 filterState.take(info)
             }.also {
                 launch {
@@ -454,7 +499,7 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
                                             },
                                         ),
                                     ) {
-                                        Icon(imageVector = Icons.Default.Reorder, contentDescription = null)
+                                        Icon(imageVector = Icons.Default.Reorder, contentDescription = stringResource(R.string.reorder_download_label))
                                     }
                                 }
                             },
@@ -503,7 +548,7 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
                 Icon(imageVector = icon, contentDescription = null)
             }
             IconButton(onClick = { expanded = !expanded }, shapes = IconButtonDefaults.shapes()) {
-                Icon(imageVector = Icons.Default.MoreVert, contentDescription = null)
+                Icon(imageVector = Icons.Default.MoreVert, contentDescription = stringResource(R.string.download_options))
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 DropdownMenuItem(
@@ -602,45 +647,133 @@ fun AnimatedVisibilityScope.DownloadsScreen(navigator: DestinationsNavigator) = 
                     }
                 }
             } else {
+                val listState = rememberLazyListState()
+                val feedback = rememberHapticFeedback()
+                var drag by remember(canReorder, filterState) { mutableStateOf<GalleryDrag?>(null) }
+                val dragDetector = remember(canReorder, filterState) { galleryDragDetector { drag = null } }
+                var saving by remember { mutableStateOf(false) }
+                val rows = drag?.rows ?: list
+                val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+                    val active = drag ?: return@rememberReorderableLazyListState
+                    if (from.key != active.gid || !canReorder || saving) return@rememberReorderableLazyListState
+                    val oldIndex = active.rows.indexOfFirst { it.gid == from.key }
+                    val newIndex = active.rows.indexOfFirst { it.gid == to.key }
+                    if (oldIndex >= 0 && newIndex >= 0 && oldIndex != newIndex) {
+                        active.move = DownloadMove(active.gid, active.rows[newIndex].gid, before = newIndex < oldIndex)
+                        active.rows.add(newIndex, active.rows.removeAt(oldIndex))
+                        feedback.performHapticFeedback(HapticFeedbackType.MOVE)
+                    }
+                }
+                val saveError = stringResource(R.string.download_order_save_failed)
+                fun save(move: DownloadMove): Boolean {
+                    if (!canReorder || saving) return false
+                    saving = true
+                    val label = filterState.label
+                    launch {
+                        val result = try {
+                            runSuspendCatching { DownloadManager.moveDownload(move, label) }
+                        } finally {
+                            saving = false
+                            drag = null
+                        }
+                        result.onFailure { snackbar(saveError) }
+                    }
+                    return true
+                }
+
+                @Composable
+                fun DownloadRow(info: DownloadInfo, modifier: Modifier, dragHandle: (@Composable () -> Unit)? = null) {
+                    val checked = info.gid in checkedInfoMap
+                    CheckableItem(checked = checked, modifier = modifier) { interactionSource ->
+                        DownloadCard(
+                            onClick = {
+                                if (selectMode) {
+                                    if (checked) checkedInfoMap.remove(info.gid) else checkedInfoMap[info.gid] = info
+                                } else {
+                                    onItemClick(info)
+                                }
+                            },
+                            onThumbClick = { navigate(info.galleryInfo.asDst()) },
+                            onLongClick = { checkedInfoMap[info.gid] = info },
+                            onStart = { DownloadService.startDownload(info.galleryInfo) },
+                            onStop = { launchIO { DownloadManager.stopDownload(info.gid) } },
+                            info = info,
+                            selectMode = selectMode,
+                            showProgress = showProgress,
+                            modifier = Modifier.height(height),
+                            interactionSource = interactionSource,
+                            dragHandle = dragHandle,
+                        )
+                    }
+                }
                 FastScrollLazyColumn(
                     modifier = Modifier.nestedScroll(searchBarConnection).fillMaxSize(),
+                    state = listState,
                     contentPadding = realPadding,
                     verticalArrangement = Arrangement.spacedBy(dimensionResource(com.hippo.ehviewer.R.dimen.gallery_list_interval)),
                 ) {
-                    items(list, key = { it.gid }) { info ->
-                        val checked = info.gid in checkedInfoMap
-                        CheckableItem(
-                            checked = checked,
-                            modifier = Modifier.thenIf(animateItems) { animateItem() },
-                        ) { interactionSource ->
-                            DownloadCard(
-                                onClick = {
-                                    if (selectMode) {
-                                        if (checked) {
-                                            checkedInfoMap.remove(info.gid)
-                                        } else {
-                                            checkedInfoMap[info.gid] = info
-                                        }
-                                    } else {
-                                        onItemClick(info)
-                                    }
-                                },
-                                onThumbClick = {
-                                    navigate(info.galleryInfo.asDst())
-                                },
-                                onLongClick = {
-                                    checkedInfoMap[info.gid] = info
-                                },
-                                onStart = {
-                                    DownloadService.startDownload(info.galleryInfo)
-                                },
-                                onStop = { launchIO { DownloadManager.stopDownload(info.gid) } },
-                                info = info,
-                                selectMode = selectMode,
-                                showProgress = showProgress,
-                                modifier = Modifier.height(height),
-                                interactionSource = interactionSource,
+                    if (currentSortMode.field == SortMode.Field.CUSTOM && !canReorder && !selectMode && !searchBarExpanded && rows.isNotEmpty()) {
+                        item(key = "custom-order-hint") {
+                            Text(
+                                text = stringResource(R.string.download_order_filter_hint),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.bodySmall,
                             )
+                        }
+                    }
+                    itemsIndexed(rows, key = { _, info -> info.gid }) { index, info ->
+                        if (!canReorder) {
+                            DownloadRow(info, Modifier.thenIf(animateItems) { animateItem() })
+                        } else {
+                            ReorderableItem(
+                                reorderState,
+                                info.gid,
+                                animateItemModifier = Modifier.thenIf(animateItems) { animateItem() },
+                            ) { _ ->
+                                DownloadRow(info, Modifier) {
+                                    val label = stringResource(R.string.drag_to_reorder_download)
+                                    val moveUp = stringResource(R.string.download_order_move_up)
+                                    val moveDown = stringResource(R.string.download_order_move_down)
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.size(48.dp).semantics {
+                                            contentDescription = label
+                                            customActions = if (saving || drag != null) {
+                                                emptyList()
+                                            } else {
+                                                buildList {
+                                                    rows.getOrNull(index - 1)?.let { previous ->
+                                                        add(CustomAccessibilityAction(moveUp) { save(DownloadMove(info.gid, previous.gid, before = true)) })
+                                                    }
+                                                    rows.getOrNull(index + 1)?.let { next ->
+                                                        add(CustomAccessibilityAction(moveDown) { save(DownloadMove(info.gid, next.gid, before = false)) })
+                                                    }
+                                                }
+                                            }
+                                        }.draggableHandle(
+                                            enabled = !saving,
+                                            dragGestureDetector = dragDetector,
+                                            onDragStarted = {
+                                                val origin = list.indexOfFirst { it.gid == info.gid }
+                                                if (origin >= 0) {
+                                                    drag = GalleryDrag(info.gid, origin, list)
+                                                    feedback.performHapticFeedback(HapticFeedbackType.START)
+                                                }
+                                            },
+                                            onDragStopped = {
+                                                val active = drag
+                                                if (active?.gid == info.gid) {
+                                                    feedback.performHapticFeedback(HapticFeedbackType.END)
+                                                    val moved = active.rows.getOrNull(active.origin)?.gid != active.gid
+                                                    if (!moved || active.move?.let(::save) != true) drag = null
+                                                }
+                                            },
+                                        ),
+                                    ) {
+                                        Icon(Icons.Default.Reorder, contentDescription = null)
+                                    }
+                                }
+                            }
                         }
                     }
                 }

@@ -496,4 +496,12 @@
     <string name="disabled_nav">停用</string>
     <!-- Tachiyomi Reader End-->
     <string name="sign_out_saved_session">登出會移除此裝置上儲存的工作階段。如要保留，請取消。</string>
+    <string name="custom_download_order">自訂排序</string>
+    <string name="drag_to_reorder_download">拖動以調整下載次序</string>
+    <string name="reorder_download_label">調整下載標籤次序</string>
+    <string name="download_order_move_up">上移</string>
+    <string name="download_order_move_down">下移</string>
+    <string name="download_order_filter_hint">請在全部下載或單一下載標籤的清單中關閉分組，並清除搜尋和狀態篩選後再拖動。</string>
+    <string name="download_order_save_failed">無法儲存下載次序。</string>
+    <string name="download_options">下載選項</string>
 </resources>

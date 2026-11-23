@@ -11,7 +11,9 @@ data class DownloadsFilterState(
     val label: String?,
     val state: Int = -1,
     val keyword: String = "",
-)
+) {
+    val allowsGalleryReorder get() = keyword.isEmpty() && state == -1 && (label == "" || mode == DownloadsFilterMode.CUSTOM)
+}
 
 fun DownloadsFilterState.take(info: DownloadInfo) = mode.take(info, label) &&
     (state == -1 || info.state == state) &&

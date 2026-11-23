@@ -10,6 +10,8 @@ import androidx.room.Relation
 import com.ehviewer.core.model.GalleryInfo
 import kotlin.time.Clock
 
+const val CUSTOM_DOWNLOAD_POSITION_STEP = 4_294_967_296L
+
 interface AbstractDownloadInfo {
     var state: Int
     var legacy: Int
@@ -51,6 +53,9 @@ data class DownloadEntity(
 
     @ColumnInfo(name = "LABEL", index = true)
     override var label: String? = null,
+
+    @ColumnInfo(name = "CUSTOM_POSITION", defaultValue = "0")
+    var customPosition: Long = 0,
 
     @Ignore
     override var speed: Long = 0,

@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.core.util.size
 import arrow.fx.coroutines.parMapNotNull
 import com.ehviewer.core.data.model.asEntity
@@ -76,10 +77,14 @@ object DownloadManager : CoroutineScope {
     override val coroutineContext = Dispatchers.IO + Job()
 
     // All download info list
-    private val allInfoList = runAssertingNotMainThread { EhDB.getAllDownloadInfo() as MutableList }
+    private val allInfoList = mutableStateListOf<DownloadInfo>().apply {
+        addAll(runAssertingNotMainThread { EhDB.getAllDownloadInfo() })
+    }
 
     val downloadInfoList: List<DownloadInfo>
-        get() = allInfoList
+        get() = allInfoList.toList()
+
+    private var firstCustomPosition = allInfoList.minOfOrNull { it.downloadInfo.customPosition }
 
     // All download info map
     private val mAllInfoMap = java.util.concurrent.ConcurrentHashMap(allInfoList.associateBy { it.gid })
@@ -130,24 +135,15 @@ object DownloadManager : CoroutineScope {
         persist { EhDB.updateDownloadStates(states) }
     }
 
-    private fun saveNew(info: DownloadInfo, history: Boolean = false) {
-        val snapshot = info.copy(galleryInfo = info.galleryInfo.toEntitySnapshot(), downloadInfo = info.downloadInfo.copy())
-        persist {
-            EhDB.putDownloadInfo(snapshot)
-            if (history) EhDB.putHistoryInfo(snapshot)
-        }
-    }
-
     private val sortMutex = Mutex()
-    private val sortMode
-        get() = SortMode.from(Settings.downloadSortMode.value)
+    private var activeSortMode = SortMode.Default
 
     var isInitialized by mutableStateOf(false)
         private set
 
     init {
         launch {
-            val mode = sortMode
+            val mode = SortMode.from(Settings.downloadSortMode.value)
             if (mode != SortMode.Default) sortDownloads(mode)
             isInitialized = true
         }
@@ -167,6 +163,50 @@ object DownloadManager : CoroutineScope {
     fun getDownloadState(gid: Long): Int {
         val info = mAllInfoMap[gid]
         return info?.state ?: DownloadInfo.STATE_INVALID
+    }
+
+    private suspend fun insertDownload(info: DownloadInfo, imported: Boolean = false) = sortMutex.withLock {
+        val next = positionBetween(null, firstCustomPosition) ?: run {
+            val ordered = allInfoList.sortedWith(SortMode.Custom.comparator())
+            applyCustomPositions(spacedDownloadPositions(ordered))
+            firstCustomPosition = allInfoList.minOfOrNull { it.downloadInfo.customPosition }
+            checkNotNull(positionBetween(null, firstCustomPosition))
+        }
+        info.downloadInfo.customPosition = next
+        val snapshot = info.copy(galleryInfo = info.galleryInfo.toEntitySnapshot(), downloadInfo = info.downloadInfo.copy())
+        persistence.execute {
+            if (imported) EhDB.importDownloadWithArtists(snapshot) else EhDB.putDownloadInfo(snapshot)
+        }
+        firstCustomPosition = next
+        mAllInfoMap[info.gid] = info
+        allInfoList.insertWith(info, activeSortMode.comparator())
+    }
+
+    private suspend fun applyCustomPositions(positions: Map<Long, Long>) {
+        if (positions.isEmpty()) return
+        persistence.execute { EhDB.updateCustomDownloadPositions(positions) }
+        for ((gid, position) in positions) {
+            mAllInfoMap.getValue(gid).downloadInfo.customPosition = position
+        }
+    }
+
+    internal suspend fun moveDownload(move: DownloadMove, label: String?) = command {
+        sortMutex.withLock {
+            check(activeSortMode == SortMode.Custom) { "Download order changed during reorder" }
+            val source = allInfoList.indexOfFirst { it.gid == move.gid }
+            val anchor = allInfoList.indexOfFirst { it.gid == move.anchorGid }
+            check(source >= 0 && anchor >= 0 && source != anchor) { "Download removed during reorder" }
+            check(label == "" || allInfoList[source].label == label && allInfoList[anchor].label == label) {
+                "Download label changed during reorder"
+            }
+            val update = planDownloadMove(allInfoList, source, anchor, move.before)
+            if (update.positions.isEmpty()) return@withLock
+            applyCustomPositions(update.positions)
+            Snapshot.withMutableSnapshot {
+                allInfoList.add(update.toIndex, allInfoList.removeAt(source))
+            }
+            firstCustomPosition = allInfoList.first().downloadInfo.customPosition
+        }
     }
 
     fun setDownloadListener(listener: DownloadListener?) {
@@ -247,17 +287,13 @@ object DownloadManager : CoroutineScope {
             info = DownloadInfo(galleryInfo.asEntity(), galleryInfo.downloadDirname())
             info.label = label
             info.state = DownloadInfo.STATE_WAIT
-            // Add to all download list and map
-            sortMutex.withLock {
-                allInfoList.insertWith(info, sortMode.comparator())
-            }
-            mAllInfoMap[galleryInfo.gid] = info
+            insertDownload(info)
 
             // Add to wait list
             mWaitList.add(info)
 
             // Save to
-            saveNew(info, history = true)
+            persist { EhDB.putHistoryInfo(info) }
 
             // Notify
             mutableNotifyFlow.emit(info)
@@ -335,12 +371,9 @@ object DownloadManager : CoroutineScope {
                 downloadInfo = info.downloadInfo.copy(state = state),
             )
         }
-        val comparator = sortMode.comparator()
         // Commit each parent and its artists together. Only expose rows that were persisted.
         for (info in imported) {
-            persistence.execute { EhDB.importDownloadWithArtists(info) }
-            sortMutex.withLock { allInfoList.insertWith(info, comparator) }
-            mAllInfoMap[info.gid] = info
+            insertDownload(info, imported = true)
         }
     }
 
@@ -360,14 +393,7 @@ object DownloadManager : CoroutineScope {
         info.state = DownloadInfo.STATE_NONE
         info.archiving = false
 
-        // Add to all download list and map
-        sortMutex.withLock {
-            allInfoList.insertWith(info, sortMode.comparator())
-        }
-        mAllInfoMap[galleryInfo.gid] = info
-
-        // Save to
-        saveNew(info)
+        insertDownload(info)
 
         // Notify
         mutableNotifyFlow.emit(info)
@@ -422,7 +448,7 @@ object DownloadManager : CoroutineScope {
         val info = mAllInfoMap[gid]
         if (info != null) {
             // Remove from DB
-            persist { EhDB.removeDownloadInfo(info) }
+            persistence.execute { EhDB.removeDownloadInfo(info) }
 
             // Remove all list and map
             sortMutex.withLock {
@@ -447,10 +473,9 @@ object DownloadManager : CoroutineScope {
 
     suspend fun deleteRangeDownload(gidList: LongArray) = command {
         stopRangeDownloadInternal(gidList)
-        val list = gidList.mapNotNull { gid ->
-            mAllInfoMap.remove(gid)
-        }
-        persist { EhDB.removeDownloadInfo(list) }
+        val list = gidList.distinct().mapNotNull { gid -> mAllInfoMap[gid] }
+        persistence.execute { EhDB.removeDownloadInfo(list) }
+        list.forEach { mAllInfoMap.remove(it.gid) }
         sortMutex.withLock {
             allInfoList.removeAll(list.toSet())
         }
@@ -463,7 +488,18 @@ object DownloadManager : CoroutineScope {
     }
 
     suspend fun sortDownloads(mode: SortMode) = sortMutex.withLock {
-        allInfoList.sortWith(mode.comparator())
+        activeSortMode = mode
+        sortDownloadRows()
+    }
+
+    private fun sortDownloadRows() {
+        val sorted = allInfoList.sortedWith(activeSortMode.comparator())
+        if (sorted != allInfoList) {
+            Snapshot.withMutableSnapshot {
+                allInfoList.clear()
+                allInfoList.addAll(sorted)
+            }
+        }
     }
 
     suspend fun resetAllReadingProgress() = runCatching {
@@ -565,8 +601,9 @@ object DownloadManager : CoroutineScope {
             logcat(TAG, LogPriority.ERROR) { "Not exits label: $label" }
             return@command
         }
-        list.forEach {
-            it.label = label
+        sortMutex.withLock {
+            list.forEach { it.label = label }
+            if (activeSortMode.field == SortMode.Field.CUSTOM && activeSortMode.groupByDownloadLabel) sortDownloadRows()
         }
         saveStates(list)
     }
@@ -592,6 +629,7 @@ object DownloadManager : CoroutineScope {
                         it.label = to
                     }
                 }
+                if (activeSortMode.field == SortMode.Field.CUSTOM && activeSortMode.groupByDownloadLabel) sortDownloadRows()
             }
         }
     }
@@ -613,6 +651,7 @@ object DownloadManager : CoroutineScope {
                     it.label = null
                 }
             }
+            if (activeSortMode.field == SortMode.Field.CUSTOM && activeSortMode.groupByDownloadLabel) sortDownloadRows()
         }
     }
 
