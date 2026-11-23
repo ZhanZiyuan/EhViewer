@@ -5,6 +5,8 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.BySelector
+import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
@@ -81,13 +83,13 @@ class DownloadOrderUiTest {
                 assertTrue(device.wait(Until.hasObject(By.text(checkNotNull(first.title))), 10_000))
                 assertTrue(device.wait(Until.hasObject(By.text(checkNotNull(second.title))), 10_000))
                 val pageCount = By.text("113P")
-                val customRight = device.wait(Until.findObject(pageCount), 5_000).visibleBounds.right
+                val customRight = trailingEdge(pageCount)
                 assertTrue("The page count should reach the trailing edge of the row", customRight >= device.displayWidth * 0.9)
                 for (mode in SortMode.All.filter { it.field != SortMode.Field.CUSTOM }) {
                     Settings.downloadSortMode.value = mode.flag
                     DownloadManager.sortDownloads(mode)
                     assertTrue("Gallery handles should be hidden in $mode", device.wait(Until.gone(handle), 5_000))
-                    val automaticRight = device.wait(Until.findObject(pageCount), 5_000).visibleBounds.right
+                    val automaticRight = trailingEdge(pageCount)
                     assertEquals("Page count alignment should match $mode", automaticRight, customRight)
                 }
                 Settings.downloadSortMode.value = SortMode.Custom.flag
@@ -183,6 +185,19 @@ class DownloadOrderUiTest {
             true
         }
         assertTrue(message, completed == true)
+    }
+
+    private suspend fun trailingEdge(selector: BySelector): Int {
+        var right: Int? = null
+        awaitCondition("Page count was not visible after changing sort mode") {
+            right = try {
+                device.findObject(selector)?.visibleBounds?.right
+            } catch (_: StaleObjectException) {
+                null
+            }
+            right != null
+        }
+        return checkNotNull(right)
     }
 
     private fun drag(from: UiObject2, to: UiObject2) {
