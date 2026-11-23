@@ -102,6 +102,11 @@ fun AnimatedVisibilityScope.SignInScreen(navigator: DestinationsNavigator) = Scr
     fun signIn() {
         if (signInJob?.isActive == true) return
         val identity = EhCookieStore.identityCookies()
+        if (identity == IdentityCookies.Present) {
+            focusManager.clearFocus()
+            navigate(WebViewSignInScreenDestination)
+            return
+        }
         if (identity == IdentityCookies.Missing && username.text.isEmpty()) {
             showUsernameError = true
             return
@@ -123,18 +128,8 @@ fun AnimatedVisibilityScope.SignInScreen(navigator: DestinationsNavigator) = Scr
             val result = try {
                 runSuspendCatching {
                     changeSession {
-                        val displayName = when (EhCookieStore.identityCookies()) {
-                            IdentityCookies.Present -> {
-                                EhEngine.verifyForumSession()
-                                null
-                            }
-                            IdentityCookies.Incomplete -> throw NotLoggedInException()
-                            IdentityCookies.Missing -> {
-                                if (user.isEmpty() || secret.isEmpty()) throw NotLoggedInException()
-                                EhEngine.signIn(user, secret)
-                            }
-                        }
-                        postLogin(displayName)
+                        if (EhCookieStore.identityCookies() != IdentityCookies.Missing) throw NotLoggedInException()
+                        postLogin(EhEngine.signIn(user, secret))
                     }
                 }
             } finally {
