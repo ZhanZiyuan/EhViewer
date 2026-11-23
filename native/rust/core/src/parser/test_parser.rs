@@ -81,21 +81,28 @@ mod tests {
         assert_eq!(result, Some("https://0?start=1".to_string()));
     }
 
-    #[tokio::test]
-    #[ignore = "requires the live forum service"]
-    async fn test_parse_profile() {
-        let body = r#"<div id="userlinks"><a href="https://forums.e-hentai.org/index.php?showuser=6">Tenboro</a></div>"#;
-        let dom = tl::parse(body, ParserOptions::default()).expect("Failed to parse html");
-        let result = parse_profile_url(&dom, dom.parser()).expect("Failed to parse profile url");
-        let resp = get(result).await.expect("Failed to get!");
-        let body = resp.text().await.expect("Failed to receive!");
-        let dom = tl::parse(&body, ParserOptions::default()).expect("Failed to parse html");
-        let result = parse_profile(&dom, dom.parser()).expect("Failed to parse profile");
-        assert_eq!(result.displayName, "Tenboro".to_string());
+    #[test]
+    fn test_parse_profile() {
+        let forum = r#"<div id="userlinks"><a href="https://forums.e-hentai.org/index.php?showuser=6">Forum Reader</a></div>"#;
+        let dom = tl::parse(forum, ParserOptions::default()).expect("Failed to parse forum HTML");
         assert_eq!(
-            result.avatar,
-            Some("https://forums.e-hentai.org/ehgt/jdk_180.png".to_string())
+            parse_profile_url(&dom, dom.parser()).expect("Failed to parse profile URL"),
+            "https://forums.e-hentai.org/index.php?showuser=6"
         );
+
+        let profile = r#"<div class="row1"><div>Forum &amp; Reader</div><div><img src="https://forums.e-hentai.org/ehgt/avatar.png"></div></div>"#;
+        let dom =
+            tl::parse(profile, ParserOptions::default()).expect("Failed to parse profile HTML");
+        let result = parse_profile(&dom, dom.parser()).expect("Failed to parse profile");
+        assert_eq!(result.displayName, "Forum & Reader");
+        assert_eq!(
+            result.avatar.as_deref(),
+            Some("https://forums.e-hentai.org/ehgt/avatar.png")
+        );
+
+        let challenge =
+            tl::parse("<title>Just a moment...</title>", ParserOptions::default()).unwrap();
+        assert!(parse_profile(&challenge, challenge.parser()).is_err());
     }
 
     #[tokio::test]
