@@ -67,6 +67,7 @@ class DownloadOrderUiTest {
                 it[Settings.downloadFilterMode] = DownloadsFilterMode.CUSTOM.flag
                 it[Settings.recentDownloadLabel] = ""
                 it[Settings.gridView] = false
+                it[Settings.listThumbSize] = 20
             }
             DownloadManager.sortDownloads(SortMode.Custom)
             val intent = Intent(context, MainActivity::class.java)
@@ -123,6 +124,7 @@ class DownloadOrderUiTest {
                 restore(Settings.downloadFilterMode)
                 restore(Settings.recentDownloadLabel)
                 restore(Settings.gridView)
+                restore(Settings.listThumbSize)
                 restore(Settings.downloadScheme)
                 restore(Settings.downloadAuthority)
                 restore(Settings.downloadPath)

@@ -67,6 +67,8 @@ fun DownloadCard(
     dragHandle: (@Composable () -> Unit)? = null,
 ) = CrystalCard(modifier = modifier, onClick = onClick, onLongClick = onLongClick, interactionSource = interactionSource) {
     Row {
+        val thumbnailModifier = if (dragHandle == null) Modifier else Modifier.weight(0.43f, fill = false)
+        val detailsModifier = if (dragHandle == null) Modifier else Modifier.weight(0.57f)
         val thumb = remember {
             movableContentOf<DownloadInfo> {
                 with(listThumbGenerator) {
@@ -78,11 +80,11 @@ fun DownloadCard(
             }
         }
         if (selectMode) {
-            Card {
+            Card(modifier = thumbnailModifier) {
                 thumb(info)
             }
         } else {
-            Card(onClick = onThumbClick) {
+            Card(onClick = onThumbClick, modifier = thumbnailModifier) {
                 thumb(info)
             }
         }
@@ -90,7 +92,7 @@ fun DownloadCard(
         val stateFailed2 = stringResource(R.string.download_state_failed_2, info.legacy)
         val downloadState by DownloadManager.collectDownloadState(info.gid)
         val archiving = DownloadManager.updatedDownloadInfo(info) { archiving }
-        Column(modifier = Modifier.padding(start = 8.dp, top = 2.dp, end = 4.dp)) {
+        Column(modifier = detailsModifier.padding(start = 8.dp, top = 2.dp, end = 4.dp)) {
             Text(
                 text = EhUtils.getSuitableTitle(info),
                 maxLines = 2,
@@ -172,7 +174,6 @@ fun DownloadCard(
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
-                dragHandle?.invoke()
                 val running = downloadState == DownloadInfo.STATE_WAIT || downloadState == DownloadInfo.STATE_DOWNLOAD
                 val icon = when (downloadState) {
                     DownloadInfo.STATE_WAIT, DownloadInfo.STATE_DOWNLOAD -> Icons.Default.Pause
@@ -190,5 +191,6 @@ fun DownloadCard(
                 }
             }
         }
+        dragHandle?.invoke()
     }
 }
