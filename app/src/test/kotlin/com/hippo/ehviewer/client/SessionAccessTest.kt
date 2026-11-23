@@ -6,6 +6,7 @@ import com.hippo.ehviewer.ktor.RetryableConnectionFailure
 import com.hippo.ehviewer.ktor.allowReadTransportRetry
 import com.hippo.ehviewer.ktor.installSafeReadRetry
 import com.hippo.ehviewer.ui.login.SessionOperation
+import com.hippo.ehviewer.ui.login.isForumPage
 import com.hippo.ehviewer.ui.login.reconcileSession
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -31,6 +32,17 @@ import org.junit.Test
 
 class SessionAccessTest {
     private val exUrl = Url("https://exhentai.org/uconfig.php")
+
+    @Test
+    fun webSessionProofIsLimitedToTheHttpsForumOrigin() {
+        assertTrue(isForumPage(EhUrl.API_SIGN_IN))
+        assertTrue(isForumPage("https://forums.e-hentai.org:443/"))
+        assertFalse(isForumPage("http://forums.e-hentai.org/"))
+        assertFalse(isForumPage("https://forums.e-hentai.org.invalid/"))
+        assertFalse(isForumPage("https://forums.e-hentai.org:444/"))
+        assertFalse(isForumPage("https://another@example.invalid/"))
+        assertFalse(isForumPage("https://another@forums.e-hentai.org/"))
+    }
 
     @Test
     fun responseClassifiesChallengeRedirectDenialAndUnverifiedBody() {

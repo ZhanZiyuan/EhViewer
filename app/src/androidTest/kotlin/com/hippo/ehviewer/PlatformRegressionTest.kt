@@ -4,12 +4,17 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.webkit.CookieManager
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ehviewer.core.i18n.R
 import com.ehviewer.core.network.getCookieManager
+import com.hippo.ehviewer.client.EhUrl
 import com.hippo.ehviewer.ui.MainActivity
+import com.hippo.ehviewer.ui.login.confirmsForumSession
 import com.hippo.ehviewer.util.AppConfig
 import com.hippo.ehviewer.util.getLanguages
 import com.hippo.ehviewer.util.setDefaultSettings
@@ -18,7 +23,11 @@ import io.ktor.http.Url
 import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -100,6 +109,42 @@ class PlatformRegressionTest {
             manager.setCookie(url, Cookie("platform_fixture", "", maxAge = 0, path = "/", secure = true))
             instrumentation.runOnMainSync {
                 view?.destroy()
+            }
+        }
+    }
+
+    @Test
+    fun forumWebViewRecognizesLoginAndRejectsUnrelatedPages() = runBlocking {
+        val context = instrumentation.targetContext
+        withContext(Dispatchers.Main) {
+            val view = WebView(context).apply { setDefaultSettings() }
+            try {
+                suspend fun confirms(page: String, html: String): Boolean {
+                    val finished = CompletableDeferred<Unit>()
+                    view.webViewClient = object : WebViewClient() {
+                        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse = WebResourceResponse("text/html", "UTF-8", html.byteInputStream())
+
+                        override fun onPageFinished(view: WebView, url: String?) {
+                            if (url == page) finished.complete(Unit)
+                        }
+                    }
+                    view.loadUrl(page)
+                    return withTimeout(10_000) {
+                        finished.await()
+                        view.confirmsForumSession(page)
+                    }
+                }
+
+                val acknowledgement = "<p>You are now logged in as: Reader</p>"
+                val header = """<div id="userlinks"><a href="/index.php?act=Login&amp;CODE=03">Log out</a></div>"""
+                assertTrue("The form's success response should confirm the session", confirms(EhUrl.API_SIGN_IN, acknowledgement))
+                assertTrue("The signed-in forum header should confirm the session", confirms(EhUrl.URL_FORUMS, header))
+                assertFalse(confirms(EhUrl.URL_SIGN_IN, acknowledgement))
+                assertFalse(confirms(EhUrl.URL_FORUMS, "<main>$acknowledgement</main>"))
+                assertFalse(confirms("https://forum-fixture.invalid/", header))
+                assertFalse(confirms(EhUrl.URL_FORUMS, header.replace("href=\"/", "href=\"https://forum-fixture.invalid/")))
+            } finally {
+                view.destroy()
             }
         }
     }

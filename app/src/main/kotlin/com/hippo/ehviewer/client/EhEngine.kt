@@ -64,7 +64,6 @@ import com.hippo.ehviewer.client.parser.VoteCommentResult
 import com.hippo.ehviewer.client.parser.VoteTagParser
 import com.hippo.ehviewer.dailycheck.showEventNotification
 import com.hippo.ehviewer.dailycheck.today
-import com.hippo.ehviewer.ktor.CHROME_MOBILE_USER_AGENT
 import com.hippo.ehviewer.ktor.allowReadTransportRetry
 import com.hippo.ehviewer.ktor.configureCommon
 import com.hippo.ehviewer.util.AppConfig
@@ -79,7 +78,6 @@ import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.request
 import io.ktor.http.Url
 import io.ktor.http.contentType
-import io.ktor.http.userAgent
 import io.ktor.util.moveToByteArray
 import io.ktor.utils.io.pool.DirectByteBufferPool
 import io.ktor.utils.io.pool.useInstance
@@ -245,7 +243,7 @@ object EhEngine {
         .fetchUsingAsByteBuffer { if (parse) EventPaneParser.parse(this) else null }
 
     suspend fun getProfile(): ProfileParser.Result {
-        val url = verifyForumSession()
+        val url = getForumProfileUrl()
         return ehRequest(url, EhUrl.URL_FORUMS, verbose = false).executeSafely { response ->
             response.status.ensureSuccess()
             httpContentPool.useInstance { buffer ->
@@ -283,9 +281,8 @@ object EhEngine {
         classifySiteFailure(failure)
     }
 
-    internal suspend fun verifyForumSession(useMobileUserAgent: Boolean = false) = ehRequest(EhUrl.URL_FORUMS, verbose = false) {
+    private suspend fun getForumProfileUrl() = ehRequest(EhUrl.URL_FORUMS, verbose = false) {
         allowReadTransportRetry()
-        if (useMobileUserAgent) userAgent(CHROME_MOBILE_USER_AGENT)
     }.executeSafely { response ->
         val result = classifySiteHeaders(
             Url(EhUrl.URL_FORUMS).host,
