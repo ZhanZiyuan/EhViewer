@@ -6,6 +6,11 @@ plugins {
 
 kotlin {
     sourceSets {
+        commonTest {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
         commonMain {
             dependencies {
                 api(projects.core.common)

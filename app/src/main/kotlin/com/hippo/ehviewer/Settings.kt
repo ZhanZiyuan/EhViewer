@@ -10,6 +10,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import com.ehviewer.core.network.EhCookieStore
+import com.ehviewer.core.network.IdentityCookies
 import com.ehviewer.core.preferences.DataStorePreferences
 import com.ehviewer.core.preferences.PrefDelegate
 import com.ehviewer.core.preferences.edit
@@ -126,7 +127,7 @@ object Settings : DataStorePreferences(null) {
     val languageFilter = intPref("language_filter", -1)
     val downloadSortMode = intPref("download_sort_mode", SortMode.Default.flag)
     val downloadFilterMode = intPref("download_filter_mode", DownloadsFilterMode.Default.flag)
-    val hasSignedIn = boolPref("has_signed_in", EhCookieStore.hasSignedIn())
+    val hasSignedIn = boolPref("has_signed_in", EhCookieStore.identityCookies() == IdentityCookies.Present)
     val needSignIn = boolPref("need_sign_in", true)
     val gridView = boolPref("grid_view", false)
     val qSSaveProgress = boolPref("qs_save_progress", true)

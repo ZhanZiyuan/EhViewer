@@ -637,4 +637,5 @@
     <string name="blocked_image">Blocked image</string>
     <string name="show_blocked_image">Show blocked image</string>
     <!-- Tachiyomi Reader End-->
+    <string name="sign_out_saved_session">Signing out removes the saved session from this device. Cancel to keep it.</string>
 </resources>

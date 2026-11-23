@@ -50,10 +50,10 @@ import com.ehviewer.core.util.launch
 import com.ehviewer.core.util.launchIO
 import com.hippo.ehviewer.Settings
 import com.hippo.ehviewer.client.EhEngine
-import com.hippo.ehviewer.client.EhUtils
 import com.hippo.ehviewer.client.parser.HomeParser
 import com.hippo.ehviewer.collectAsState
 import com.hippo.ehviewer.ui.login.refreshAccountInfo
+import com.hippo.ehviewer.ui.login.returnToSignIn
 import com.hippo.ehviewer.ui.tools.DialogState
 import com.hippo.ehviewer.ui.tools.awaitConfirmationOrCancel
 import com.hippo.ehviewer.util.displayString
@@ -209,7 +209,7 @@ fun AvatarIcon() {
                         showCancelButton = false,
                         text = { Text(text = stringResource(id = R.string.settings_eh_identity_cookies_guest)) },
                     )
-                    EhUtils.signOut()
+                    returnToSignIn()
                 }
             },
             shapes = IconButtonDefaults.shapes(),

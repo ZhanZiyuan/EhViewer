@@ -8,13 +8,17 @@ import android.webkit.WebView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ehviewer.core.i18n.R
+import com.ehviewer.core.network.getCookieManager
 import com.hippo.ehviewer.ui.MainActivity
 import com.hippo.ehviewer.util.AppConfig
 import com.hippo.ehviewer.util.getLanguages
 import com.hippo.ehviewer.util.setDefaultSettings
+import io.ktor.http.Cookie
+import io.ktor.http.Url
 import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -67,8 +71,9 @@ class PlatformRegressionTest {
     }
 
     @Test
-    fun webViewUsesMobileUserAgentAndStoresCookies() {
-        val saved = CountDownLatch(1)
+    fun webViewUsesMobileUserAgentAndStoresCookies() = runBlocking {
+        val url = Url("https://native-regression.invalid")
+        val manager = getCookieManager()
         val completed = CountDownLatch(1)
         var result = ""
         var view: WebView? = null
@@ -78,13 +83,11 @@ class PlatformRegressionTest {
                 assertTrue(settings.javaScriptEnabled)
                 assertTrue(settings.domStorageEnabled)
                 assertTrue(settings.userAgentString.contains("Mobile"))
-                CookieManager.getInstance().setCookie("https://native-regression.invalid", "p3_test=value; Secure") { saved.countDown() }
             }
         }
         try {
-            assertTrue(saved.await(10, TimeUnit.SECONDS))
-            CookieManager.getInstance().flush()
-            assertTrue(CookieManager.getInstance().getCookie("https://native-regression.invalid").contains("p3_test=value"))
+            manager.setCookie(url, Cookie("platform_fixture", "value", path = "/", secure = true))
+            assertTrue(CookieManager.getInstance().getCookie(url.toString()).contains("platform_fixture=value"))
             instrumentation.runOnMainSync {
                 view!!.evaluateJavascript("navigator.userAgent.includes('Mobile')") {
                     result = it
@@ -94,8 +97,8 @@ class PlatformRegressionTest {
             assertTrue(completed.await(10, TimeUnit.SECONDS))
             assertEquals("true", result)
         } finally {
+            manager.setCookie(url, Cookie("platform_fixture", "", maxAge = 0, path = "/", secure = true))
             instrumentation.runOnMainSync {
-                CookieManager.getInstance().setCookie("https://native-regression.invalid", "p3_test=; Max-Age=0; Secure")
                 view?.destroy()
             }
         }

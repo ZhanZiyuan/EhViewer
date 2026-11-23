@@ -186,6 +186,7 @@ baselineProfile {
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
+    testImplementation("io.ktor:ktor-client-mock:${libs.versions.ktor.get()}")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.uiautomator)

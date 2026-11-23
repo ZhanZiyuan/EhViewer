@@ -615,4 +615,5 @@
     <string name="blocked_image">ブロックされた画像</string>
     <string name="show_blocked_image">ブロックされた画像を表示</string>
     <!-- Tachiyomi Reader End-->
+    <string name="sign_out_saved_session">ログアウトすると、この端末に保存されたセッションが削除されます。保持するにはキャンセルしてください。</string>
 </resources>

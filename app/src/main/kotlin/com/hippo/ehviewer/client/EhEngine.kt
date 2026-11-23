@@ -25,7 +25,9 @@ import com.ehviewer.core.i18n.R
 import com.ehviewer.core.model.BaseGalleryInfo
 import com.ehviewer.core.model.GalleryInfo
 import com.ehviewer.core.network.EhCookieStore
+import com.ehviewer.core.network.LoginCookies
 import com.ehviewer.core.util.logcat
+import com.hippo.ehviewer.EhApplication.Companion.ktorClient
 import com.hippo.ehviewer.EhDB
 import com.hippo.ehviewer.Settings
 import com.hippo.ehviewer.client.data.FavListUrlBuilder
@@ -62,15 +64,22 @@ import com.hippo.ehviewer.client.parser.VoteCommentResult
 import com.hippo.ehviewer.client.parser.VoteTagParser
 import com.hippo.ehviewer.dailycheck.showEventNotification
 import com.hippo.ehviewer.dailycheck.today
+import com.hippo.ehviewer.ktor.CHROME_MOBILE_USER_AGENT
+import com.hippo.ehviewer.ktor.allowReadTransportRetry
+import com.hippo.ehviewer.ktor.configureCommon
 import com.hippo.ehviewer.util.AppConfig
 import com.hippo.ehviewer.util.ReadableTime
 import com.hippo.ehviewer.util.bodyAsUtf8Text
 import com.hippo.ehviewer.util.ensureSuccess
+import io.ktor.client.HttpClient
+import io.ktor.client.request.prepareRequest
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.HttpStatement
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.request
 import io.ktor.http.Url
+import io.ktor.http.contentType
+import io.ktor.http.userAgent
 import io.ktor.util.moveToByteArray
 import io.ktor.utils.io.pool.DirectByteBufferPool
 import io.ktor.utils.io.pool.useInstance
@@ -80,6 +89,7 @@ import kotlin.math.ceil
 import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.decodeFromByteArray
@@ -96,6 +106,7 @@ import splitties.init.appCtx
 private const val MAX_REQUEST_SIZE = 25
 private const val MAX_SEQUENTIAL_REQUESTS = 5
 private const val REQUEST_INTERVAL = 5000L
+private val exGalleryReadPaths = setOf("", EhUrl.WATCHED_PATH, "popular")
 
 private val Url.isLogin get() = segments.firstOrNull() == "bounce_login.php"
 
@@ -234,22 +245,59 @@ object EhEngine {
         .fetchUsingAsByteBuffer { if (parse) EventPaneParser.parse(this) else null }
 
     suspend fun getProfile(): ProfileParser.Result {
-        val url = ehRequest(EhUrl.URL_FORUMS).fetchUsingAsByteBuffer(ProfileParser::parseProfileUrl)
-        return ehRequest(url, EhUrl.URL_FORUMS).fetchUsingAsByteBuffer(ProfileParser::parse)
+        val url = verifyForumSession()
+        return ehRequest(url, EhUrl.URL_FORUMS, verbose = false).executeSafely { response ->
+            response.status.ensureSuccess()
+            httpContentPool.useInstance { buffer ->
+                response.bodyAsChannel().readBoundedHtml(buffer)
+                ProfileParser.parse(buffer)
+            }
+        }
     }
 
-    suspend fun getUConfig(gallerySite: Int) {
+    internal suspend fun getUConfig(gallerySite: Int): SiteAccess {
+        val identity = identityAccess(EhCookieStore.identityCookies())
+        if (identity != SiteAccess.Unverified) return identity
         val url = EhUrl.getUConfigUrl(gallerySite)
-        runSuspendCatching {
-            ehRequest(url).fetchUsingAsByteBuffer(UserConfigParser::parse)
-        }.onFailure { throwable ->
-            // It may get redirected when accessing ex for the first time
-            if (url == EhUrl.URL_UCONFIG_EX) {
-                logcat(throwable)
-                ehRequest(url).fetchUsingAsByteBuffer(UserConfigParser::parse)
-            } else {
-                throw throwable
+        return withTimeoutOrNull(12_000) { readUConfig(url) } ?: SiteAccess.TransientFailure
+    }
+
+    private suspend fun readUConfig(url: String): SiteAccess = try {
+        ehRequest(url) { allowReadTransportRetry() }.executeSafely { response ->
+            val result = classifySiteHeaders(
+                Url(url).host,
+                response.request.url,
+                response.status.value,
+                response.headers["cf-mitigated"] == "challenge",
+                response.contentType(),
+            )
+            if (result != SiteAccess.Unverified) return@executeSafely result
+            httpContentPool.useInstance { buffer ->
+                response.bodyAsChannel().readBoundedHtml(buffer)
+                val favoriteCategories = UserConfigParser.parse(buffer)
+                if (url == EhUrl.getUConfigUrl()) Settings.favCat = favoriteCategories
             }
+            SiteAccess.Accessible
+        }
+    } catch (failure: Exception) {
+        classifySiteFailure(failure)
+    }
+
+    internal suspend fun verifyForumSession(useMobileUserAgent: Boolean = false) = ehRequest(EhUrl.URL_FORUMS, verbose = false) {
+        allowReadTransportRetry()
+        if (useMobileUserAgent) userAgent(CHROME_MOBILE_USER_AGENT)
+    }.executeSafely { response ->
+        val result = classifySiteHeaders(
+            Url(EhUrl.URL_FORUMS).host,
+            response.request.url,
+            response.status.value,
+            response.headers["cf-mitigated"] == "challenge",
+            response.contentType(),
+        )
+        if (result != SiteAccess.Unverified) throw NotLoggedInException()
+        httpContentPool.useInstance { buffer ->
+            response.bodyAsChannel().readBoundedHtml(buffer)
+            ProfileParser.parseProfileUrl(buffer)
         }
     }
 
@@ -258,7 +306,12 @@ object EhEngine {
         return ehRequest(url, referer).fetchUsingAsText(GalleryPageParser::parse)
     }
 
-    suspend fun getGalleryList(url: String) = ehRequest(url, EhUrl.referer).fetchUsingAsByteBuffer(GalleryListParser::parse)
+    suspend fun getGalleryList(url: String) = ehRequest(url, EhUrl.referer) {
+        val endpoint = Url(url)
+        if (endpoint.host == EhUrl.DOMAIN_EX && endpoint.segments.firstOrNull().orEmpty() in exGalleryReadPaths) {
+            allowReadTransportRetry()
+        }
+    }.fetchUsingAsByteBuffer(GalleryListParser::parse)
         .apply { galleryInfoList.fillInfo(url, true) }
         .takeUnless { it.galleryInfoList.isEmpty() } ?: GalleryListParser.emptyResult
 
@@ -283,16 +336,32 @@ object EhEngine {
         val referer = "https://forums.e-hentai.org/index.php?act=Login&CODE=00"
         val url = EhUrl.API_SIGN_IN
         val origin = "https://forums.e-hentai.org"
-        return ehRequest(url, referer, origin) {
-            formBody {
-                append("referer", referer)
-                append("b", "")
-                append("bt", "")
-                append("UserName", username)
-                append("PassWord", password)
-                append("CookieDate", "1")
+        val staged = LoginCookies()
+        return HttpClient(ktorClient.engine) { configureCommon(redirect = false, cookieStorage = staged) }.use { client ->
+            val displayName = client.prepareRequest(url) {
+                applyEhConfig(referer, origin)
+                formBody {
+                    append("referer", referer)
+                    append("b", "")
+                    append("bt", "")
+                    append("UserName", username)
+                    append("PassWord", password)
+                    append("CookieDate", "1")
+                }
+            }.executeSafely { response ->
+                if (response.headers["cf-mitigated"] == "challenge") throw CloudflareBypassException()
+                response.status.ensureSuccess()
+                try {
+                    SignInParser.parse(response.bodyAsUtf8Text())
+                } catch (failure: CancellationException) {
+                    throw failure
+                } catch (_: EhException) {
+                    throw EhException(R.string.sign_in_failed)
+                }
             }
-        }.fetchUsingAsText(SignInParser::parse)
+            EhCookieStore.installLoginCookies(staged)
+            displayName
+        }
     }
 
     suspend fun commentGallery(url: String, comment: String, id: Long = -1) = ehRequest(url, url, EhUrl.origin) {
