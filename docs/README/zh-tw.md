@@ -74,6 +74,11 @@
 <img alt="Get it on GitHub" src="https://github.com/FooIbar/EhViewer-art/blob/master/get-it-on-github.svg" width="200px"/>
 </a>
 
+# 文件
+
+- [使用手冊與技術文件（英文）](../README.md)
+- [變更記錄（簡體中文）](../CHANGELOG_zh-CN.md)
+
 # 截圖
 
 ![screenshots-01](https://github.com/FooIbar/EhViewer-art/blob/master/screenshots-01.webp)
