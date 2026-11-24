@@ -12,6 +12,7 @@ data class SortMode(val field: Field, val order: Order, val groupByDownloadLabel
         TITLE(1),
         TIME(2),
         PAGES(4),
+        CUSTOM(5),
     }
 
     enum class Order(val value: Int) {
@@ -25,8 +26,9 @@ data class SortMode(val field: Field, val order: Order, val groupByDownloadLabel
             Field.TITLE -> compareBy { EhUtils.getSuitableTitle(it) }
             Field.TIME -> compareBy { it.time }
             Field.PAGES -> compareBy<DownloadInfo> { it.pages }
+            Field.CUSTOM -> compareBy<DownloadInfo> { it.downloadInfo.customPosition }.thenBy { it.gid }
         }
-        if (order == Order.DESC) {
+        if (order == Order.DESC && field != Field.CUSTOM) {
             comparator = comparator.reversed()
         }
         if (field == Field.PAGES) {
@@ -48,6 +50,7 @@ data class SortMode(val field: Field, val order: Order, val groupByDownloadLabel
             return SortMode(field, order, groupByDownloadLabel)
         }
         val Default = SortMode(Field.TIME, Order.DESC)
+        val Custom = SortMode(Field.CUSTOM, Order.ASC)
         val All = listOf(
             Default,
             SortMode(Field.TIME, Order.ASC),
@@ -57,6 +60,7 @@ data class SortMode(val field: Field, val order: Order, val groupByDownloadLabel
             SortMode(Field.TITLE, Order.DESC),
             SortMode(Field.PAGES, Order.ASC),
             SortMode(Field.PAGES, Order.DESC),
+            Custom,
         )
     }
 }

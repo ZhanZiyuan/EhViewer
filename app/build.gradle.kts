@@ -12,7 +12,7 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
-val releaseVersion = "1.15.13"
+val releaseVersion = "1.15.15"
 
 val supportedAbis = arrayOf("arm64-v8a", "x86_64", "armeabi-v7a")
 val releaseAbi = providers.gradleProperty("releaseAbi").orNull
@@ -34,6 +34,8 @@ androidComponents {
 }
 
 android {
+    sourceSets.getByName("androidTest").assets.srcDir(rootProject.file("core/data/schemas"))
+
     splits {
         abi {
             isEnable = releaseAbi != "universal"
@@ -81,7 +83,7 @@ android {
     defaultConfig {
         applicationId = "moe.tarsin.ehviewer"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        versionCode = 180077
+        versionCode = 180079
         versionName = if (snapshot) {
             "$releaseVersion-SNAPSHOT"
         } else {
@@ -188,6 +190,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.ktor:ktor-client-mock:${libs.versions.ktor.get()}")
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation("androidx.room:room-testing:${libs.versions.androidx.room.get()}")
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.uiautomator)
 

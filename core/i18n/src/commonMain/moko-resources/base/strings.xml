@@ -638,4 +638,12 @@
     <string name="show_blocked_image">Show blocked image</string>
     <!-- Tachiyomi Reader End-->
     <string name="sign_out_saved_session">Signing out removes the saved session from this device. Cancel to keep it.</string>
+    <string name="custom_download_order">Custom order</string>
+    <string name="drag_to_reorder_download">Drag to reorder download</string>
+    <string name="reorder_download_label">Reorder download label</string>
+    <string name="download_order_move_up">Move up</string>
+    <string name="download_order_move_down">Move down</string>
+    <string name="download_order_filter_hint">Use an ungrouped list with all downloads or one download label, and clear search and status filters to reorder.</string>
+    <string name="download_order_save_failed">Could not save the download order.</string>
+    <string name="download_options">Download options</string>
 </resources>

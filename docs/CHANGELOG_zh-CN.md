@@ -1,5 +1,20 @@
 # 变更日志
 
+## [1.15.15] - 2026-11-24
+
+### 新功能
+
+* 恢复下载画廊的「自定义排序」，在下载列表中拖动即可调整顺序，重启应用或切换排序后仍会保留 [#23](https://github.com/ZhanZiyuan/EhViewer/pull/23)
+
+### 改进
+
+* 区分 ExHentai 的登录失效、访问受限和临时网络错误，在连接意外关闭时对符合条件的只读请求重试一次 [#22](https://github.com/ZhanZiyuan/EhViewer/pull/22)
+
+### Bug 修复
+
+* 修复网页登录成功后仍停留在登录页、反复要求登录的问题 [#22](https://github.com/ZhanZiyuan/EhViewer/pull/22)
+* 修复下载列表使用自定义排序时右侧留白过大、页数位置偏移的问题 [#23](https://github.com/ZhanZiyuan/EhViewer/pull/23)
+
 ## [1.15.13] - 2026-11-13
 
 ### 改进

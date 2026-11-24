@@ -83,6 +83,8 @@ object EhDB {
         if (downloads.isNotEmpty()) db.downloadsDao().update(downloads)
     }
 
+    suspend fun updateCustomDownloadPositions(positions: Map<Long, Long>) = db.updateCustomDownloadPositions(positions)
+
     suspend fun putDownloadInfo(downloadInfo: DownloadInfo) {
         putGalleryInfo(downloadInfo.galleryInfo)
         db.downloadsDao().upsert(downloadInfo.downloadInfo)
@@ -318,7 +320,7 @@ object EhDB {
             importDownloadDirname(it)
         }
 
-        val downloadInfoList = oldDB.downloadsDao().joinList().asReversed()
+        val downloadInfoList = oldDB.downloadsDao().joinList().sortedByDescending { it.downloadInfo.customPosition }
         DownloadManager.addDownload(downloadInfoList)
 
         val historyInfoList = oldDB.historyDao().list()
@@ -353,6 +355,17 @@ internal suspend fun EhDatabase.importDownloadWithArtists(info: DownloadInfo) {
             if (info.artistInfoList.isNotEmpty()) {
                 downloadArtistDao().deleteByGid(info.gid)
                 downloadArtistDao().insertOrIgnore(info.artistInfoList)
+            }
+        }
+    }
+}
+
+internal suspend fun EhDatabase.updateCustomDownloadPositions(positions: Map<Long, Long>) {
+    useWriterConnection { writer ->
+        writer.immediateTransaction {
+            val dao = downloadsDao()
+            for ((gid, position) in positions) {
+                check(dao.updateCustomPosition(gid, position) == 1) { "Download removed during reorder" }
             }
         }
     }

@@ -1,0 +1,214 @@
+package com.hippo.ehviewer
+
+import android.content.Intent
+import android.graphics.Point
+import androidx.test.core.app.ActivityScenario
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.BySelector
+import androidx.test.uiautomator.StaleObjectException
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.Until
+import com.ehviewer.core.database.model.DownloadInfo
+import com.ehviewer.core.database.model.GalleryEntity
+import com.ehviewer.core.i18n.R
+import com.ehviewer.core.preferences.PrefDelegate
+import com.hippo.ehviewer.download.DownloadManager
+import com.hippo.ehviewer.download.DownloadMove
+import com.hippo.ehviewer.download.DownloadsFilterMode
+import com.hippo.ehviewer.download.SortMode
+import com.hippo.ehviewer.download.setDownloadLocation
+import com.hippo.ehviewer.ui.MainActivity
+import java.io.File
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
+import okio.Path.Companion.toOkioPath
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class DownloadOrderUiTest {
+    private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    private val context = instrumentation.targetContext
+    private val device = UiDevice.getInstance(instrumentation)
+
+    @Test
+    fun galleryDragPersistsAndCardSelectionAndLabelDragStillWork() = runBlocking {
+        val first = gallery(8_001_111_010L, "Order fixture first").apply { pages = 113 }
+        val second = gallery(8_001_111_011L, "Order fixture second").apply { pages = 127 }
+        val gids = listOf(first.gid, second.gid)
+        val labelA = "Order fixture label A"
+        val labelB = "Order fixture label B"
+        val original = Settings.snapshot()
+        val originalLinkTip = Settings.appLinkVerifyTip
+
+        try {
+            val fixtureDirectory = File(context.cacheDir, "order-ui-downloads").apply { mkdirs() }
+            setDownloadLocation(fixtureDirectory.toOkioPath())
+            DownloadManager.deleteRangeDownload(gids.toLongArray())
+            DownloadManager.deleteLabel(labelA)
+            DownloadManager.deleteLabel(labelB)
+            DownloadManager.addLabel(labelA)
+            DownloadManager.addLabel(labelB)
+            DownloadManager.addDownload(
+                listOf(first, second).map {
+                    DownloadInfo(it, "order-fixture-${it.gid}").apply { state = DownloadInfo.STATE_FINISH }
+                },
+            )
+            DownloadManager.changeLabel(gids.map { checkNotNull(DownloadManager.getDownloadInfo(it)) }, labelA)
+            Settings.appLinkVerifyTip = true
+            Settings.withMutableSnapshot {
+                it[Settings.needSignIn] = false
+                it[Settings.updateIntervalDays] = 0
+                it[Settings.launchPage] = 6
+                it[Settings.downloadSortMode] = SortMode.Custom.flag
+                it[Settings.downloadFilterMode] = DownloadsFilterMode.CUSTOM.flag
+                it[Settings.recentDownloadLabel] = ""
+                it[Settings.gridView] = false
+                it[Settings.listThumbSize] = 20
+            }
+            DownloadManager.sortDownloads(SortMode.Custom)
+            val intent = Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            ActivityScenario.launch<MainActivity>(intent).use {
+                val handle = By.desc(context.getString(R.string.drag_to_reorder_download))
+                assertTrue("The download list should show the gallery drag handle", device.wait(Until.hasObject(handle), 20_000))
+                assertTrue(device.wait(Until.hasObject(By.text(checkNotNull(first.title))), 10_000))
+                assertTrue(device.wait(Until.hasObject(By.text(checkNotNull(second.title))), 10_000))
+                val pageCount = By.text("113P")
+                val customRight = trailingEdge(pageCount)
+                assertTrue("The page count should reach the trailing edge of the row", customRight >= device.displayWidth * 0.9)
+                for (mode in SortMode.All.filter { it.field != SortMode.Field.CUSTOM }) {
+                    Settings.downloadSortMode.value = mode.flag
+                    DownloadManager.sortDownloads(mode)
+                    assertTrue("Gallery handles should be hidden in $mode", device.wait(Until.gone(handle), 5_000))
+                    val automaticRight = trailingEdge(pageCount)
+                    assertEquals("Page count alignment should match $mode", automaticRight, customRight)
+                }
+                Settings.downloadSortMode.value = SortMode.Custom.flag
+                DownloadManager.sortDownloads(SortMode.Custom)
+                dragBetweenHandles(handle)
+                awaitCondition("Gallery order was not saved") {
+                    EhDB.getAllDownloadInfo().filter { it.gid in gids }.sortedWith(SortMode.Custom.comparator()).map { it.gid } == gids
+                }
+
+                device.findObject(By.text(checkNotNull(first.title))).longClick()
+                assertTrue("Card long press should enter selection mode", device.wait(Until.gone(handle), 5_000))
+                device.pressBack()
+                assertTrue(device.wait(Until.hasObject(handle), 5_000))
+
+                Settings.withMutableSnapshot { it[Settings.gridView] = true }
+                assertTrue(device.wait(Until.gone(handle), 5_000))
+                assertTrue("The grid should render the first gallery's page badge", device.wait(Until.hasObject(By.text("113")), 5_000))
+                Settings.withMutableSnapshot { it[Settings.gridView] = false }
+                assertTrue(device.wait(Until.hasObject(handle), 5_000))
+
+                device.findObject(By.desc(context.getString(R.string.download_options))).click()
+                val labels = device.wait(Until.findObject(By.text(context.getString(R.string.download_labels))), 5_000)
+                assertNotNull(labels)
+                labels.click()
+                val labelHandle = By.desc(context.getString(R.string.reorder_download_label))
+                dragBetweenHandles(labelHandle)
+                awaitCondition("Label order was not saved") {
+                    EhDB.getAllDownloadLabelList().filter { it.label in listOf(labelA, labelB) }.map { it.label } == listOf(labelB, labelA)
+                }
+            }
+        } finally {
+            DownloadManager.deleteRangeDownload(gids.toLongArray())
+            DownloadManager.deleteLabel(labelA)
+            DownloadManager.deleteLabel(labelB)
+            Settings.appLinkVerifyTip = originalLinkTip
+            Settings.withMutableSnapshot { current ->
+                fun <T> restore(pref: PrefDelegate<T>) {
+                    if (pref in original) current[pref] = original[pref] else current.remove(pref)
+                }
+                restore(Settings.needSignIn)
+                restore(Settings.updateIntervalDays)
+                restore(Settings.launchPage)
+                restore(Settings.downloadSortMode)
+                restore(Settings.downloadFilterMode)
+                restore(Settings.recentDownloadLabel)
+                restore(Settings.gridView)
+                restore(Settings.listThumbSize)
+                restore(Settings.downloadScheme)
+                restore(Settings.downloadAuthority)
+                restore(Settings.downloadPath)
+                restore(Settings.downloadQuery)
+                restore(Settings.downloadFragment)
+            }
+            DownloadManager.sortDownloads(SortMode.from(original[Settings.downloadSortMode]))
+        }
+    }
+
+    @Test
+    fun concurrentRecoveryAndMoveKeepAStableOrderAfterImportAndDelete() = runBlocking {
+        val rows = List(5) { gallery(8_001_111_020L + it, "Order storage fixture $it") }
+        val gids = rows.map { it.gid }
+        val originalSort = SortMode.from(Settings.downloadSortMode.value)
+        try {
+            rows.take(3).forEach { DownloadManager.restoreDownload(it, "storage-fixture-${it.gid}") }
+            DownloadManager.sortDownloads(SortMode.Custom)
+            coroutineScope {
+                val move = async { DownloadManager.moveDownload(DownloadMove(gids[2], gids[0], before = false), label = "") }
+                val restore = async { DownloadManager.restoreDownload(rows[3], "storage-fixture-recovery") }
+                move.await()
+                restore.await()
+            }
+            val imported = DownloadInfo(rows[4], null)
+            DownloadManager.addDownload(listOf(imported, imported, DownloadInfo(rows[0], null)))
+            DownloadManager.deleteDownload(gids[1])
+            val saved = EhDB.getAllDownloadInfo().filter { it.gid in gids }.sortedWith(SortMode.Custom.comparator())
+            assertEquals(listOf(gids[4], gids[3], gids[0], gids[2]), saved.map { it.gid })
+            assertEquals(saved.size, saved.map { it.downloadInfo.customPosition }.toSet().size)
+        } finally {
+            DownloadManager.deleteRangeDownload(gids.toLongArray())
+            DownloadManager.sortDownloads(originalSort)
+        }
+    }
+
+    private suspend fun awaitCondition(message: String, condition: suspend () -> Boolean) {
+        val completed = withTimeoutOrNull(10_000) {
+            while (!condition()) delay(50)
+            true
+        }
+        assertTrue(message, completed == true)
+    }
+
+    private suspend fun trailingEdge(selector: BySelector): Int {
+        var right: Int? = null
+        awaitCondition("Page count was not visible after changing sort mode") {
+            right = try {
+                device.findObject(selector)?.visibleBounds?.right
+            } catch (_: StaleObjectException) {
+                null
+            }
+            right != null
+        }
+        return checkNotNull(right)
+    }
+
+    private suspend fun dragBetweenHandles(selector: BySelector) {
+        var centers = emptyList<Point>()
+        awaitCondition("Both reorder handles must be visible before dragging") {
+            val current = try {
+                device.findObjects(selector).map { it.visibleCenter }.sortedBy { it.y }
+            } catch (_: StaleObjectException) {
+                emptyList()
+            }
+            val settled = current.size == 2 && current == centers
+            centers = current
+            settled
+        }
+        val (start, end) = centers
+        assertTrue(device.drag(start.x, start.y, end.x, end.y + 6, 25))
+    }
+
+    private fun gallery(gid: Long, title: String) = GalleryEntity(gid, "fixture", title, null, "https://fixture.invalid/$gid.webp", 0, null, null, 0f, null, 0, null, -2)
+}

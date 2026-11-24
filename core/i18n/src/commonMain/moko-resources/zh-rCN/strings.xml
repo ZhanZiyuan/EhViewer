@@ -620,4 +620,12 @@
     <string name="show_blocked_image">显示已屏蔽的图片</string>
     <!-- Tachiyomi Reader End-->
     <string name="sign_out_saved_session">退出登录会移除此设备上保存的会话。如需保留，请取消。</string>
+    <string name="custom_download_order">自定义排序</string>
+    <string name="drag_to_reorder_download">拖动以调整下载顺序</string>
+    <string name="reorder_download_label">调整下载标签顺序</string>
+    <string name="download_order_move_up">上移</string>
+    <string name="download_order_move_down">下移</string>
+    <string name="download_order_filter_hint">请在全部下载或单个下载标签的列表中关闭分组，并清除搜索和状态筛选后再拖动。</string>
+    <string name="download_order_save_failed">无法保存下载顺序。</string>
+    <string name="download_options">下载选项</string>
 </resources>

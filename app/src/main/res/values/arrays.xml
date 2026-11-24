@@ -193,6 +193,7 @@
         <item>@string/title_desc</item>
         <item>@string/page_count_asc</item>
         <item>@string/page_count_desc</item>
+        <item>@string/custom_download_order</item>
     </string-array>
 
     <string-array name="download_state">

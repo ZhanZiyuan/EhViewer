@@ -18,7 +18,7 @@ Use the favorite action on a gallery to save it to **Local Favorites** or an ava
 
 ## Save galleries for offline use
 
-Choose **Download** on a gallery, then open **Downloads** for progress and completed items. A saved gallery can be opened from that list. In **Settings → Download**, set the download folder and decide whether completed downloads should be saved as CBZ archives. **Download labels** organize saved galleries separately from the website's tags.
+Choose **Download** on a gallery, then open **Downloads** for progress and completed items. A saved gallery can be opened from that list. See [Downloads and custom order](downloads.md) for folders, CBZ, labels, and manual ordering.
 
 ## Export and import app data
 

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Pause
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,6 +48,7 @@ import com.ehviewer.core.ui.component.CrystalCard
 import com.ehviewer.core.ui.component.GalleryListCardRating
 import com.ehviewer.core.ui.util.TransitionsVisibilityScope
 import com.ehviewer.core.ui.util.listThumbGenerator
+import com.ehviewer.core.ui.util.thenIf
 import com.hippo.ehviewer.EhDB
 import com.hippo.ehviewer.client.EhUtils
 import com.hippo.ehviewer.download.DownloadManager
@@ -64,8 +67,22 @@ fun DownloadCard(
     showProgress: Boolean,
     modifier: Modifier = Modifier,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    dragHandle: (@Composable () -> Unit)? = null,
 ) = CrystalCard(modifier = modifier, onClick = onClick, onLongClick = onLongClick, interactionSource = interactionSource) {
-    Row {
+    val isReorderable = dragHandle != null
+    Row(modifier = Modifier.thenIf(isReorderable) { fillMaxWidth() }) {
+        val thumbnailModifier = Modifier.thenIf(isReorderable) {
+            layout { measurable, constraints ->
+                // Keep room for the rating and both row actions on narrow displays.
+                val thumbnail = if (constraints.hasBoundedWidth) {
+                    val maxWidth = maxOf(constraints.maxWidth / 4, constraints.maxWidth - 192.dp.roundToPx())
+                    measurable.measure(constraints.copy(maxWidth = maxWidth))
+                } else {
+                    measurable.measure(constraints)
+                }
+                layout(thumbnail.width, thumbnail.height) { thumbnail.placeRelative(0, 0) }
+            }
+        }
         val thumb = remember {
             movableContentOf<DownloadInfo> {
                 with(listThumbGenerator) {
@@ -77,11 +94,11 @@ fun DownloadCard(
             }
         }
         if (selectMode) {
-            Card {
+            Card(modifier = thumbnailModifier) {
                 thumb(info)
             }
         } else {
-            Card(onClick = onThumbClick) {
+            Card(onClick = onThumbClick, modifier = thumbnailModifier) {
                 thumb(info)
             }
         }
@@ -89,7 +106,7 @@ fun DownloadCard(
         val stateFailed2 = stringResource(R.string.download_state_failed_2, info.legacy)
         val downloadState by DownloadManager.collectDownloadState(info.gid)
         val archiving = DownloadManager.updatedDownloadInfo(info) { archiving }
-        Column(modifier = Modifier.padding(start = 8.dp, top = 2.dp, end = 4.dp)) {
+        Column(modifier = Modifier.thenIf(isReorderable) { weight(1f) }.padding(start = 8.dp, top = 2.dp, end = 4.dp)) {
             Text(
                 text = EhUtils.getSuitableTitle(info),
                 maxLines = 2,
@@ -120,9 +137,11 @@ fun DownloadCard(
                     Row {
                         Text(
                             text = info.uploader.orEmpty(),
-                            modifier = Modifier.alignByBaseline().alpha(if (info.disowned) 0.5f else 1f),
+                            modifier = Modifier.thenIf(isReorderable) { weight(1f) }.alignByBaseline().alpha(if (info.disowned) 0.5f else 1f),
+                            maxLines = if (isReorderable) 1 else Int.MAX_VALUE,
+                            overflow = if (isReorderable) TextOverflow.Ellipsis else TextOverflow.Clip,
                         )
-                        Spacer(modifier = Modifier.weight(1f))
+                        Spacer(modifier = if (isReorderable) Modifier.width(8.dp) else Modifier.weight(1f))
                         Text(
                             text = stateText.orEmpty(),
                             modifier = Modifier.alignByBaseline(),
@@ -158,7 +177,7 @@ fun DownloadCard(
                 }
             }
             Row {
-                Column {
+                Column(modifier = Modifier.thenIf(isReorderable) { weight(1f) }) {
                     // Place the rating near the uploader text as there's more visual space
                     GalleryListCardRating(rating = info.rating, modifier = Modifier.padding(top = 1.dp, bottom = 3.dp))
                     val categoryColor = EhUtils.getCategoryColor(info.category)
@@ -168,9 +187,11 @@ fun DownloadCard(
                         modifier = Modifier.clip(ShapeDefaults.Small).background(categoryColor).padding(vertical = 2.dp, horizontal = 8.dp),
                         color = EhUtils.getCategoryTextColor(categoryColor),
                         style = MaterialTheme.typography.labelLarge,
+                        maxLines = if (isReorderable) 1 else Int.MAX_VALUE,
+                        overflow = if (isReorderable) TextOverflow.Ellipsis else TextOverflow.Clip,
                     )
                 }
-                Spacer(modifier = Modifier.weight(1f))
+                if (dragHandle != null) dragHandle() else Spacer(modifier = Modifier.weight(1f))
                 val running = downloadState == DownloadInfo.STATE_WAIT || downloadState == DownloadInfo.STATE_DOWNLOAD
                 val icon = when (downloadState) {
                     DownloadInfo.STATE_WAIT, DownloadInfo.STATE_DOWNLOAD -> Icons.Default.Pause

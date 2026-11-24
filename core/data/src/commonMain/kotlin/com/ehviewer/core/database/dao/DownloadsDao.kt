@@ -34,6 +34,9 @@ interface DownloadsDao {
     @Update
     suspend fun update(downloadInfo: List<DownloadEntity>)
 
+    @Query("UPDATE DOWNLOADS SET CUSTOM_POSITION = :position WHERE GID = :gid")
+    suspend fun updateCustomPosition(gid: Long, position: Long): Int
+
     @Insert
     suspend fun insert(downloadInfo: List<DownloadEntity>)
 
