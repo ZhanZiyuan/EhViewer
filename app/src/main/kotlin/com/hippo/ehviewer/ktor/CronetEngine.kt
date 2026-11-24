@@ -4,6 +4,7 @@ package com.hippo.ehviewer.ktor
 
 import android.net.http.HttpEngine
 import android.net.http.HttpException
+import android.net.http.NetworkException
 import android.net.http.UploadDataProvider
 import android.net.http.UploadDataSink
 import android.net.http.UrlRequest
@@ -117,7 +118,16 @@ class CronetEngine(override val config: CronetConfig) : HttpClientEngineBase("Cr
 
             override fun onFailed(request: UrlRequest, info: UrlResponseInfo?, error: HttpException) {
                 chunkChan.close(error)
-                if (continuation.isActive) continuation.resumeWithException(error)
+                if (continuation.isActive) {
+                    val cause = if (info == null && error is NetworkException && error.isImmediatelyRetryable &&
+                        error.errorCode in retryableNetworkErrors
+                    ) {
+                        RetryableConnectionFailure(error)
+                    } else {
+                        error
+                    }
+                    continuation.resumeWithException(cause)
+                }
             }
 
             override fun onCanceled(request: UrlRequest, info: UrlResponseInfo?) {
@@ -143,6 +153,12 @@ class CronetEngine(override val config: CronetConfig) : HttpClientEngineBase("Cr
         }
     }
 }
+
+private val retryableNetworkErrors = setOf(
+    NetworkException.ERROR_CONNECTION_CLOSED,
+    NetworkException.ERROR_CONNECTION_RESET,
+    NetworkException.ERROR_NETWORK_CHANGED,
+)
 
 private fun UrlResponseInfo.toHttpResponseData(
     requestTime: GMTDate,

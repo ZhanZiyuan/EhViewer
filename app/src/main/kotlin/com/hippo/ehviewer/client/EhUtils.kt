@@ -166,14 +166,6 @@ object EhUtils {
 
     val favoriteIconColor = Color(0xffff3040)
 
-    fun signOut() {
-        EhCookieStore.removeAllCookies()
-        Settings.displayName.value = null
-        Settings.hasSignedIn.value = false
-        Settings.gallerySite.value = EhUrl.SITE_E
-        Settings.needSignIn.value = true
-    }
-
     fun getSuitableTitle(gi: GalleryInfo): String = com.ehviewer.core.domain.selectGalleryTitle(gi.title, gi.titleJpn, Settings.showJpnTitle.value)
 
     fun extractTitle(fullTitle: String?): String? {

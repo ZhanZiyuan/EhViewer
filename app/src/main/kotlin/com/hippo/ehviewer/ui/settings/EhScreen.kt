@@ -35,12 +35,12 @@ import com.ehviewer.core.util.launch
 import com.hippo.ehviewer.Settings
 import com.hippo.ehviewer.asMutableState
 import com.hippo.ehviewer.client.EhTagDatabase
-import com.hippo.ehviewer.client.EhUtils
 import com.hippo.ehviewer.collectAsState
 import com.hippo.ehviewer.ui.Screen
 import com.hippo.ehviewer.ui.destinations.FilterScreenDestination
 import com.hippo.ehviewer.ui.destinations.MyTagsScreenDestination
 import com.hippo.ehviewer.ui.destinations.UConfigScreenDestination
+import com.hippo.ehviewer.ui.login.signOutSession
 import com.hippo.ehviewer.ui.main.NavigationIcon
 import com.hippo.ehviewer.ui.tools.awaitConfirmationOrCancel
 import com.hippo.ehviewer.ui.tools.awaitSelectItem
@@ -87,7 +87,7 @@ fun AnimatedVisibilityScope.EhScreen(navigator: DestinationsNavigator) = Screen(
                             confirmText = R.string.settings_eh_sign_out,
                             dismissText = R.string.settings_eh_clear_igneous,
                             showCancelButton = cookies.last().second != null,
-                            onCancelButtonClick = { EhCookieStore.clearIgneous() },
+                            onCancelButtonClick = { launch { EhCookieStore.clearIgneous() } },
                             secure = true,
                         ) {
                             Column {
@@ -113,7 +113,7 @@ fun AnimatedVisibilityScope.EhScreen(navigator: DestinationsNavigator) = Screen(
                                 )
                             }
                         }
-                        EhUtils.signOut()
+                        signOutSession()
                     }
                 }
                 val gallerySite = Settings.gallerySite.asMutableState()

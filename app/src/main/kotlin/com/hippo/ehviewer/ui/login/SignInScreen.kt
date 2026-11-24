@@ -59,16 +59,19 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.ehviewer.core.i18n.R
+import com.ehviewer.core.network.EhCookieStore
+import com.ehviewer.core.network.IdentityCookies
 import com.ehviewer.core.ui.util.LocalWindowSizeClass
 import com.ehviewer.core.ui.util.ifTrueThen
 import com.ehviewer.core.ui.util.isExpanded
 import com.ehviewer.core.ui.util.thenIf
+import com.ehviewer.core.util.launch
 import com.ehviewer.core.util.launchIO
 import com.ehviewer.core.util.withUIContext
 import com.hippo.ehviewer.Settings
 import com.hippo.ehviewer.client.EhEngine
 import com.hippo.ehviewer.client.EhUrl
-import com.hippo.ehviewer.client.EhUtils
+import com.hippo.ehviewer.client.exception.NotLoggedInException
 import com.hippo.ehviewer.ui.Screen
 import com.hippo.ehviewer.ui.destinations.WebViewSignInScreenDestination
 import com.hippo.ehviewer.ui.openBrowser
@@ -78,30 +81,39 @@ import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.Job
+import moe.tarsin.coroutines.runSuspendCatching
 import moe.tarsin.navigate
+import moe.tarsin.snackbar
 
 @Destination<RootGraph>(start = true)
 @Composable
 fun AnimatedVisibilityScope.SignInScreen(navigator: DestinationsNavigator) = Screen(navigator) {
     val windowSizeClass = LocalWindowSizeClass.current
     val focusManager = LocalFocusManager.current
-    var isProgressIndicatorVisible by rememberSaveable { mutableStateOf(false) }
+    var isProgressIndicatorVisible by remember { mutableStateOf(false) }
     var showUsernameError by rememberSaveable { mutableStateOf(false) }
     var showPasswordError by rememberSaveable { mutableStateOf(false) }
     val username = rememberTextFieldState()
     val password = rememberTextFieldState()
     var passwordHidden by rememberSaveable { mutableStateOf(true) }
     var signInJob by remember { mutableStateOf<Job?>(null) }
+    var savedIdentity by remember { mutableStateOf(EhCookieStore.identityCookies()) }
 
     fun signIn() {
         if (signInJob?.isActive == true) return
-        if (username.text.isEmpty()) {
+        val identity = EhCookieStore.identityCookies()
+        if (identity == IdentityCookies.Present) {
+            focusManager.clearFocus()
+            navigate(WebViewSignInScreenDestination)
+            return
+        }
+        if (identity == IdentityCookies.Missing && username.text.isEmpty()) {
             showUsernameError = true
             return
         } else {
             showUsernameError = false
         }
-        if (password.text.isEmpty()) {
+        if (identity == IdentityCookies.Missing && password.text.isEmpty()) {
             showPasswordError = true
             return
         } else {
@@ -110,14 +122,23 @@ fun AnimatedVisibilityScope.SignInScreen(navigator: DestinationsNavigator) = Scr
         focusManager.clearFocus()
         isProgressIndicatorVisible = true
 
-        EhUtils.signOut()
+        val user = username.text.toString()
+        val secret = password.text.toString()
         signInJob = launchIO {
-            runCatching {
-                EhEngine.signIn(username.text.toString(), password.text.toString())
-            }.onFailure {
+            val result = try {
+                runSuspendCatching {
+                    changeSession {
+                        if (EhCookieStore.identityCookies() != IdentityCookies.Missing) throw NotLoggedInException()
+                        postLogin(EhEngine.signIn(user, secret))
+                    }
+                }
+            } finally {
+                isProgressIndicatorVisible = false
+            }
+            result.onFailure {
+                savedIdentity = EhCookieStore.identityCookies()
                 withUIContext {
                     focusManager.clearFocus()
-                    isProgressIndicatorVisible = false
                     awaitConfirmationOrCancel(
                         confirmText = R.string.get_it,
                         title = R.string.sign_in_failed,
@@ -132,9 +153,27 @@ fun AnimatedVisibilityScope.SignInScreen(navigator: DestinationsNavigator) = Scr
                         },
                     )
                 }
-            }.onSuccess {
-                postLogin()
             }
+        }
+    }
+
+    @Composable
+    fun SavedSessionSignOut() {
+        if (savedIdentity == IdentityCookies.Missing) return
+        TextButton(
+            enabled = !isProgressIndicatorVisible,
+            onClick = {
+                launch {
+                    awaitConfirmationOrCancel(
+                        confirmText = R.string.settings_eh_sign_out,
+                        text = { Text(stringResource(R.string.sign_out_saved_session)) },
+                    )
+                    runSuspendCatching { signOutSession() }.onFailure { snackbar(it.displayString()) }
+                    savedIdentity = EhCookieStore.identityCookies()
+                }
+            },
+        ) {
+            Text(stringResource(R.string.settings_eh_sign_out))
         }
     }
 
@@ -189,6 +228,7 @@ fun AnimatedVisibilityScope.SignInScreen(navigator: DestinationsNavigator) = Scr
                         modifier = Modifier.padding(dimensionResource(id = com.hippo.ehviewer.R.dimen.keyline_margin)),
                     )
                     UsernameAndPasswordTextField()
+                    SavedSessionSignOut()
                     Text(
                         text = stringResource(id = R.string.app_waring),
                         modifier = Modifier.widthIn(max = dimensionResource(id = com.hippo.ehviewer.R.dimen.single_max_width)).padding(top = 24.dp),
@@ -284,6 +324,7 @@ fun AnimatedVisibilityScope.SignInScreen(navigator: DestinationsNavigator) = Scr
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         UsernameAndPasswordTextField()
+                        SavedSessionSignOut()
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.Center) {
                             Button(

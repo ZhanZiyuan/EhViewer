@@ -3,6 +3,7 @@ package com.hippo.ehviewer
 import android.app.UiModeManager
 import androidx.appcompat.app.AppCompatDelegate
 import arrow.core.Either.Companion.catch
+import com.ehviewer.core.network.EhCookieStore
 import com.ehviewer.core.preferences.PrefDelegate
 import com.ehviewer.core.util.isAtLeastS
 import com.ehviewer.core.util.logcat
@@ -11,6 +12,7 @@ import com.hippo.ehviewer.client.EhEngine
 import com.hippo.ehviewer.client.EhTagDatabase
 import com.hippo.ehviewer.dailycheck.updateDailyCheckWork
 import com.hippo.ehviewer.ui.keepNoMediaFileStatus
+import com.hippo.ehviewer.ui.login.reconcileSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -58,12 +60,9 @@ fun updateWhenRequestNewsChanges() {
 }
 
 suspend fun updateWhenGallerySiteChanges(gallerySite: Int) {
-    if (Settings.hasSignedIn.value) {
-        catch {
-            EhEngine.getUConfig(gallerySite)
-        }.onLeft {
-            logcat(TAG, it)
-        }
+    if (reconcileSession(Settings.hasSignedIn.value, EhCookieStore.identityCookies())) {
+        EhEngine.getUConfig(gallerySite)
+        withIOContext { EhCookieStore.flush() }
     }
 }
 

@@ -12,6 +12,8 @@ import kotlinx.coroutines.ensureActive
 // The direct buffer also holds the CBOR output from the in-place native parser.
 internal const val HTML_RESPONSE_LIMIT_BYTES = 512 * 1024
 
+internal class HtmlResponseTooLargeException(capacity: Int) : IOException("HTML response exceeds the $capacity byte limit")
+
 /** Reads a whole response, accepting an exact fit only after checking for EOF. */
 @OptIn(InternalAPI::class)
 internal suspend fun ByteReadChannel.readBoundedHtml(buffer: ByteBuffer) {
@@ -20,7 +22,7 @@ internal suspend fun ByteReadChannel.readBoundedHtml(buffer: ByteBuffer) {
         coroutineContext.ensureActive()
         if (!awaitContent()) break
         if (!buffer.hasRemaining()) {
-            throw IOException("HTML response exceeds the ${buffer.capacity()} byte limit")
+            throw HtmlResponseTooLargeException(buffer.capacity())
         }
         val read = readAvailable(buffer)
         if (read < 0) break

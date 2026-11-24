@@ -495,4 +495,5 @@
     <string name="rotation_reverse_portrait">顛倒直向</string>
     <string name="disabled_nav">停用</string>
     <!-- Tachiyomi Reader End-->
+    <string name="sign_out_saved_session">登出會移除此裝置上儲存的工作階段。如要保留，請取消。</string>
 </resources>

@@ -619,4 +619,5 @@
     <string name="blocked_image">已屏蔽的图片</string>
     <string name="show_blocked_image">显示已屏蔽的图片</string>
     <!-- Tachiyomi Reader End-->
+    <string name="sign_out_saved_session">退出登录会移除此设备上保存的会话。如需保留，请取消。</string>
 </resources>
